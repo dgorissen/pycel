@@ -6,10 +6,6 @@ from __future__ import division
 from excelutil import *
 from excellib import *
 import os
-import timeit
-import cProfile
-import pstats
-import time
 from pycel.excelcompiler import ExcelCompiler
 from os.path import normpath,abspath
 

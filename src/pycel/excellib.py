@@ -1,7 +1,5 @@
 '''
-Created on 13 Sep 2011
-
-@author: dg2d09
+Python equivalents of various excel functions
 '''
 from __future__ import division
 import numpy as np
@@ -15,9 +13,7 @@ def value(text):
     else:
         return int(text)
 
-# TODO: inline
 def xlog(a):
-    #print type(a)
     if isinstance(a,(list,tuple,np.ndarray)):
         return [log(x) for x in flatten(a)]
     else:
@@ -44,7 +40,6 @@ def xmin(*args):
     else:
         return min(data)
 
-#TODO does not take into account mixture of lists & scalars
 def xsum(*args):
     # ignore non numeric cells
     data = [x for x in flatten(args) if isinstance(x,(int,float))]
@@ -67,69 +62,6 @@ def right(text,n):
         # TODO: get rid of the decimal
         return str(int(text))[-n:]
 
-#http://www.techonthenet.com/excel/formulas/match.php
-#TODO: we only care about numeric data which is not exactly what excel does, also not the cleanest code + overlap with lookup
-def match(value,array,match_type=1):
-    
-    data = array
-    
-    if match_type == 1:
-        # index of the last numeric value
-        lastnum = -1
-        for i,v in enumerate(data):
-            if isinstance(v,(int,float)):
-                if v > value:
-                    break
-                else:
-                    lastnum = i
-                
-
-        if lastnum < 0:
-            raise Exception("No numeric data found in the lookup range")
-        else:
-            if i == 0:
-                raise Exception("All values in the lookup range are bigger than %s" % value)
-            else:
-                if i >= len()-1:
-                    return lastnum+1
-                else:
-                    return i-1+1  #want a 1 based index
-        
-        
-    elif match_type == 0:
-        res = [i for i,x in enumerate(data) if x == value]
-        if not res:
-            raise Exception('match: %s not found in array!' % value)
-        
-        return res[0] + 1
-    
-    elif match_type == -1:
-        # index of the last numeric value
-        lastnum = -1
-        for i,v in enumerate(data):
-            #TODO: we only care about numeric data which is not exactly what excel does
-            if isinstance(v,(int,float)):
-                if v < value:
-                    break
-                else:
-                    lastnum = i
-                
-
-        if lastnum < 0:
-            raise Exception("No numeric data found in the lookup range")
-        else:
-            if i == 0:
-                raise Exception("All values in the lookup range are smaller than %s" % value)
-            else:
-                if i >= len()-1:
-                    return lastnum+1
-                else:
-                    return i-1+1  #want a 1 based index
-    else:
-        raise Exception('Invalid match type ' + match_type)
-    
-    return res
-    
     
 def index(*args):
     array = args[0]
@@ -192,17 +124,7 @@ def linest(*args, **kwargs):
         const = True
         
     degree = kwargs.get('degree',1)
-    skip_blanks = kwargs.get('skip_blanks',False)
     
-    #TODO all rather hackish
-    if skip_blanks:
-        X = [x for x in X if isinstance(x,(int,float))]
-        Y = [y for y in Y if isinstance(y,(int,float))]
-        # trim to the same length
-        l = min(len(X),len(Y))
-        X = X[:l]
-        Y = Y[:l]
-        
     # build the vandermonde matrix
     A = np.vander(X, degree+1)
     
@@ -213,23 +135,7 @@ def linest(*args, **kwargs):
     # perform the fit
     (coefs, residuals, rank, sing_vals) = np.linalg.lstsq(A, Y)
         
-    return coefs #TODO: returns ndarray, not list, may cause problems
+    return coefs
 
-# same as linest but ignoring non numeric cells
-def linestmario(*args, **kwargs):
-    Y = args[0]
-    X = args[1]
-    degree = args[2]
-    
-    if len(args) == 4:
-        const = args[3]
-    else:
-        const = True
-    
-    kwargs['skip_blanks'] = True
-    kwargs['degree'] = degree
-    
-    return linest(Y,X,const,**kwargs)
-    
 if __name__ == '__main__':
     pass

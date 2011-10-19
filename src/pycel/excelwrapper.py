@@ -1,8 +1,3 @@
-'''
-Created on 20 Jun 2011
-
-@author: dg2d09
-'''
 try:
     import win32com.client
     #http://www.py2exe.org/index.cgi/IncludingTypelibs
@@ -14,20 +9,8 @@ try:
 except Exception as e:
     print "WARNING: cant import win32com stuff:",e
 
-try:
-    from xlsx import Workbook
-except:
-    print "WARNING: cant import xlsx"
-
-
 import os
 from os import path
-from excelutil import split_address, Cell
-
-__version__ = filter(str.isdigit, "$Revision: 2524 $")
-__date__ = filter(str.isdigit, "$Date: 2011-09-06 17:05:00 +0100 (Tue, 06 Sep 2011) $")
-__author__ = filter(str.isdigit, "$Author: dg2d09 $")
-
 
 class ExcelComWrapper(object):
     

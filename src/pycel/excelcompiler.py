@@ -1,10 +1,3 @@
-'''
-Created on 9 Sep 2011
-
-@author: dg2d09
-'''
-
-
 from excellib import *
 from excelutil import *
 from excelwrapper import ExcelComWrapper

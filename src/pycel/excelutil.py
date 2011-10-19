@@ -1,9 +1,3 @@
-'''
-Created on 13 Sep 2011
-
-@author: dg2d09
-'''
-
 from __future__ import division
 from itertools import izip
 import collections
@@ -437,4 +431,4 @@ def uniqueify(seq):
     return [ x for x in seq if x not in seen and not seen_add(x)]
 
 if __name__ == '__main__':
-    print col2num("$F$")
+    pass
