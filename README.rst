@@ -7,7 +7,7 @@ tools like `Gephi <http://www.gephi.org>`_. See the contained example for an ill
 
 Required python libraries: `networkx <http://networkx.lanl.gov/>`_, `numpy <http://numpy.scipy.org/>`_, `matplotlib <http://matplotlib.sourceforge.net/>`_ (optional)
 
-The full motivation behind pycel including some examples & screenshots is described in this `blog post <>`.
+The full motivation behind pycel including some examples & screenshots is described in this `blog post <http://www.dirkgorissen.com/2011/10/19/pycel-compiling-excel-spreadsheets-to-python-and-making-pretty-pictures/>`_.
 
 Usage
 ======
