@@ -3,16 +3,15 @@ Simple example file showing how a spreadsheet can be translated to python and ex
 '''
 
 from __future__ import division
-from excelutil import *
-from excellib import *
+from pycel.excelutil import *
+from pycel.excellib import *
 import os
 from pycel.excelcompiler import ExcelCompiler
 from os.path import normpath,abspath
 
 if __name__ == '__main__':
     
-    fname = normpath(abspath("../../example/example.xlsx"))
-    print fname
+    fname = normpath(abspath("../example/example.xlsx"))
     
     print "Loading %s..." % fname
     
