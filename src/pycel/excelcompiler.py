@@ -584,7 +584,7 @@ class ExcelCompiler(object):
         
         # starting points
         cursheet = sheet if sheet else self.excel.get_active_sheet()
-        self.excel.set_sheet(sheet)
+        self.excel.set_sheet(cursheet)
         
         seeds,nr,nc = Cell.make_cells(self.excel, seed, sheet=cursheet)
         seeds = list(flatten(seeds))
