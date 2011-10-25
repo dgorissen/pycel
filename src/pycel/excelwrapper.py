@@ -14,22 +14,25 @@ from os import path
 
 class ExcelComWrapper(object):
     
-    def __init__(self, filename):
+    def __init__(self, filename, app=None):
         
         super(ExcelComWrapper,self).__init__()
         
         self.filename = path.abspath(filename)
-        self.app = None
+        self.app = app
       
     def connect(self):
         #http://devnulled.com/content/2004/01/com-objects-and-threading-in-python/
         # TODO: dont need to uninit?
         #pythoncom.CoInitialize()
-
-        self.app = Dispatch("Excel.Application")
-        self.app.Visible = True
-        self.app.DisplayAlerts = 0
-        self.app.Workbooks.Open(self.filename)
+        if not self.app:
+            self.app = Dispatch("Excel.Application")
+            self.app.Visible = True
+            self.app.DisplayAlerts = 0
+            self.app.Workbooks.Open(self.filename)
+        else:
+            # if we are running as an excel addin, this gets passed to us
+            pass
     
     def save(self):
         self.app.ActiveWorkbook.Save()

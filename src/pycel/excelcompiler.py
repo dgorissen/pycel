@@ -547,13 +547,19 @@ class ExcelCompiler(object):
        Must be run on Windows as it requires a COM link to an Excel instance.
        """
        
-    def __init__(self, filename=None,*args,**kwargs):
+    def __init__(self, filename=None, excel=None, *args,**kwargs):
 
         super(ExcelCompiler,self).__init__()
         self.filename = filename
-        # TODO: use a proper interface so we can (eventually) support loading from file (much faster)  Still need to find a good lib though.
-        self.excel = ExcelComWrapper(filename=filename)
-        self.excel.connect()
+        
+        if excel:
+            # if we are running as an excel addin, this gets passed to us
+            self.excel = excel
+        else:
+            # TODO: use a proper interface so we can (eventually) support loading from file (much faster)  Still need to find a good lib though.
+            self.excel = ExcelComWrapper(filename=filename)
+            self.excel.connect()
+            
         self.log = logging.getLogger("decode.{0}".format(self.__class__.__name__))
         
     def cell2code(self,cell):

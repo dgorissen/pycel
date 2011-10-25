@@ -39,3 +39,8 @@ correctly in all cases.  If that changes I will definitely add a file based comp
 
 Using `OpenOpt <http://openopt.org/>`_ I also coded a python replacement for the Excel `solver plugin <http://www.solver.com/suppstdsolver.htm>`_.  However, since its quite closely linked with our spreadsheet structure it is not generic enough
 to be released (yet).
+
+Excel Addin
+===========
+
+Its possible to run pycel as an excel addin using `PyXLL <http://www.pyxll.com/>`_. Simply place pyxll.xll and pyxll.py in the lib directory and add the xll file to the Excel Addins list as explained in the pyxll documentation.
