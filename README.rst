@@ -44,3 +44,8 @@ Excel Addin
 ===========
 
 Its possible to run pycel as an excel addin using `PyXLL <http://www.pyxll.com/>`_. Simply place pyxll.xll and pyxll.py in the lib directory and add the xll file to the Excel Addins list as explained in the pyxll documentation.
+
+Acknowledgements
+================
+
+This code was made possible thanks to the python port of Eric Bachtal's `Excel formula parsing code <http://ewbi.blogs.com/develops/popular/excelformulaparsing.html>`_ by Robin Macharg.
