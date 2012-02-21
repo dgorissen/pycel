@@ -137,5 +137,10 @@ def linest(*args, **kwargs):
         
     return coefs
 
+def npv(*args):
+    discount_rate = args[0]
+    cashflow = args[1]
+    return sum([float(x)*(1+discount_rate)**-(i+1) for (i,x) in enumerate(cashflow)])
+
 if __name__ == '__main__':
     pass

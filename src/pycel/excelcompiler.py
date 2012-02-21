@@ -164,21 +164,20 @@ class OperatorNode(ASTNode):
     def __init__(self,*args):
         super(OperatorNode,self).__init__(*args)
     def emit(self,ast,context=None):
-        op = self.tvalue
+        xop = self.tvalue
         
         # Get the arguments
         args = self.children(ast)
         
-        if op == "^":
-            op = "**"
-        elif op == "=":
-            op = "=="
-        elif op == "&":
-            op = "+"
-        elif op == "": # union
-            op = "+"
-        else:
-            pass
+        # convert the operator to python equivalents
+        opmap = {
+                 "^":"**",
+                 "=":"==",
+                 "&":"+",
+                 "":"+" #union
+                 }
+        
+        op = opmap.get(xop,xop)
         
         if self.ttype == "operator-prefix":
             return "-" + args[0].emit(ast,context=context)
@@ -189,14 +188,22 @@ class OperatorNode(ASTNode):
         if op == "**":
             if parent and parent.tvalue.lower() == "linest": 
                 return args[0].emit(ast,context=context)
-        
-        str = args[0].emit(ast,context=context) + op + args[1].emit(ast,context=context)
+
+        #TODO silly hack to work around the fact that None < 0 is True (happens on blank cells)
+        if op == "<" or op == "<=":
+            aa = args[0].emit(ast,context=context)
+            ss = "(" + aa + " if " + aa + " is not None else float('inf'))" + op + args[1].emit(ast,context=context)
+        elif op == ">" or op == ">=":
+            aa = args[1].emit(ast,context=context)
+            ss =  args[0].emit(ast,context=context) + op + "(" + aa + " if " + aa + " is not None else float('inf'))"
+        else:
+            ss = args[0].emit(ast,context=context) + op + args[1].emit(ast,context=context)
         
         #avoid needless parentheses
         if parent and not isinstance(parent,FunctionNode):
-            str = "("+ str + ")" 
+            ss = "("+ ss + ")" 
         
-        return str
+        return ss
 
 class OperandNode(ASTNode):
     def __init__(self,*args):
@@ -247,20 +254,20 @@ class FunctionNode(ASTNode):
         self.numargs = 0
         
     def emit(self,ast,context=None):
-        fun = self.tvalue.lower()
+        xfun = self.tvalue.lower()
         str = ''
-        
-        # map onto python versions
-        if fun == "ln":
-            fun = "xlog"
-        if fun == "min":
-            fun = "xmin"
-        if fun == "max":
-            fun = "xmax"
-        if fun == "sum":
-            fun = "xsum"
-        else:
-            pass
+
+        # map excel functions onto their python equivalents, taking care to avoid name clashes
+        funmap = {
+                  "ln":"xlog",
+                  "min":"xmin",
+                  "min":"xmin",
+                  "max":"xmax",
+                  "sum":"xsum",
+                  "gammaln":"lgamma"
+                  }
+
+        fun = funmap.get(xfun,xfun)        
         
         # Get the arguments
         args = self.children(ast)
@@ -269,6 +276,7 @@ class FunctionNode(ASTNode):
             # swap arguments
             str = "atan2(%s,%s)" % (args[1].emit(ast,context=context),args[0].emit(ast,context=context))
         elif fun == "pi":
+            # constant, no parens
             str = "pi"
         elif fun == "if":
             # inline the if
