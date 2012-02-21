@@ -163,21 +163,22 @@ class ASTNode(object):
 class OperatorNode(ASTNode):
     def __init__(self,*args):
         super(OperatorNode,self).__init__(*args)
+        
+        # convert the operator to python equivalents
+        self.opmap = {
+                 "^":"**",
+                 "=":"==",
+                 "&":"+",
+                 "":"+" #union
+                 }
+
     def emit(self,ast,context=None):
         xop = self.tvalue
         
         # Get the arguments
         args = self.children(ast)
         
-        # convert the operator to python equivalents
-        opmap = {
-                 "^":"**",
-                 "=":"==",
-                 "&":"+",
-                 "":"+" #union
-                 }
-        
-        op = opmap.get(xop,xop)
+        op = self.opmap.get(xop,xop)
         
         if self.ttype == "operator-prefix":
             return "-" + args[0].emit(ast,context=context)
@@ -252,13 +253,9 @@ class FunctionNode(ASTNode):
     def __init__(self,*args):
         super(FunctionNode,self).__init__(*args)
         self.numargs = 0
-        
-    def emit(self,ast,context=None):
-        xfun = self.tvalue.lower()
-        str = ''
 
         # map excel functions onto their python equivalents, taking care to avoid name clashes
-        funmap = {
+        self.funmap = {
                   "ln":"xlog",
                   "min":"xmin",
                   "min":"xmin",
@@ -266,8 +263,12 @@ class FunctionNode(ASTNode):
                   "sum":"xsum",
                   "gammaln":"lgamma"
                   }
+        
+    def emit(self,ast,context=None):
+        xfun = self.tvalue.lower()
+        str = ''
 
-        fun = funmap.get(xfun,xfun)        
+        fun = self.funmap.get(xfun,xfun)        
         
         # Get the arguments
         args = self.children(ast)
