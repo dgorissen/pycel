@@ -1,3 +1,4 @@
+from import excellib
 from excellib import *
 from excelutil import *
 from excelwrapper import ExcelComWrapper
@@ -254,22 +255,13 @@ class FunctionNode(ASTNode):
         super(FunctionNode,self).__init__(*args)
         self.numargs = 0
 
-        # map excel functions onto their python equivalents, taking care to avoid name clashes
-        self.funmap = {
-                  "ln":"xlog",
-                  "min":"xmin",
-                  "min":"xmin",
-                  "max":"xmax",
-                  "sum":"xsum",
-                  "gammaln":"lgamma"
-                  }
+        # map  excel functions onto their python equivalents
+        self.funmap = excellib.FUNCTION_MAP
         
     def emit(self,ast,context=None):
-        xfun = self.tvalue.lower()
+        fun = self.tvalue.lower()
         str = ''
 
-        fun = self.funmap.get(xfun,xfun)        
-        
         # Get the arguments
         args = self.children(ast)
         
@@ -331,7 +323,9 @@ class FunctionNode(ASTNode):
         elif fun == "or":
             str = "any([" + ",".join([n.emit(ast,context=context) for n in args]) + "])"
         else:
-            str = fun + "(" + ",".join([n.emit(ast,context=context) for n in args]) + ")"
+            # map to the correct name
+            f = self.funmap.get(fun,fun)
+            str = f + "(" + ",".join([n.emit(ast,context=context) for n in args]) + ")"
 
         return str
 

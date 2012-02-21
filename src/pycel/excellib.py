@@ -5,7 +5,32 @@ from __future__ import division
 import numpy as np
 from math import log
 from pycel.excelutil import flatten
-   
+
+######################################################################################
+# A dictionary that maps excel function names onto python equivalents. You should
+# only add an entry to this map if the python name is different to the excel name
+# (which it may need to be to  prevent conflicts with existing python functions 
+# with that name, e.g., max).
+
+# So if excel defines a function foobar(), all you have to do is add a function
+# called foobar to this module.  You only need to add it to the function map,
+# if you want to use a different name in the python code. 
+
+# Note: some functions (if, pi, atan2, and, or, array, ...) are already taken care of
+# in the FunctionNode code, so adding them here will have no effect.
+FUNCTION_MAP = {
+      "ln":"xlog",
+      "min":"xmin",
+      "min":"xmin",
+      "max":"xmax",
+      "sum":"xsum",
+      "gammaln":"lgamma"
+      }
+
+######################################################################################
+# List of excel equivalent functions
+# TODO: needs unit testing
+
 def value(text):
     # make the distinction for naca numbers
     if text.find('.') > 0:
