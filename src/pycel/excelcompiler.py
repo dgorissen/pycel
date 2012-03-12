@@ -1,4 +1,4 @@
-from import excellib
+import excellib
 from excellib import *
 from excelutil import *
 from excelwrapper import ExcelComWrapper
