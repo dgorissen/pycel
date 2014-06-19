@@ -594,7 +594,7 @@ class RangeNode(ASTNode):
 class FunctionNode(ASTNode):
     def __init__(self,*args):
         super(FunctionNode,self).__init__(*args)
-        self.numargs = 0
+        self.num_args = 0
         
     def emit(self):
         pass
