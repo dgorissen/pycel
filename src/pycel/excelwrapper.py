@@ -6,6 +6,7 @@ try:
     from win32com.client import Dispatch
     from win32com.client import constants 
     import pythoncom
+    import numpy as np
 except Exception as e:
     print "WARNING: cant import win32com stuff:",e
 
