@@ -5,16 +5,17 @@ try:
     #win32com.client.gencache.GetGeneratePath()
     from win32com.client import Dispatch
     from win32com.client import constants 
-    import pythoncom
+    import pythoncom   
 except Exception as e:
     print "WARNING: cant import dependent win32 packages:",e
+try:
     import numpy as np
 except Exception as e:
     print "WARNING: cant import dependent numpy packages:",e
+try:
     import openpyxl
 except Exception as e:
-    print "WARNING: cant import dependent openpyxl packages:",e
-
+    print "WARNING: cant import dependent packages:",e
 
 import os
 from os import path
@@ -31,14 +32,16 @@ class ExcelComWrapper(object):
         # WARNING: here is the openpyxl way to get ranged names, for the win32.com way see get_rangednames function below
         # TODO: automate detection of max string length to set up numpy array accordingly
         # TODO: discriminate between worksheet & workbook ranged names
-
-        wb = openpyxl.load_workbook(self.filename)
-        rn = wb.get_named_ranges()
-        self.rangednames_openpyxl = np.zeros(shape = (int(len(rn)),1), dtype=[('id', 'int_'), ('name', 'S200'), ('formula', 'S200')])
-        for i in range(0, len(rn)):
-            self.rangednames_openpyxl[i]['id'] = int(i+1)       
-            self.rangednames_openpyxl[i]['name'] = rn[i].name      
-            self.rangednames_openpyxl[i]['formula'] = rn[i].value
+        try:
+            wb = openpyxl.load_workbook(self.filename)
+            rn = wb.get_named_ranges()
+            self.rangednames_openpyxl = np.zeros(shape = (int(len(rn)),1), dtype=[('id', 'int_'), ('name', 'S200'), ('formula', 'S200')])
+            for i in range(0, len(rn)):
+                self.rangednames_openpyxl[i]['id'] = int(i+1)       
+                self.rangednames_openpyxl[i]['name'] = rn[i].name      
+                self.rangednames_openpyxl[i]['formula'] = rn[i].value
+        except (RuntimeError, TypeError, NameError):
+            pass
             
     def get_rangednames(self):
     
