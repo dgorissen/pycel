@@ -6,6 +6,7 @@ try:
     from win32com.client import Dispatch
     from win32com.client import constants 
     import pythoncom
+    import numpy as np
 except Exception as e:
     print "WARNING: cant import win32com stuff:",e
 
@@ -20,6 +21,17 @@ class ExcelComWrapper(object):
         
         self.filename = path.abspath(filename)
         self.app = app
+        
+        # WARNING: by default numpy array require dtype declaration to specify character length (here 'S200', i.e. 200 characters)
+        # WARNING: win32.com cannot get ranges with single column/line, would require way to read Office Open XML
+        # TODO: automate detection of max string length to set up numpy array accordingly
+        # TODO: discriminate between worksheet & workbook ranged names
+        
+        self.rangednames = np.zeros(shape = (int(self.app.ActiveWorkbook.Names.Count),1), dtype=[('id', 'int_'), ('name', 'S200'), ('formula', 'S200')])
+        for i in range(0, self.app.ActiveWorkbook.Names.Count):
+            self.rangednames[i]['id'] = int(i+1)       
+            self.rangednames[i]['name'] = str(self.app.ActiveWorkbook.Names.Item(i+1).Name)        
+            self.rangednames[i]['formula'] = str(self.app.ActiveWorkbook.Names.Item(i+1).Value)
       
     def connect(self):
         #http://devnulled.com/content/2004/01/com-objects-and-threading-in-python/
@@ -47,7 +59,7 @@ class ExcelComWrapper(object):
   
     def quit(self):
         return self.app.Quit()
-
+        
     def set_sheet(self,s):
         return self.app.ActiveWorkbook.Worksheets(s).Activate()
     
