@@ -6,9 +6,15 @@ try:
     from win32com.client import Dispatch
     from win32com.client import constants 
     import pythoncom
+except Exception as e:
+    print "WARNING: cant import dependent win32 packages:",e
     import numpy as np
 except Exception as e:
-    print "WARNING: cant import win32com stuff:",e
+    print "WARNING: cant import dependent numpy packages:",e
+    import openpyxl
+except Exception as e:
+    print "WARNING: cant import dependent openpyxl packages:",e
+
 
 import os
 from os import path
@@ -22,17 +28,31 @@ class ExcelComWrapper(object):
         self.filename = path.abspath(filename)
         self.app = app
         
-        # WARNING: by default numpy array require dtype declaration to specify character length (here 'S200', i.e. 200 characters)
-        # WARNING: win32.com cannot get ranges with single column/line, would require way to read Office Open XML
+        # WARNING: here is the openpyxl way to get ranged names, for the win32.com way see get_rangednames function below
         # TODO: automate detection of max string length to set up numpy array accordingly
         # TODO: discriminate between worksheet & workbook ranged names
-        
-        self.rangednames = np.zeros(shape = (int(self.app.ActiveWorkbook.Names.Count),1), dtype=[('id', 'int_'), ('name', 'S200'), ('formula', 'S200')])
+
+        wb = openpyxl.load_workbook(self.filename)
+        rn = wb.get_named_ranges()
+        self.rangednames_openpyxl = np.zeros(shape = (int(len(rn)),1), dtype=[('id', 'int_'), ('name', 'S200'), ('formula', 'S200')])
+        for i in range(0, len(rn)):
+            self.rangednames_openpyxl[i]['id'] = int(i+1)       
+            self.rangednames_openpyxl[i]['name'] = rn[i].name      
+            self.rangednames_openpyxl[i]['formula'] = rn[i].value
+            
+    def get_rangednames(self):
+    
+        # WARNING: stored here the win32.com way to get ranged names, if range is with single column/line it will fail
+        # WARNING: by default numpy array requires dtype declaration to specify character length (here 'S200', i.e. 200 characters)    
+        # TODO: automate detection of max string length to set up numpy array accordingly
+        # TODO: discriminate between worksheet & workbook ranged names
+
+        self.rangednames = np.zeros(shape = (int(self.ActiveWorkbook.Names.Count),1), dtype=[('id', 'int_'), ('name', 'S200'), ('formula', 'S200')])
         for i in range(0, self.app.ActiveWorkbook.Names.Count):
             self.rangednames[i]['id'] = int(i+1)       
-            self.rangednames[i]['name'] = str(self.app.ActiveWorkbook.Names.Item(i+1).Name)        
-            self.rangednames[i]['formula'] = str(self.app.ActiveWorkbook.Names.Item(i+1).Value)
-      
+            self.rangednames[i]['name'] = str(self.ActiveWorkbook.Names.Item(i+1).Name)        
+            self.rangednames[i]['formula'] = str(self.ActiveWorkbook.Names.Item(i+1).Value)    
+            
     def connect(self):
         #http://devnulled.com/content/2004/01/com-objects-and-threading-in-python/
         # TODO: dont need to uninit?
