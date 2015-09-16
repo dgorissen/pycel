@@ -50,11 +50,12 @@ class ExcelComWrapper(object):
         # TODO: automate detection of max string length to set up numpy array accordingly
         # TODO: discriminate between worksheet & workbook ranged names
 
-        self.rangednames = np.zeros(shape = (int(self.ActiveWorkbook.Names.Count),1), dtype=[('id', 'int_'), ('name', 'S200'), ('formula', 'S200')])
+        self.rangednames = np.zeros(shape = (int(self.app.ActiveWorkbook.Names.Count),1), dtype=[('id', 'int_'), ('name', 'S200'), ('formula', 'S200')])
         for i in range(0, self.app.ActiveWorkbook.Names.Count):
             self.rangednames[i]['id'] = int(i+1)       
-            self.rangednames[i]['name'] = str(self.ActiveWorkbook.Names.Item(i+1).Name)        
-            self.rangednames[i]['formula'] = str(self.ActiveWorkbook.Names.Item(i+1).Value)    
+            self.rangednames[i]['name'] = str(self.app.ActiveWorkbook.Names.Item(i+1).Name)        
+            self.rangednames[i]['formula'] = str(self.app.ActiveWorkbook.Names.Item(i+1).Value)
+        return self.rangednames
             
     def connect(self):
         #http://devnulled.com/content/2004/01/com-objects-and-threading-in-python/
