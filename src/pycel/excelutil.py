@@ -4,6 +4,7 @@ import collections
 import functools
 import re
 import string
+from pycel import config
 
 #TODO: only supports rectangular ranges
 class CellRange(object):
@@ -62,10 +63,13 @@ class Cell(object):
         return cls.ctr
     
     def __init__(self, address, sheet, value=None, formula=None):
+        
         super(Cell,self).__init__()
         
         # remove $'s
         address = address.replace('$','')
+        
+        print address        
         
         sh,c,r = split_address(address)
         
@@ -79,7 +83,32 @@ class Cell(object):
             sh = sheet 
         else:
             pass
+        
+        if formula:
+            formula = formula.replace(" ", "")           
+            special_characters = '([\+\-\*\/,\(\)\=<>^)])'
+            split_formula = (re.split(special_characters,formula))                
+            re.purge()
+    
+            print """formula split:""" + str(split_formula)
+            
+            new_formula = []
+    
+            for i in split_formula:                
+                in_list = str(i)
                 
+                for j in config.rangednames_openpyxl[:, 0]:                    
+                    if str(j[1].upper()).replace(" ", "") == str(in_list.upper()):                        
+                        in_list = j[2]
+                new_formula.append(in_list)
+            formula = ''
+                        
+            for i in new_formula:
+                if i != '':
+                    formula = formula + str(i)
+                
+            print """updated formula:""" + str(formula)
+        
         # we assume a cell's location can never change
         self.__sheet = str(sheet)
         self.__formula = str(formula) if formula else None
@@ -122,28 +151,34 @@ class Cell(object):
 
     # code objects are not serializable
     def __getstate__(self):
+
         d = dict(self.__dict__)
         f = '_compiled_expression'
         if f in d: del d[f]
         return d
 
     def __setstate__(self, d):
+        
         self.__dict__.update(d)
         self.compile() 
     
     def clean_name(self):
+        
         return self.address().replace('!','_').replace(' ','_')
         
     def address(self, absolute=True):
+        
         if absolute:
             return "%s!%s%s" % (self.__sheet,self.__col,self.__row)
         else:
             return "%s%s" % (self.__col,self.__row)
     
     def address_parts(self):
+        
         return (self.__sheet,self.__col,self.__row,self.__col_idx)
         
     def compile(self):
+        
         if not self.python_expression: return
         
         # if we are a constant string, surround by quotes
@@ -156,6 +191,7 @@ class Cell(object):
             raise Exception("Failed to compile cell %s with expression %s: %s" % (self.address(),self.python_expression,e)) 
     
     def __str__(self):
+        
         if self.formula:
             return "%s%s" % (self.address(), self.formula)
         else:
@@ -173,6 +209,7 @@ class Cell(object):
         
     @staticmethod
     def resolve_cell(excel, address, sheet=None):
+        
         r = excel.get_range(address)
         f = r.Formula if r.Formula.startswith('=') else None
         v = r.Value
@@ -187,6 +224,7 @@ class Cell(object):
 
     @staticmethod
     def make_cells(excel, range, sheet=None):
+        
         cells = [];
 
         if is_range(range):
@@ -233,9 +271,11 @@ class Cell(object):
         return (cells,numrows,numcols)
     
 def is_range(address):
+    
     return address.find(':') > 0
 
 def split_range(rng):
+    
     if rng.find('!') > 0:
         sh,r = rng.split("!")
         start,end = r.split(':')
@@ -246,6 +286,7 @@ def split_range(rng):
     return sh,start,end
         
 def split_address(address):
+    
     sheet = None
     if address.find('!') > 0:
         sheet,address = address.split('!')
@@ -265,7 +306,7 @@ def split_address(address):
         row,col = address.split('C')
         row = row[2:-1]
         col = col[2:-1]
-    else:
+    else:               
         raise Exception('Invalid address format ' + address)
     
     return (sheet,col,row)
@@ -355,13 +396,16 @@ def num2col(num):
     return s
 
 def address2index(a):
+    
     sh,c,r = split_address(a)
     return (col2num(c),int(r))
 
 def index2addres(c,r,sheet=None):
+    
     return "%s%s%s" % (sheet + "!" if sheet else "", num2col(c), r)
 
 def get_linest_degree(excel,cl):
+    
     # TODO: assumes a row or column of linest formulas & that all coefficients are needed
 
     sh,c,r,ci = cl.address_parts()
@@ -418,6 +462,7 @@ def get_linest_degree(excel,cl):
     return (max(degree,1),coef) 
 
 def flatten(l):
+    
     for el in l:
         if isinstance(el, collections.Iterable) and not isinstance(el, basestring):
             for sub in flatten(el):
