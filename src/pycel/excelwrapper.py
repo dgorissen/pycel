@@ -8,15 +8,8 @@ try:
     import pythoncom   
 except Exception as e:
     print "WARNING: cant import dependent win32 packages:",e
-try:
-    import numpy as np
-except Exception as e:
-    print "WARNING: cant import dependent numpy packages:",e
-try:
-    import openpyxl
-except Exception as e:
-    print "WARNING: cant import dependent packages:",e
-
+import numpy as np
+import openpyxl
 import os
 from os import path
 from pycel import config
