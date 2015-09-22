@@ -19,6 +19,7 @@ except Exception as e:
 
 import os
 from os import path
+from pycel import config
 
 class ExcelComWrapper(object):
     
@@ -40,11 +41,11 @@ class ExcelComWrapper(object):
                 self.rangednames_openpyxl[i]['id'] = int(i+1)       
                 self.rangednames_openpyxl[i]['name'] = rn[i].name      
                 self.rangednames_openpyxl[i]['formula'] = rn[i].value
+             
         except (RuntimeError, TypeError, NameError):
             pass
             
     def get_rangednames(self):
-    
         # WARNING: stored here the win32.com way to get ranged names, if range is with single column/line it will fail
         # WARNING: by default numpy array requires dtype declaration to specify character length (here 'S200', i.e. 200 characters)    
         # TODO: automate detection of max string length to set up numpy array accordingly
@@ -91,7 +92,6 @@ class ExcelComWrapper(object):
         return self.app.ActiveWorkbook.ActiveSheet
             
     def get_range(self, range):
-        #print '*',range
         if range.find('!') > 0:
             sheet,range = range.split('!')
             return self.app.ActiveWorkbook.Worksheets(sheet).Range(range)
