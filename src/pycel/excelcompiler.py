@@ -11,7 +11,7 @@ from tokenizer import ExcelParser, f_token, shunting_yard
 import cPickle
 import logging
 import networkx as nx
-
+from pycel import config
 
 __version__ = filter(str.isdigit, "$Revision: 2524 $")
 __date__ = filter(str.isdigit, "$Date: 2011-09-06 17:05:00 +0100 (Tue, 06 Sep 2011) $")
@@ -20,6 +20,7 @@ __author__ = filter(str.isdigit, "$Author: dg2d09 $")
 
 class Spreadsheet(object):
     def __init__(self,G,cellmap):
+        
         super(Spreadsheet,self).__init__()
         self.G = G
         self.cellmap = cellmap
@@ -27,23 +28,28 @@ class Spreadsheet(object):
 
     @staticmethod
     def load_from_file(fname):
+        
         f = open(fname,'rb')
         obj = cPickle.load(f)
         #obj = load(f)
         return obj
     
     def save_to_file(self,fname):
+        
         f = open(fname,'wb')
         cPickle.dump(self, f, protocol=2)
         f.close()
 
     def export_to_dot(self,fname):
+        
         write_dot(self.G,fname)
                     
     def export_to_gexf(self,fname):
+        
         write_gexf(self.G,fname)
     
     def plot_graph(self):
+        
         import matplotlib.pyplot as plt
 
         pos=nx.spring_layout(self.G,iterations=2000)
@@ -55,6 +61,7 @@ class Spreadsheet(object):
         plt.show()
     
     def set_value(self,cell,val,is_addr=True):
+        
         if is_addr:
             cell = self.cellmap[cell]
 
@@ -65,18 +72,21 @@ class Spreadsheet(object):
             cell.value = val
         
     def reset(self, cell):
+        
         if cell.value is None: return
         #print "resetting", cell.address()
         cell.value = None
         map(self.reset,self.G.successors_iter(cell)) 
 
     def print_value_tree(self,addr,indent):
+        
         cell = self.cellmap[addr]
         print "%s %s = %s" % (" "*indent,addr,cell.value)
         for c in self.G.predecessors_iter(cell):
             self.print_value_tree(c.address(), indent+1)
 
     def recalculate(self):
+        
         for c in self.cellmap.values():
             if isinstance(c,CellRange):
                 self.evaluate_range(c,is_addr=False)
@@ -140,29 +150,36 @@ class ASTNode(object):
     """A generic node in the AST"""
     
     def __init__(self,token):
+        
         super(ASTNode,self).__init__()
         self.token = token
     def __str__(self):
+        
         return self.token.tvalue
     def __getattr__(self,name):
+        
         return getattr(self.token,name)
 
     def children(self,ast):
+        
         args = ast.predecessors(self)
         args = sorted(args,key=lambda x: ast.node[x]['pos'])
         #args.reverse()
         return args
 
     def parent(self,ast):
+        
         args = ast.successors(self)
         return args[0] if args else None
     
     def emit(self,ast,context=None):
+        
         """Emit code"""
         self.token.tvalue
     
 class OperatorNode(ASTNode):
     def __init__(self,*args):
+        
         super(OperatorNode,self).__init__(*args)
         
         # convert the operator to python equivalents
@@ -174,6 +191,7 @@ class OperatorNode(ASTNode):
                  }
 
     def emit(self,ast,context=None):
+        
         xop = self.tvalue
         
         # Get the arguments
@@ -209,8 +227,10 @@ class OperatorNode(ASTNode):
 
 class OperandNode(ASTNode):
     def __init__(self,*args):
+        
         super(OperandNode,self).__init__(*args)
     def emit(self,ast,context=None):
+        
         t = self.tsubtype
         
         if t == "logical":
@@ -225,12 +245,15 @@ class OperandNode(ASTNode):
 class RangeNode(OperandNode):
     """Represents a spreadsheet cell or range, e.g., A5 or B3:C20"""
     def __init__(self,*args):
+        
         super(RangeNode,self).__init__(*args)
     
     def get_cells(self):
+        
         return resolve_range(self.tvalue)[0]
     
     def emit(self,ast,context=None):
+        
         # resolve the range into cells
         rng = self.tvalue.replace('$','')
         sheet = context.curcell.sheet + "!" if context else ""
@@ -252,6 +275,7 @@ class RangeNode(OperandNode):
 class FunctionNode(ASTNode):
     """AST node representing a function call"""
     def __init__(self,*args):
+        
         super(FunctionNode,self).__init__(*args)
         self.numargs = 0
 
@@ -259,6 +283,7 @@ class FunctionNode(ASTNode):
         self.funmap = excellib.FUNCTION_MAP
         
     def emit(self,ast,context=None):
+        
         fun = self.tvalue.lower()
         str = ''
 
@@ -330,6 +355,7 @@ class FunctionNode(ASTNode):
         return str
 
 def create_node(t):
+    
     """Simple factory function"""
     if t.ttype == "operand":
         if t.tsubtype == "range":
@@ -344,13 +370,16 @@ def create_node(t):
         return ASTNode(t)
 
 class Operator:
+    
     """Small wrapper class to manage operators during shunting yard"""
     def __init__(self,value,precedence,associativity):
+        
         self.value = value
         self.precedence = precedence
         self.associativity = associativity
 
 def shunting_yard(expression):
+    
     """
     Tokenize an excel formula expression into reverse polish notation
     
@@ -497,6 +526,7 @@ def shunting_yard(expression):
     return result
    
 def build_ast(expression):
+
     """build an AST from an Excel formula expression in reverse polish notation"""
     
     #use a directed graph to store the tree
@@ -562,10 +592,13 @@ class ExcelCompiler(object):
             # TODO: use a proper interface so we can (eventually) support loading from file (much faster)  Still need to find a good lib though.
             self.excel = ExcelComWrapper(filename=filename)
             self.excel.connect()
+            self.rangednames = self.excel.rangednames_openpyxl
+            config.rangednames_openpyxl = self.rangednames
             
         self.log = logging.getLogger("decode.{0}".format(self.__class__.__name__))
         
     def cell2code(self,cell):
+        
         """Generate python code for the given cell"""
         if cell.formula:
             e = shunting_yard(cell.formula or str(cell.value))
@@ -578,6 +611,7 @@ class ExcelCompiler(object):
         return code,ast
 
     def add_node_to_graph(self,G, n):
+        
         G.add_node(n)
         G.node[n]['sheet'] = n.sheet
         
@@ -588,14 +622,16 @@ class ExcelCompiler(object):
             G.node[n]['label'] = n.address()[n.address().find('!')+1:]
             
     def gen_graph(self, seed, sheet=None):
+        
         """Given a starting point (e.g., A6, or A3:B7) on a particular sheet, generate
-           a Spreadsheet instance that captures the logic and control flow of the equations."""
+           a Spreadsheet instance that captures the logic and control flow of the equations."""       
         
         # starting points
         cursheet = sheet if sheet else self.excel.get_active_sheet()
         self.excel.set_sheet(cursheet)
         
-        seeds,nr,nc = Cell.make_cells(self.excel, seed, sheet=cursheet)
+        seeds,nr,nc = Cell.make_cells(self.excel, seed, sheet=cursheet)             
+        
         seeds = list(flatten(seeds))
         
         print "Seed %s expanded into %s cells" % (seed,len(seeds))
@@ -636,8 +672,11 @@ class ExcelCompiler(object):
             c1.python_expression = pystr
             c1.compile()                
             
-            # get all the cells/ranges this formula refers to
+            # get all the cells/ranges this formula refers to         
+            
             deps = [x.tvalue.replace('$','') for x in ast.nodes() if isinstance(x,RangeNode)]
+            
+            print """deps :""" + str(deps)
             
             # remove dupes
             deps = uniqueify(deps)
