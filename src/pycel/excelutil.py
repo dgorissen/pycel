@@ -89,13 +89,15 @@ class Cell(object):
             special_characters = '([\+\-\*\/,\(\)\=<>^)])'
             split_formula = (re.split(special_characters,formula))                
             re.purge()
-    
-            print """formula split:""" + str(split_formula)
-            
             new_formula = []
     
             for i in split_formula:                
                 in_list = str(i)
+                
+                if i == '%':
+                    
+                    config.percentage_character_count = config.percentage_character_count + 1
+                    in_list = str("""*0.01""") 
                 
                 for j in config.rangednames_openpyxl[:, 0]:                    
                     if str(j[1].upper()).replace(" ", "") == str(in_list.upper()):                        
