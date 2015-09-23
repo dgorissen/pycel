@@ -683,6 +683,16 @@ class ExcelCompiler(object):
             
             for dep in deps:
                 
+                if is_range(dep):
+                    # this will convert dep ranges refering to single cell to dep cell
+                    special_characters = '([:])'
+                    split_dep = (re.split(special_characters,dep))
+                    re.purge()                    
+                    split_dep.remove(':')
+                    
+                    if split_dep[0] == split_dep[1]:                        
+                        dep = split_dep[0]
+                
                 # if the dependency is a multi-cell range, create a range object
                 if is_range(dep):
                     # this will make sure we always have an absolute address
