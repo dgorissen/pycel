@@ -1,4 +1,4 @@
-from src.pycel.excelwrapper import ExcelOpxWrapper, ExcelComWrapper
+from src.pycel.excelwrapper import ExcelOpxWrapper
 
 import os
 from os import path

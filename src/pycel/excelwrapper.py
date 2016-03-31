@@ -239,6 +239,38 @@ class ExcelComWrapper(ExcelWrapper):
     def run_macro(self,macro):
         self.app.Run(macro)
 
+
+# Excel cell wrapper that distribute reduced api used by compiler (Formula & Value) 
+class OpxCell(object):
+ 
+    def __init__(self, cells):
+        
+        super(OpxCell,self).__init__()
+        
+        self.cells = cells
+
+    @property
+    def Formula(self):
+        formulas = []
+        for cell in self.cells:
+            if cell.data_type is Cell.TYPE_FORMULA:
+                formulas.append([str(cell.value)]) 
+            else:
+                formulas.append([None])
+        return formulas
+
+    @property
+    def Value(self):
+        values = []
+        for cell in self.cells:
+            if cell.data_type is not Cell.TYPE_FORMULA:
+                values.append([cell.value]) 
+            else:
+                values.append([None])
+
+        return values
+    
+
 # OpenPyXl implementation for ExcelWrapper interface
 class ExcelOpxWrapper(ExcelWrapper):
     
@@ -285,18 +317,25 @@ class ExcelOpxWrapper(ExcelWrapper):
         return
         
     def set_sheet(self,s):
-        self.workbook.active = s;
+        self.workbook.active = self.workbook.get_index(self.workbook[s]);
+        self.workbook.active
         return self.workbook.active;
     
     def get_sheet(self):
         return self.workbook.active
             
-    def get_range(self, range):
-        if range.find('!') > 0:
-            sheet,range = range.split('!')
-            return self.workbook[sheet].iter_rows(range)
-        else:        
-            return self.workbook.active.iter_rows(range)
+    def get_range(self, address):
+
+        sheet = self.workbook.active;
+        if address.find('!') > 0:
+            title,address = address.split('!')
+            sheet = self.workbook[title] 
+
+        cells = []
+        for row in sheet.iter_rows(address):
+            for cell in row:
+                cells.append(cell)
+        return OpxCell(cells)
 
     def get_used_range(self):
         return self.workbook.active.iter_rows()
@@ -321,21 +360,10 @@ class ExcelOpxWrapper(ExcelWrapper):
             return None
     
     def has_formula(self,range):
-        tuples = self.get_range(range)
-        for row in tuples:
-            for cell in row:
-                if cell.data_type is Cell.TYPE_FORMULA:
-                    return True
-        return False   
+        return self.get_range(range) != None
 
     def get_formula_from_range(self,range):
-        formulas = []
-        tuples = self.get_range(range)
-        for row in tuples:
-            for cell in row:
-                if cell.data_type is Cell.TYPE_FORMULA:
-                    formulas.append(cell.value)
-        return formulas    
+        return self.get_range(range).Formula    
     
     def get_formula_or_value(self,range):
         list = []
