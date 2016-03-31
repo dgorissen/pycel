@@ -199,14 +199,15 @@ class ExcelComWrapper(ExcelWrapper):
         self.app.Run(macro)
 
 
-# Excel cell wrapper that distribute reduced api used by compiler (Formula & Value) 
-class OpxCell(object):
+# Excel range wrapper that distribute reduced api used by compiler (Formula & Value) 
+class OpxRange(object):
  
-    def __init__(self, cells):
+    def __init__(self, cells, cellsDO):
         
-        super(OpxCell,self).__init__()
+        super(OpxRange,self).__init__()
         
         self.cells = cells
+        self.cellsDO = cellsDO
 
     @property
     def Formula(self):
@@ -220,9 +221,10 @@ class OpxCell(object):
     @property
     def Value(self):
         values = []
-        for cell in self.cells:
+        for cell in self.cellsDO:
             if cell.data_type is not Cell.TYPE_FORMULA:
-                values.append((str(cell.value),))
+                print cell.value
+                values.append((cell.value,))
             else:
                 values.append((None,))
         if len(values) == 1:
@@ -260,6 +262,7 @@ class ExcelOpxWrapper(ExcelWrapper):
 
     def connect(self):
         self.workbook = load_workbook(self.filename)
+        self.workbookDO = load_workbook(self.filename, data_only=True)
 
     def save(self):
         self.workbook.save(self.filename)
@@ -277,7 +280,7 @@ class ExcelOpxWrapper(ExcelWrapper):
         
     def set_sheet(self,s):
         self.workbook.active = self.workbook.get_index(self.workbook[s]);
-        self.workbook.active
+        self.workbookDO.active = self.workbookDO.get_index(self.workbookDO[s]);
         return self.workbook.active;
     
     def get_sheet(self):
@@ -286,15 +289,21 @@ class ExcelOpxWrapper(ExcelWrapper):
     def get_range(self, address):
 
         sheet = self.workbook.active;
+        sheetDO = self.workbookDO.active;
         if address.find('!') > 0:
             title,address = address.split('!')
-            sheet = self.workbook[title] 
+            sheet = self.workbook[title]
+            sheetDO = self.workbookDO[title] 
 
         cells = []
         for row in sheet.iter_rows(address):
             for cell in row:
                 cells.append(cell)
-        return OpxCell(cells)
+        cellsDO = []
+        for row in sheetDO.iter_rows(address):
+            for cell in row:
+                cellsDO.append(cell)
+        return OpxRange(cells,cellsDO)
 
     def get_used_range(self):
         return self.workbook.active.iter_rows()

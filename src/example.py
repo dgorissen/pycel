@@ -21,7 +21,7 @@ if __name__ == '__main__':
     c = ExcelCompiler(filename=fname)
     
     print "Compiling..., starting from D1"
-    sp = c.gen_graph('C17',sheet='Sheet1')
+    sp = c.gen_graph('D1',sheet='Sheet1')
     
     # test evaluation
     print "D1 is %s" % sp.evaluate('Sheet1!D1')
