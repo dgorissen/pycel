@@ -30,13 +30,13 @@ def save_as():
 
 def set_and_get_active():
     excel.connect()
-    excel.set_sheet(2)
+    excel.workbook.active = 2
     assert excel.get_sheet().title == "Sheet3"
 
 def get_range():
     excel.connect()
-    range = excel.get_range('Sheet2!A5:B7')
-    assert sum(map(len,range)) == 6
+    excel_range = excel.get_range('Sheet2!A5:B7')
+    assert len(excel_range.cells) == 6
 
 def get_used_range():
     excel.connect()
@@ -45,12 +45,12 @@ def get_used_range():
 
 def get_active_sheet():
     excel.connect()
-    excel.set_sheet(2)
+    excel.workbook.active = 2
     assert excel.get_active_sheet() == 'Sheet3'
 
 def get_value():
     excel.connect()
-    assert excel.get_value(2,2) == "=SUM(A2:A4)"
+    assert excel.get_value(2,2) == 9L
 
 def get_formula():
     excel.connect()
@@ -71,7 +71,7 @@ def get_formula_from_range():
 def get_formula_or_value():
     excel.connect()
     list = excel.get_formula_or_value("Sheet1!A2:C2")
-    assert list == [2, '=SUM(A2:A4)', '=SIN(B2*A2^2)']
+    assert list == (('2',), ('=SUM(A2:A4)',), ('=SIN(B2*A2^2)',))
 
 def get_row():
     excel.connect()

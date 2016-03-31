@@ -71,7 +71,14 @@ class ExcelWrapper(object):
     
     def has_formula(self,range):
         f = self.get_range(range).Formula
-        return f and f.startswith("=")
+        if type(f) == str:
+            return f and f.startswith("=")
+        else:
+            for t in f:
+                if t[0].startswith("="):
+                    return True
+            return False
+        
     
     def get_formula_from_range(self,range):
         f = self.get_range(range).Formula
@@ -223,7 +230,6 @@ class OpxRange(object):
         values = []
         for cell in self.cellsDO:
             if cell.data_type is not Cell.TYPE_FORMULA:
-                print cell.value
                 values.append((cell.value,))
             else:
                 values.append((None,))
@@ -312,7 +318,7 @@ class ExcelOpxWrapper(ExcelWrapper):
         return self.workbook.active.title
     
     def get_cell(self,r,c):
-        return self.workbook.active.cell(None,r,c)
+        return self.get_range(self.workbook.active.cell(None,r,c).coordinate)
         
     def get_row(self,row):
         return [self.get_value(row,col+1) for col in range(self.workbook.active.max_column)]
