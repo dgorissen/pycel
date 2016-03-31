@@ -1,11 +1,11 @@
-from src.pycel.excelwrapper import ExcelWrapper
+from src.pycel.excelwrapper import ExcelOpxWrapper, ExcelComWrapper
 
 import os
 from os import path
 
 
 # RUN AT THE ROOT LEVEL
-excel = ExcelWrapper("./example/example.xlsx")
+excel = ExcelOpxWrapper("./example/example.xlsx")
 
 
 def connect():
