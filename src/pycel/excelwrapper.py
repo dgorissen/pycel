@@ -12,15 +12,7 @@ class ExcelWrapper(object):
         super(ExcelWrapper,self).__init__()
         
         self.filename = path.abspath(filename)
-        # TODO: discriminate between worksheet & workbook ranged names
-        
-        '''
-        self.rangednames = np.zeros(shape = (int(self.app.ActiveWorkbook.Names.Count),1), dtype=[('id', 'int_'), ('name', 'S200'), ('formula', 'S200')])
-        for i in range(0, self.app.ActiveWorkbook.Names.Count):
-            self.rangednames[i]['id'] = int(i+1)       
-            self.rangednames[i]['name'] = str(self.app.ActiveWorkbook.Names.Item(i+1).Name)        
-           self.rangednames[i]['formula'] = str(self.app.ActiveWorkbook.Names.Item(i+1).Value)
-        '''
+
     @property
     def rangednames(self):
         if self.workbook == None:
