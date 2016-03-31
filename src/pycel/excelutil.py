@@ -206,10 +206,6 @@ class Cell(object):
             fs = r.Formula
             vs = r.Value
             print fs, vs
-            tmp = izip(ads,fs,vs)
-
-            for t in tmp:
-                print t
             
             for it in (list(izip(*x)) for x in izip(ads,fs,vs)):
                 row = []

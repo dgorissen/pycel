@@ -17,88 +17,75 @@ class ExcelWrapper(object):
     
     @abstractmethod
     def connect(self):
-        """"""
         return
 
     @abstractmethod
     def save(self):
-        """"""
         return
     
     @abstractmethod
     def save_as(self, filename, delete_existing=False):
-        """"""
         return
 
     @abstractmethod
     def close(self):
-        """"""
         return
   
     @abstractmethod
     def quit(self):
-        """"""
         return
         
     @abstractmethod
     def set_sheet(self,s):
-        """"""
         return
     
     @abstractmethod
     def get_sheet(self):
-        """"""
         return
             
     @abstractmethod
     def get_range(self, range):
-        """"""
         return
 
     @abstractmethod
     def get_used_range(self):
-        """"""
         return
 
     @abstractmethod
     def get_active_sheet(self):
-        """"""
         return
     
     @abstractmethod
     def get_cell(self,r,c):
-        """"""
         return
         
-    @abstractmethod
     def get_value(self,r,c):
-        """"""
-        return
+        return self.get_cell(r, c).Value
     
-    @abstractmethod
     def set_value(self,r,c,val):
-        """"""
-        return
+        self.get_cell(r, c).Value = val
 
-    @abstractmethod
     def get_formula(self,r,c):
-        """"""
-        return
+        f = self.get_cell(r, c).Formula
+        return f if f.startswith("=") else None 
     
-    @abstractmethod
     def has_formula(self,range):
-        """"""
-        return   
-
-    @abstractmethod
-    def get_formula_from_range(self,range):
-        """"""
-        return    
+        f = self.get_range(range).Formula
+        return f and f.startswith("=")
     
-    @abstractmethod
-    def get_formula_or_value(self,range):
-        """"""
-        return    
+    def get_formula_from_range(self,range):
+        f = self.get_range(range).Formula
+        if isinstance(f, (list,tuple)):
+            if any(filter(lambda x: x[0].startswith("="),f)):
+                return [x[0] for x in f];
+            else:
+                return None
+        else:
+            return f if f.startswith("=") else None 
+    
+    def get_formula_or_value(self,name):
+        r = self.get_range(name)
+        return r.Formula or r.Value
 
     @abstractmethod
     def get_row(self,row):
@@ -196,34 +183,6 @@ class ExcelComWrapper(ExcelWrapper):
     def get_cell(self,r,c):
         return self.app.ActiveWorkbook.ActiveSheet.Cells(r,c)
         
-    def get_value(self,r,c):
-        return self.get_cell(r, c).Value
-    
-    def set_value(self,r,c,val):
-        self.get_cell(r, c).Value = val
-
-    def get_formula(self,r,c):
-        f = self.get_cell(r, c).Formula
-        return f if f.startswith("=") else None 
-    
-    def has_formula(self,range):
-        f = self.get_range(range).Formula
-        return f and f.startswith("=")
-    
-    def get_formula_from_range(self,range):
-        f = self.get_range(range).Formula
-        if isinstance(f, (list,tuple)):
-            if any(filter(lambda x: x[0].startswith("="),f)):
-                return [x[0] for x in f];
-            else:
-                return None
-        else:
-            return f if f.startswith("=") else None 
-    
-    def get_formula_or_value(self,name):
-        r = self.get_range(name)
-        return r.Formula or r.Value
-
     def get_row(self,row):
         return [self.get_value(row,col+1) for col in range(self.get_used_range().Columns.Count)]
 
@@ -253,22 +212,22 @@ class OpxCell(object):
     def Formula(self):
         formulas = []
         for cell in self.cells:
-            if cell.data_type is Cell.TYPE_FORMULA:
-                formulas.append([str(cell.value)]) 
-            else:
-                formulas.append([None])
-        return formulas
+            formulas.append((str(cell.value),))
+        if len(formulas) == 1:
+            return formulas[0][0]
+        return tuple(formulas)
 
     @property
     def Value(self):
         values = []
         for cell in self.cells:
             if cell.data_type is not Cell.TYPE_FORMULA:
-                values.append([cell.value]) 
+                values.append((str(cell.value),))
             else:
-                values.append([None])
-
-        return values
+                values.append((None,))
+        if len(values) == 1:
+            return values[0][0]
+        return tuple(values)
     
 
 # OpenPyXl implementation for ExcelWrapper interface
@@ -346,33 +305,6 @@ class ExcelOpxWrapper(ExcelWrapper):
     def get_cell(self,r,c):
         return self.workbook.active.cell(None,r,c)
         
-    def get_value(self,r,c):
-        return self.get_cell(r, c).value
-    
-    def set_value(self,r,c,val):
-        self.get_cell(r, c).Value = val
-
-    def get_formula(self,r,c):
-        cell = self.get_cell(r, c)
-        if cell.data_type is Cell.TYPE_FORMULA:
-            return cell.value
-        else:
-            return None
-    
-    def has_formula(self,range):
-        return self.get_range(range) != None
-
-    def get_formula_from_range(self,range):
-        return self.get_range(range).Formula    
-    
-    def get_formula_or_value(self,range):
-        list = []
-        tuples = self.get_range(range)
-        for row in tuples:
-            for cell in row:
-                list.append(cell.value)
-        return list    
-
     def get_row(self,row):
         return [self.get_value(row,col+1) for col in range(self.workbook.active.max_column)]
 

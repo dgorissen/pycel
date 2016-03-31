@@ -122,7 +122,7 @@ class Spreadsheet(object):
             return self.evaluate_range(rng)
                 
         try:
-            #print "Evalling: %s, %s" % (cell.address(),cell.python_expression)
+            print "Evalling: %s, %s" % (cell.address(),cell.python_expression)
             vv = eval(cell.compiled_expression)
             #print "Cell %s evalled to %s" % (cell.address(),vv)
             if vv is None:
