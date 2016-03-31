@@ -5,10 +5,10 @@ dir = os.path.dirname(__file__)
 path = os.path.join(dir, '../src')
 sys.path.insert(0, path)
 
-from pycel.excelwrapper import ExcelWrapper
+from pycel.excelwrapper import ExcelOpxWrapper
 
 # RUN AT THE ROOT LEVEL
-excel = ExcelWrapper(os.path.join(dir, "../example/example.xlsx"))
+excel = ExcelOpxWrapper(os.path.join(dir, "../example/example.xlsx"))
 
 
 def connect():
