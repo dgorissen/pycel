@@ -1,11 +1,14 @@
-from src.pycel.excelwrapper import ExcelOpxWrapper
-
 import os
-from os import path
+import sys
 
+dir = os.path.dirname(__file__)
+path = os.path.join(dir, '../src')
+sys.path.insert(0, path)
+
+from pycel.excelwrapper import ExcelOpxWrapper
 
 # RUN AT THE ROOT LEVEL
-excel = ExcelOpxWrapper("./example/example.xlsx")
+excel = ExcelOpxWrapper(os.path.join(dir, "../example/example.xlsx"))
 
 
 def connect():
@@ -19,7 +22,7 @@ def connect():
 
 def save_as():
     excel.connect()
-    path_copy = "./example/exampleCopy.xlsx"
+    path_copy = os.path.join(dir, "../example/exampleCopy.xlsx")
     if os.path.exists(path_copy):
         os.remove(path_copy)
     excel.save_as(path_copy)
