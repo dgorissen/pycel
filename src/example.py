@@ -1,17 +1,19 @@
 '''
 Simple example file showing how a spreadsheet can be translated to python and executed
 '''
-
 from __future__ import division
+import os
+import sys
 from pycel.excelutil import *
 from pycel.excellib import *
-import os
 from pycel.excelcompiler import ExcelCompiler
 from os.path import normpath,abspath
 
 if __name__ == '__main__':
     
-    fname = normpath(abspath("../example/example.xlsx"))
+    dir = os.path.dirname(__file__)
+    fname = os.path.join(dir, "../example/example.xlsx")
+
     
     print "Loading %s..." % fname
     
