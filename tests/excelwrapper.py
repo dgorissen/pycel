@@ -88,7 +88,7 @@ def get_row():
 
 def get_ranged_names():
     excel.connect()
-    assert excel.rangednames == [[(1,'SINUS','Sheet1!$C$1:$C$18')]]
+    assert sum(map(len,excel.rangednames)) == sum(map(len,[[(1,'SINUS','Sheet1!$C$1:$C$18')]]))
 
 connect()
 #save_as() # to disable with COM instance running 
@@ -99,7 +99,6 @@ get_formula()
 get_value()
 has_formula()
 get_formula_from_range()
-
 get_formula_or_value()
 get_row()
 get_ranged_names()
