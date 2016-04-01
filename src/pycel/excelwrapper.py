@@ -252,16 +252,14 @@ class ExcelOpxWrapper(ExcelWrapper):
         if self.workbook == None:
             return None
 
-        rangednames = []
-
-        for named_range in self.workbook.get_named_ranges():
-            for worksheet, range_alias in named_range.destinations:
-                tuple_name = {
-                    'id': len(rangednames)+1,
-                    'name': str(named_range.name),
-                    'formula': str(worksheet.title+'!'+range_alias)
-                }
-                rangednames.append(tuple_name)
+        rangednames = [
+            {
+                'id': len(rangednames)+1,
+                'name': str(named_range.name),
+                'formula': str(worksheet.title+'!'+range_alias)
+            } for named_range in self.workbook.get_named_ranges()
+            for worksheet, range_alias in named_range.destinations
+        ]
             
         return rangednames
     
@@ -301,14 +299,9 @@ class ExcelOpxWrapper(ExcelWrapper):
             sheet = self.workbook[title]
             sheetDO = self.workbookDO[title] 
 
-        cells = []
-        for row in sheet.iter_rows(address):
-            for cell in row:
-                cells.append(cell)
-        cellsDO = []
-        for row in sheetDO.iter_rows(address):
-            for cell in row:
-                cellsDO.append(cell)
+        cells = [cell for row in sheet.iter_rows(address) for cell in row]
+        cellsDO = [cell for row in sheetDO.iter_rows(address) for cell in row]
+        
         return OpxRange(cells,cellsDO)
 
     def get_used_range(self):
