@@ -86,7 +86,7 @@ def get_row():
 
 def get_ranged_names():
     excel.connect()
-    assert excel.rangednames == [(1,'SINUS','Sheet1!$C$1:$C$18')]
+    assert excel.rangednames == [[(1,'SINUS','Sheet1!$C$1:$C$18')]]
 
 connect()
 #save_as() # to disable with COM instance running 

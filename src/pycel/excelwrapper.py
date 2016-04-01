@@ -265,7 +265,7 @@ class ExcelOpxWrapper(ExcelWrapper):
         for named_range in self.workbook.get_named_ranges():
             for worksheet, range_alias in named_range.destinations:
                 tuple_name = (len(rangednames)+1,  str(named_range.name), str(worksheet.title+'!'+range_alias))
-                rangednames.append(tuple_name)
+                rangednames.append([tuple_name])
         return rangednames
 
     def connect(self):
