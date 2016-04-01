@@ -7,6 +7,8 @@ from os import path
 import abc
 from abc import abstractproperty, abstractmethod
 
+from excelutil import flatten
+
 class ExcelWrapper(object):
     __metaclass__ = abc.ABCMeta
     
@@ -206,27 +208,19 @@ class OpxRange(object):
         
         super(OpxRange,self).__init__()
         
-        self.cells = cells
-        self.cellsDO = cellsDO
+        self.cells = cells      # selection with formulas embedded
+        self.cellsDO = cellsDO  # selection with values ("data only")
 
     @property
     def Formula(self):
-        formulas = []
-        for cell in self.cells:
-            formulas.append((str(cell.value),))
+        formulas = [ (str(cell.value),) for cell in self.cells]
         if len(formulas) == 1:
             return formulas[0][0]
         return tuple(formulas)
 
     @property
     def Value(self):
-        values = []
-        for cell in self.cellsDO:
-            if cell.data_type is not Cell.TYPE_FORMULA:
-                print cell.value
-                values.append((cell.value,))
-            else:
-                values.append((None,))
+        values = [(cell.value,) if cell.data_type is not Cell.TYPE_FORMULA else (None,) for cell in self.cellsDO]
         if len(values) == 1:
             return values[0][0]
         return tuple(values)
@@ -296,6 +290,7 @@ class ExcelOpxWrapper(ExcelWrapper):
             sheetDO = self.workbookDO[title] 
 
         cells = []
+
         for row in sheet.iter_rows(address):
             for cell in row:
                 cells.append(cell)
