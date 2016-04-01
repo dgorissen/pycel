@@ -258,23 +258,16 @@ class ExcelOpxWrapper(ExcelWrapper):
 
     @property
     def rangednames(self):
+
         if self.workbook == None:
             return None
 
-
         rangednames = []
-
         for named_range in self.workbook.get_named_ranges():
             for worksheet, range_alias in named_range.destinations:
-                tuple_name = {
-                    'id': len(rangednames)+1,
-                    'name': str(named_range.name),
-                    'formula': str(worksheet.title+'!'+range_alias)
-                }
+                tuple_name = (len(rangednames)+1,  str(named_range.name), str(worksheet.title+'!'+range_alias))
                 rangednames.append(tuple_name)
-            
         return rangednames
-    
 
     def connect(self):
         self.workbook = load_workbook(self.filename)

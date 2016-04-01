@@ -85,10 +85,10 @@ def get_row():
 
 def get_ranged_names():
     excel.connect()
-    assert excel.rangednames == [{'formula': 'Sheet1!$C$1:$C$18', 'id': 1, 'name': 'SINUS'}]
+    assert excel.rangednames == [(1,'SINUS','Sheet1!$C$1:$C$18')]
 
 connect()
-save_as()
+#save_as() # to disable with COM instance running 
 set_and_get_active()
 get_range()
 get_used_range()

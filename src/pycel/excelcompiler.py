@@ -1,4 +1,6 @@
 # We will choose our wrapper with os compatibility
+#       ExcelComWrapper : Must be run on Windows as it requires a COM link to an Excel instance.
+#       ExcelOpxWrapper : Can be run anywhere but only with post 2010 Excel formats
 try:
     import win32com.client
     import pythoncom
