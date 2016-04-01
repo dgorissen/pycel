@@ -1,7 +1,15 @@
+# We will choose our wrapper with os compatibility
+try:
+    import win32com.client
+    import pythoncom
+    from pycel.excelwrapper import ExcelComWrapper as ExcelWrapperImpl
+except:
+    print "Can\'t import win32com -> switch from Com to Openpyxl wrapping implementation"
+    from pycel.excelwrapper import ExcelOpxWrapper as ExcelWrapperImpl
+
 import excellib
 from excellib import *
 from excelutil import *
-from excelwrapper import ExcelComWrapper, ExcelOpxWrapper
 from math import *
 from networkx.classes.digraph import DiGraph
 from networkx.drawing.nx_pydot import write_dot
@@ -546,10 +554,7 @@ class Context(object):
 class ExcelCompiler(object):
     """Class responsible for taking an Excel spreadsheet and compiling it to a Spreadsheet instance
        that can be serialized to disk, and executed independently of excel.
-       
-       ExcelComWrapper : Must be run on Windows as it requires a COM link to an Excel instance.
-       ExcelOpxWrapper : Can be run anywhere but only with post 2010 Excel formats
-       """
+    """
 
     def __init__(self, filename=None, excel=None, *args,**kwargs):
 
@@ -561,7 +566,7 @@ class ExcelCompiler(object):
             self.excel = excel
         else:
             # TODO: use a proper interface so we can (eventually) support loading from file (much faster)  Still need to find a good lib though.
-            self.excel = ExcelOpxWrapper(filename=filename)
+            self.excel = ExcelWrapperImpl(filename=filename)
             self.excel.connect()
             
         self.log = logging.getLogger("decode.{0}".format(self.__class__.__name__))

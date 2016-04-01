@@ -1,3 +1,12 @@
+# We will choose our wrapper with os compatibility
+try:
+    import win32com.client
+    import pythoncom
+    from pycel.excelwrapper import ExcelComWrapper as ExcelWrapperImpl
+except:
+    print "Can\'t import win32com -> switch from Com to Openpyxl wrapping implementation"
+    from pycel.excelwrapper import ExcelOpxWrapper as ExcelWrapperImpl
+
 import os
 import sys
 
@@ -5,11 +14,8 @@ dir = os.path.dirname(__file__)
 path = os.path.join(dir, '../src')
 sys.path.insert(0, path)
 
-from pycel.excelwrapper import ExcelOpxWrapper
-
 # RUN AT THE ROOT LEVEL
-excel = ExcelOpxWrapper(os.path.join(dir, "../example/example.xlsx"))
-
+excel = ExcelWrapperImpl(os.path.join(dir, "../example/example.xlsx"))
 
 def connect():
     connected = True
