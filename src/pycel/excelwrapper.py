@@ -23,7 +23,6 @@ class ExcelWrapper(object):
     
     @abstractproperty
     def rangednames(self):
-        """Array of name_range with format { 'id':..., 'name':..., 'formula':... }"""
         return
     
     @abstractmethod

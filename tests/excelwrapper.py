@@ -34,10 +34,10 @@ def save_as():
     excel.save_as(path_copy)
     assert os.path.exists(path_copy) == True
 
-def set_and_get_active():
+def set_and_get_active_sheet():
     excel.connect()
     excel.set_sheet("Sheet3")
-    assert excel.get_sheet().title == "Sheet3"
+    assert excel.get_active_sheet() == 'Sheet3'
 
 def get_range():
     excel.connect()
@@ -46,13 +46,7 @@ def get_range():
 
 def get_used_range():
     excel.connect()
-    assert sum(map(len,excel.get_used_range())) == (excel.get_sheet().max_column * excel.get_sheet().max_row)
     assert sum(map(len,excel.get_used_range())) == 72
-
-def get_active_sheet():
-    excel.connect()
-    excel.set_sheet("Sheet3")
-    assert excel.get_active_sheet() == 'Sheet3'
 
 def get_value():
     excel.connect()
@@ -89,7 +83,7 @@ def get_ranged_names():
 
 connect()
 #save_as() # to disable with COM instance running 
-set_and_get_active()
+set_and_get_active_sheet()
 get_range()
 get_used_range()
 get_active_sheet()
