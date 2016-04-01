@@ -73,7 +73,14 @@ class ExcelWrapper(object):
     
     def has_formula(self,range):
         f = self.get_range(range).Formula
-        return f and f.startswith("=")
+        if type(f) == str:
+            return f and f.startswith("=")
+        else:
+            for t in f:
+                if t[0].startswith("="):
+                    return True
+            return False
+        
     
     def get_formula_from_range(self,range):
         f = self.get_range(range).Formula
@@ -240,16 +247,14 @@ class ExcelOpxWrapper(ExcelWrapper):
         if self.workbook == None:
             return None
 
-        rangednames = []
-
-        for named_range in self.workbook.get_named_ranges():
-            for worksheet, range_alias in named_range.destinations:
-                tuple_name = {
-                    'id': len(rangednames)+1,
-                    'name': str(named_range.name),
-                    'formula': str(worksheet.title+'!'+range_alias)
-                }
-                rangednames.append(tuple_name)
+        rangednames = [
+            {
+                'id': len(rangednames)+1,
+                'name': str(named_range.name),
+                'formula': str(worksheet.title+'!'+range_alias)
+            } for named_range in self.workbook.get_named_ranges()
+            for worksheet, range_alias in named_range.destinations
+        ]
             
         return rangednames
     
@@ -289,15 +294,9 @@ class ExcelOpxWrapper(ExcelWrapper):
             sheet = self.workbook[title]
             sheetDO = self.workbookDO[title] 
 
-        cells = []
-
-        for row in sheet.iter_rows(address):
-            for cell in row:
-                cells.append(cell)
-        cellsDO = []
-        for row in sheetDO.iter_rows(address):
-            for cell in row:
-                cellsDO.append(cell)
+        cells = [cell for row in sheet.iter_rows(address) for cell in row]
+        cellsDO = [cell for row in sheetDO.iter_rows(address) for cell in row]
+        
         return OpxRange(cells,cellsDO)
 
     def get_used_range(self):
@@ -307,7 +306,8 @@ class ExcelOpxWrapper(ExcelWrapper):
         return self.workbook.active.title
     
     def get_cell(self,r,c):
-        return self.workbook.active.cell(None,r,c)
+        # this could be improved in order not to call get_range
+        return self.get_range(self.workbook.active.cell(None,r,c).coordinate)
         
     def get_row(self,row):
         return [self.get_value(row,col+1) for col in range(self.workbook.active.max_column)]
