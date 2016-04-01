@@ -318,6 +318,7 @@ class ExcelOpxWrapper(ExcelWrapper):
         return self.workbook.active.title
     
     def get_cell(self,r,c):
+        # this could be improved in order not to call get_range
         return self.get_range(self.workbook.active.cell(None,r,c).coordinate)
         
     def get_row(self,row):

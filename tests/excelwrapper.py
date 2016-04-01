@@ -30,7 +30,7 @@ def save_as():
 
 def set_and_get_active():
     excel.connect()
-    excel.workbook.active = 2
+    excel.set_sheet("Sheet3")
     assert excel.get_sheet().title == "Sheet3"
 
 def get_range():
@@ -45,7 +45,7 @@ def get_used_range():
 
 def get_active_sheet():
     excel.connect()
-    excel.workbook.active = 2
+    excel.set_sheet("Sheet3")
     assert excel.get_active_sheet() == 'Sheet3'
 
 def get_value():
