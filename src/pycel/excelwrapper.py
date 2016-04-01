@@ -7,8 +7,6 @@ from os import path
 import abc
 from abc import abstractproperty, abstractmethod
 
-from excelutil import flatten
-
 class ExcelWrapper(object):
     __metaclass__ = abc.ABCMeta
     
@@ -215,19 +213,26 @@ class OpxRange(object):
         
         super(OpxRange,self).__init__()
         
-        self.cells = cells      # selection with formulas embedded
-        self.cellsDO = cellsDO  # selection with values ("data only")
+        self.cells = cells
+        self.cellsDO = cellsDO
 
     @property
     def Formula(self):
-        formulas = [ (str(cell.value),) for cell in self.cells]
+        formulas = []
+        for cell in self.cells:
+            formulas.append((str(cell.value),))
         if len(formulas) == 1:
             return formulas[0][0]
         return tuple(formulas)
 
     @property
     def Value(self):
-        values = [(cell.value,) if cell.data_type is not Cell.TYPE_FORMULA else (None,) for cell in self.cellsDO]
+        values = []
+        for cell in self.cellsDO:
+            if cell.data_type is not Cell.TYPE_FORMULA:
+                values.append((cell.value,))
+            else:
+                values.append((None,))
         if len(values) == 1:
             return values[0][0]
         return tuple(values)
@@ -247,14 +252,17 @@ class ExcelOpxWrapper(ExcelWrapper):
         if self.workbook == None:
             return None
 
-        rangednames = [
-            {
-                'id': len(rangednames)+1,
-                'name': str(named_range.name),
-                'formula': str(worksheet.title+'!'+range_alias)
-            } for named_range in self.workbook.get_named_ranges()
-            for worksheet, range_alias in named_range.destinations
-        ]
+
+        rangednames = []
+
+        for named_range in self.workbook.get_named_ranges():
+            for worksheet, range_alias in named_range.destinations:
+                tuple_name = {
+                    'id': len(rangednames)+1,
+                    'name': str(named_range.name),
+                    'formula': str(worksheet.title+'!'+range_alias)
+                }
+                rangednames.append(tuple_name)
             
         return rangednames
     
