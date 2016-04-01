@@ -43,7 +43,7 @@ def get_range():
     excel.connect()
     excel.set_sheet("Sheet2")
     excel_range = excel.get_range('Sheet2!A5:B7')
-    assert len(excel_range.cells) == 6
+    assert sum(map(len,excel_range.cells)) == 6
 
 def get_used_range():
     excel.connect()
@@ -78,7 +78,9 @@ def get_formula_or_value():
     excel.connect()
     excel.set_sheet("Sheet1")
     list = excel.get_formula_or_value("Sheet1!A2:C2")
-    assert list == (('2',), ('=SUM(A2:A4)',), ('=SIN(B2*A2^2)',))
+    assert list == ((u'2', u'=SUM(A2:A4)', u'=SIN(B2*A2^2)'),)
+    list = excel.get_formula_or_value("Sheet1!A1:A3")
+    assert list == ((u'1',), (u'2',), (u'3',))
 
 def get_row():
     excel.connect()
@@ -93,10 +95,11 @@ connect()
 set_and_get_active_sheet()
 get_range()
 get_used_range()
-get_value()
 get_formula()
+get_value()
 has_formula()
 get_formula_from_range()
+
 get_formula_or_value()
 get_row()
 get_ranged_names()

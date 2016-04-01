@@ -13,7 +13,6 @@ if __name__ == '__main__':
     
     dir = os.path.dirname(__file__)
     fname = os.path.join(dir, "../example/example.xlsx")
-
     
     print "Loading %s..." % fname
     
@@ -22,7 +21,7 @@ if __name__ == '__main__':
     
     print "Compiling..., starting from D1"
     sp = c.gen_graph('D1',sheet='Sheet1')
-    
+
     # test evaluation
     print "D1 is %s" % sp.evaluate('Sheet1!D1')
     

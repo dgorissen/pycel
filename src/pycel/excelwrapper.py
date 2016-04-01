@@ -226,24 +226,31 @@ class OpxRange(object):
 
     @property
     def Formula(self):
-        formulas = []
-        for cell in self.cells:
-            formulas.append((str(cell.value),))
-        if len(formulas) == 1:
+        formulas = ()
+        for row in self.cells:
+            col = ()
+            for cell in row:
+                col += (str(cell.value),)
+            formulas += (col,)
+        if sum(map(len,formulas)) == 1:
             return formulas[0][0]
-        return tuple(formulas)
+        return formulas
 
     @property
     def Value(self):
         values = []
-        for cell in self.cellsDO:
-            if cell.data_type is not Cell.TYPE_FORMULA:
-                values.append((cell.value,))
-            else:
-                values.append((None,))
-        if len(values) == 1:
+        for row in self.cellsDO:
+            col = ()
+            for cell in row:
+                if cell.data_type is not Cell.TYPE_FORMULA:
+                    col += (cell.value,)
+                else:
+                    col += (None,)
+            values += (col,)
+        if sum(map(len,values)) == 1:
             return values[0][0]
-        return tuple(values)
+        return values
+
     
 
 # OpenPyXl implementation for ExcelWrapper interface
@@ -303,8 +310,8 @@ class ExcelOpxWrapper(ExcelWrapper):
             sheet = self.workbook[title]
             sheetDO = self.workbookDO[title] 
 
-        cells = [cell for row in sheet.iter_rows(address) for cell in row]
-        cellsDO = [cell for row in sheetDO.iter_rows(address) for cell in row]
+        cells = [[cell for cell in row] for row in sheet.iter_rows(address) ]
+        cellsDO = [[cell for cell in row] for row in sheetDO.iter_rows(address)]
         
         return OpxRange(cells,cellsDO)
 
