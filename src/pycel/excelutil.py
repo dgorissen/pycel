@@ -189,7 +189,9 @@ class Cell(object):
     def make_cells(excel, range, sheet=None):
         cells = [];
 
-        if is_range(range):
+        def convert_range(range, sheet=None):
+            cells = []
+
             # use the sheet specified in the range, else the passed sheet
             sh,start,end = split_range(range)
             if sh: sheet = sh
@@ -223,15 +225,35 @@ class Cell(object):
                 cells = [x[0] for x in cells]
             else:
                 pass
-        else:
-            c = Cell.resolve_cell(excel, range, sheet=sheet)
-            cells.append(c)
 
-            numrows = 1
-            numcols = 1
+            return cells, numrows, numcols
+
+        if isinstance(range, list): # if a list of cells
+            for cell in range:
+                if is_range(cell):
+                    cs_in_range, nr, nc = convert_range(cell, sheet)
+                    cells.append(cs_in_range)
+                
+                else:
+                    c = Cell.resolve_cell(excel, cell, sheet=sheet)
+                    cells.append(c) 
+
+            cells = list(flatten(cells))
+
+            return cells # numrows and numcols are irrelevant here
+
+        else:
+            if is_range(range):
+                cells, numrows, numcols = convert_range(range, sheet)
+            else:
+                c = Cell.resolve_cell(excel, range, sheet=sheet)
+                cells.append(c)
+
+                numrows = 1
+                numcols = 1
             
-        return (cells,numrows,numcols)
-    
+            return (cells,numrows,numcols)
+
 def is_range(address):
     return address.find(':') > 0
 
