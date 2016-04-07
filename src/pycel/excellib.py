@@ -265,6 +265,21 @@ def xround(number, num_digits = 0):
     else:
         return round(number, num_digits)
 
+def mid(text, start_num, num_chars):
+    
+    text = str(text)
+
+    if type(start_num) != int:
+        raise TypeError("%s is not an integer" % str(start_num))
+    if type(num_chars) != int:
+        raise TypeError("%s is not an integer" % str(num_chars))
+
+    if start_num < 1:
+        raise ValueError("%s is < 1" % str(start_num))
+    if num_chars < 0:
+        raise ValueError("%s is < 0" % str(num_chars))
+
+    return text[start_num:num_chars]
 
 if __name__ == '__main__':
     pass

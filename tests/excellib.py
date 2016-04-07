@@ -11,6 +11,31 @@ from pycel.excellib import match
 from pycel.excellib import mod
 from pycel.excellib import count
 from pycel.excellib import xround
+from pycel.excellib import mid
+
+class Test_Mid(unittest.TestCase):
+    def setUp(self):
+        pass
+
+    def test_start_num_is_integer(self):
+        with self.assertRaises(TypeError):
+            mid('Romain', 1.1, 2)
+
+    def test_num_chars_is_integer(self):
+        with self.assertRaises(TypeError):
+            mid('Romain', 1, 2.1)
+
+    def test_start_num_is_superior_or_equal_to_1(self):
+        with self.assertRaises(ValueError):
+            mid('Romain', 0, 3)
+
+    def test_num_chars_is_positive(self):
+        with self.assertRaises(ValueError):
+            mid('Romain', 1, -1)
+
+    def test_mid(self):
+        self.assertEqual(mid('Romain', 2, 9), 'main')
+        
 
 class Test_Round(unittest.TestCase):
     def setUp(self):
