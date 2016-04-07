@@ -325,7 +325,11 @@ def normalize_year(y, m, d):
 
     return (y, m, d)
 
+<<<<<<< HEAD
 def date(year, month, day):
+=======
+def year(year, month, day):
+>>>>>>> 0d26a3b28d7567f65de17242a4d17fd47140be0a
 
     if type(year) != int:
         raise TypeError("%s is not an integer" % str(year))
