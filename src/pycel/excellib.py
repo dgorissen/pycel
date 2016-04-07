@@ -282,6 +282,15 @@ def mid(text, start_num, num_chars): # Excel reference: https://support.office.c
 
     return text[start_num:num_chars]
 
+def is_leap_year(year):
+    if not is_number(year):
+        raise TypeError("%s must be a number" % str(year))
+    if year <= 0:
+        raise TypeError("%s must be positive" % str(year))
+
+    return year % 4 == 0 and year % 100 != 0 or year % 400 == 0
+
+
 def normalize_year(y, m, d):
     if m <= 0:
         y -= int(abs(m) / 12 + 1)
@@ -295,7 +304,7 @@ def normalize_year(y, m, d):
         if (m - 1) in (4, 6, 9, 11):
             d += 30
         elif (m - 1) == 2:
-            if (y % 4 == 0 and y % 100 != 0 or y % 400 == 0):
+            if (is_leap_year(y)):
                 d += 29
             else:
                 d += 28
@@ -310,7 +319,7 @@ def normalize_year(y, m, d):
             d -= 30
             y, m, d = normalize_year(y, m, d)
         elif m == 2:
-            if (y % 4 == 0 and y % 100 != 0 or y % 400 == 0) and d > 29:
+            if (is_leap_year(y)) and d > 29:
                 m += 1
                 d -= 29
                 y, m, d = normalize_year(y, m, d)
