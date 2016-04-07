@@ -167,5 +167,49 @@ def npv(*args):
     cashflow = args[1]
     return sum([float(x)*(1+discount_rate)**-(i+1) for (i,x) in enumerate(cashflow)])
 
+def match(lookup_value, lookup_array, match_type=1):
+    
+    def type_convert(value):
+        if type(value) == str:
+            value = value.lower()
+        elif type(value) == int:
+            value = float(value)
+
+        return value;
+
+    lookup_value = type_convert(lookup_value)
+
+    if match_type == 1:
+        # Verify ascending sort
+        posMax = -1
+        for i in range((len(lookup_array))):
+            current = type_convert(lookup_array[i])
+
+            if i is not len(lookup_array)-1 and current > type_convert(lookup_array[i+1]):
+                raise Exception('for match_type 0, lookup_array must be sorted ascending')
+            if current <= lookup_value:
+                posMax = i 
+        if posMax == -1:
+            raise ('no result in lookup_array for match_type 0')
+        return posMax +1 #Excel starts at 1
+
+    elif match_type == 0:
+        # No string wildcard
+        return [type_convert(x) for x in lookup_array].index(lookup_value) + 1
+
+    elif match_type == -1:
+        # Verify descending sort
+        posMin = -1
+        for i in range((len(lookup_array))):
+            current = type_convert(lookup_array[i])
+
+            if i is not len(lookup_array)-1 and current < type_convert(lookup_array[i+1]):
+               raise ('for match_type 0, lookup_array must be sorted descending')
+            if current >= lookup_value:
+               posMin = i 
+        if posMin == -1:
+            raise Exception('no result in lookup_array for match_type 0')
+        return posMin +1 #Excel starts at 1
+
 if __name__ == '__main__':
     pass
