@@ -9,6 +9,20 @@ sys.path.insert(0, path)
 
 from pycel.excellib import match
 from pycel.excellib import mod
+from pycel.excellib import count
+
+class Test_Count(unittest.TestCase):
+    def setUp(self):
+        pass
+
+    def test_without_nested_booleans(self):
+        self.assertEqual(count([1, 2, 'e'], True, 'r'), 3)
+
+    def test_with_nested_booleans(self):
+        self.assertEqual(count([1, True, 'e'], True, 'r'), 2)
+
+    def test_with_text_representations(self):
+        self.assertEqual(count([1, '2.2', 'e'], True, '20'), 4)
 
 class Test_Mod(unittest.TestCase):
     def setUp(self):

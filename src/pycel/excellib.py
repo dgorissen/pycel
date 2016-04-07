@@ -219,5 +219,34 @@ def mod(nb, q):
     else:
         return nb % q
 
+def is_number(s): # http://stackoverflow.com/questions/354038/how-do-i-check-if-a-string-is-a-number-float-in-python
+    try:
+        float(s)
+        return True
+    except ValueError:
+        return False
+
+def count(*args):
+    l = list(args)
+
+    def count_inside_list(my_list):
+        local_count = 0
+
+        for arg in my_list:
+            if is_number(arg) and type(arg) is not bool:
+                local_count += 1
+
+        return local_count
+
+    total = 0
+
+    for arg in l:
+        if type(arg) == list:
+            total += count_inside_list(arg)
+        elif is_number(arg): # int() is used for text representation of numbers
+            total += 1
+
+    return total
+
 if __name__ == '__main__':
     pass
