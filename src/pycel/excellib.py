@@ -286,10 +286,25 @@ def is_leap_year(year):
     if not is_number(year):
         raise TypeError("%s must be a number" % str(year))
     if year <= 0:
-        raise TypeError("%s must be positive" % str(year))
+        raise TypeError("%s must be strictly positive" % str(year))
 
     return year % 4 == 0 and year % 100 != 0 or year % 400 == 0
 
+def get_max_days_in_month(month, year):
+    if not is_number(year) or not is_number(month):
+        raise TypeError("All inputs must be a number")
+    if year <= 0 or month <= 0:
+        raise TypeError("All inputs must be strictly positive")
+
+    if month in (4, 6, 9, 11):
+        return 30
+    elif month == 2:
+        if is_leap_year(year):
+            return 29
+        else:
+            return 28
+    else:
+        return 31
 
 def normalize_year(y, m, d):
     if m <= 0:
@@ -301,15 +316,7 @@ def normalize_year(y, m, d):
         m = m % 12
 
     if d <= 0:
-        if (m - 1) in (4, 6, 9, 11):
-            d += 30
-        elif (m - 1) == 2:
-            if (is_leap_year(y)):
-                d += 29
-            else:
-                d += 28
-        else:
-            d += 31
+        d += get_max_days_in_month(m, y)
         m -= 1
         y, m, d = normalize_year(y, m, d)
 
