@@ -8,6 +8,20 @@ path = os.path.join(dir, '../src')
 sys.path.insert(0, path)
 
 from pycel.excellib import match
+from pycel.excellib import mod
+
+class Test_Mod(unittest.TestCase):
+    def setUp(self):
+        pass
+
+    def test_argument_validity(self):
+        with self.assertRaises(TypeError):
+            mod(2.2, 1)
+        with self.assertRaises(TypeError):
+            mod(2, 1.1)
+
+    def test_output_value(self):
+        self.assertEqual(mod(10, 4), 2)
 
 class Test_Match(unittest.TestCase):
     def setUp(self):

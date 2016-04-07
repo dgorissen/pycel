@@ -211,5 +211,13 @@ def match(lookup_value, lookup_array, match_type=1):
             raise Exception('no result in lookup_array for match_type 0')
         return posMin +1 #Excel starts at 1
 
+def mod(nb, q):
+    if not isinstance(nb, (int, long)):
+        raise TypeError("%s is not an integer" % str(nb))
+    elif not isinstance(q, (int, long)):
+        raise TypeError("%s is not an integer" % str(q))
+    else:
+        return nb % q
+
 if __name__ == '__main__':
     pass
