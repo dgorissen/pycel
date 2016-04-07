@@ -3,6 +3,7 @@ Python equivalents of various excel functions
 '''
 from __future__ import division
 import numpy as np
+from datetime import datetime
 from math import log
 from decimal import Decimal, ROUND_HALF_UP
 from pycel.excelutil import flatten
@@ -280,6 +281,78 @@ def mid(text, start_num, num_chars):
         raise ValueError("%s is < 0" % str(num_chars))
 
     return text[start_num:num_chars]
+
+def normalize_year(y, m, d):
+    if m <= 0:
+        y -= int(abs(m) / 12 + 1)
+        m = 12 - (abs(m) % 12)
+        normalize_year(y, m, d)
+    elif m > 12:
+        y += int(m / 12)
+        m = m % 12
+
+    if d <= 0:
+        if (m - 1) in (4, 6, 9, 11):
+            d += 30
+        elif (m - 1) == 2:
+            if (y % 4 == 0 and y % 100 != 0 or y % 400 == 0):
+                d += 29
+            else:
+                d += 28
+        else:
+            d += 31
+        m -= 1
+        y, m, d = normalize_year(y, m, d)
+
+    else:
+        if m in (4, 6, 9, 11) and d > 30:
+            m += 1
+            d -= 30
+            y, m, d = normalize_year(y, m, d)
+        elif m == 2:
+            if (y % 4 == 0 and y % 100 != 0 or y % 400 == 0) and d > 29:
+                m += 1
+                d -= 29
+                y, m, d = normalize_year(y, m, d)
+            elif d > 28:
+                m += 1
+                d -= 28
+                y, m, d = normalize_year(y, m, d)
+        elif d > 31:
+            m += 1
+            d -= 31
+            y, m, d = normalize_year(y, m, d)
+
+    return (y, m, d)
+
+def date(year, month, day):
+
+    if type(year) != int:
+        raise TypeError("%s is not an integer" % str(year))
+
+    if type(month) != int:
+        raise TypeError("%s is not an integer" % str(month))
+
+    if type(day) != int:
+        raise TypeError("%s is not an integer" % str(day))
+
+    if year < 0 or year > 9999:
+        raise ValueError("Year must be between 1 and 9999, instead %s" % str(year))
+
+    if year < 1900:
+        year = 1900 + year
+
+    year, month, day = normalize_year(year, month, day) # taking into account negative month and day values
+
+    date_0 = datetime(1900, 1, 1)
+    date = datetime(year, month, day)
+
+    result = (datetime(year, month, day) - date_0).days + 2
+
+    if result <= 0:
+        raise ArithmeticError("Date result is negative")
+    else:
+        return result
 
 if __name__ == '__main__':
     pass

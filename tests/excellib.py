@@ -12,24 +12,68 @@ from pycel.excellib import mod
 from pycel.excellib import count
 from pycel.excellib import xround
 from pycel.excellib import mid
+from pycel.excellib import date
+
+class Test_Date(unittest.TestCase):
+    def setup(self):
+        pass
+
+    def test_year_must_be_integer(self):
+        with self.assertRaises(TypeError):
+            date('2016', 1, 1)
+
+    def test_month_must_be_integer(self):
+        with self.assertRaises(TypeError):
+            date(2016, '1', 1)
+
+    def test_day_must_be_integer(self):
+        with self.assertRaises(TypeError):
+            date(2016, 1, '1')
+
+    def test_year_must_be_positive(self):
+        with self.assertRaises(ValueError):
+            date(-1, 1, 1)
+
+    def test_year_must_have_less_than_10000(self):
+        with self.assertRaises(ValueError):
+            date(10000, 1, 1)
+
+    def test_result_must_be_positive(self):
+        with self.assertRaises(ArithmeticError):
+            date(1900, 1, -1)
+
+    def test_not_stricly_positive_month_substracts(self):
+        self.assertEqual(date(2009, -1, 1), date(2008, 11, 1))
+
+    def test_not_stricly_positive_day_substracts(self):
+        self.assertEqual(date(2009, 1, -1), date(2008, 12, 30))
+
+    def test_month_superior_to_12_change_year(self):
+        self.assertEqual(date(2009, 14, 1), date(2010, 2, 1))
+
+    def test_day_superior_to_365_change_year(self):
+        self.assertEqual(date(2009, 1, 400), date(2010, 2, 4))
+
+    def test_year_between_1900_and_9999(self):
+        self.assertEqual(date(2008, 114, 3), 42889)
 
 class Test_Mid(unittest.TestCase):
     def setUp(self):
         pass
 
-    def test_start_num_is_integer(self):
+    def test_start_num_must_be_integer(self):
         with self.assertRaises(TypeError):
             mid('Romain', 1.1, 2)
 
-    def test_num_chars_is_integer(self):
+    def test_num_chars_must_be_integer(self):
         with self.assertRaises(TypeError):
             mid('Romain', 1, 2.1)
 
-    def test_start_num_is_superior_or_equal_to_1(self):
+    def test_start_num_must_be_superior_or_equal_to_1(self):
         with self.assertRaises(ValueError):
             mid('Romain', 0, 3)
 
-    def test_num_chars_is_positive(self):
+    def test_num_chars_must_be_positive(self):
         with self.assertRaises(ValueError):
             mid('Romain', 1, -1)
 
