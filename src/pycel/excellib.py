@@ -4,6 +4,7 @@ Python equivalents of various excel functions
 from __future__ import division
 import numpy as np
 from math import log
+from decimal import Decimal, ROUND_HALF_UP
 from pycel.excelutil import flatten
 
 ######################################################################################
@@ -24,7 +25,8 @@ FUNCTION_MAP = {
       "min":"xmin",
       "max":"xmax",
       "sum":"xsum",
-      "gammaln":"lgamma"
+      "gammaln":"lgamma",
+      "round": "xround"
       }
 
 ######################################################################################
@@ -248,5 +250,32 @@ def count(*args):
 
     return total
 
+def xround(number, num_digits = 0):
+
+    if not is_number(number):
+        raise TypeError("%s is not a number" % str(number))
+    if not is_number(num_digits):
+        raise TypeError("%s is not a number" % str(num_digits))
+
+    return float(Decimal(repr(number)).quantize(Decimal(repr(pow(10, -num_digits))), rounding=ROUND_HALF_UP))
+    # see https://docs.python.org/2/library/functions.html#round
+    # and https://gist.github.com/ejamesc/cedc886c5f36e2d075c5
+
+
 if __name__ == '__main__':
     pass
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

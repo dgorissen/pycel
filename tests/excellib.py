@@ -10,6 +10,22 @@ sys.path.insert(0, path)
 from pycel.excellib import match
 from pycel.excellib import mod
 from pycel.excellib import count
+from pycel.excellib import xround
+
+class Test_Round(unittest.TestCase):
+    def setUp(self):
+        pass
+
+    def test_nb_must_be_number(self):
+        with self.assertRaises(TypeError):
+            round('er', 1)
+
+    def test_nb_digits_must_be_number(self):
+        with self.assertRaises(TypeError):
+            round(2.323, 'ze')
+
+    def test_round_output(self):
+        self.assertEqual(xround(2.675, 2), 2.68) 
 
 class Test_Count(unittest.TestCase):
     def setUp(self):
