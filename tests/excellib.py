@@ -24,8 +24,11 @@ class Test_Round(unittest.TestCase):
         with self.assertRaises(TypeError):
             round(2.323, 'ze')
 
-    def test_round_output(self):
-        self.assertEqual(xround(2.675, 2), 2.68) 
+    def test_positive_number_of_digits(self):
+        self.assertEqual(xround(2.675, 2), 2.68)
+
+    def test_negaive_number_of_digits(self):
+        self.assertEqual(xround(2352.67, -2), 2400) 
 
 class Test_Count(unittest.TestCase):
     def setUp(self):

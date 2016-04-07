@@ -257,9 +257,13 @@ def xround(number, num_digits = 0):
     if not is_number(num_digits):
         raise TypeError("%s is not a number" % str(num_digits))
 
-    return float(Decimal(repr(number)).quantize(Decimal(repr(pow(10, -num_digits))), rounding=ROUND_HALF_UP))
-    # see https://docs.python.org/2/library/functions.html#round
-    # and https://gist.github.com/ejamesc/cedc886c5f36e2d075c5
+    if num_digits >= 0: # round to the right side of the point
+        return float(Decimal(repr(number)).quantize(Decimal(repr(pow(10, -num_digits))), rounding=ROUND_HALF_UP))
+        # see https://docs.python.org/2/library/functions.html#round
+        # and https://gist.github.com/ejamesc/cedc886c5f36e2d075c5
+
+    else:
+        return round(number, num_digits)
 
 
 if __name__ == '__main__':
