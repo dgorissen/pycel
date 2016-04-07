@@ -214,7 +214,7 @@ def match(lookup_value, lookup_array, match_type=1):
             raise Exception('no result in lookup_array for match_type 0')
         return posMin +1 #Excel starts at 1
 
-def mod(nb, q):
+def mod(nb, q): # Excel Reference: https://support.office.com/en-us/article/MOD-function-9b6cd169-b6ee-406a-a97b-edf2a9dc24f3
     if not isinstance(nb, (int, long)):
         raise TypeError("%s is not an integer" % str(nb))
     elif not isinstance(q, (int, long)):
@@ -229,7 +229,7 @@ def is_number(s): # http://stackoverflow.com/questions/354038/how-do-i-check-if-
     except ValueError:
         return False
 
-def count(*args):
+def count(*args): # Excel reference: https://support.office.com/en-us/article/COUNT-function-a59cd7fc-b623-4d93-87a4-d23bf411294c
     l = list(args)
 
     def count_inside_list(my_list):
@@ -251,7 +251,7 @@ def count(*args):
 
     return total
 
-def xround(number, num_digits = 0):
+def xround(number, num_digits = 0): # Excel reference: https://support.office.com/en-us/article/ROUND-function-c018c5d8-40fb-4053-90b1-b3e7f61a213c
 
     if not is_number(number):
         raise TypeError("%s is not a number" % str(number))
@@ -266,7 +266,7 @@ def xround(number, num_digits = 0):
     else:
         return round(number, num_digits)
 
-def mid(text, start_num, num_chars):
+def mid(text, start_num, num_chars): # Excel reference: https://support.office.com/en-us/article/MID-MIDB-functions-d5f9e25c-d7d6-472e-b568-4ecb12433028
     
     text = str(text)
 
@@ -325,7 +325,7 @@ def normalize_year(y, m, d):
 
     return (y, m, d)
 
-def date(year, month, day):
+def date(year, month, day): # Excel reference: https://support.office.com/en-us/article/DATE-function-e36c0c8c-4104-49da-ab83-82328b832349
 
     if type(year) != int:
         raise TypeError("%s is not an integer" % str(year))
