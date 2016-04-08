@@ -273,6 +273,46 @@ def countif(range, criteria): # Excel reference: https://support.office.com/en-u
     return len(valid)
 
 
+def countifs(*args):
+
+    arg_list = list(args)
+    l = len(arg_list)
+
+    if l % 2 != 0:
+        raise Exception('excellib.countifs() must have a pair number of arguments, here %d' % l)
+
+
+    if l >= 2:
+        indexes = find_corresponding_index(args[0], args[1]) # find indexes that match first layer of countif
+
+        print '\n', indexes
+
+        remaining_ranges = [elem for i, elem in enumerate(arg_list[2:]) if i % 2 == 0] # get only ranges
+        remaining_criteria = [elem for i, elem in enumerate(arg_list[2:]) if i % 2 == 1] # get only criteria
+
+        filtered_remaining_ranges = []
+
+        for range in remaining_ranges: # filter items in remaining_ranges that match valid indexes from first countif layer
+            filtered_remaining_range = []
+
+            for index, item in enumerate(range):
+                if index in indexes:
+                    filtered_remaining_range.append(item)
+
+            filtered_remaining_ranges.append(filtered_remaining_range)
+
+        new_tuple = ()
+
+        for index, range in enumerate(filtered_remaining_ranges): # rebuild the tuple that will be the argument of next layer
+            new_tuple += (range, remaining_criteria[index])
+
+        return min(countifs(*new_tuple), len(indexes)) # only consider the minimum number across all layer responses
+
+    else:
+        return float('inf')
+
+
+
 def xround(number, num_digits = 0): # Excel reference: https://support.office.com/en-us/article/ROUND-function-c018c5d8-40fb-4053-90b1-b3e7f61a213c
 
     if not is_number(number):

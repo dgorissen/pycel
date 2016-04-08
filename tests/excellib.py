@@ -194,12 +194,12 @@ class Test_Countif(unittest.TestCase):
         self.assertEqual(countif([7, 25, 13, 25], 25), 2)
 
 
-# class Test_Countifs(unittest.TestCase):
-#     def setUp(self):
-#         pass
+class Test_Countifs(unittest.TestCase): # more tests might be welcomed
+    def setUp(self):
+        pass
 
-#     def test_countifs_regular(self):
-#         self.assertEqual(countifs([7, 25, 13, 25], 25, [100, 102, 201, 20], ">100"), 1)
+    def test_countifs_regular(self):
+        self.assertEqual(countifs([7, 25, 13, 25], 25, [100, 102, 201, 20], ">100"), 1)
 
 class Test_Mod(unittest.TestCase):
     def setUp(self):
