@@ -369,8 +369,6 @@ def yearfrac(start_date, end_date, basis = 0): # Excel reference: https://suppor
     y1, m1, d1 = date_from_int(start_date)
     y2, m2, d2 = date_from_int(end_date)
 
-    print '\nDates', y1, m1, d1, y2, m2, d2
-
     if basis == 0: # US 30/360
         d2 = 30 if d2 == 31 and (d1 == 31 or d1 == 30) else min(d2, 31)
         d1 = 30 if d1 == 31 else d1

@@ -443,7 +443,8 @@ def is_leap_year(year):
     if year <= 0:
         raise TypeError("%s must be strictly positive" % str(year))
 
-    return year % 4 == 0 and year % 100 != 0 or year % 400 == 0
+    # Watch out, 1900 is a leap according to Excel => https://support.microsoft.com/en-us/kb/214326
+    return (year % 4 == 0 and year % 100 != 0 or year % 400 == 0) or year == 1900
 
 def get_max_days_in_month(month, year):
     if not is_number(year) or not is_number(month):
