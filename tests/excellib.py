@@ -44,7 +44,7 @@ class Test_Yearfrac(unittest.TestCase):
         self.assertAlmostEqual(yearfrac(date(2008, 1, 1), date(2015, 4, 20)), 7.30277777777778)
 
     def test_yearfrac_basis_1(self):
-        self.assertAlmostEqual(yearfrac(date(2007, 12, 20), date(2008, 3, 10), 1), 0.057534247)
+        self.assertAlmostEqual(yearfrac(date(2008, 1, 1), date(2015, 4, 20), 1), 7.299110198)
 
     def test_yearfrac_basis_2(self):
         self.assertAlmostEqual(yearfrac(date(2008, 1, 1), date(2015, 4, 20), 2), 7.405555556)

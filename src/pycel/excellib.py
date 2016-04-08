@@ -325,7 +325,7 @@ def date(year, month, day): # Excel reference: https://support.office.com/en-us/
 
 def yearfrac(start_date, end_date, basis = 0): # Excel reference: https://support.office.com/en-us/article/YEARFRAC-function-3844141e-c76d-4143-82b6-208454ddc6a8
     
-    def actual_nb_days(start, end): # needed to separate days_in_leap_year from days_not_leap_year
+    def actual_nb_days_ISDA(start, end): # needed to separate days_in_leap_year from days_not_leap_year
         y1, m1, d1 = start
         y2, m2, d2 = end
 
@@ -333,6 +333,7 @@ def yearfrac(start_date, end_date, basis = 0): # Excel reference: https://suppor
         days_not_in_leap_year = 0
 
         year_range = range(y1, y2 + 1)
+
         for y in year_range:
 
             if y == y1 and y == y2:
@@ -351,6 +352,31 @@ def yearfrac(start_date, end_date, basis = 0): # Excel reference: https://suppor
 
         return (days_not_in_leap_year, days_in_leap_year)
 
+    def actual_nb_days_AFB_alter(start, end): # http://svn.finmath.net/finmath%20lib/trunk/src/main/java/net/finmath/time/daycount/DayCountConvention_ACT_ACT_YEARFRAC.java
+        y1, m1, d1 = start
+        y2, m2, d2 = end
+
+        delta = date(*end) - date(*start)
+
+        if delta <= 365:
+            if is_leap_year(y1) and is_leap_year(y2):
+                denom = 366
+            elif is_leap_year(y1) and date(y1, m1, d1) <= date(y1, 2, 29):
+                denom = 366
+            elif is_leap_year(y2) and date(y2, m2, d2) >= date(y2, 2, 29):
+                denom = 366
+            else:
+                denom = 365
+        else:
+            year_range = range(y1, y2 + 1)
+            nb = 0
+
+            for y in year_range:
+                nb += 366 if is_leap_year(y) else 365
+
+            denom = nb / len(year_range)
+
+        return delta / denom
 
     if not is_number(start_date):
         raise TypeError("start_date %s must be a number" % str(start_date))
@@ -377,13 +403,7 @@ def yearfrac(start_date, end_date, basis = 0): # Excel reference: https://suppor
         result = count / 360
 
     elif basis == 1: # Actual/actual
-        days_in_leap_year = 0
-        days_not_in_leap_year = 0
-
-        (not_leap_days, leap_days) = actual_nb_days((y2, m2, d2), (y1, m1, d1))
-
-        print '\nNOT LEAP, LEAP', not_leap_days, leap_days
-        result = not_leap_days / 365 + leap_days / 366
+        result = actual_nb_days_AFB_alter((y1, m1, d1), (y2, m2, d2))
 
     elif basis == 2: # Actual/360
         result = (end_date - start_date) / 360
