@@ -13,6 +13,51 @@ from pycel.excellib import count
 from pycel.excellib import xround
 from pycel.excellib import mid
 from pycel.excellib import date
+from pycel.excellib import yearfrac
+
+
+class Test_Yearfrac(unittest.TestCase):
+    def setup(self):
+        pass
+
+    def test_start_date_must_be_number(self):
+        with self.assertRaises(TypeError):
+            yearfrac('not a number', 1)
+
+    def test_end_date_must_be_number(self):
+        with self.assertRaises(TypeError):
+            yearfrac(1, 'not a number')
+
+    def test_start_date_must_be_positive(self):
+        with self.assertRaises(ValueError):
+            yearfrac(-1, 0)
+
+    def test_end_date_must_be_positive(self):
+        with self.assertRaises(ValueError):
+            yearfrac(0, -1)
+
+    def test_basis_must_be_between_0_and_4(self):
+        with self.assertRaises(ValueError):
+            yearfrac(1, 2, 5)
+
+    def test_yearfrac_basis_0(self):
+        self.assertAlmostEqual(yearfrac(date(2008, 1, 1), date(2015, 4, 20)), 7.30277777777778)
+
+    def test_yearfrac_basis_1(self):
+        self.assertAlmostEqual(yearfrac(date(2008, 1, 1), date(2015, 4, 20), 1), 7.29911019849418)
+
+    def test_yearfrac_basis_2(self):
+        self.assertAlmostEqual(yearfrac(date(2008, 1, 1), date(2015, 4, 20), 2), 7.405555556)
+
+    def test_yearfrac_basis_3(self):
+        self.assertAlmostEqual(yearfrac(date(2008, 1, 1), date(2015, 4, 20), 3), 7.304109589)
+
+    def test_yearfrac_basis_4(self):
+        self.assertAlmostEqual(yearfrac(date(2008, 1, 1), date(2015, 4, 20), 4), 7.302777778)
+
+    def test_yearfrac_inverted(self):
+        self.assertAlmostEqual(yearfrac(date(2015, 4, 20), date(2008, 1, 1)), yearfrac(date(2008, 1, 1), date(2015, 4, 20)))    
+
 
 class Test_Date(unittest.TestCase):
     def setup(self):

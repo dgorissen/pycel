@@ -8,7 +8,7 @@ from math import log
 from decimal import Decimal, ROUND_HALF_UP
 from pycel.excelutil import flatten
 from pycel.excelutil import is_number
-from pycel.excelutil import year_from_int
+from pycel.excelutil import date_from_int
 from pycel.excelutil import normalize_year
 from pycel.excelutil import is_leap_year
 from pycel.excelutil import get_max_days_in_month
@@ -323,10 +323,90 @@ def date(year, month, day): # Excel reference: https://support.office.com/en-us/
         return result
 
 
-
-# def yearfrac(start_date, end_date, basis): # Excel reference: https://support.office.com/en-us/article/YEARFRAC-function-3844141e-c76d-4143-82b6-208454ddc6a8
+def yearfrac(start_date, end_date, basis = 0): # Excel reference: https://support.office.com/en-us/article/YEARFRAC-function-3844141e-c76d-4143-82b6-208454ddc6a8
     
-# RANGER LES UTILS DANS EXCEL UTIL
+    def actual_nb_days(start, end): # needed to separate days_in_leap_year from days_not_leap_year
+        y1, m1, d1 = start
+        y2, m2, d2 = end
+
+        days_in_leap_year = 0
+        days_not_in_leap_year = 0
+
+        year_range = range(y1, y2 + 1)
+        for y in year_range:
+
+            if y == y1 and y == y2:
+                nb_days = date(y2, m2, d2) - date(y1, m1, d1)
+            elif y == y1:
+                nb_days = date(y1 + 1, 1, 1) - date(y1, m1, d1)
+            elif y == y2:
+                nb_days = date(y2, m2, d2) - date(y2, 1, 1)
+            else:
+                nb_days = 366 if is_leap_year(y) else 365
+
+            if is_leap_year(y):
+                days_in_leap_year += nb_days
+            else:
+                days_not_in_leap_year += nb_days
+
+        return (days_not_in_leap_year, days_in_leap_year)
+
+
+    if not is_number(start_date):
+        raise TypeError("start_date %s must be a number" % str(start_date))
+    if not is_number(end_date):
+        raise TypeError("end_date %s must be number" % str(end_date))
+    if start_date < 0:
+        raise ValueError("start_date %s must be positive" % str(start_date))
+    if end_date < 0:
+        raise ValueError("end_date %s must be positive" % str(end_date))
+
+    if start_date > end_date: # switch dates if start_date > end_date
+        temp = end_date
+        end_date = start_date
+        start_date = temp 
+
+    y1, m1, d1 = date_from_int(start_date)
+    y2, m2, d2 = date_from_int(end_date)
+
+    print '\nDates', y1, m1, d1, y2, m2, d2
+
+    if basis == 0: # US 30/360
+        d2 = 30 if d2 == 31 and (d1 == 31 or d1 == 30) else min(d2, 31)
+        d1 = 30 if d1 == 31 else d1
+
+        count = 360 * (y2 - y1) + 30 * (m2 - m1) + (d2 - d1)
+        result = count / 360
+
+    elif basis == 1: # Actual/actual
+        days_in_leap_year = 0
+        days_not_in_leap_year = 0
+
+        (not_leap_days, leap_days) = actual_nb_days((y2, m2, d2), (y1, m1, d1))
+
+        print '\nNOT LEAP, LEAP', not_leap_days, leap_days
+        result = not_leap_days / 365 + leap_days / 366
+
+    elif basis == 2: # Actual/360
+        result = (end_date - start_date) / 360
+
+    elif basis == 3: # Actual/365
+        result = (end_date - start_date) / 365
+
+    elif basis == 4: # Eurobond 30/360
+        d2 = 30 if d2 == 31 else d2
+        d1 = 30 if d1 == 31 else d1
+
+        count = 360 * (y2 - y1) + 30 * (m2 - m1) + (d2 - d1)
+        result = count / 360
+
+    else:
+        raise ValueError("%d must be 0, 1, 2, 3 or 4" % basis)
+
+
+    return result
+
+
 
 if __name__ == '__main__':
     pass
