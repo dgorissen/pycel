@@ -486,7 +486,7 @@ def normalize_year(y, m, d):
                 m += 1
                 d -= 29
                 y, m, d = normalize_year(y, m, d)
-            elif d > 28:
+            elif (not is_leap_year(y)) and d > 28:
                 m += 1
                 d -= 28
                 y, m, d = normalize_year(y, m, d)

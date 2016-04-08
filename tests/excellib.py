@@ -44,7 +44,7 @@ class Test_Yearfrac(unittest.TestCase):
         self.assertAlmostEqual(yearfrac(date(2008, 1, 1), date(2015, 4, 20)), 7.30277777777778)
 
     def test_yearfrac_basis_1(self):
-        self.assertAlmostEqual(yearfrac(date(2008, 1, 1), date(2015, 4, 20), 1), 7.29911019849418)
+        self.assertAlmostEqual(yearfrac(date(2007, 12, 20), date(2008, 3, 10), 1), 0.057534247)
 
     def test_yearfrac_basis_2(self):
         self.assertAlmostEqual(yearfrac(date(2008, 1, 1), date(2015, 4, 20), 2), 7.405555556)
@@ -99,8 +99,11 @@ class Test_Date(unittest.TestCase):
     def test_day_superior_to_365_change_year(self):
         self.assertEqual(date(2009, 1, 400), date(2010, 2, 4))
 
-    def test_year_between_1900_and_9999(self):
-        self.assertEqual(date(2008, 114, 3), 42889)
+    def test_year_for_29_feb(self):
+        self.assertEqual(date(2008, 2, 29), 39507)
+
+    def test_year_regular(self):
+        self.assertEqual(date(2008, 11, 3), 39755)
 
 class Test_Mid(unittest.TestCase):
     def setUp(self):
