@@ -525,11 +525,53 @@ def date_from_int(nb):
 
     return (current_year, current_month, current_day)
 
-def find_corresponding_index(range, criteria_function):
+def find_corresponding_index(range, criteria):
+
+    # parse criteria
+    if is_number(criteria):
+        def check(x):
+            return x == criteria #and type(x) == type(criteria)
+    elif type(criteria) == str:
+        search = re.search('(\W*)(.*)', criteria.lower()).group
+        operator = search(1)
+        value = search(2)
+        value = float(value) if is_number(value) else str(value)
+
+        if operator == '<':
+            def check(x):
+                if not is_number(x):
+                    raise TypeError('excellib.countif() doesnt\'t work for checking non number items against non equality')
+                return x < value
+        elif operator == '>':
+            def check(x):
+                if not is_number(x):
+                    raise TypeError('excellib.countif() doesnt\'t work for checking non number items against non equality')
+                return x > value
+        elif operator == '>=':
+            def check(x):
+                if not is_number(x):
+                    raise TypeError('excellib.countif() doesnt\'t work for checking non number items against non equality')
+                return x >= value
+        elif operator == '<=':
+            def check(x):
+                if not is_number(x):
+                    raise TypeError('excellib.countif() doesnt\'t work for checking non number items against non equality')
+                return x <= value
+        elif operator == '<>':
+            def check(x):
+                if not is_number(x):
+                    raise TypeError('excellib.countif() doesnt\'t work for checking non number items against non equality')
+                return x != value
+        else:
+            def check(x):
+                return x == criteria
+    else:
+        raise Exception('Could\'t parse criteria %s' % criteria)
+
     valid = []
 
     for index, item in enumerate(range):
-        if criteria_function(item):
+        if check(item):
             valid.append(index)
 
     return valid
