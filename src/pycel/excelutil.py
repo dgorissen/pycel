@@ -525,5 +525,14 @@ def date_from_int(nb):
 
     return (current_year, current_month, current_day)
 
+def find_corresponding_index(range, criteria_function):
+    valid = []
+
+    for index, item in enumerate(range):
+        if criteria_function(item):
+            valid.append(index)
+
+    return valid
+
 if __name__ == '__main__':
     pass

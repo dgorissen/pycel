@@ -13,6 +13,7 @@ from pycel.excelutil import date_from_int
 from pycel.excelutil import normalize_year
 from pycel.excelutil import is_leap_year
 from pycel.excelutil import get_max_days_in_month
+from pycel.excelutil import find_corresponding_index
 
 ######################################################################################
 # A dictionary that maps excel function names onto python equivalents. You should
@@ -308,14 +309,9 @@ def countif(range, criteria): # Excel reference: https://support.office.com/en-u
     else:
         raise Exception('Could\'t parse criteria %s' % criteria)
 
-    count = 0
+    valid = find_corresponding_index(range, check)
 
-    for item in range:
-        if check(item):
-            count += 1
-
-    return count
-
+    return len(valid)
 
 def xround(number, num_digits = 0): # Excel reference: https://support.office.com/en-us/article/ROUND-function-c018c5d8-40fb-4053-90b1-b3e7f61a213c
 

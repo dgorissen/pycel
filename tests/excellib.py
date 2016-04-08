@@ -11,6 +11,7 @@ from pycel.excellib import match
 from pycel.excellib import mod
 from pycel.excellib import count
 from pycel.excellib import countif
+from pycel.excellib import countifs
 from pycel.excellib import xround
 from pycel.excellib import mid
 from pycel.excellib import date
@@ -191,6 +192,14 @@ class Test_Countif(unittest.TestCase):
 
     def test_countif_regular(self):
         self.assertEqual(countif([7, 25, 13, 25], 25), 2)
+
+
+# class Test_Countifs(unittest.TestCase):
+#     def setUp(self):
+#         pass
+
+#     def test_countifs_regular(self):
+#         self.assertEqual(countifs([7, 25, 13, 25], 25, [100, 102, 201, 20], ">100"), 1)
 
 class Test_Mod(unittest.TestCase):
     def setUp(self):
