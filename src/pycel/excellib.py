@@ -7,6 +7,11 @@ from datetime import datetime
 from math import log
 from decimal import Decimal, ROUND_HALF_UP
 from pycel.excelutil import flatten
+from pycel.excelutil import is_number
+from pycel.excelutil import year_from_int
+from pycel.excelutil import normalize_year
+from pycel.excelutil import is_leap_year
+from pycel.excelutil import get_max_days_in_month
 
 ######################################################################################
 # A dictionary that maps excel function names onto python equivalents. You should
@@ -41,12 +46,14 @@ def value(text):
     else:
         return int(text)
 
+
 def xlog(a):
     if isinstance(a,(list,tuple,np.ndarray)):
         return [log(x) for x in flatten(a)]
     else:
         #print a
         return log(a)
+
 
 def xmax(*args):
     # ignore non numeric cells
@@ -58,6 +65,7 @@ def xmax(*args):
     else:
         return max(data)
 
+
 def xmin(*args):
     # ignore non numeric cells
     data = [x for x in flatten(args) if isinstance(x,(int,float))]
@@ -67,6 +75,7 @@ def xmin(*args):
         return 0
     else:
         return min(data)
+
 
 def xsum(*args):
     # ignore non numeric cells
@@ -78,10 +87,12 @@ def xsum(*args):
     else:
         return sum(data)
 
+
 def average(*args):
     l = list(flatten(*args))
     return sum(l) / len(l)
-    
+
+
 def right(text,n):
     #TODO: hack to deal with naca section numbers
     if isinstance(text, unicode) or isinstance(text,str):
@@ -90,7 +101,7 @@ def right(text,n):
         # TODO: get rid of the decimal
         return str(int(text))[-n:]
 
-    
+
 def index(*args):
     array = args[0]
     row = args[1]
@@ -126,7 +137,6 @@ def lookup(value, lookup_range, result_range):
             else:
                 lastnum = i
                 
-
     if lastnum < 0:
         raise Exception("No numeric data found in the lookup range")
     else:
@@ -138,6 +148,7 @@ def lookup(value, lookup_range, result_range):
                 return result_range[lastnum]
             else:
                 return result_range[i-1]
+
 
 def linest(*args, **kwargs):
 
@@ -165,10 +176,12 @@ def linest(*args, **kwargs):
         
     return coefs
 
+
 def npv(*args):
     discount_rate = args[0]
     cashflow = args[1]
     return sum([float(x)*(1+discount_rate)**-(i+1) for (i,x) in enumerate(cashflow)])
+
 
 def match(lookup_value, lookup_array, match_type=1):
     
@@ -214,6 +227,7 @@ def match(lookup_value, lookup_array, match_type=1):
             raise Exception('no result in lookup_array for match_type 0')
         return posMin +1 #Excel starts at 1
 
+
 def mod(nb, q): # Excel Reference: https://support.office.com/en-us/article/MOD-function-9b6cd169-b6ee-406a-a97b-edf2a9dc24f3
     if not isinstance(nb, (int, long)):
         raise TypeError("%s is not an integer" % str(nb))
@@ -222,12 +236,6 @@ def mod(nb, q): # Excel Reference: https://support.office.com/en-us/article/MOD-
     else:
         return nb % q
 
-def is_number(s): # http://stackoverflow.com/questions/354038/how-do-i-check-if-a-string-is-a-number-float-in-python
-    try:
-        float(s)
-        return True
-    except ValueError:
-        return False
 
 def count(*args): # Excel reference: https://support.office.com/en-us/article/COUNT-function-a59cd7fc-b623-4d93-87a4-d23bf411294c
     l = list(args)
@@ -251,6 +259,7 @@ def count(*args): # Excel reference: https://support.office.com/en-us/article/CO
 
     return total
 
+
 def xround(number, num_digits = 0): # Excel reference: https://support.office.com/en-us/article/ROUND-function-c018c5d8-40fb-4053-90b1-b3e7f61a213c
 
     if not is_number(number):
@@ -265,6 +274,7 @@ def xround(number, num_digits = 0): # Excel reference: https://support.office.co
 
     else:
         return round(number, num_digits)
+
 
 def mid(text, start_num, num_chars): # Excel reference: https://support.office.com/en-us/article/MID-MIDB-functions-d5f9e25c-d7d6-472e-b568-4ecb12433028
     
@@ -282,64 +292,6 @@ def mid(text, start_num, num_chars): # Excel reference: https://support.office.c
 
     return text[start_num:num_chars]
 
-def is_leap_year(year):
-    if not is_number(year):
-        raise TypeError("%s must be a number" % str(year))
-    if year <= 0:
-        raise TypeError("%s must be strictly positive" % str(year))
-
-    return year % 4 == 0 and year % 100 != 0 or year % 400 == 0
-
-def get_max_days_in_month(month, year):
-    if not is_number(year) or not is_number(month):
-        raise TypeError("All inputs must be a number")
-    if year <= 0 or month <= 0:
-        raise TypeError("All inputs must be strictly positive")
-
-    if month in (4, 6, 9, 11):
-        return 30
-    elif month == 2:
-        if is_leap_year(year):
-            return 29
-        else:
-            return 28
-    else:
-        return 31
-
-def normalize_year(y, m, d):
-    if m <= 0:
-        y -= int(abs(m) / 12 + 1)
-        m = 12 - (abs(m) % 12)
-        normalize_year(y, m, d)
-    elif m > 12:
-        y += int(m / 12)
-        m = m % 12
-
-    if d <= 0:
-        d += get_max_days_in_month(m, y)
-        m -= 1
-        y, m, d = normalize_year(y, m, d)
-
-    else:
-        if m in (4, 6, 9, 11) and d > 30:
-            m += 1
-            d -= 30
-            y, m, d = normalize_year(y, m, d)
-        elif m == 2:
-            if (is_leap_year(y)) and d > 29:
-                m += 1
-                d -= 29
-                y, m, d = normalize_year(y, m, d)
-            elif d > 28:
-                m += 1
-                d -= 28
-                y, m, d = normalize_year(y, m, d)
-        elif d > 31:
-            m += 1
-            d -= 31
-            y, m, d = normalize_year(y, m, d)
-
-    return (y, m, d)
 
 def date(year, month, day): # Excel reference: https://support.office.com/en-us/article/DATE-function-e36c0c8c-4104-49da-ab83-82328b832349
 
@@ -370,35 +322,7 @@ def date(year, month, day): # Excel reference: https://support.office.com/en-us/
     else:
         return result
 
-def year_from_int(nb):
-    if not is_number(nb):
-        raise TypeError("%s is not a number" % str(nb))
 
-    # origin of the Excel date system
-    current_year = 1900
-    current_month = 0
-    current_day = 0
-
-    while(nb > 0):
-        print current_year, current_month, current_day, nb
-        if not is_leap_year(current_year) and nb > 365:
-            current_year += 1
-            nb -= 365
-        elif is_leap_year(current_year) and nb > 366:
-            current_year += 1
-            nb -= 366
-        else:
-            current_month += 1
-            max_days = get_max_days_in_month(current_month, current_year)
-            
-            print 'Max days', max_days, current_month
-            if nb > max_days:
-                nb -= max_days
-            else:
-                current_day = nb
-                nb = 0
-
-    return (current_year, current_month, current_day)
 
 # def yearfrac(start_date, end_date, basis): # Excel reference: https://support.office.com/en-us/article/YEARFRAC-function-3844141e-c76d-4143-82b6-208454ddc6a8
     
