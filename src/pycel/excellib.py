@@ -263,6 +263,10 @@ def count(*args): # Excel reference: https://support.office.com/en-us/article/CO
 
 def countif(range, criteria): # Excel reference: https://support.office.com/en-us/article/COUNTIF-function-e0de10c6-f885-4e71-abb4-1f464816df34
     
+    # WARNING: 
+    # - wildcards not supported
+    # - support of strings with >, <, <=, =>, <> not provided
+
     # parse criteria
     if is_number(criteria):
         def check(x):
