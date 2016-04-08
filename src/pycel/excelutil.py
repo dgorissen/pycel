@@ -496,7 +496,7 @@ def normalize_year(y, m, d):
 
     return (y, m, d)
 
-def year_from_int(nb):
+def date_from_int(nb):
     if not is_number(nb):
         raise TypeError("%s is not a number" % str(nb))
 
@@ -506,7 +506,6 @@ def year_from_int(nb):
     current_day = 0
 
     while(nb > 0):
-        print current_year, current_month, current_day, nb
         if not is_leap_year(current_year) and nb > 365:
             current_year += 1
             nb -= 365
@@ -517,7 +516,6 @@ def year_from_int(nb):
             current_month += 1
             max_days = get_max_days_in_month(current_month, current_year)
             
-            print 'Max days', max_days, current_month
             if nb > max_days:
                 nb -= max_days
             else:
