@@ -10,6 +10,7 @@ sys.path.insert(0, path)
 from pycel.excellib import match
 from pycel.excellib import mod
 from pycel.excellib import count
+from pycel.excellib import countif
 from pycel.excellib import xround
 from pycel.excellib import mid
 from pycel.excellib import date
@@ -144,8 +145,9 @@ class Test_Round(unittest.TestCase):
     def test_positive_number_of_digits(self):
         self.assertEqual(xround(2.675, 2), 2.68)
 
-    def test_negaive_number_of_digits(self):
+    def test_negative_number_of_digits(self):
         self.assertEqual(xround(2352.67, -2), 2400) 
+
 
 class Test_Count(unittest.TestCase):
     def setUp(self):
@@ -160,6 +162,36 @@ class Test_Count(unittest.TestCase):
     def test_with_text_representations(self):
         self.assertEqual(count([1, '2.2', 'e'], True, '20'), 4)
 
+
+class Test_Countif(unittest.TestCase):
+    def setUp(self):
+        pass
+
+    def test_argument_validity(self):
+        with self.assertRaises(TypeError):
+            countif(['e', 1], '>=1')
+
+    def test_countif_strictly_superior(self):
+        self.assertEqual(countif([7, 25, 13, 25], '>10'), 3)
+
+    def test_countif_strictly_inferior(self):
+        self.assertEqual(countif([7, 25, 13, 25], '<10'), 1)
+
+    def test_countif_superior(self):
+        self.assertEqual(countif([7, 10, 13, 25], '>=10'), 3)
+
+    def test_countif_inferior(self):
+        self.assertEqual(countif([7, 10, 13, 25], '<=10'), 2)
+
+    def test_countif_different(self):
+        self.assertEqual(countif([7, 10, 13, 25], '<>10'), 3)
+
+    def test_countif_with_string_equality(self):
+        self.assertEqual(countif([7, 'e', 13, 'e'], 'e'), 2)
+
+    def test_countif_regular(self):
+        self.assertEqual(countif([7, 25, 13, 25], 25), 2)
+
 class Test_Mod(unittest.TestCase):
     def setUp(self):
         pass
@@ -172,6 +204,7 @@ class Test_Mod(unittest.TestCase):
 
     def test_output_value(self):
         self.assertEqual(mod(10, 4), 2)
+
 
 class Test_Match(unittest.TestCase):
     def setUp(self):

@@ -6,6 +6,7 @@ import numpy as np
 from datetime import datetime
 from math import log
 from decimal import Decimal, ROUND_HALF_UP
+import re
 from pycel.excelutil import flatten
 from pycel.excelutil import is_number
 from pycel.excelutil import date_from_int
@@ -258,6 +259,58 @@ def count(*args): # Excel reference: https://support.office.com/en-us/article/CO
             total += 1
 
     return total
+
+
+def countif(range, criteria): # Excel reference: https://support.office.com/en-us/article/COUNTIF-function-e0de10c6-f885-4e71-abb4-1f464816df34
+    
+    # parse criteria
+    if is_number(criteria):
+        def check(x):
+            return x == criteria #and type(x) == type(criteria)
+    elif type(criteria) == str:
+        search = re.search('(\W*)(.*)', criteria.lower()).group
+        operator = search(1)
+        value = search(2)
+        value = float(value) if is_number(value) else str(value)
+
+        if operator == '<':
+            def check(x):
+                if not is_number(x):
+                    raise TypeError('excellib.countif() doesnt\'t work for checking non number items against non equality')
+                return x < value
+        elif operator == '>':
+            def check(x):
+                if not is_number(x):
+                    raise TypeError('excellib.countif() doesnt\'t work for checking non number items against non equality')
+                return x > value
+        elif operator == '>=':
+            def check(x):
+                if not is_number(x):
+                    raise TypeError('excellib.countif() doesnt\'t work for checking non number items against non equality')
+                return x >= value
+        elif operator == '<=':
+            def check(x):
+                if not is_number(x):
+                    raise TypeError('excellib.countif() doesnt\'t work for checking non number items against non equality')
+                return x <= value
+        elif operator == '<>':
+            def check(x):
+                if not is_number(x):
+                    raise TypeError('excellib.countif() doesnt\'t work for checking non number items against non equality')
+                return x != value
+        else:
+            def check(x):
+                return x == criteria
+    else:
+        raise Exception('Could\'t parse criteria %s' % criteria)
+
+    count = 0
+
+    for item in range:
+        if check(item):
+            count += 1
+
+    return count
 
 
 def xround(number, num_digits = 0): # Excel reference: https://support.office.com/en-us/article/ROUND-function-c018c5d8-40fb-4053-90b1-b3e7f61a213c
