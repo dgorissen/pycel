@@ -370,6 +370,40 @@ def date(year, month, day): # Excel reference: https://support.office.com/en-us/
     else:
         return result
 
+def year_from_int(nb):
+    if not is_number(nb):
+        raise TypeError("%s is not a number" % str(nb))
+
+    # origin of the Excel date system
+    current_year = 1900
+    current_month = 0
+    current_day = 0
+
+    while(nb > 0):
+        print current_year, current_month, current_day, nb
+        if not is_leap_year(current_year) and nb > 365:
+            current_year += 1
+            nb -= 365
+        elif is_leap_year(current_year) and nb > 366:
+            current_year += 1
+            nb -= 366
+        else:
+            current_month += 1
+            max_days = get_max_days_in_month(current_month, current_year)
+            
+            print 'Max days', max_days, current_month
+            if nb > max_days:
+                nb -= max_days
+            else:
+                current_day = nb
+                nb = 0
+
+    return (current_year, current_month, current_day)
+
+# def yearfrac(start_date, end_date, basis): # Excel reference: https://support.office.com/en-us/article/YEARFRAC-function-3844141e-c76d-4143-82b6-208454ddc6a8
+    
+# RANGER LES UTILS DANS EXCEL UTIL
+
 if __name__ == '__main__':
     pass
 
