@@ -7,13 +7,18 @@ from datetime import datetime
 from math import log
 from decimal import Decimal, ROUND_HALF_UP
 import re
-from pycel.excelutil import flatten
-from pycel.excelutil import is_number
-from pycel.excelutil import date_from_int
-from pycel.excelutil import normalize_year
-from pycel.excelutil import is_leap_year
-from pycel.excelutil import get_max_days_in_month
-from pycel.excelutil import find_corresponding_index
+from pycel.excelutil import (
+    flatten, 
+    split_address, 
+    col2num, 
+    index2addres,
+    is_number,
+    date_from_int,
+    normalize_year,
+    is_leap_year,
+    get_max_days_in_month,
+    find_corresponding_index,
+)
 
 ######################################################################################
 # A dictionary that maps excel function names onto python equivalents. You should

@@ -7,16 +7,18 @@ dir = os.path.dirname(__file__)
 path = os.path.join(dir, '../src')
 sys.path.insert(0, path)
 
-from pycel.excellib import match
-from pycel.excellib import mod
-from pycel.excellib import count
-from pycel.excellib import countif
-from pycel.excellib import countifs
-from pycel.excellib import xround
-from pycel.excellib import mid
-from pycel.excellib import date
-from pycel.excellib import yearfrac
-from pycel.excellib import isNa
+from pycel.excellib import ( 
+    match,
+    mod,
+    count,
+    countif,
+    countifs,
+    xround,
+    mid,
+    date,
+    yearfrac,
+    isNa
+)
 
 
 class Test_IsNa(unittest.TestCase):
