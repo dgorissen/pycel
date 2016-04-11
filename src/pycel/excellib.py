@@ -278,7 +278,7 @@ def countif(range, criteria): # Excel reference: https://support.office.com/en-u
     return len(valid)
 
 
-def countifs(*args):
+def countifs(*args): # Excel reference: https://support.office.com/en-us/article/COUNTIFS-function-dda3dc6e-f74e-4aee-88bc-aa8c2a866842
 
     arg_list = list(args)
     l = len(arg_list)
