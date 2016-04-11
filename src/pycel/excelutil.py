@@ -525,9 +525,8 @@ def date_from_int(nb):
 
     return (current_year, current_month, current_day)
 
-def find_corresponding_index(range, criteria):
+def criteria_parser(criteria):
 
-    # parse criteria
     if is_number(criteria):
         def check(x):
             return x == criteria #and type(x) == type(criteria)
@@ -567,6 +566,14 @@ def find_corresponding_index(range, criteria):
                 return x == criteria
     else:
         raise Exception('Could\'t parse criteria %s' % criteria)
+
+    return check
+
+
+def find_corresponding_index(range, criteria):
+
+    # parse criteria
+    check = criteria_parser(criteria)
 
     valid = []
 
