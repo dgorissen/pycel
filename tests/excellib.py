@@ -218,9 +218,11 @@ class Test_Mod(unittest.TestCase):
     def setUp(self):
         pass
 
-    def test_argument_validity(self):
+    def test_first_argument_validity(self):
         with self.assertRaises(TypeError):
             mod(2.2, 1)
+
+    def test_second_argument_validity(self):
         with self.assertRaises(TypeError):
             mod(2, 1.1)
 
@@ -232,87 +234,112 @@ class Test_Match(unittest.TestCase):
     def setUp(self):
         pass
 
-    def test_ascending_numeric(self):
+    def test_numeric_in_ascending_mode(self):
         # Closest inferior value is found
         self.assertEqual(match(5, [1, 3.3, 5]), 3)
 
+    def test_numeric_in_ascending_mode_with_descending_array(self):
         # Not ascending arrays raise exception
         with self.assertRaises(Exception):
             match(3, [10, 9.1, 6.23, 1])
+
+    def test_numeric_in_ascending_mode_with_any_array(self):
+        # Not ascending arrays raise exception
         with self.assertRaises(Exception):
             match(3, [10, 3.3, 5, 2])
 
-    def test_exact_numeric(self):
+    def test_numeric_in_exact_mode(self):
         # Value is found
         self.assertEqual(match(5, [10, 3.3, 5.0], 0), 3)
 
+    def test_numeric_in_exact_mode_not_found(self):
         # Value not found raises Exception
         with self.assertRaises(ValueError):
             match(3, [10, 3.3, 5, 2], 0)
 
-    def test_descending_numeric(self):
+    def test_numeric_in_descending_mode(self):
         # Closest superior value is found
         self.assertEqual(match(8, [10, 9.1, 6.2], -1), 2)
 
+    def test_numeric_in_descending_mode_with_ascending_array(self):
         # Non descending arrays raise exception
         with self.assertRaises(Exception):
             match(3, [1, 3.3, 5, 6], -1)
+
+    def test_numeric_in_descending_mode_with_any_array(self):
+        # Non descending arrays raise exception
         with self.assertRaises(Exception):
             match(3, [10, 3.3, 5, 2], -1)
 
-    def test_ascending_string(self):
+    def test_string_in_ascending_mode(self):
         # Closest inferior value is found
         self.assertEqual(match('rars', ['a', 'AAB', 'rars']), 3)
 
+    def test_string_in_ascending_mode_with_descending_array(self):
         # Not ascending arrays raise exception
         with self.assertRaises(Exception):
             match(3, ['rars', 'aab', 'a'])
+
+    def test_string_in_ascending_mode_with_any_array(self):
         with self.assertRaises(Exception):
             match(3, ['aab', 'a', 'rars'])
 
-    def test_exact_string(self):
+    def test_string_in_exact_mode(self):
         # Value is found
         self.assertEqual(match('a', ['aab', 'a', 'rars'], 0), 2)
 
+    def test_string_in_exact_mode_not_found(self):
         # Value not found raises Exception
         with self.assertRaises(ValueError):
             match('b', ['aab', 'a', 'rars'], 0)
 
-    def test_descending_string(self):
+    def test_string_in_descending_mode(self):
         # Closest superior value is found
         self.assertEqual(match('a', ['c', 'b', 'a'], -1), 3)
 
+    def test_string_in_descending_mode_with_ascending_array(self):
         # Non descending arrays raise exception
         with self.assertRaises(Exception):
             match('a', ['a', 'aab', 'rars'], -1)
+
+    def test_string_in_descending_mode_with_any_array(self):
+        # Non descending arrays raise exception
         with self.assertRaises(Exception):
             match('a', ['aab', 'a', 'rars'], -1)
 
-    def test_ascending_boolean(self):
+    def test_boolean_in_ascending_mode(self):
         # Closest inferior value is found
         self.assertEqual(match(True, [False, False, True]), 3)
 
+    def test_boolean_in_ascending_mode_with_descending_array(self):
         # Not ascending arrays raise exception
         with self.assertRaises(Exception):
             match(False, [True, False, False])
+
+    def test_boolean_in_ascending_mode_with_any_array(self):
+        # Not ascending arrays raise exception
         with self.assertRaises(Exception):
             match(True, [False, True, False])
 
-    def test_exact_boolean(self):
+    def test_boolean_in_exact_mode(self):
         # Value is found
         self.assertEqual(match(False, [True, False, False], 0), 2)
 
+    def test_boolean_in_exact_mode_not_found(self):
         # Value not found raises Exception
         with self.assertRaises(ValueError):
             match(False, [True, True, True], 0)
 
-    def test_descending_boolean(self):
+    def test_boolean_in_descending_mode(self):
         # Closest superior value is found
         self.assertEqual(match(False, [True, False, False], -1), 3)
 
+    def test_boolean_in_descending_mode_with_ascending_array(self):
         # Non descending arrays raise exception
         with self.assertRaises(Exception):
             match(False, [False, False, True], -1)
+
+    def test_boolean_in_descending_mode_with_any_array(self):    
         with self.assertRaises(Exception):
             match(True, [False, True, False], -1)
  
