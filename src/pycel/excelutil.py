@@ -548,6 +548,7 @@ def criteria_parser(criteria):
                 return x > value
         elif operator == '>=':
             def check(x):
+                print '\n TEST', x
                 if not is_number(x):
                     raise TypeError('excellib.countif() doesnt\'t work for checking non number items against non equality')
                 return x >= value

@@ -273,20 +273,11 @@ def mod(nb, q): # Excel Reference: https://support.office.com/en-us/article/MOD-
 def count(*args): # Excel reference: https://support.office.com/en-us/article/COUNT-function-a59cd7fc-b623-4d93-87a4-d23bf411294c
     l = list(args)
 
-    def count_inside_list(my_list):
-        local_count = 0
-
-        for arg in my_list:
-            if is_number(arg) and type(arg) is not bool:
-                local_count += 1
-
-        return local_count
-
     total = 0
 
     for arg in l:
         if type(arg) == list:
-            total += count_inside_list(arg)
+            total += len(filter(lambda x: is_number(x) and type(x) is not bool, arg)) # count inside a list
         elif is_number(arg): # int() is used for text representation of numbers
             total += 1
 
