@@ -285,8 +285,6 @@ def countifs(*args):
     if l >= 2:
         indexes = find_corresponding_index(args[0], args[1]) # find indexes that match first layer of countif
 
-        print '\n', indexes
-
         remaining_ranges = [elem for i, elem in enumerate(arg_list[2:]) if i % 2 == 0] # get only ranges
         remaining_criteria = [elem for i, elem in enumerate(arg_list[2:]) if i % 2 == 1] # get only criteria
 
@@ -476,6 +474,16 @@ def yearfrac(start_date, end_date, basis = 0): # Excel reference: https://suppor
 
 
     return result
+
+
+def isNa(value):
+    # This function might need more solid testing
+
+    try:
+        eval(value)
+        return False
+    except:
+        return True
 
 
 

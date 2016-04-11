@@ -16,6 +16,19 @@ from pycel.excellib import xround
 from pycel.excellib import mid
 from pycel.excellib import date
 from pycel.excellib import yearfrac
+from pycel.excellib import isNa
+
+
+class Test_IsNa(unittest.TestCase):
+    # This function might need more solid testing
+    def setup(self):
+        pass
+
+    def test_isNa_false(self):
+        self.assertFalse(isNa('2 + 1'))
+
+    def test_isNa_true(self):
+        self.assertTrue(isNa('x + 1'))
 
 
 class Test_Yearfrac(unittest.TestCase):
