@@ -559,8 +559,7 @@ class ExcelParser(ExcelParserTokens):
                     indent -= 1
     
                 output += "    "*indent + t.tvalue + " <" + t.ttype +"> <" + t.tsubtype + ">" + "\n"
-                #output += "    "*indent + t.tvalue + "\n"
-
+ 
                 if (t.tsubtype == self.TOK_SUBTYPE_START):
                     indent += 1;
         return output
