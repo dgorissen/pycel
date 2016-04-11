@@ -17,9 +17,40 @@ from pycel.excellib import (
     mid,
     date,
     yearfrac,
-    isNa
+    isNa,
+    sumif
 )
 
+class Test_SumIf(unittest.TestCase):
+    def setup(self):
+        pass
+
+    def test_range_is_a_list(self):
+        with self.assertRaises(TypeError):
+            sumif(12, 12)
+
+    def test_sum_range_is_a_list(self):
+        with self.assertRaises(TypeError):
+            sumif(12, 12, 12)
+
+    def test_criteria_is_number_string_boolean(self):
+        self.assertEqual(sumif([1, 2, 3], [1, 2]), 0)
+
+    def test_regular_with_number_criteria(self):
+        self.assertEqual(sumif([1, 1, 2, 2, 2], 2), 6)
+
+    def test_regular_with_string_criteria(self):
+        self.assertEqual(sumif([1, 2, 3, 4, 5], ">=3"), 12)
+
+    def test_sum_range(self):
+        self.assertEqual(sumif([1, 2, 3, 4, 5], ">=3", [100, 123, 12, 23, 633]), 668)
+
+    def test_sum_range_with_more_indexes(self):
+        self.assertEqual(sumif([1, 2, 3, 4, 5], ">=3", [100, 123, 12, 23, 633, 1]), 668)
+
+    def test_sum_range_with_less_indexes(self):
+        self.assertEqual(sumif([1, 2, 3, 4, 5], ">=3", [100, 123, 12, 23]), 35)
+        
 
 class Test_IsNa(unittest.TestCase):
     # This function might need more solid testing

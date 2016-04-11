@@ -17,7 +17,7 @@ from pycel.excelutil import (
     normalize_year,
     is_leap_year,
     get_max_days_in_month,
-    find_corresponding_index,
+    find_corresponding_index
 )
 
 ######################################################################################
@@ -93,6 +93,32 @@ def xsum(*args):
         return 0
     else:
         return sum(data)
+
+def sumif(range, criteria, sum_range = []): # Excel reference: https://support.office.com/en-us/article/SUMIF-function-169b8c99-c05c-4483-a712-1697a653039b
+
+    # WARNING: 
+    # - wildcards not supported
+    # - doesn't really follow 2nd remark about sum_range length
+
+    if type(range) != list:
+        raise TypeError('%s must be a list' % str(range))
+
+    if type(sum_range) != list:
+        raise TypeError('%s must be a list' % str(sum_range))
+
+    if isinstance(criteria, list) and not isinstance(criteria , (str, bool)): # ugly... 
+        return 0
+
+    indexes = find_corresponding_index(range, criteria)
+
+    def f(x):
+        return sum_range[x] if x < len(sum_range) else 0
+
+    if len(sum_range) == 0:
+        return sum(map(lambda x: range[x], indexes))
+    else:
+        return sum(map(f, indexes))
+
 
 
 def average(*args):
