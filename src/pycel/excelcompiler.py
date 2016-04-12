@@ -590,12 +590,12 @@ class ExcelCompiler(object):
     def gen_graph(self, seed, sheet=None):
         """Given a starting point (e.g., A6, or A3:B7) on a particular sheet, generate
            a Spreadsheet instance that captures the logic and control flow of the equations."""
-        
+
         # starting points
         cursheet = sheet if sheet else self.excel.get_active_sheet()
         self.excel.set_sheet(cursheet)
         
-        seeds,nr,nc = Cell.make_cells(self.excel, seed, sheet=cursheet)
+        seeds = Cell.make_cells(self.excel, seed, sheet=cursheet) # no need to output nr and nc here, since seed can be a list of unlinked cells
         seeds = list(flatten(seeds))
         
         print "Seed %s expanded into %s cells" % (seed,len(seeds))
