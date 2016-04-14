@@ -234,18 +234,18 @@ class Cell(object):
                 if is_range(cell):
                     cs_in_range, nr, nc = convert_range(cell, sheet)
                     cells.append(cs_in_range)
-                
                 else:
                     c = Cell.resolve_cell(excel, cell, sheet=sheet)
                     cells.append(c) 
 
             cells = list(flatten(cells))
 
-            return cells # numrows and numcols are irrelevant here
+            return (cells,-1,-1) # numrows and numcols are irrelevant here, so we return nr=nc=-1 
 
         else:
             if is_range(range):
                 cells, numrows, numcols = convert_range(range, sheet)
+                    
             else:
                 c = Cell.resolve_cell(excel, range, sheet=sheet)
                 cells.append(c)
