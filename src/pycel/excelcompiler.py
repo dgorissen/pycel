@@ -603,7 +603,7 @@ class ExcelCompiler(object):
         cursheet = sheet if sheet else self.excel.get_active_sheet()
         self.excel.set_sheet(cursheet)
         
-        seeds = Cell.make_cells(self.excel, seed, sheet=cursheet) # no need to output nr and nc here, since seed can be a list of unlinked cells
+        seeds, nr, nc = Cell.make_cells(self.excel, seed, sheet=cursheet) # no need to output nr and nc here, since seed can be a list of unlinked cells
         seeds = list(flatten(seeds))
         
         print "Seed %s expanded into %s cells" % (seed,len(seeds))
