@@ -37,3 +37,7 @@ Thumbs.db
 *.pyc
 *.gexf
 *.pickle
+
+# folders #
+.ipynb_checkpoints
+__pycache__
