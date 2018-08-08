@@ -610,9 +610,10 @@ def create_node(t):
 
 def shunting_yard(expression):
     
-    #remove leading =
-    if expression.startswith('='):
-        expression = expression[1:]
+    #remove leading =, and any preceding space
+    if expression.strip().startswith('='):
+        idx = expression.index('=')
+        expression = expression[idx:]
         
     p = ExcelParser();
     p.parse(expression)
