@@ -1,3 +1,4 @@
-networkx
+networkx<2.0
 openpyxl
 numpy
+matplotlib
