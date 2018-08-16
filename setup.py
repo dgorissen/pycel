@@ -11,7 +11,7 @@ setup(name='Pycel',
       url = 'https://github.com/dgorissen/pycel',
       tests_require = ['nose >= 1.2'],
       test_suite='nose.collector',
-      install_requires = ['networkx', 
+      install_requires = ['networkx<2.0', 
                           'openpyxl',
                           'numpy'
                           ],
