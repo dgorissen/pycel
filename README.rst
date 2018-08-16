@@ -1,6 +1,8 @@
 Pycel
 =====
 
+.. image:: https://mybinder.org/badge.svg :target: https://mybinder.org/v2/gh/dgorissen/pycel/master
+
 Pycel is a small python library that can translate an Excel spreadsheet into executable python code which can be run independently of Excel.
 The python code is based on a graph and uses caching & lazy evaluation to ensure (relatively) fast execution.  The graph can be exported and analyzed using
 tools like `Gephi <http://www.gephi.org>`_. See the contained example for an illustration.
