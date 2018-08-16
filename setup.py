@@ -12,7 +12,8 @@ setup(name='Pycel',
       tests_require = ['nose >= 1.2'],
       test_suite='nose.collector',
       install_requires = ['networkx', 
-                          'openpyxl'
+                          'openpyxl',
+                          'numpy'
                           ],
       author='Dirk Gorissen',
       author_email='dgorissen@gmail.com',
