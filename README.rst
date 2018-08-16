@@ -17,6 +17,9 @@ Usage
 
 Download the library and run the example file, the initial compilation uses COM so an instance of Excel must be available (i.e., the compilation needs to be run on Windows).  
 
+**Quick start:**
+You can use binder to see and explore the tool quickly and interactively in the browser `Binder Example <https://mybinder.org/v2/gh/kmader/pycel/patch-1?filepath=notebooks%2Fexample.ipynb>`_
+
 **The good:**
 
 All the main mathematical functions (sin, cos, atan2, ...) and operators (+,/,^, ...) are supported as are ranges (A5:D7), and functions like MIN, MAX, INDEX, LOOKUP, and LINEST.
