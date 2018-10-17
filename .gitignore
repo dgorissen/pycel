@@ -37,3 +37,9 @@ Thumbs.db
 *.pyc
 *.gexf
 *.pickle
+
+.idea/
+.pytest_cache/
+*/__pycache__/
+venv/
+*.egg-info/

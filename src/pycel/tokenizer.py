@@ -281,7 +281,7 @@ class ExcelParser(ExcelParserTokens):
                 continue;
     
             # scientific notation check
-            regexSN = '^[1-9]{1}(\.[0-9]+)?[eE]{1}$';
+            regexSN = r'^[1-9]{1}(\.[0-9]+)?[eE]{1}$';
             if (("+-").find(currentChar()) != -1):
                 if len(token) > 1:
                     if re.match(regexSN,token):
@@ -506,7 +506,7 @@ class ExcelParser(ExcelParserTokens):
             if ((token.ttype == self.TOK_TYPE_OPERAND) and (len(token.tsubtype) == 0)):
                 try:
                     float(token.tvalue)
-                except ValueError, e:
+                except ValueError:
                     if ((token.tvalue == 'TRUE') or (token.tvalue == 'FALSE')):
                         token.tsubtype = self.TOK_SUBTYPE_LOGICAL
                     else:
@@ -638,7 +638,7 @@ def shunting_yard(expression):
         else:
             tokens.append(t)
 
-    print "tokens: ", "|".join([x.tvalue for x in tokens])
+    print("tokens: ", "|".join([x.tvalue for x in tokens]))
 
     #http://office.microsoft.com/en-us/excel-help/calculation-operators-and-precedence-HP010078886.aspx
     operators = {}
@@ -666,9 +666,10 @@ def shunting_yard(expression):
     arg_count = []
     
     def po():
-        print "output: ", "|".join([x.tvalue for x in output])
+        print("output: ", "|".join([x.tvalue for x in output]))
+
     def so():
-        print "stack:", "|".join([x.tvalue for x in stack])
+        print("stack:", "|".join([x.tvalue for x in stack]))
     
     for t in tokens:
         if t.ttype == "operand":
@@ -741,7 +742,7 @@ def shunting_yard(expression):
                 w = were_values.pop()
                 if w: a += 1
                 f.num_args = a
-                print f, "has ",a," args"
+                print(f, "has ",a," args")
                 output.append(f)
 
     while stack:

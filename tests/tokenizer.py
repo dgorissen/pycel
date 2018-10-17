@@ -2,8 +2,10 @@
 
 from pycel.excelcompiler import shunting_yard
 
+
 def stringify(e):
     return "|".join([str(x) for x in e])
+
 
 range_inputs = [
     ('=$A1',
@@ -43,7 +45,6 @@ range_inputs = [
      '123|4|+|A1:A2|AVG|+|AVG'),
 ]
 
-
 basic_inputs = [
     ('=SUM((A:A 1:1))',
      'A:A|1:1||SUM'),
@@ -79,21 +80,24 @@ whitespace_inputs = [
 ]
 
 if_inputs = [
-    ('=IF("a"={"a","b";"c",#N/A;-1,TRUE}, "yes", "no") &   "  more ""test"" text"',
-     'a|a|b|ARRAYROW|c|#N/A|ARRAYROW|1|-|TRUE|ARRAYROW|ARRAY|=|yes|no|IF|  more "test" text|&'),
+    (
+    '=IF("a"={"a","b";"c",#N/A;-1,TRUE}, "yes", "no") &   "  more ""test"" text"',
+    'a|a|b|ARRAYROW|c|#N/A|ARRAYROW|1|-|TRUE|ARRAYROW|ARRAY|=|yes|no|IF|  more "test" text|&'),
 
-    ('=IF(R13C3>DATE(2002,1,6),0,IF(ISERROR(R[41]C[2]),0,IF(R13C3>=R[41]C[2],0, IF(AND(R[23]C[11]>=55,R[24]C[11]>=20),R53C3,0))))',
-     'R13C3|2002|1|6|DATE|>|0|R[41]C[2]|ISERROR|0|R13C3|R[41]C[2]|>=|0|R[23]C[11]|55|>=|R[24]C[11]|20|>=|AND|R53C3|0|IF|IF|IF|IF'),
+    (
+    '=IF(R13C3>DATE(2002,1,6),0,IF(ISERROR(R[41]C[2]),0,IF(R13C3>=R[41]C[2],0, IF(AND(R[23]C[11]>=55,R[24]C[11]>=20),R53C3,0))))',
+    'R13C3|2002|1|6|DATE|>|0|R[41]C[2]|ISERROR|0|R13C3|R[41]C[2]|>=|0|R[23]C[11]|55|>=|R[24]C[11]|20|>=|AND|R53C3|0|IF|IF|IF|IF'),
 
-    ('=IF(R[39]C[11]>65,R[25]C[42],ROUND((R[11]C[11]*IF(OR(AND(R[39]C[11]>=55, R[40]C[11]>=20),AND(R[40]C[11]>=20,R11C3="YES")),R[44]C[11],R[43]C[11]))+(R[14]C[11] *IF(OR(AND(R[39]C[11]>=55,R[40]C[11]>=20),AND(R[40]C[11]>=20,R11C3="YES")), R[45]C[11],R[43]C[11])),0))',
-     'R[39]C[11]|65|>|R[25]C[42]|R[11]C[11]|R[39]C[11]|55|>=|R[40]C[11]|20|>=|AND|R[40]C[11]|20|>=|R11C3|YES|=|AND|OR|R[44]C[11]|R[43]C[11]|IF|*|R[14]C[11]|R[39]C[11]|55|>=|R[40]C[11]|20|>=|AND|R[40]C[11]|20|>=|R11C3|YES|=|AND|OR|R[45]C[11]|R[43]C[11]|IF|*|+|0|ROUND|IF'),
-
+    (
+    '=IF(R[39]C[11]>65,R[25]C[42],ROUND((R[11]C[11]*IF(OR(AND(R[39]C[11]>=55, R[40]C[11]>=20),AND(R[40]C[11]>=20,R11C3="YES")),R[44]C[11],R[43]C[11]))+(R[14]C[11] *IF(OR(AND(R[39]C[11]>=55,R[40]C[11]>=20),AND(R[40]C[11]>=20,R11C3="YES")), R[45]C[11],R[43]C[11])),0))',
+    'R[39]C[11]|65|>|R[25]C[42]|R[11]C[11]|R[39]C[11]|55|>=|R[40]C[11]|20|>=|AND|R[40]C[11]|20|>=|R11C3|YES|=|AND|OR|R[44]C[11]|R[43]C[11]|IF|*|R[14]C[11]|R[39]C[11]|55|>=|R[40]C[11]|20|>=|AND|R[40]C[11]|20|>=|R11C3|YES|=|AND|OR|R[45]C[11]|R[43]C[11]|IF|*|+|0|ROUND|IF'),
 
     ('=IF(AI119="","",E119)',
      'AI119||=||E119|IF'),
 
-    ('=IF(P5=1.0,"NA",IF(P5=2.0,"A",IF(P5=3.0,"B",IF(P5=4.0,"C",IF(P5=5.0,"D",IF(P5=6.0,"E",IF(P5=7.0,"F",IF(P5=8.0,"G"))))))))',
-     'P5|1.0|=|NA|P5|2.0|=|A|P5|3.0|=|B|P5|4.0|=|C|P5|5.0|=|D|P5|6.0|=|E|P5|7.0|=|F|P5|8.0|=|G|IF|IF|IF|IF|IF|IF|IF|IF'),
+    (
+    '=IF(P5=1.0,"NA",IF(P5=2.0,"A",IF(P5=3.0,"B",IF(P5=4.0,"C",IF(P5=5.0,"D",IF(P5=6.0,"E",IF(P5=7.0,"F",IF(P5=8.0,"G"))))))))',
+    'P5|1.0|=|NA|P5|2.0|=|A|P5|3.0|=|B|P5|4.0|=|C|P5|5.0|=|D|P5|6.0|=|E|P5|7.0|=|F|P5|8.0|=|G|IF|IF|IF|IF|IF|IF|IF|IF'),
 
 ]
 
@@ -104,8 +108,9 @@ fancy_reference_inputs = [
     ('=[data.xls]sheet1!$A$1',
      '[data.xls]sheet1!$A$1'),
 
-    ('=(propellor_charts!B22*(propellor_charts!E21+propellor_charts!D21*(engine_data!O16*D70+engine_data!P16)+propellor_charts!C21*(engine_data!O16*D70+engine_data!P16)^2+propellor_charts!B21*(engine_data!O16*D70+engine_data!P16)^3)^2)^(1/3)*(1*D70/5.33E-18)^(2/3)*0.0000000001*28.3495231*9.81/1000',
-     'propellor_charts!B22|propellor_charts!E21|propellor_charts!D21|engine_data!O16|D70|*|engine_data!P16|+|*|+|propellor_charts!C21|engine_data!O16|D70|*|engine_data!P16|+|2|^|*|+|propellor_charts!B21|engine_data!O16|D70|*|engine_data!P16|+|3|^|*|+|2|^|*|1|3|/|^|1|D70|*|5.33E-18|/|2|3|/|^|*|0.0000000001|*|28.3495231|*|9.81|*|1000|/'),
+    (
+    '=(propellor_charts!B22*(propellor_charts!E21+propellor_charts!D21*(engine_data!O16*D70+engine_data!P16)+propellor_charts!C21*(engine_data!O16*D70+engine_data!P16)^2+propellor_charts!B21*(engine_data!O16*D70+engine_data!P16)^3)^2)^(1/3)*(1*D70/5.33E-18)^(2/3)*0.0000000001*28.3495231*9.81/1000',
+    'propellor_charts!B22|propellor_charts!E21|propellor_charts!D21|engine_data!O16|D70|*|engine_data!P16|+|*|+|propellor_charts!C21|engine_data!O16|D70|*|engine_data!P16|+|2|^|*|+|propellor_charts!B21|engine_data!O16|D70|*|engine_data!P16|+|3|^|*|+|2|^|*|1|3|/|^|1|D70|*|5.33E-18|/|2|3|/|^|*|0.0000000001|*|28.3495231|*|9.81|*|1000|/'),
 
     ('=IF(configurations!$G$22=3,sizing!$C$303,M14)',
      'configurations!$G$22|3|=|sizing!$C$303|M14|IF'),
@@ -125,37 +130,42 @@ linest_inputs = [
 
     ('=LINEST(G2:G17,E2:E17,FALSE)',
      'G2:G17|E2:E17|FALSE|LINEST'),
-    ('=LINEST(B32:(INDEX(B32:B119,MATCH(0,B32:B119,-1),1)),(F32:(INDEX(B32:F119,MATCH(0,B32:B119,-1),5)))^{1,2,3,4})',
-     'B32:B119|0|B32:B119|1|-|MATCH|1|INDEX|B32:|B32:F119|0|B32:B119|1|-|MATCH|5|INDEX|F32:|1|2|3|4|ARRAYROW|ARRAY|^|LINEST'),
+    (
+    '=LINEST(B32:(INDEX(B32:B119,MATCH(0,B32:B119,-1),1)),(F32:(INDEX(B32:F119,MATCH(0,B32:B119,-1),5)))^{1,2,3,4})',
+    'B32:B119|0|B32:B119|1|-|MATCH|1|INDEX|B32:|B32:F119|0|B32:B119|1|-|MATCH|5|INDEX|F32:|1|2|3|4|ARRAYROW|ARRAY|^|LINEST'),
 ]
 
 
 def test_range():
-    for formula,rpn in range_inputs:
+    for formula, rpn in range_inputs:
         assert stringify(shunting_yard(formula)) == rpn
+
 
 def test_if():
-    for formula,rpn in if_inputs:
+    for formula, rpn in if_inputs:
         assert stringify(shunting_yard(formula)) == rpn
+
 
 def test_whitespace():
-    for formula,rpn in whitespace_inputs:
+    for formula, rpn in whitespace_inputs:
         assert stringify(shunting_yard(formula)) == rpn
 
+
 def test_basic():
-    for formula,rpn in basic_inputs:
+    for formula, rpn in basic_inputs:
         assert stringify(shunting_yard(formula)) == rpn
 
 
 def test_math():
-    for formula,rpn in math_inputs:
+    for formula, rpn in math_inputs:
         assert stringify(shunting_yard(formula)) == rpn
 
 
 def test_linest():
-    for formula,rpn in linest_inputs:
+    for formula, rpn in linest_inputs:
         assert stringify(shunting_yard(formula)) == rpn
 
+
 def test_fancy_references():
-    for formula,rpn in fancy_reference_inputs:
+    for formula, rpn in fancy_reference_inputs:
         assert stringify(shunting_yard(formula)) == rpn

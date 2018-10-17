@@ -262,22 +262,26 @@ def match(lookup_value, lookup_array, match_type=1):
 
 
 def mod(nb, q): # Excel Reference: https://support.office.com/en-us/article/MOD-function-9b6cd169-b6ee-406a-a97b-edf2a9dc24f3
-    if not isinstance(nb, (int, long)):
+    if not isinstance(nb, int):
         raise TypeError("%s is not an integer" % str(nb))
-    elif not isinstance(q, (int, long)):
+    elif not isinstance(q, int):
         raise TypeError("%s is not an integer" % str(q))
     else:
         return nb % q
 
 
-def count(*args): # Excel reference: https://support.office.com/en-us/article/COUNT-function-a59cd7fc-b623-4d93-87a4-d23bf411294c
+def count(*args):
+    # Excel reference: https://support.office.com/en-us/article/
+    # COUNT-function-a59cd7fc-b623-4d93-87a4-d23bf411294c
     l = list(args)
 
     total = 0
 
     for arg in l:
         if type(arg) == list:
-            total += len(filter(lambda x: is_number(x) and type(x) is not bool, arg)) # count inside a list
+            # count inside a list
+            total += len(tuple(
+                filter(lambda x: is_number(x) and type(x) is not bool, arg)))
         elif is_number(arg): # int() is used for text representation of numbers
             total += 1
 

@@ -1,11 +1,4 @@
-import os
-import sys
 import unittest
-
-
-dir = os.path.dirname(__file__)
-path = os.path.join(dir, '../src')
-sys.path.insert(0, path)
 
 from pycel.excellib import ( 
     match,
@@ -21,9 +14,8 @@ from pycel.excellib import (
     sumif
 )
 
-class Test_SumIf(unittest.TestCase):
-    def setup(self):
-        pass
+
+class SumIf(unittest.TestCase):
 
     def test_range_is_a_list(self):
         with self.assertRaises(TypeError):
@@ -43,19 +35,17 @@ class Test_SumIf(unittest.TestCase):
         self.assertEqual(sumif([1, 2, 3, 4, 5], ">=3"), 12)
 
     def test_sum_range(self):
-        self.assertEqual(sumif([1, 2, 3, 4, 5], ">=3", [100, 123, 12, 23, 633]), 668)
+        assert 668 == sumif([1, 2, 3, 4, 5], ">=3", [100, 123, 12, 23, 633])
 
     def test_sum_range_with_more_indexes(self):
-        self.assertEqual(sumif([1, 2, 3, 4, 5], ">=3", [100, 123, 12, 23, 633, 1]), 668)
+        assert 668 == sumif([1, 2, 3, 4, 5], ">=3", [100, 123, 12, 23, 633, 1])
 
     def test_sum_range_with_less_indexes(self):
         self.assertEqual(sumif([1, 2, 3, 4, 5], ">=3", [100, 123, 12, 23]), 35)
         
 
-class Test_IsNa(unittest.TestCase):
+class IsNa(unittest.TestCase):
     # This function might need more solid testing
-    def setup(self):
-        pass
 
     def test_isNa_false(self):
         self.assertFalse(isNa('2 + 1'))
@@ -64,9 +54,7 @@ class Test_IsNa(unittest.TestCase):
         self.assertTrue(isNa('x + 1'))
 
 
-class Test_Yearfrac(unittest.TestCase):
-    def setup(self):
-        pass
+class Yearfrac(unittest.TestCase):
 
     def test_start_date_must_be_number(self):
         with self.assertRaises(TypeError):
@@ -107,9 +95,7 @@ class Test_Yearfrac(unittest.TestCase):
         self.assertAlmostEqual(yearfrac(date(2015, 4, 20), date(2008, 1, 1)), yearfrac(date(2008, 1, 1), date(2015, 4, 20)))    
 
 
-class Test_Date(unittest.TestCase):
-    def setup(self):
-        pass
+class Date(unittest.TestCase):
 
     def test_year_must_be_integer(self):
         with self.assertRaises(TypeError):
@@ -153,9 +139,8 @@ class Test_Date(unittest.TestCase):
     def test_year_regular(self):
         self.assertEqual(date(2008, 11, 3), 39755)
 
-class Test_Mid(unittest.TestCase):
-    def setUp(self):
-        pass
+
+class Mid(unittest.TestCase):
 
     def test_start_num_must_be_integer(self):
         with self.assertRaises(TypeError):
@@ -177,9 +162,7 @@ class Test_Mid(unittest.TestCase):
         self.assertEqual(mid('Romain', 2, 9), 'main')
         
 
-class Test_Round(unittest.TestCase):
-    def setUp(self):
-        pass
+class Round(unittest.TestCase):
 
     def test_nb_must_be_number(self):
         with self.assertRaises(TypeError):
@@ -196,9 +179,7 @@ class Test_Round(unittest.TestCase):
         self.assertEqual(xround(2352.67, -2), 2400) 
 
 
-class Test_Count(unittest.TestCase):
-    def setUp(self):
-        pass
+class Count(unittest.TestCase):
 
     def test_without_nested_booleans(self):
         self.assertEqual(count([1, 2, 'e'], True, 'r'), 3)
@@ -210,9 +191,7 @@ class Test_Count(unittest.TestCase):
         self.assertEqual(count([1, '2.2', 'e'], True, '20'), 4)
 
 
-class Test_Countif(unittest.TestCase):
-    def setUp(self):
-        pass
+class Countif(unittest.TestCase):
 
     def test_argument_validity(self):
         with self.assertRaises(TypeError):
@@ -240,16 +219,14 @@ class Test_Countif(unittest.TestCase):
         self.assertEqual(countif([7, 25, 13, 25], 25), 2)
 
 
-class Test_Countifs(unittest.TestCase): # more tests might be welcomed
-    def setUp(self):
-        pass
+class Countifs(unittest.TestCase):
+    # more tests might be welcomed
 
     def test_countifs_regular(self):
-        self.assertEqual(countifs([7, 25, 13, 25], 25, [100, 102, 201, 20], ">100"), 1)
+        assert 1 == countifs([7, 25, 13, 25], 25, [100, 102, 201, 20], ">100")
 
-class Test_Mod(unittest.TestCase):
-    def setUp(self):
-        pass
+
+class Mod(unittest.TestCase):
 
     def test_first_argument_validity(self):
         with self.assertRaises(TypeError):
@@ -263,9 +240,7 @@ class Test_Mod(unittest.TestCase):
         self.assertEqual(mod(10, 4), 2)
 
 
-class Test_Match(unittest.TestCase):
-    def setUp(self):
-        pass
+class Match(unittest.TestCase):
 
     def test_numeric_in_ascending_mode(self):
         # Closest inferior value is found
@@ -375,6 +350,3 @@ class Test_Match(unittest.TestCase):
     def test_boolean_in_descending_mode_with_any_array(self):    
         with self.assertRaises(Exception):
             match(True, [False, True, False], -1)
- 
-if __name__ == '__main__':
-    unittest.main()

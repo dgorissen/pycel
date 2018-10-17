@@ -1,5 +1,4 @@
 from __future__ import division
-from itertools import izip
 import collections
 import functools
 import re
@@ -207,9 +206,9 @@ class Cell(object):
             r = excel.get_range(range)
             fs = r.Formula
             vs = r.Value
-            print fs, vs
+            print(fs, vs)
             
-            for it in (list(izip(*x)) for x in izip(ads,fs,vs)):
+            for it in (list(zip(*x)) for x in zip(ads,fs,vs)):
                 row = []
                 for c in it:
                     a = c[0]
@@ -277,14 +276,14 @@ def split_address(address):
     address = address.upper()
     
     # regular <col><row> format    
-    if re.match('^[A-Z\$]+[\d\$]+$', address):
-        col,row = filter(None,re.split('([A-Z\$]+)',address))
+    if re.match(r'^[A-Z\$]+[\d\$]+$', address):
+        col,row = filter(None,re.split(r'([A-Z\$]+)',address))
     # R<row>C<col> format
-    elif re.match('^R\d+C\d+$', address):
+    elif re.match(r'^R\d+C\d+$', address):
         row,col = address.split('C')
         row = row[1:]
     # R[<row>]C[<col>] format
-    elif re.match('^R\[\d+\]C\[\d+\]$', address):
+    elif re.match(r'^R\[\d+\]C\[\d+\]$', address):
         row,col = address.split('C')
         row = row[2:-1]
         col = col[2:-1]
@@ -554,7 +553,7 @@ def criteria_parser(criteria):
         def check(x):
             return x == criteria #and type(x) == type(criteria)
     elif type(criteria) == str:
-        search = re.search('(\W*)(.*)', criteria.lower()).group
+        search = re.search(r'(\W*)(.*)', criteria.lower()).group
         operator = search(1)
         value = search(2)
         value = float(value) if is_number(value) else str(value)
@@ -571,7 +570,6 @@ def criteria_parser(criteria):
                 return x > value
         elif operator == '>=':
             def check(x):
-                print '\n TEST', x
                 if not is_number(x):
                     raise TypeError('excellib.countif() doesnt\'t work for checking non number items against non equality')
                 return x >= value
@@ -607,5 +605,3 @@ def find_corresponding_index(range, criteria):
 
     return valid
 
-if __name__ == '__main__':
-    pass

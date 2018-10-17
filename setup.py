@@ -9,7 +9,7 @@ setup(name='Pycel',
       package_dir = {'':'src'},
       description='A library for compiling excel spreadsheets to python code & visualizing them as a graph',
       url = 'https://github.com/dgorissen/pycel',
-      tests_require = ['nose >= 1.2'],
+      tests_require = ['pytest'],
       test_suite='nose.collector',
       install_requires = ['networkx', 
                           'openpyxl'

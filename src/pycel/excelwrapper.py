@@ -71,7 +71,7 @@ class ExcelWrapper(object):
         
     def get_value(self,r,c):
         return self.get_cell(r, c).Value
-    
+
     def set_value(self,r,c,val):
         self.get_cell(r, c).Value = val
 
@@ -269,9 +269,10 @@ class ExcelOpxWrapper(ExcelWrapper):
             return None
 
         rangednames = []
-        for named_range in self.workbook.get_named_ranges():
+        for named_range in self.workbook.defined_names.definedName:
             for worksheet, range_alias in named_range.destinations:
-                tuple_name = (len(rangednames)+1,  str(named_range.name), str(worksheet.title+'!'+range_alias))
+                tuple_name = (len(rangednames)+1,  str(named_range.name),
+                              str(self.workbook[worksheet].title+'!'+range_alias))
                 rangednames.append([tuple_name])
         return rangednames
 
@@ -294,8 +295,8 @@ class ExcelOpxWrapper(ExcelWrapper):
         return
         
     def set_sheet(self,s):
-        self.workbook.active = self.workbook.get_index(self.workbook[s]);
-        self.workbookDO.active = self.workbookDO.get_index(self.workbookDO[s]);
+        self.workbook.active = self.workbook.index(self.workbook[s])
+        self.workbookDO.active = self.workbookDO.index(self.workbookDO[s])
         return self.workbook.active;
     
     def get_sheet(self):
@@ -303,17 +304,20 @@ class ExcelOpxWrapper(ExcelWrapper):
             
     def get_range(self, address):
 
-        sheet = self.workbook.active;
-        sheetDO = self.workbookDO.active;
+        sheet = self.workbook.active
+        sheetDO = self.workbookDO.active
         if address.find('!') > 0:
             title,address = address.split('!')
             sheet = self.workbook[title]
             sheetDO = self.workbookDO[title] 
 
-        cells = [[cell for cell in row] for row in sheet.iter_rows(address) ]
-        cellsDO = [[cell for cell in row] for row in sheetDO.iter_rows(address)]
-        
-        return OpxRange(cells,cellsDO)
+        cells = sheet[address]
+        cellsDO = sheetDO[address]
+        if isinstance(cells, Cell):
+            cells = ((cells, ), )
+            cellsDO = ((cellsDO,),)
+
+        return OpxRange(cells, cellsDO)
 
     def get_used_range(self):
         return self.workbook.active.iter_rows()
@@ -323,10 +327,11 @@ class ExcelOpxWrapper(ExcelWrapper):
     
     def get_cell(self,r,c):
         # this could be improved in order not to call get_range
-        return self.get_range(self.workbook.active.cell(None,r,c).coordinate)
+        return self.get_range(self.workbook.active.cell(r,c).coordinate)
         
     def get_row(self,row):
-        return [self.get_value(row,col+1) for col in range(self.workbook.active.max_column)]
+        return [self.get_value(row,col+1)
+                for col in range(self.workbook.active.max_column)]
 
     def set_calc_mode(self,automatic=True):
         raise Exception('Not implemented')

@@ -1,24 +1,15 @@
 # We will choose our wrapper with os compatibility
 #       ExcelComWrapper : Must be run on Windows as it requires a COM link to an Excel instance.
 #       ExcelOpxWrapper : Can be run anywhere but only with post 2010 Excel formats
-try:
-    import win32com.client
-    import pythoncom
-    from pycel.excelwrapper import ExcelComWrapper as ExcelWrapperImpl
-except:
-    print "Can\'t import win32com -> switch from Com to Openpyxl wrapping implementation"
-    from pycel.excelwrapper import ExcelOpxWrapper as ExcelWrapperImpl
+from pycel.excelwrapper import ExcelOpxWrapper as ExcelWrapperImpl
 
-import excellib
-from excellib import *
-from excelutil import *
-from math import *
+from pycel import excellib
 from networkx.classes.digraph import DiGraph
 from networkx.drawing.nx_pydot import write_dot
 from networkx.drawing.nx_pylab import draw, draw_circular
 from networkx.readwrite.gexf import write_gexf
-from tokenizer import ExcelParser, f_token, shunting_yard
-import cPickle
+from pycel.tokenizer import ExcelParser, f_token
+#import cPickle
 import logging
 import networkx as nx
 
@@ -82,7 +73,7 @@ class Spreadsheet(object):
 
     def print_value_tree(self,addr,indent):
         cell = self.cellmap[addr]
-        print "%s %s = %s" % (" "*indent,addr,cell.value)
+        print("%s %s = %s" % (" "*indent,addr,cell.value))
         for c in self.G.predecessors_iter(cell):
             self.print_value_tree(c.address(), indent+1)
 
@@ -132,11 +123,11 @@ class Spreadsheet(object):
             return self.evaluate_range(rng)
                 
         try:
-            print "Evalling: %s, %s" % (cell.address(),cell.python_expression)
+            print("Evalling: %s, %s" % (cell.address(),cell.python_expression))
             vv = eval(cell.compiled_expression)
             #print "Cell %s evalled to %s" % (cell.address(),vv)
             if vv is None:
-                print "WARNING %s is None" % (cell.address())
+                print("WARNING %s is None" % (cell.address()))
             cell.value = vv
         except Exception as e:
             if e.message.startswith("Problem evalling"):
@@ -414,7 +405,7 @@ def shunting_yard(expression):
     operators['>='] = Operator('>=',1,'left')
     operators['<>'] = Operator('<>',1,'left')
             
-    output = collections.deque()
+    output = []
     stack = []
     were_values = []
     arg_count = []
@@ -606,17 +597,17 @@ class ExcelCompiler(object):
         seeds, nr, nc = Cell.make_cells(self.excel, seed, sheet=cursheet) # no need to output nr and nc here, since seed can be a list of unlinked cells
         seeds = list(flatten(seeds))
         
-        print "Seed %s expanded into %s cells" % (seed,len(seeds))
+        print("Seed %s expanded into %s cells" % (seed,len(seeds)))
         
         # only keep seeds with formulas or numbers
         seeds = [s for s in seeds if s.formula or isinstance(s.value,(int,float))]
 
-        print "%s filtered seeds " % len(seeds)
+        print("%s filtered seeds " % len(seeds))
         
         # cells to analyze: only formulas
         todo = [s for s in seeds if s.formula]
 
-        print "%s cells on the todo list" % len(todo)
+        print("%s cells on the todo list" % len(todo))
 
         # map of all cells
         cellmap = dict([(x.address(),x) for x in seeds])
@@ -630,7 +621,7 @@ class ExcelCompiler(object):
         while todo:
             c1 = todo.pop()
             
-            print "Handling ", c1.address()
+            print("Handling ", c1.address())
             
             # set the current sheet so relative addresses resolve properly
             if c1.sheet != cursheet:
@@ -707,7 +698,7 @@ class ExcelCompiler(object):
                     # add an edge from the cell to the parent (range or cell)
                     G.add_edge(cellmap[c2.address()],target)
             
-        print "Graph construction done, %s nodes, %s edges, %s cellmap entries" % (len(G.nodes()),len(G.edges()),len(cellmap))
+        print("Graph construction done, %s nodes, %s edges, %s cellmap entries" % (len(G.nodes()),len(G.edges()),len(cellmap)))
 
         sp = Spreadsheet(G,cellmap)
         
@@ -763,13 +754,13 @@ if __name__ == '__main__':
               ]
 
     for i in inputs:
-        print "**************************************************"
-        print "Formula: ", i
+        print("**************************************************")
+        print("Formula: ", i)
 
         e = shunting_yard(i);
-        print "RPN: ",  "|".join([str(x) for x in e])
+        print("RPN: ",  "|".join([str(x) for x in e]))
         
         G,root = build_ast(e)
         
-        print "Python code: ", root.emit(G,context=None)
-        print "**************************************************"
+        print("Python code: ", root.emit(G,context=None))
+        print("**************************************************")
