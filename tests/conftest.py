@@ -11,7 +11,12 @@ def fixture_dir():
 
 
 @pytest.fixture('session')
-def unconnected_excel(fixture_dir):
+def example_xls_path(fixture_dir):
+    return os.path.join(fixture_dir, "../example/example.xlsx")
+
+
+@pytest.fixture('session')
+def unconnected_excel(example_xls_path):
     import openpyxl.reader.worksheet as orw
     old_warn = orw.warn
 
@@ -20,8 +25,7 @@ def unconnected_excel(fixture_dir):
             old_warn(msg, *args, **kwargs)
             
     with mock.patch('openpyxl.reader.worksheet.warn', new_warn):
-        yield ExcelWrapperImpl(
-            os.path.join(fixture_dir, "../example/example.xlsx"))
+        yield ExcelWrapperImpl(example_xls_path)
         
         
 @pytest.fixture()

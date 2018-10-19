@@ -2,14 +2,31 @@
 #       ExcelComWrapper : Must be run on Windows as it requires a COM link to an Excel instance.
 #       ExcelOpxWrapper : Can be run anywhere but only with post 2010 Excel formats
 from pycel.excelwrapper import ExcelOpxWrapper as ExcelWrapperImpl
-
+from math import(
+    sin,
+)
+from pycel.excellib import (
+    linest,
+    xsum,
+)
+from pycel.excelutil import (
+    Cell,
+    CellRange,
+    flatten,
+    get_linest_degree,
+    is_range,
+    split_address,
+    split_range,
+    uniqueify,
+)
+import pickle
 from pycel import excellib
 from networkx.classes.digraph import DiGraph
 from networkx.drawing.nx_pydot import write_dot
 from networkx.drawing.nx_pylab import draw, draw_circular
 from networkx.readwrite.gexf import write_gexf
 from pycel.tokenizer import ExcelParser, f_token
-#import cPickle
+import pickle
 import logging
 import networkx as nx
 
@@ -29,13 +46,13 @@ class Spreadsheet(object):
     @staticmethod
     def load_from_file(fname):
         f = open(fname,'rb')
-        obj = cPickle.load(f)
+        obj = pickle.load(f)
         #obj = load(f)
         return obj
     
     def save_to_file(self,fname):
         f = open(fname,'wb')
-        cPickle.dump(self, f, protocol=2)
+        pickle.dump(self, f, protocol=2)
         f.close()
 
     def export_to_dot(self,fname):
@@ -66,12 +83,14 @@ class Spreadsheet(object):
             cell.value = val
         
     def reset(self, cell):
-        if cell.value is None: return
-        #print "resetting", cell.address()
+        if cell.value is None:
+            return
+        print("resetting", cell.address())
         cell.value = None
-        map(self.reset,self.G.successors_iter(cell)) 
+        for cell in self.G.successors(cell):
+            self.reset(cell)
 
-    def print_value_tree(self,addr,indent):
+    def print_value_tree(self, addr, indent):
         cell = self.cellmap[addr]
         print("%s %s = %s" % (" "*indent,addr,cell.value))
         for c in self.G.predecessors_iter(cell):
@@ -125,12 +144,12 @@ class Spreadsheet(object):
         try:
             print("Evalling: %s, %s" % (cell.address(),cell.python_expression))
             vv = eval(cell.compiled_expression)
-            #print "Cell %s evalled to %s" % (cell.address(),vv)
+            # print("Cell %s evalled to %s" % (cell.address(),vv))
             if vv is None:
                 print("WARNING %s is None" % (cell.address()))
             cell.value = vv
         except Exception as e:
-            if e.message.startswith("Problem evalling"):
+            if str(e).startswith("Problem evalling"):
                 raise e
             else:
                 raise Exception("Problem evalling: %s for %s, %s" % (e,cell.address(),cell.python_expression)) 
@@ -155,9 +174,8 @@ class ASTNode(object):
         return args
 
     def parent(self,ast):
-        args = ast.successors(self)
-        return args[0] if args else None
-    
+        return next(ast.successors(self), None)
+
     def emit(self,ast,context=None):
         """Emit code"""
         self.token.tvalue
@@ -512,25 +530,25 @@ def build_ast(expression):
             if n.ttype == "operator-infix":
                 arg2 = stack.pop()
                 arg1 = stack.pop()
-                G.add_node(arg1,{'pos':1})
-                G.add_node(arg2,{'pos':2})
+                G.add_node(arg1, pos=1)
+                G.add_node(arg2, pos=2)
                 G.add_edge(arg1, n)
                 G.add_edge(arg2, n)
             else:
                 arg1 = stack.pop()
-                G.add_node(arg1,{'pos':1})
+                G.add_node(arg1, pos=1)
                 G.add_edge(arg1, n)
                 
         elif isinstance(n,FunctionNode):
             args = [stack.pop() for _ in range(n.num_args)]
             args.reverse()
             for i,a in enumerate(args):
-                G.add_node(a,{'pos':i})
+                G.add_node(a, pos=i)
                 G.add_edge(a,n)
             #for i in range(n.num_args):
             #    G.add_edge(stack.pop(),n)
         else:
-            G.add_node(n,{'pos':0})
+            G.add_node(n, pos=0)
 
         stack.append(n)
         
@@ -572,9 +590,9 @@ class ExcelCompiler(object):
             code = root.emit(ast,context=Context(cell,self.excel))
         else:
             ast = None
-            code = str('"' + cell.value + '"' if isinstance(cell.value,unicode) else cell.value)
-            
-        return code,ast
+            code = '"{}"'.format(cell.value) if isinstance(cell.value, str) else cell.value
+
+        return code, ast
 
     def add_node_to_graph(self,G, n):
         G.add_node(n)
@@ -616,7 +634,8 @@ class ExcelCompiler(object):
         G = nx.DiGraph()
 
         # match the info in cellmap
-        for c in cellmap.itervalues(): self.add_node_to_graph(G, c)
+        for c in cellmap.values():
+            self.add_node_to_graph(G, c)
 
         while todo:
             c1 = todo.pop()
@@ -703,64 +722,3 @@ class ExcelCompiler(object):
         sp = Spreadsheet(G,cellmap)
         
         return sp
-
-if __name__ == '__main__':
-    
-    # some test formulas
-    inputs = [
-              '=SUM((A:A 1:1))',
-              '=A1',
-              '=atan2(A1,B1)',
-              '=5*log(sin()+2)',
-              '=5*log(sin(3,7,9)+2)',
-              '=3 + 4 * 2 / ( 1 - 5 ) ^ 2 ^ 3',
-              '=1+3+5',
-              '=3 * 4 + 5',
-              '=50',
-              '=1+1',
-              '=$A1',
-              '=$B$2',
-              '=SUM(B5:B15)',
-              '=SUM(B5:B15,D5:D15)',
-              '=SUM(B5:B15 A7:D7)',
-              '=SUM(sheet1!$A$1:$B$2)',
-              '=[data.xls]sheet1!$A$1',
-              '=SUM((A:A,1:1))',
-              '=SUM((A:A A1:B1))',
-              '=SUM(D9:D11,E9:E11,F9:F11)',
-              '=SUM((D9:D11,(E9:E11,F9:F11)))',
-              '=IF(P5=1.0,"NA",IF(P5=2.0,"A",IF(P5=3.0,"B",IF(P5=4.0,"C",IF(P5=5.0,"D",IF(P5=6.0,"E",IF(P5=7.0,"F",IF(P5=8.0,"G"))))))))',
-              '={SUM(B2:D2*B3:D3)}',
-              '=SUM(123 + SUM(456) + (45<6))+456+789',
-              '=AVG(((((123 + 4 + AVG(A1:A2))))))',
-              
-              # E. W. Bachtal's test formulae
-              '=IF("a"={"a","b";"c",#N/A;-1,TRUE}, "yes", "no") &   "  more ""test"" text"',
-              #'=+ AName- (-+-+-2^6) = {"A","B"} + @SUM(R1C1) + (@ERROR.TYPE(#VALUE!) = 2)',
-              '=IF(R13C3>DATE(2002,1,6),0,IF(ISERROR(R[41]C[2]),0,IF(R13C3>=R[41]C[2],0, IF(AND(R[23]C[11]>=55,R[24]C[11]>=20),R53C3,0))))',
-              '=IF(R[39]C[11]>65,R[25]C[42],ROUND((R[11]C[11]*IF(OR(AND(R[39]C[11]>=55, ' + 
-                  'R[40]C[11]>=20),AND(R[40]C[11]>=20,R11C3="YES")),R[44]C[11],R[43]C[11]))+(R[14]C[11] ' +
-                  '*IF(OR(AND(R[39]C[11]>=55,R[40]C[11]>=20),AND(R[40]C[11]>=20,R11C3="YES")), ' +
-                  'R[45]C[11],R[43]C[11])),0))',
-              '=(propellor_charts!B22*(propellor_charts!E21+propellor_charts!D21*(engine_data!O16*D70+engine_data!P16)+propellor_charts!C21*(engine_data!O16*D70+engine_data!P16)^2+propellor_charts!B21*(engine_data!O16*D70+engine_data!P16)^3)^2)^(1/3)*(1*D70/5.33E-18)^(2/3)*0.0000000001*28.3495231*9.81/1000',
-              '=(3600/1000)*E40*(E8/E39)*(E15/E19)*LN(E54/(E54-E48))',
-              '=IF(P5=1.0,"NA",IF(P5=2.0,"A",IF(P5=3.0,"B",IF(P5=4.0,"C",IF(P5=5.0,"D",IF(P5=6.0,"E",IF(P5=7.0,"F",IF(P5=8.0,"G"))))))))',
-              '=LINEST(X5:X32,W5:W32^{1,2,3})',
-              '=IF(configurations!$G$22=3,sizing!$C$303,M14)',
-              '=0.000001042*E226^3-0.00004777*E226^2+0.0007646*E226-0.00075',
-              '=LINEST(G2:G17,E2:E17,FALSE)',
-              '=IF(AI119="","",E119)',
-              '=LINEST(B32:(INDEX(B32:B119,MATCH(0,B32:B119,-1),1)),(F32:(INDEX(B32:F119,MATCH(0,B32:B119,-1),5)))^{1,2,3,4})',
-              ]
-
-    for i in inputs:
-        print("**************************************************")
-        print("Formula: ", i)
-
-        e = shunting_yard(i);
-        print("RPN: ",  "|".join([str(x) for x in e]))
-        
-        G,root = build_ast(e)
-        
-        print("Python code: ", root.emit(G,context=None))
-        print("**************************************************")

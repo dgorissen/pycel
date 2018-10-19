@@ -46,6 +46,12 @@ FUNCTION_MAP = {
 # List of excel equivalent functions
 # TODO: needs unit testing
 
+
+def _numerics(args):
+    # ignore non numeric cells
+    return [x for x in flatten(args) if isinstance(x, (int, float))]
+
+
 def value(text):
     # make the distinction for naca numbers
     if text.find('.') > 0:
@@ -63,8 +69,7 @@ def xlog(a):
 
 
 def xmax(*args):
-    # ignore non numeric cells
-    data = [x for x in flatten(args) if isinstance(x,(int,float,long))]
+    data = _numerics(args)
     
     # however, if no non numeric cells, return zero (is what excel does)
     if len(data) < 1:
@@ -74,8 +79,7 @@ def xmax(*args):
 
 
 def xmin(*args):
-    # ignore non numeric cells
-    data = [x for x in flatten(args) if isinstance(x,(int,float,long))]
+    data = _numerics(args)
     
     # however, if no non numeric cells, return zero (is what excel does)
     if len(data) < 1:
@@ -85,8 +89,7 @@ def xmin(*args):
 
 
 def xsum(*args):
-    # ignore non numeric cells
-    data = [x for x in flatten(args) if isinstance(x,(int,float,long))]
+    data = _numerics(args)
     
     # however, if no non numeric cells, return zero (is what excel does)
     if len(data) < 1:

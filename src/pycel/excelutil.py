@@ -88,7 +88,7 @@ class Cell(object):
         self.__row = int(r)
         self.__col_idx = col2num(c)
             
-        self.value = str(value) if isinstance(value,unicode) else value
+        self.value = value
         self.python_expression = None
         self._compiled_expression = None
         
@@ -146,11 +146,12 @@ class Cell(object):
         if not self.python_expression: return
         
         # if we are a constant string, surround by quotes
-        if isinstance(self.value,(str,unicode)) and not self.formula and not self.python_expression.startswith('"'):
+        if isinstance(self.value, str) and not self.formula and not self.python_expression.startswith('"'):
             self.python_expression='"' + self.python_expression + '"'
         
         try:
-            self._compiled_expression = compile(self.python_expression,'<string>','eval')
+            self._compiled_expression = compile(
+                str(self.python_expression),'<string>','eval')
         except Exception as e:
             raise Exception("Failed to compile cell %s with expression %s: %s" % (self.address(),self.python_expression,e)) 
     
@@ -441,7 +442,7 @@ def get_linest_degree(excel,cl):
 
 def flatten(l):
     for el in l:
-        if isinstance(el, collections.Iterable) and not isinstance(el, basestring):
+        if isinstance(el, collections.Iterable) and not isinstance(el, str):
             for sub in flatten(el):
                 yield sub
         else:
