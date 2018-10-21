@@ -3,7 +3,7 @@
 try:
     import win32com.client
     from win32com.client import Dispatch
-    from win32com.client import constants 
+    from win32com.client import constants
     import pythoncom
     import numpy as np
 except:
@@ -18,13 +18,14 @@ from os import path
 import abc
 from abc import abstractproperty, abstractmethod
 
+
 class ExcelWrapper(object):
     __metaclass__ = abc.ABCMeta
-    
+
     @abstractproperty
     def rangednames(self):
         return
-    
+
     @abstractmethod
     def connect(self):
         return
@@ -32,7 +33,7 @@ class ExcelWrapper(object):
     @abstractmethod
     def save(self):
         return
-    
+
     @abstractmethod
     def save_as(self, filename, delete_existing=False):
         return
@@ -40,19 +41,19 @@ class ExcelWrapper(object):
     @abstractmethod
     def close(self):
         return
-  
+
     @abstractmethod
     def quit(self):
         return
-        
+
     @abstractmethod
     def set_sheet(self,s):
         return
-    
+
     @abstractmethod
     def get_sheet(self):
         return
-            
+
     @abstractmethod
     def get_range(self, range):
         return
@@ -64,11 +65,11 @@ class ExcelWrapper(object):
     @abstractmethod
     def get_active_sheet(self):
         return
-    
+
     @abstractmethod
     def get_cell(self,r,c):
         return
-        
+
     def get_value(self,r,c):
         return self.get_cell(r, c).Value
 
@@ -77,8 +78,8 @@ class ExcelWrapper(object):
 
     def get_formula(self,r,c):
         f = self.get_cell(r, c).Formula
-        return f if f.startswith("=") else None 
-    
+        return f if f.startswith("=") else None
+
     def has_formula(self,range):
         f = self.get_range(range).Formula
         if type(f) == str:
@@ -88,18 +89,17 @@ class ExcelWrapper(object):
                 if t[0].startswith("="):
                     return True
             return False
-        
-    
+
     def get_formula_from_range(self,range):
         f = self.get_range(range).Formula
-        if isinstance(f, (list,tuple)):
-            if any(filter(lambda x: x[0].startswith("="),f)):
-                return [x[0] for x in f];
+        if isinstance(f, (list, tuple)):
+            if any(x for x in f if x[0].startswith("=")):
+                return [x[0] for x in f]
             else:
                 return None
         else:
-            return f if f.startswith("=") else None 
-    
+            return f if f.startswith("=") else None
+
     def get_formula_or_value(self,name):
         r = self.get_range(name)
         return r.Formula or r.Value
@@ -126,18 +126,18 @@ class ExcelWrapper(object):
 
 # Excel COM wrapper implementation for ExcelWrapper interface
 class ExcelComWrapper(ExcelWrapper):
-    
+
     def __init__(self, filename, app=None):
-        
+
         super(ExcelWrapper,self).__init__()
-        
+
         self.filename = path.abspath(filename)
         self.app = app
-            
+
     @property
     def rangednames(self):
         return self._rangednames
-    
+
     def connect(self):
         #http://devnulled.com/content/2004/01/com-objects-and-threading-in-python/
         # TODO: dont need to uninit?
@@ -148,7 +148,7 @@ class ExcelComWrapper(ExcelWrapper):
             self.app.DisplayAlerts = 0
             self.app.Workbooks.Open(self.filename)
         # else -> if we are running as an excel addin, this gets passed to us
-        
+
         # Range Names reading
         # WARNING: by default numpy array require dtype declaration to specify character length (here 'S200', i.e. 200 characters)
         # WARNING: win32.com cannot get ranges with single column/line, would require way to read Office Open XML
@@ -156,37 +156,37 @@ class ExcelComWrapper(ExcelWrapper):
         # TODO: discriminate between worksheet & workbook ranged names
         self._rangednames = np.zeros(shape = (int(self.app.ActiveWorkbook.Names.Count),1), dtype=[('id', 'int_'), ('name', 'S200'), ('formula', 'S200')])
         for i in range(0, self.app.ActiveWorkbook.Names.Count):
-            self._rangednames[i]['id'] = int(i+1)       
-            self._rangednames[i]['name'] = str(self.app.ActiveWorkbook.Names.Item(i+1).Name)        
+            self._rangednames[i]['id'] = int(i+1)
+            self._rangednames[i]['name'] = str(self.app.ActiveWorkbook.Names.Item(i+1).Name)
             self._rangednames[i]['formula'] = str(self.app.ActiveWorkbook.Names.Item(i+1).Value)
 
-    
+
     def save(self):
         self.app.ActiveWorkbook.Save()
-    
+
     def save_as(self, filename, delete_existing=False):
         if delete_existing and os.path.exists(filename):
             os.remove(filename)
         self.app.ActiveWorkbook.SaveAs(filename)
-  
+
     def close(self):
         self.app.ActiveWorkbook.Close(False)
-  
+
     def quit(self):
         return self.app.Quit()
-        
+
     def set_sheet(self,s):
         return self.app.ActiveWorkbook.Worksheets(s).Activate()
-    
+
     def get_sheet(self):
         return self.app.ActiveWorkbook.ActiveSheet
-            
+
     def get_range(self, range):
         #print '*',range
         if range.find('!') > 0:
             sheet,range = range.split('!')
             return self.app.ActiveWorkbook.Worksheets(sheet).Range(range)
-        else:        
+        else:
             return self.app.ActiveWorkbook.ActiveSheet.Range(range)
 
     def get_used_range(self):
@@ -194,10 +194,10 @@ class ExcelComWrapper(ExcelWrapper):
 
     def get_active_sheet(self):
         return self.app.ActiveWorkbook.ActiveSheet.Name
-    
+
     def get_cell(self,r,c):
         return self.app.ActiveWorkbook.ActiveSheet.Cells(r,c)
-        
+
     def get_row(self,row):
         return [self.get_value(row,col+1) for col in range(self.get_used_range().Columns.Count)]
 
@@ -214,13 +214,13 @@ class ExcelComWrapper(ExcelWrapper):
         self.app.Run(macro)
 
 
-# Excel range wrapper that distribute reduced api used by compiler (Formula & Value) 
+# Excel range wrapper that distribute reduced api used by compiler (Formula & Value)
 class OpxRange(object):
- 
+
     def __init__(self, cells, cellsDO):
-        
+
         super(OpxRange,self).__init__()
-        
+
         self.cells = cells
         self.cellsDO = cellsDO
 
@@ -251,38 +251,42 @@ class OpxRange(object):
             return values[0][0]
         return values
 
-    
 
 # OpenPyXl implementation for ExcelWrapper interface
 class ExcelOpxWrapper(ExcelWrapper):
-    
+
     def __init__(self, filename, app=None):
-        
+
         super(ExcelWrapper,self).__init__()
-        
+
         self.filename = path.abspath(filename)
 
     @property
     def rangednames(self):
 
-        if self.workbook == None:
+        if self.workbook is None:
             return None
 
         rangednames = []
         for named_range in self.workbook.defined_names.definedName:
             for worksheet, range_alias in named_range.destinations:
-                tuple_name = (len(rangednames)+1,  str(named_range.name),
-                              str(self.workbook[worksheet].title+'!'+range_alias))
+                tuple_name = (
+                    len(rangednames)+1,
+                    str(named_range.name),
+                    str(self.workbook[worksheet].title+'!'+range_alias)
+                )
                 rangednames.append([tuple_name])
         return rangednames
 
     def connect(self):
         self.workbook = load_workbook(self.filename)
+        # readonly is currently broken but should be faster
+        # self.workbookDO = load_workbook(self.filename, data_only=True, read_only=True)
         self.workbookDO = load_workbook(self.filename, data_only=True)
 
     def save(self):
         self.workbook.save(self.filename)
-    
+
     def save_as(self, filename, delete_existing=False):
         if delete_existing and os.path.exists(filename):
             os.remove(filename)
@@ -290,31 +294,33 @@ class ExcelOpxWrapper(ExcelWrapper):
 
     def close(self):
         return
-  
+
     def quit(self):
         return
-        
+
     def set_sheet(self,s):
         self.workbook.active = self.workbook.index(self.workbook[s])
         self.workbookDO.active = self.workbookDO.index(self.workbookDO[s])
-        return self.workbook.active;
-    
+        return self.workbook.active
+
     def get_sheet(self):
         return self.workbook.active
-            
+
     def get_range(self, address):
 
         sheet = self.workbook.active
         sheetDO = self.workbookDO.active
         if address.find('!') > 0:
-            title,address = address.split('!')
+            title, address = address.split('!')
             sheet = self.workbook[title]
-            sheetDO = self.workbookDO[title] 
+            sheetDO = self.workbookDO[title]
 
         cells = sheet[address]
-        cellsDO = sheetDO[address]
         if isinstance(cells, Cell):
             cells = ((cells, ), )
+            
+        cellsDO = sheetDO[address]
+        if isinstance(cellsDO, Cell):
             cellsDO = ((cellsDO,),)
 
         return OpxRange(cells, cellsDO)
@@ -324,11 +330,11 @@ class ExcelOpxWrapper(ExcelWrapper):
 
     def get_active_sheet(self):
         return self.workbook.active.title
-    
+
     def get_cell(self,r,c):
         # this could be improved in order not to call get_range
         return self.get_range(self.workbook.active.cell(r,c).coordinate)
-        
+
     def get_row(self,row):
         return [self.get_value(row,col+1)
                 for col in range(self.workbook.active.max_column)]

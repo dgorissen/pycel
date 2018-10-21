@@ -1,6 +1,5 @@
-# converted from if __name__ == '__main__' part of pycel.tokenzizer
-
-from pycel.excelcompiler import shunting_yard
+import pytest
+from pycel.excelcompiler import parse_to_rpn
 
 
 def stringify(e):
@@ -82,7 +81,7 @@ whitespace_inputs = [
 if_inputs = [
     (
     '=IF("a"={"a","b";"c",#N/A;-1,TRUE}, "yes", "no") &   "  more ""test"" text"',
-    'a|a|b|ARRAYROW|c|#N/A|ARRAYROW|1|-|TRUE|ARRAYROW|ARRAY|=|yes|no|IF|  more "test" text|&'),
+    '"a"|"a"|"b"|ARRAYROW|"c"|#N/A|ARRAYROW|1|-|TRUE|ARRAYROW|ARRAY|=|"yes"|"no"|IF|"  more ""test"" text"|&'),
 
     (
     '=IF(R13C3>DATE(2002,1,6),0,IF(ISERROR(R[41]C[2]),0,IF(R13C3>=R[41]C[2],0, IF(AND(R[23]C[11]>=55,R[24]C[11]>=20),R53C3,0))))',
@@ -136,36 +135,16 @@ linest_inputs = [
 ]
 
 
-def test_range():
-    for formula, rpn in range_inputs:
-        assert stringify(shunting_yard(formula)) == rpn
+test_names = (
+    'range_inputs', 'if_inputs', 'whitespace_inputs', 'basic_inputs',
+    'math_inputs', 'linest_inputs', 'fancy_reference_inputs')
+test_data = []
+for test_name in test_names:
+    for i, test in enumerate(globals()[test_name]):
+        test_data.append(('{}_{}'.format(test_name, i + 1), *test))
 
 
-def test_if():
-    for formula, rpn in if_inputs:
-        assert stringify(shunting_yard(formula)) == rpn
-
-
-def test_whitespace():
-    for formula, rpn in whitespace_inputs:
-        assert stringify(shunting_yard(formula)) == rpn
-
-
-def test_basic():
-    for formula, rpn in basic_inputs:
-        assert stringify(shunting_yard(formula)) == rpn
-
-
-def test_math():
-    for formula, rpn in math_inputs:
-        assert stringify(shunting_yard(formula)) == rpn
-
-
-def test_linest():
-    for formula, rpn in linest_inputs:
-        assert stringify(shunting_yard(formula)) == rpn
-
-
-def test_fancy_references():
+@pytest.mark.parametrize('test_number, formula, rpn', test_data)
+def tests(test_number, formula, rpn):
     for formula, rpn in fancy_reference_inputs:
-        assert stringify(shunting_yard(formula)) == rpn
+        assert rpn == stringify(parse_to_rpn(formula))

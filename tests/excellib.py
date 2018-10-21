@@ -1,6 +1,6 @@
 import unittest
 
-from pycel.excellib import ( 
+from pycel.excellib import (
     match,
     mod,
     count,
@@ -42,7 +42,7 @@ class SumIf(unittest.TestCase):
 
     def test_sum_range_with_less_indexes(self):
         self.assertEqual(sumif([1, 2, 3, 4, 5], ">=3", [100, 123, 12, 23]), 35)
-        
+
 
 class IsNa(unittest.TestCase):
     # This function might need more solid testing
@@ -92,7 +92,7 @@ class Yearfrac(unittest.TestCase):
         self.assertAlmostEqual(yearfrac(date(2008, 1, 1), date(2015, 4, 20), 4), 7.302777778)
 
     def test_yearfrac_inverted(self):
-        self.assertAlmostEqual(yearfrac(date(2015, 4, 20), date(2008, 1, 1)), yearfrac(date(2008, 1, 1), date(2015, 4, 20)))    
+        self.assertAlmostEqual(yearfrac(date(2015, 4, 20), date(2008, 1, 1)), yearfrac(date(2008, 1, 1), date(2015, 4, 20)))
 
 
 class Date(unittest.TestCase):
@@ -160,7 +160,7 @@ class Mid(unittest.TestCase):
 
     def test_mid(self):
         self.assertEqual(mid('Romain', 2, 9), 'main')
-        
+
 
 class Round(unittest.TestCase):
 
@@ -176,7 +176,7 @@ class Round(unittest.TestCase):
         self.assertEqual(xround(2.675, 2), 2.68)
 
     def test_negative_number_of_digits(self):
-        self.assertEqual(xround(2352.67, -2), 2400) 
+        self.assertEqual(xround(2352.67, -2), 2400)
 
 
 class Count(unittest.TestCase):
@@ -347,6 +347,6 @@ class Match(unittest.TestCase):
         with self.assertRaises(Exception):
             match(False, [False, False, True], -1)
 
-    def test_boolean_in_descending_mode_with_any_array(self):    
+    def test_boolean_in_descending_mode_with_any_array(self):
         with self.assertRaises(Exception):
             match(True, [False, True, False], -1)
