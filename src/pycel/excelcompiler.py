@@ -54,124 +54,8 @@ __date__ = list(filter(str.isdigit, "$Date: 2011-09-06 17:05:00 +0100 (Tue, 06 S
 __author__ = list(filter(str.isdigit, "$Author: dg2d09 $"))
 
 
-class Spreadsheet(object):
-    def __init__(self, dependency_graph, cellmap):
-        super(Spreadsheet, self).__init__()
-        self.dependency_graph = dependency_graph
-        self.cellmap = cellmap
-        self.params = None
-
-    @staticmethod
-    def load_from_file(fname):
-        with open(fname, 'rb') as f:
-            return pickle.load(f)
-
-    def save_to_file(self, fname):
-        f = open(fname, 'wb')
-        pickle.dump(self, f, protocol=2)
-        f.close()
-
-    def export_to_dot(self, fname):
-        write_dot(self.dependency_graph, fname)
-
-    def export_to_gexf(self, fname):
-        write_gexf(self.dependency_graph, fname)
-
-    def plot_graph(self):
-        import matplotlib.pyplot as plt
-
-        pos = nx.spring_layout(self.dependency_graph, iterations=2000)
-        # pos=nx.spectral_layout(G)
-        # pos = nx.random_layout(G)
-        nx.draw_networkx_nodes(self.dependency_graph, pos)
-        nx.draw_networkx_edges(self.dependency_graph, pos, arrows=True)
-        nx.draw_networkx_labels(self.dependency_graph, pos)
-        plt.show()
-
-    def set_value(self, cell, val, is_addr=True):
-        if is_addr:
-            cell = self.cellmap[cell]
-
-        if cell.value != val:
-            # reset the node + its dependencies
-            self.reset(cell)
-            # set the value
-            cell.value = val
-
-    def reset(self, cell):
-        if cell.value is None:
-            return
-        print("resetting {}".format(cell.address()))
-        cell.value = None
-        for cell in self.dependency_graph.successors(cell):
-            self.reset(cell)
-
-    def print_value_tree(self, addr, indent):
-        cell = self.cellmap[addr]
-        print("%s %s = %s" % (" " * indent, addr, cell.value))
-        for c in self.dependency_graph.predecessors(cell):
-            self.print_value_tree(c.address(), indent + 1)
-
-    def recalculate(self):
-        for c in self.cellmap.values():
-            if isinstance(c, CellRange):
-                self.evaluate_range(c, is_addr=False)
-            else:
-                self.evaluate(c, is_addr=False)
-
-    def evaluate_range(self, rng, is_addr=True):
-
-        if is_addr:
-            rng = self.cellmap[rng]
-
-        # it's important that [] gets treated as false here
-        if rng.value:
-            return rng.value
-
-        cells, nrows, ncols = rng.celladdrs, rng.nrows, rng.ncols
-
-        if nrows == 1 or ncols == 1:
-            data = [self.evaluate(c) for c in cells]
-        else:
-            data = [[self.evaluate(c) for c in cells[i]] for i in range(len(cells))]
-
-        rng.value = data
-
-        return data
-
-    def evaluate(self, cell, is_addr=True):
-
-        if is_addr:
-            cell = self.cellmap[cell]
-
-        # no formula, fixed value
-        if not cell.formula or cell.value is not None:
-            # print "  returning constant or cached value for ", cell.address()
-            return cell.value
-
-        # recalculate formula
-        # the compiled expression calls this function
-        def eval_cell(address):
-            return self.evaluate(address)
-
-        def eval_range(rng):
-            return self.evaluate_range(rng)
-
-        try:
-            print("Evalling: %s, %s" % (cell.address(), cell.python_expression))
-            value = eval(cell.compiled_expression)
-            print("Cell %s evalled to %s" % (cell.address(), value))
-            if value is None:
-                print("WARNING %s is None" % (cell.address()))
-            cell.value = value
-        except Exception as e:
-            if str(e).startswith("Problem evalling"):
-                raise e
-            else:
-                raise Exception("Problem evalling: %s for %s, %s" % (
-                    e, cell.address(), cell.python_expression))
-
-        return cell.value
+class CompilerError(Exception):
+    """"Base class for Compiler errors"""
 
 
 class Tokenizer(tokenizer.Tokenizer):
@@ -236,6 +120,15 @@ class Token(tokenizer.Token):
 
 class ASTNode(object):
     """A generic node in the AST used to compile a cell's formula"""
+
+    class Context(object):
+        """A small context object that nodes in the AST can use to emit code"""
+
+        def __init__(self, curcell, excel):
+            # the current cell for which we are generating code
+            self.curcell = curcell
+            # a handle to an excel instance
+            self.excel = excel
 
     def __init__(self, token):
         super(ASTNode, self).__init__()
@@ -449,7 +342,7 @@ class FunctionNode(ASTNode):
         if len(args) in (3, 4):
             return "({} if {} else {})".format(args[1], args[0], args[2])
 
-        raise ExcelCompiler(
+        raise CompilerError(
             "IF with %s arguments not supported".format(len(args) - 1))
 
     def func_array(self, context=None):
@@ -509,228 +402,36 @@ class Operator:
                 )
 
 
-operators = {
-    # http://office.microsoft.com/en-us/excel-help/
-    #   calculation-operators-and-precedence-HP010078886.aspx
-    ':': Operator(':', 8, 'left'),
-    ' ': Operator(' ', 8, 'left'),    # range intersection
-    ',': Operator(',', 8, 'left'),
-    'u-': Operator('u-', 7, 'left'),  # unary negation
-    '%': Operator('%', 6, 'left'),
-    '^': Operator('^', 5, 'left'),
-    '*': Operator('*', 4, 'left'),
-    '/': Operator('/', 4, 'left'),
-    '+': Operator('+', 3, 'left'),
-    '-': Operator('-', 3, 'left'),
-    '&': Operator('&', 2, 'left'),
-    '=': Operator('=', 1, 'left'),
-    '<': Operator('<', 1, 'left'),
-    '>': Operator('>', 1, 'left'),
-    '<=': Operator('<=', 1, 'left'),
-    '>=': Operator('>=', 1, 'left'),
-    '<>': Operator('<>', 1, 'left'),
-}
-
-
-def parse_to_rpn(expression):
-    """
-    Parse an excel formula expression into reverse polish notation
-
-    Core algorithm taken from wikipedia with varargs extensions from
-    http://www.kallisti.net.nz/blog/2008/02/extension-to-the-shunting-yard-
-        algorithm-to-allow-variable-numbers-of-arguments-to-functions/
-    """
-
-    lexer = Tokenizer(expression)
-
-    # amend token stream to ease code production
-    tokens = []
-    for token, next_token in zip(lexer.items, lexer.items[1:] + [None]):
-
-        if token.matches(Token.FUNC, Token.OPEN):
-            tokens.append(token)
-            token = Token('(', Token.PAREN, Token.OPEN)
-
-        elif token.matches(Token.FUNC, Token.CLOSE):
-            token = Token(')', Token.PAREN, Token.CLOSE)
-
-        elif token.matches(Token.ARRAY, Token.OPEN):
-            tokens.append(token)
-            tokens.append(Token('(', Token.PAREN, Token.OPEN))
-            tokens.append(Token('', Token.ARRAYROW, Token.OPEN))
-            token = Token('(', Token.PAREN, Token.OPEN)
-
-        elif token.matches(Token.ARRAY, Token.CLOSE):
-            tokens.append(token)
-            token = Token(')', Token.PAREN, Token.CLOSE)
-
-        elif token.matches(Token.SEP, Token.ROW):
-            tokens.append(Token(')', Token.PAREN, Token.CLOSE))
-            tokens.append(Token(',', Token.SEP, Token.ARG))
-            tokens.append(Token('', Token.ARRAYROW, Token.OPEN))
-            token = Token('(', Token.PAREN, Token.OPEN)
-
-        elif token.matches(Token.PAREN, Token.OPEN):
-            token.value = '('
-
-        elif token.matches(Token.PAREN, Token.CLOSE):
-            token.value = ')'
-
-        if token:
-            tokens.append(token)
-
-    output = []
-    stack = []
-    were_values = []
-    arg_count = []
-
-    for token in tokens:
-        if token.type == token.OPERAND:
-
-            output.append(ASTNode.create(token))
-            if were_values:
-                were_values.pop()
-                were_values.append(True)
-
-        elif token.type != token.PAREN and token.subtype == token.OPEN:
-
-            if token.type in (token.ARRAY, Token.ARRAYROW):
-                token = Token(token.type, token.type, token.subtype)
-
-            stack.append(token)
-            arg_count.append(0)
-            if were_values:
-                were_values.pop()
-                were_values.append(True)
-            were_values.append(False)
-
-        elif token.type == token.SEP:
-
-            while stack and (stack[-1].subtype != token.OPEN):
-                output.append(ASTNode.create(stack.pop()))
-
-            if were_values.pop():
-                arg_count[-1] += 1
-            were_values.append(False)
-
-            if not len(stack):
-                raise Exception("Mismatched or misplaced parentheses")
-
-        elif token.is_operator:
-
-            if token.type == token.OP_PRE and token.value == "-":
-                assert token.type == token.OP_PRE
-                o1 = operators['u-']
-            else:
-                o1 = operators[token.value]
-
-            while stack and stack[-1].is_operator:
-
-                if stack[-1].type == token.OP_PRE and stack[-1].value == "-":
-                    o2 = operators['u-']
-                else:
-                    o2 = operators[stack[-1].value]
-
-                if o1 < o2:
-                    output.append(ASTNode.create(stack.pop()))
-                else:
-                    break
-
-            stack.append(token)
-
-        elif token.subtype == token.OPEN:
-            assert token.type in (token.FUNC, token.PAREN, token.ARRAY)
-            stack.append(token)
-
-        elif token.subtype == token.CLOSE:
-
-            while stack and stack[-1].subtype != Token.OPEN:
-                output.append(ASTNode.create(stack.pop()))
-
-            if not stack:
-                raise Exception("Mismatched or misplaced parentheses")
-
-            stack.pop()
-
-            if stack and stack[-1].is_funcopen:
-                f = ASTNode.create(stack.pop())
-                a = arg_count.pop()
-                w = were_values.pop()
-                if w:
-                    a += 1
-                f.num_args = a
-                output.append(f)
-
-    while stack:
-        if stack[-1].subtype in (Token.OPEN, Token.CLOSE):
-            raise Exception("Mismatched or misplaced parentheses")
-
-        output.append(ASTNode.create(stack.pop()))
-
-    return output
-
-
-def build_ast(rpn_expression):
-    """build an AST from an Excel formula in reverse polish notation"""
-
-    # use a directed graph to store the syntax tree
-    ast = DiGraph()
-
-    stack = []
-
-    for node in rpn_expression:
-        # The graph does not maintain the order of adding nodes/edges, so add
-        # an extra attribute 'pos' so we can always sort to the correct order
-
-        node.ast = ast
-        if isinstance(node, OperatorNode):
-            if node.token.type == node.token.OP_IN:
-                arg2 = stack.pop()
-                arg1 = stack.pop()
-                ast.add_node(arg1, pos=0)
-                ast.add_node(arg2, pos=1)
-                ast.add_edge(arg1, node)
-                ast.add_edge(arg2, node)
-            else:
-                arg1 = stack.pop()
-                ast.add_node(arg1, pos=1)
-                ast.add_edge(arg1, node)
-
-        elif isinstance(node, FunctionNode):
-            if node.num_args:
-                args = stack[-node.num_args:]
-                del stack[-node.num_args:]
-                for i, a in enumerate(args):
-                    ast.add_node(a, pos=i)
-                    ast.add_edge(a, node)
-        else:
-            ast.add_node(node, pos=0)
-
-        stack.append(node)
-
-    assert 1 == len(stack)
-    return stack[0]
-
-
-class Context(object):
-    """A small context object that nodes in the AST can use to emit code"""
-
-    def __init__(self, curcell, excel):
-        # the current cell for which we are generating code
-        self.curcell = curcell
-        # a handle to an excel instance
-        self.excel = excel
-
-
 class ExcelCompiler(object):
     """Class responsible for taking an Excel spreadsheet and compiling it
     to a Spreadsheet instance that can be serialized to disk, and executed
     independently of excel.
     """
 
+    operators = {
+        # http://office.microsoft.com/en-us/excel-help/
+        #   calculation-operators-and-precedence-HP010078886.aspx
+        ':': Operator(':', 8, 'left'),
+        ' ': Operator(' ', 8, 'left'),  # range intersection
+        ',': Operator(',', 8, 'left'),
+        'u-': Operator('u-', 7, 'left'),  # unary negation
+        '%': Operator('%', 6, 'left'),
+        '^': Operator('^', 5, 'left'),
+        '*': Operator('*', 4, 'left'),
+        '/': Operator('/', 4, 'left'),
+        '+': Operator('+', 3, 'left'),
+        '-': Operator('-', 3, 'left'),
+        '&': Operator('&', 2, 'left'),
+        '=': Operator('=', 1, 'left'),
+        '<': Operator('<', 1, 'left'),
+        '>': Operator('>', 1, 'left'),
+        '<=': Operator('<=', 1, 'left'),
+        '>=': Operator('>=', 1, 'left'),
+        '<>': Operator('<>', 1, 'left'),
+    }
+
     def __init__(self, filename=None, excel=None, *args, **kwargs):
 
-        super(ExcelCompiler, self).__init__()
         self.filename = filename
 
         if excel:
@@ -745,11 +446,319 @@ class ExcelCompiler(object):
         self.log = logging.getLogger(
             "decode.{0}".format(self.__class__.__name__))
 
+        # directed graph for cell dependencies
+        self.dep_graph = nx.DiGraph()
+
+        # cell address to Cell mapping
+        self.cellmap = {}
+
+    @staticmethod
+    def load_from_file(fname):
+        with open(fname, 'rb') as f:
+            return pickle.load(f)
+
+    def save_to_file(self, fname):
+        self.excel = None
+        self.log = None
+        f = open(fname, 'wb')
+        pickle.dump(self, f, protocol=2)
+        f.close()
+
+    def export_to_dot(self, fname):
+        write_dot(self.dep_graph, fname)
+
+    def export_to_gexf(self, fname):
+        write_gexf(self.dep_graph, fname)
+
+    def plot_graph(self):
+        import matplotlib.pyplot as plt
+
+        pos = nx.spring_layout(self.dep_graph, iterations=2000)
+        # pos=nx.spectral_layout(G)
+        # pos = nx.random_layout(G)
+        nx.draw_networkx_nodes(self.dep_graph, pos)
+        nx.draw_networkx_edges(self.dep_graph, pos, arrows=True)
+        nx.draw_networkx_labels(self.dep_graph, pos)
+        plt.show()
+
+    def set_value(self, cell, val, is_addr=True):
+        if is_addr:
+            cell = self.cellmap[cell]
+
+        if cell.value != val:
+            # reset the node + its dependencies
+            self.reset(cell)
+            # set the value
+            cell.value = val
+
+    def reset(self, cell):
+        if cell.value is None:
+            return
+        print("resetting {}".format(cell.address()))
+        cell.value = None
+        for cell in self.dep_graph.successors(cell):
+            self.reset(cell)
+
+    def print_value_tree(self, addr, indent):
+        cell = self.cellmap[addr]
+        print("%s %s = %s" % (" " * indent, addr, cell.value))
+        for c in self.dep_graph.predecessors(cell):
+            self.print_value_tree(c.address(), indent + 1)
+
+    def recalculate(self):
+        for c in self.cellmap.values():
+            if isinstance(c, CellRange):
+                self.evaluate_range(c, is_addr=False)
+            else:
+                self.evaluate(c, is_addr=False)
+
+    def evaluate_range(self, rng, is_addr=True):
+
+        if is_addr:
+            rng = self.cellmap[rng]
+        else:
+            assert isinstance(rng, CellRange)
+
+        # it's important that [] gets treated as false here
+        if rng.value:
+            return rng.value
+
+        cells, nrows, ncols = rng.celladdrs, rng.nrows, rng.ncols
+
+        if nrows == 1 or ncols == 1:
+            data = [self.evaluate(c) for c in cells]
+        else:
+            data = [[self.evaluate(c) for c in cells[i]] for i in
+                    range(len(cells))]
+
+        rng.value = data
+
+        return data
+
+    def evaluate(self, cell, is_addr=True):
+
+        if is_addr:
+            if cell not in self.cellmap:
+                self.gen_graph(cell)
+            cell = self.cellmap[cell]
+        else:
+            assert isinstance(cell, Cell)
+
+        # no formula, fixed value
+        if not cell.formula or cell.value is not None:
+            # print "  returning constant or cached value for ", cell.address()
+            return cell.value
+
+        # recalculate formula
+        # the compiled expression calls this function
+        def eval_cell(address):
+            return self.evaluate(address)
+
+        def eval_range(rng):
+            return self.evaluate_range(rng)
+
+        try:
+            print("Evalling: %s, %s" % (cell.address(), cell.python_expression))
+            value = eval(cell.compiled_expression)
+            print("Cell %s evalled to %s" % (cell.address(), value))
+            if value is None:
+                print("WARNING %s is None" % (cell.address()))
+            cell.value = value
+        except Exception as e:
+            if str(e).startswith("Problem evalling"):
+                raise e
+            else:
+                raise CompilerError("Problem evaluating: %s for %s, %s" % (
+                    e, cell.address(), cell.python_expression))
+
+        return cell.value
+
+    @classmethod
+    def parse_to_rpn(cls, expression):
+        """
+        Parse an excel formula expression into reverse polish notation
+
+        Core algorithm taken from wikipedia with varargs extensions from
+        http://www.kallisti.net.nz/blog/2008/02/extension-to-the-shunting-yard-
+            algorithm-to-allow-variable-numbers-of-arguments-to-functions/
+        """
+
+        lexer = Tokenizer(expression)
+
+        # amend token stream to ease code production
+        tokens = []
+        for token, next_token in zip(lexer.items, lexer.items[1:] + [None]):
+
+            if token.matches(Token.FUNC, Token.OPEN):
+                tokens.append(token)
+                token = Token('(', Token.PAREN, Token.OPEN)
+
+            elif token.matches(Token.FUNC, Token.CLOSE):
+                token = Token(')', Token.PAREN, Token.CLOSE)
+
+            elif token.matches(Token.ARRAY, Token.OPEN):
+                tokens.append(token)
+                tokens.append(Token('(', Token.PAREN, Token.OPEN))
+                tokens.append(Token('', Token.ARRAYROW, Token.OPEN))
+                token = Token('(', Token.PAREN, Token.OPEN)
+
+            elif token.matches(Token.ARRAY, Token.CLOSE):
+                tokens.append(token)
+                token = Token(')', Token.PAREN, Token.CLOSE)
+
+            elif token.matches(Token.SEP, Token.ROW):
+                tokens.append(Token(')', Token.PAREN, Token.CLOSE))
+                tokens.append(Token(',', Token.SEP, Token.ARG))
+                tokens.append(Token('', Token.ARRAYROW, Token.OPEN))
+                token = Token('(', Token.PAREN, Token.OPEN)
+
+            elif token.matches(Token.PAREN, Token.OPEN):
+                token.value = '('
+
+            elif token.matches(Token.PAREN, Token.CLOSE):
+                token.value = ')'
+
+            if token:
+                tokens.append(token)
+
+        output = []
+        stack = []
+        were_values = []
+        arg_count = []
+
+        for token in tokens:
+            if token.type == token.OPERAND:
+
+                output.append(ASTNode.create(token))
+                if were_values:
+                    were_values.pop()
+                    were_values.append(True)
+
+            elif token.type != token.PAREN and token.subtype == token.OPEN:
+
+                if token.type in (token.ARRAY, Token.ARRAYROW):
+                    token = Token(token.type, token.type, token.subtype)
+
+                stack.append(token)
+                arg_count.append(0)
+                if were_values:
+                    were_values.pop()
+                    were_values.append(True)
+                were_values.append(False)
+
+            elif token.type == token.SEP:
+
+                while stack and (stack[-1].subtype != token.OPEN):
+                    output.append(ASTNode.create(stack.pop()))
+
+                if were_values.pop():
+                    arg_count[-1] += 1
+                were_values.append(False)
+
+                if not len(stack):
+                    raise CompilerError("Mismatched or misplaced parentheses")
+
+            elif token.is_operator:
+
+                if token.type == token.OP_PRE and token.value == "-":
+                    assert token.type == token.OP_PRE
+                    o1 = cls.operators['u-']
+                else:
+                    o1 = cls.operators[token.value]
+
+                while stack and stack[-1].is_operator:
+
+                    if stack[-1].type == token.OP_PRE and stack[-1].value == "-":
+                        o2 = cls.operators['u-']
+                    else:
+                        o2 = cls.operators[stack[-1].value]
+
+                    if o1 < o2:
+                        output.append(ASTNode.create(stack.pop()))
+                    else:
+                        break
+
+                stack.append(token)
+
+            elif token.subtype == token.OPEN:
+                assert token.type in (token.FUNC, token.PAREN, token.ARRAY)
+                stack.append(token)
+
+            elif token.subtype == token.CLOSE:
+
+                while stack and stack[-1].subtype != Token.OPEN:
+                    output.append(ASTNode.create(stack.pop()))
+
+                if not stack:
+                    raise CompilerError("Mismatched or misplaced parentheses")
+
+                stack.pop()
+
+                if stack and stack[-1].is_funcopen:
+                    f = ASTNode.create(stack.pop())
+                    a = arg_count.pop()
+                    w = were_values.pop()
+                    if w:
+                        a += 1
+                    f.num_args = a
+                    output.append(f)
+
+        while stack:
+            if stack[-1].subtype in (Token.OPEN, Token.CLOSE):
+                raise CompilerError("Mismatched or misplaced parentheses")
+
+            output.append(ASTNode.create(stack.pop()))
+
+        return output
+
+    @classmethod
+    def build_ast(cls, rpn_expression):
+        """build an AST from an Excel formula in reverse polish notation"""
+
+        # use a directed graph to store the syntax tree
+        ast = DiGraph()
+
+        stack = []
+
+        for node in rpn_expression:
+            # The graph does not maintain the order of adding nodes/edges, so
+            # add an attribute 'pos' so we can always sort to the correct order
+
+            node.ast = ast
+            if isinstance(node, OperatorNode):
+                if node.token.type == node.token.OP_IN:
+                    arg2 = stack.pop()
+                    arg1 = stack.pop()
+                    ast.add_node(arg1, pos=0)
+                    ast.add_node(arg2, pos=1)
+                    ast.add_edge(arg1, node)
+                    ast.add_edge(arg2, node)
+                else:
+                    arg1 = stack.pop()
+                    ast.add_node(arg1, pos=1)
+                    ast.add_edge(arg1, node)
+
+            elif isinstance(node, FunctionNode):
+                if node.num_args:
+                    args = stack[-node.num_args:]
+                    del stack[-node.num_args:]
+                    for i, a in enumerate(args):
+                        ast.add_node(a, pos=i)
+                        ast.add_edge(a, node)
+            else:
+                ast.add_node(node, pos=0)
+
+            stack.append(node)
+
+        assert 1 == len(stack)
+        return stack[0]
+
     def cell2code(self, cell):
         """Generate python code for the given cell"""
         if cell.formula:
-            ast_root = build_ast(parse_to_rpn(cell.formula or str(cell.value)))
-            code = ast_root.emit(Context(cell, self.excel))
+            ast_root = self.build_ast(
+                self.parse_to_rpn(cell.formula or str(cell.value)))
+            code = ast_root.emit(ASTNode.Context(cell, self.excel))
         else:
             ast_root = None
             if isinstance(cell.value, str):
@@ -768,18 +777,17 @@ class ExcelCompiler(object):
         generate a Spreadsheet instance that captures the logic and control
         flow of the equations.
         """
-        # directed graph
-        dependent_graph = nx.DiGraph()
 
-        def add_node_to_graph(n):
-            dependent_graph.add_node(n)
-            dependent_graph.node[n]['sheet'] = n.sheet
+        def add_node_to_graph(node):
+            self.dep_graph.add_node(node)
+            self.dep_graph.node[node]['sheet'] = node.sheet
 
-            if isinstance(n, Cell):
-                dependent_graph.node[n]['label'] = n.col + str(n.row)
+            if isinstance(node, Cell):
+                self.dep_graph.node[node]['label'] = node.col + str(node.row)
             else:
                 # strip the sheet
-                dependent_graph.node[n]['label'] = n.address()[n.address().find('!') + 1:]
+                self.dep_graph.node[node]['label'] = \
+                    node.address()[node.address().find('!') + 1:]
 
         # starting points
         cursheet = sheet or self.excel.get_active_sheet()
@@ -798,16 +806,15 @@ class ExcelCompiler(object):
         print("%s filtered seeds " % len(seeds))
 
         # cells to analyze: only formulas
-        todo = [s for s in seeds if s.formula]
+        todo = [s for s in seeds if s.formula if s not in self.cellmap]
 
         print("%s cells on the todo list" % len(todo))
 
-        # map of all cells
-        cellmap = dict((x.address(), x) for x in seeds)
-
-        # match the info in cellmap
-        for cell in cellmap.values():
-            add_node_to_graph(cell)
+        # map of all new cells
+        for cell in seeds:
+            if cell.address() not in self.cellmap:
+                self.cellmap[cell.address()] = cell
+                add_node_to_graph(cell)
 
         while todo:
             c1 = todo.pop()
@@ -820,11 +827,11 @@ class ExcelCompiler(object):
                 self.excel.set_sheet(cursheet)
 
             # parse the formula into code
-            node = self.cell2code(c1)
+            cell_ast = self.cell2code(c1)
 
             # get all the cells/ranges this formula refers to, and remove dupes
             dependants = uniqueify(
-                x.value.replace('$', '') for x, *_ in node.descendents
+                x.value.replace('$', '') for x, *_ in cell_ast.descendents
                 if isinstance(x, RangeNode)
             )
 
@@ -835,11 +842,13 @@ class ExcelCompiler(object):
                     # this will make sure we always have an absolute address
                     rng = CellRange(dep, sheet=cursheet)
 
-                    if rng.address() in cellmap:
+                    if rng.address() in self.cellmap:
                         # already dealt with this range
                         # add an edge from the range to the parent
-                        dependent_graph.add_edge(
-                            cellmap[rng.address()], cellmap[c1.address()])
+                        self.dep_graph.add_edge(
+                            self.cellmap[rng.address()],
+                            self.cellmap[c1.address()]
+                        )
                         continue
                     else:
                         # turn into cell objects
@@ -854,40 +863,38 @@ class ExcelCompiler(object):
                                          for i in range(len(cells))]
 
                         # save the range
-                        cellmap[rng.address()] = rng
+                        self.cellmap[rng.address()] = rng
 
                         # add an edge from the range to the parent
                         add_node_to_graph(rng)
-                        dependent_graph.add_edge(rng, cellmap[c1.address()])
+                        self.dep_graph.add_edge(rng, self.cellmap[c1.address()])
 
                         # cells in the range should point to the range as their parent
                         target = rng
                 else:
                     # not a range, create the cell object
                     cells = [Cell.resolve_cell(self.excel, dep, sheet=cursheet)]
-                    target = cellmap[c1.address()]
+                    target = self.cellmap[c1.address()]
 
                 # process each cell
                 for c2 in flatten(cells):
                     # if we haven't treated this cell already
-                    if c2.address() not in cellmap:
+                    if c2.address() not in self.cellmap:
                         if c2.formula:
                             # cell with a formula, needs to be added to the todo list
                             todo.append(c2)
                             # print "appended ", c2.address()
                         else:
                             # constant cell, no need for further processing, just remember to set the code
-                            node = self.cell2code(c2)
+                            self.cell2code(c2)
 
-                        # save in the cellmap
-                        cellmap[c2.address()] = c2
+                        # save in the self.cellmap
+                        self.cellmap[c2.address()] = c2
                         # add to the graph
                         add_node_to_graph(c2)
 
                     # add an edge from the cell to the parent (range or cell)
-                    dependent_graph.add_edge(cellmap[c2.address()], target)
+                    self.dep_graph.add_edge(self.cellmap[c2.address()], target)
 
-        print("Graph construction done, %s nodes, %s edges, %s cellmap entries" % (
-            len(dependent_graph.nodes()), len(dependent_graph.edges()), len(cellmap)))
-
-        return Spreadsheet(dependent_graph, cellmap)
+        print("Graph construction done, %s nodes, %s edges, %s self.cellmap entries" % (
+            len(self.dep_graph.nodes()), len(self.dep_graph.edges()), len(self.cellmap)))

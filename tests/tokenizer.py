@@ -1,5 +1,5 @@
 import pytest
-from pycel.excelcompiler import parse_to_rpn
+from pycel.excelcompiler import ExcelCompiler
 
 
 def stringify(e):
@@ -147,4 +147,4 @@ for test_name in test_names:
 @pytest.mark.parametrize('test_number, formula, rpn', test_data)
 def tests(test_number, formula, rpn):
     for formula, rpn in fancy_reference_inputs:
-        assert rpn == stringify(parse_to_rpn(formula))
+        assert rpn == stringify(ExcelCompiler.parse_to_rpn(formula))

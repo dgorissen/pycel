@@ -80,7 +80,7 @@ class Cell(object):
         elif sh and sheet and sh != sheet:
             raise Exception(
                 "Sheet name mismatch for cell address %s: %s vs %s" % (
-                address, sheet, sh))
+                    address, sheet, sh))
         elif not sh and sheet:
             sh = sheet
         else:
@@ -209,7 +209,8 @@ class Cell(object):
 
             # use the sheet specified in the range, else the passed sheet
             sh, start, end = split_range(range)
-            if sh: sheet = sh
+            if sh:
+                sheet = sh
 
             ads, numrows, numcols = resolve_range(range)
             # ensure in the same nested format as fs/vs will be
@@ -296,7 +297,7 @@ def split_address(address):
 
     # regular <col><row> format
     if re.match(r'^[A-Z\$]+[\d\$]+$', address):
-        col, row = [_f for _f in re.split('([A-Z\$]+)', address) if _f]
+        col, row = [_f for _f in re.split(r'([A-Z\$]+)', address) if _f]
     # R<row>C<col> format
     elif re.match(r'^R\d+C\d+$', address):
         row, col = address.split('C')
@@ -593,8 +594,9 @@ def criteria_parser(criteria):
     if is_number(criteria):
         def check(x):
             return x == criteria  # and type(x) == type(criteria)
+
     elif type(criteria) == str:
-        search = re.search('(\W*)(.*)', criteria.lower()).group
+        search = re.search(r'(\W*)(.*)', criteria.lower()).group
         operator = search(1)
         value = search(2)
         value = float(value) if is_number(value) else str(value)
@@ -614,7 +616,6 @@ def criteria_parser(criteria):
                 return x > value
         elif operator == '>=':
             def check(x):
-                print('\n TEST', x)
                 test_is_number(x)
                 return x >= value
         elif operator == '<=':

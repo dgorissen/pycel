@@ -207,7 +207,7 @@ def linest(*args, **kwargs):
         A[:,-1] = np.zeros((1,len(X)))
 
     # perform the fit
-    coefs, residuals, rank, sing_vals = np.linalg.lstsq(A, Y)
+    coefs, residuals, rank, sing_vals = np.linalg.lstsq(A, Y, rcond=None)
 
     return coefs
 

@@ -1,7 +1,7 @@
 import json
 import pytest
 
-from pycel.excelcompiler import build_ast, ExcelCompiler, parse_to_rpn
+from pycel.excelcompiler import ExcelCompiler
 
 test_data = [
     {
@@ -207,8 +207,8 @@ test_data = [
 def dump_parse():
     for test_case in test_data:
 
-        parsed = parse_to_rpn(test_case['formula'])
-        graph, root = build_ast(parsed)
+        parsed = ExcelCompiler.parse_to_rpn(test_case['formula'])
+        graph, root = ExcelCompiler.build_ast(parsed)
         result_rpn = "|".join(str(x) for x in parsed)
         result_python_code = root.emit(graph)
 
@@ -227,8 +227,8 @@ sorted_keys = tuple(map(str, sorted(test_data[0])))
 )
 def test_parse(formula, python_code, rpn):
 
-        parsed = parse_to_rpn(formula)
-        ast_root = build_ast(parsed)
+        parsed = ExcelCompiler.parse_to_rpn(formula)
+        ast_root = ExcelCompiler.build_ast(parsed)
         result_rpn = "|".join(str(x) for x in parsed)
         result_python_code = ast_root.emit()
 
@@ -252,16 +252,15 @@ def test_parse(formula, python_code, rpn):
         assert python_code == result_python_code
 
 
-def test_end_2_end(example_xls_path):
-    # load  & compile the file to a graph, starting from D1
-    excel = ExcelCompiler(filename=example_xls_path)
-    sp = excel.gen_graph('D1', sheet='Sheet1')
+def test_end_2_end(excel, example_xls_path):
+    # load & compile the file to a graph, starting from D1
+    excel = ExcelCompiler(excel=excel)
 
     # test evaluation
-    assert -0.02286 == round(sp.evaluate('Sheet1!D1'), 5)
+    assert -0.02286 == round(excel.evaluate('Sheet1!D1'), 5)
 
-    sp.set_value('Sheet1!A1', 200)
-    assert -0.00331 == round(sp.evaluate('Sheet1!D1'), 5)
+    excel.set_value('Sheet1!A1', 200)
+    assert -0.00331 == round(excel.evaluate('Sheet1!D1'), 5)
 
     # show the graph usisng matplotlib
     # sp.plot_graph()
@@ -270,7 +269,7 @@ def test_end_2_end(example_xls_path):
     # sp.export_to_gexf(fname + ".gexf")
 
     # Serializing to disk...
-    sp.save_to_file(example_xls_path + ".pickle")
+    excel.save_to_file(example_xls_path + ".pickle")
 
 
 
