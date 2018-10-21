@@ -1,5 +1,4 @@
 import collections
-import functools
 import re
 import string
 
@@ -104,7 +103,7 @@ class Cell(object):
 
     def __repr__(self):
         return self.address()
-    
+
     @property
     def sheet(self):
         return self.__sheet
@@ -168,7 +167,7 @@ class Cell(object):
         except Exception as e:
             raise Exception(
                 "Failed to compile cell %s with expression %s: %s" % (
-                self.address(), self.python_expression, e))
+                    self.address(), self.python_expression, e))
 
     def __str__(self):
         if self.formula:
@@ -201,18 +200,18 @@ class Cell(object):
         return c
 
     @staticmethod
-    def make_cells(excel, range, sheet=None):
+    def make_cells(excel, rng, sheet=None):
         cells = []
 
-        def convert_range(range, sheet=None):
+        def convert_range(rng, sheet=None):
             cells = []
 
             # use the sheet specified in the range, else the passed sheet
-            sh, start, end = split_range(range)
+            sh, start, end = split_range(rng)
             if sh:
                 sheet = sh
 
-            ads, numrows, numcols = resolve_range(range)
+            ads, numrows, numcols = resolve_range(rng)
             # ensure in the same nested format as fs/vs will be
             if numrows == 1:
                 ads = [ads]
@@ -220,7 +219,7 @@ class Cell(object):
                 ads = [[x] for x in ads]
 
             # get everything in blocks, is faster
-            r = excel.get_range(range)
+            r = excel.get_range(rng)
             fs = r.Formula
             vs = r.Value
 
@@ -244,8 +243,8 @@ class Cell(object):
 
             return cells, numrows, numcols
 
-        if isinstance(range, list):  # if a list of cells
-            for cell in range:
+        if isinstance(rng, list):  # if a list of cells
+            for cell in rng:
                 if is_range(cell):
                     cs_in_range, nr, nc = convert_range(cell, sheet)
                     cells.append(cs_in_range)
@@ -259,11 +258,11 @@ class Cell(object):
             return cells, -1, -1
 
         else:
-            if is_range(range):
-                cells, numrows, numcols = convert_range(range, sheet)
+            if is_range(rng):
+                cells, numrows, numcols = convert_range(rng, sheet)
 
             else:
-                c = Cell.resolve_cell(excel, range, sheet=sheet)
+                c = Cell.resolve_cell(excel, rng, sheet=sheet)
                 cells.append(c)
 
                 numrows = 1
@@ -391,7 +390,6 @@ def col2num(col):
 
 # convert back
 def num2col(num):
-
     if num < 1:
         raise Exception("Number must be larger than 0: %s" % num)
 
@@ -475,11 +473,10 @@ def get_linest_degree(excel, cl):
     return max(degree, 1), coef
 
 
-def flatten(l):
-    for el in l:
+def flatten(items):
+    for el in items:
         if isinstance(el, collections.Iterable) and not isinstance(el, str):
-            for sub in flatten(el):
-                yield sub
+            yield from flatten(el)
         else:
             yield el
 
@@ -601,8 +598,8 @@ def criteria_parser(criteria):
         value = search(2)
         value = float(value) if is_number(value) else str(value)
 
-        def test_is_number(value):
-            if not is_number(value):
+        def test_is_number(x):
+            if not is_number(x):
                 raise TypeError('excellib.countif() doesnt\'t work for checking'
                                 ' non number items against non equality')
 
@@ -635,13 +632,13 @@ def criteria_parser(criteria):
     return check
 
 
-def find_corresponding_index(range, criteria):
+def find_corresponding_index(rng, criteria):
     # parse criteria
     check = criteria_parser(criteria)
 
     valid = []
 
-    for index, item in enumerate(range):
+    for index, item in enumerate(rng):
         if check(item):
             valid.append(index)
 

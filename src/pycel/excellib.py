@@ -1,22 +1,19 @@
-'''
+"""
 Python equivalents of various excel functions
-'''
+"""
+
+from datetime import datetime
+from decimal import Decimal, ROUND_HALF_UP
+from math import log
 
 import numpy as np
-from datetime import datetime
-from math import log
-from decimal import Decimal, ROUND_HALF_UP
-import re
+
 from pycel.excelutil import (
     flatten,
-    split_address,
-    col2num,
-    index2addres,
     is_number,
     date_from_int,
     normalize_year,
     is_leap_year,
-    get_max_days_in_month,
     find_corresponding_index
 )
 
@@ -33,14 +30,15 @@ from pycel.excelutil import (
 # Note: some functions (if, pi, atan2, and, or, array, ...) are already taken care of
 # in the FunctionNode code, so adding them here will have no effect.
 FUNCTION_MAP = {
-      "ln":"xlog",
-      "min":"xmin",
-      "min":"xmin",
-      "max":"xmax",
-      "sum":"xsum",
-      "gammaln":"lgamma",
-      "round": "xround"
-      }
+    "ln": "xlog",
+    "min": "xmin",
+    "min": "xmin",
+    "max": "xmax",
+    "sum": "xsum",
+    "gammaln": "lgamma",
+    "round": "xround"
+}
+
 
 ################################################################################
 # List of excel equivalent functions
@@ -61,10 +59,9 @@ def value(text):
 
 
 def xlog(a):
-    if isinstance(a,(list,tuple,np.ndarray)):
+    if isinstance(a, (list, tuple, np.ndarray)):
         return [log(x) for x in flatten(a)]
     else:
-        #print a
         return log(a)
 
 
@@ -97,7 +94,10 @@ def xsum(*args):
     else:
         return sum(data)
 
-def sumif(range, criteria, sum_range = []): # Excel reference: https://support.office.com/en-us/article/SUMIF-function-169b8c99-c05c-4483-a712-1697a653039b
+
+def sumif(range, criteria, sum_range=[]):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   SUMIF-function-169b8c99-c05c-4483-a712-1697a653039b
 
     # WARNING:
     # - wildcards not supported
@@ -109,7 +109,8 @@ def sumif(range, criteria, sum_range = []): # Excel reference: https://support.o
     if type(sum_range) != list:
         raise TypeError('%s must be a list' % str(sum_range))
 
-    if isinstance(criteria, list) and not isinstance(criteria, (str, bool)): # ugly...
+    if isinstance(criteria, list) and not isinstance(criteria, (str, bool)):
+        # ugly...
         return 0
 
     indexes = find_corresponding_index(range, criteria)
@@ -124,13 +125,13 @@ def sumif(range, criteria, sum_range = []): # Excel reference: https://support.o
 
 
 def average(*args):
-    l = list(flatten(*args))
-    return sum(l) / len(l)
+    args = list(flatten(*args))
+    return sum(args) / len(args)
 
 
-def right(text,n):
-    #TODO: hack to deal with naca section numbers
-    if isinstance(text, str) or isinstance(text,str):
+def right(text, n):
+    # TODO: hack to deal with naca section numbers
+    if isinstance(text, str) or isinstance(text, str):
         return text[-n:]
     else:
         # TODO: get rid of the decimal
@@ -146,27 +147,27 @@ def index(*args):
     else:
         col = 1
 
-    if isinstance(array[0],(list,tuple,np.ndarray)):
+    if isinstance(array[0], (list, tuple, np.ndarray)):
         # rectangular array
-        array[row-1][col-1]
+        # ::TODO:: this statement has no effect
+        array[row - 1][col - 1]
     elif row == 1 or col == 1:
-        return array[row-1] if col == 1 else array[col-1]
+        return array[row - 1] if col == 1 else array[col - 1]
     else:
-        raise Exception("index (%s,%s) out of range for %s" %(row,col,array))
+        raise Exception("index (%s,%s) out of range for %s" % (row, col, array))
 
 
 def lookup(value, lookup_range, result_range):
-
     # TODO
-    if not isinstance(value,(int,float)):
+    if not isinstance(value, (int, float)):
         raise Exception("Non numeric lookups (%s) not supported" % value)
 
     # TODO: note, may return the last equal value
 
     # index of the last numeric value
     lastnum = -1
-    for i,v in enumerate(lookup_range):
-        if isinstance(v,(int,float)):
+    for i, v in enumerate(lookup_range):
+        if isinstance(v, (int, float)):
             if v > value:
                 break
             else:
@@ -176,23 +177,23 @@ def lookup(value, lookup_range, result_range):
         raise Exception("No numeric data found in the lookup range")
     else:
         if i == 0:
-            raise Exception("All values in the lookup range are bigger than %s" % value)
+            raise Exception(
+                "All values in the lookup range are bigger than %s" % value)
         else:
-            if i >= len(lookup_range)-1:
+            if i >= len(lookup_range) - 1:
                 # return the biggest number smaller than value
                 return result_range[lastnum]
             else:
-                return result_range[i-1]
+                return result_range[i - 1]
 
 
 def linest(*args, **kwargs):
-
     Y = args[0]
     X = args[1]
 
     if len(args) == 3:
         const = args[2]
-        if isinstance(const,str):
+        if isinstance(const, str):
             const = (const.lower() == "true")
     else:
         const = True
@@ -200,11 +201,11 @@ def linest(*args, **kwargs):
     degree = kwargs.get('degree', 1)
 
     # build the vandermonde matrix
-    A = np.vander(X, degree+1)
+    A = np.vander(X, degree + 1)
 
     if not const:
         # force the intercept to zero
-        A[:,-1] = np.zeros((1,len(X)))
+        A[:, -1] = np.zeros((1, len(X)))
 
     # perform the fit
     coefs, residuals, rank, sing_vals = np.linalg.lstsq(A, Y, rcond=None)
@@ -215,34 +216,36 @@ def linest(*args, **kwargs):
 def npv(*args):
     discount_rate = args[0]
     cashflow = args[1]
-    return sum([float(x)*(1+discount_rate)**-(i+1) for (i,x) in enumerate(cashflow)])
+    return sum([float(x) * (1 + discount_rate) ** -(i + 1)
+                for (i, x) in enumerate(cashflow)])
 
 
 def match(lookup_value, lookup_array, match_type=1):
-
     def type_convert(value):
         if type(value) == str:
             value = value.lower()
         elif type(value) == int:
             value = float(value)
 
-        return value;
+        return value
 
     lookup_value = type_convert(lookup_value)
 
     if match_type == 1:
         # Verify ascending sort
-        posMax = -1
+        pos_max = -1
         for i in range((len(lookup_array))):
             current = type_convert(lookup_array[i])
 
-            if i is not len(lookup_array)-1 and current > type_convert(lookup_array[i+1]):
-                raise Exception('for match_type 0, lookup_array must be sorted ascending')
+            if i is not len(lookup_array) - 1 and current > type_convert(
+                    lookup_array[i + 1]):
+                raise Exception(
+                    'for match_type 0, lookup_array must be sorted ascending')
             if current <= lookup_value:
-                posMax = i
-        if posMax == -1:
-            raise ('no result in lookup_array for match_type 0')
-        return posMax +1 #Excel starts at 1
+                pos_max = i
+        if pos_max == -1:
+            raise Exception('no result in lookup_array for match_type 0')
+        return pos_max + 1  # Excel starts at 1
 
     elif match_type == 0:
         # No string wildcard
@@ -250,20 +253,24 @@ def match(lookup_value, lookup_array, match_type=1):
 
     elif match_type == -1:
         # Verify descending sort
-        posMin = -1
+        pos_min = -1
         for i in range((len(lookup_array))):
             current = type_convert(lookup_array[i])
 
-            if i is not len(lookup_array)-1 and current < type_convert(lookup_array[i+1]):
-               raise ('for match_type 0, lookup_array must be sorted descending')
+            if i is not len(lookup_array) - 1 and current < type_convert(
+                    lookup_array[i + 1]):
+                raise (
+                    'for match_type 0, lookup_array must be sorted descending')
             if current >= lookup_value:
-               posMin = i
-        if posMin == -1:
+                pos_min = i
+        if pos_min == -1:
             raise Exception('no result in lookup_array for match_type 0')
-        return posMin +1 #Excel starts at 1
+        return pos_min + 1  # Excel starts at 1
 
 
-def mod(nb, q): # Excel Reference: https://support.office.com/en-us/article/MOD-function-9b6cd169-b6ee-406a-a97b-edf2a9dc24f3
+def mod(nb, q):
+    # Excel Reference: https://support.office.com/en-us/article/
+    #   MOD-function-9b6cd169-b6ee-406a-a97b-edf2a9dc24f3
     if not isinstance(nb, int):
         raise TypeError("%s is not an integer" % str(nb))
     elif not isinstance(q, int):
@@ -275,22 +282,23 @@ def mod(nb, q): # Excel Reference: https://support.office.com/en-us/article/MOD-
 def count(*args):
     # Excel reference: https://support.office.com/en-us/article/
     # COUNT-function-a59cd7fc-b623-4d93-87a4-d23bf411294c
-    l = list(args)
 
     total = 0
 
-    for arg in l:
+    for arg in args:
         if type(arg) == list:
             # count inside a list
             total += len(tuple(
                 filter(lambda x: is_number(x) and type(x) is not bool, arg)))
-        elif is_number(arg): # int() is used for text representation of numbers
+        elif is_number(arg):  # int() is used for text representation of numbers
             total += 1
 
     return total
 
 
-def countif(range, criteria): # Excel reference: https://support.office.com/en-us/article/COUNTIF-function-e0de10c6-f885-4e71-abb4-1f464816df34
+def countif(range, criteria):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   COUNTIF-function-e0de10c6-f885-4e71-abb4-1f464816df34
 
     # WARNING:
     # - wildcards not supported
@@ -301,27 +309,31 @@ def countif(range, criteria): # Excel reference: https://support.office.com/en-u
     return len(valid)
 
 
-def countifs(*args): # Excel reference: https://support.office.com/en-us/article/COUNTIFS-function-dda3dc6e-f74e-4aee-88bc-aa8c2a866842
+def countifs(*args):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   COUNTIFS-function-dda3dc6e-f74e-4aee-88bc-aa8c2a866842
 
-    arg_list = list(args)
-    l = len(arg_list)
+    if len(args) % 2 != 0:
+        raise Exception('excellib.countifs() must have a '
+                        'pair number of arguments, here %d' % len(args))
 
-    if l % 2 != 0:
-        raise Exception('excellib.countifs() must have a pair number of arguments, here %d' % l)
+    if len(args):
+        indexes = find_corresponding_index(args[0], args[
+            1])  # find indexes that match first layer of countif
 
-
-    if l >= 2:
-        indexes = find_corresponding_index(args[0], args[1]) # find indexes that match first layer of countif
-
-        remaining_ranges = [elem for i, elem in enumerate(arg_list[2:]) if i % 2 == 0] # get only ranges
-        remaining_criteria = [elem for i, elem in enumerate(arg_list[2:]) if i % 2 == 1] # get only criteria
+        remaining_ranges = [elem for i, elem in enumerate(args[2:]) if
+                            i % 2 == 0]  # get only ranges
+        remaining_criteria = [elem for i, elem in enumerate(args[2:]) if
+                              i % 2 == 1]  # get only criteria
 
         filtered_remaining_ranges = []
 
-        for range in remaining_ranges: # filter items in remaining_ranges that match valid indexes from first countif layer
+        # filter items in remaining_ranges that match valid indexes
+        # from first countif layer
+        for rng in remaining_ranges:
             filtered_remaining_range = []
 
-            for index, item in enumerate(range):
+            for index, item in enumerate(rng):
                 if index in indexes:
                     filtered_remaining_range.append(item)
 
@@ -329,25 +341,31 @@ def countifs(*args): # Excel reference: https://support.office.com/en-us/article
 
         new_tuple = ()
 
-        for index, range in enumerate(filtered_remaining_ranges): # rebuild the tuple that will be the argument of next layer
-            new_tuple += (range, remaining_criteria[index])
+        # rebuild the tuple that will be the argument of next layer
+        for index, rng in enumerate(filtered_remaining_ranges):
+            new_tuple += (rng, remaining_criteria[index])
 
-        return min(countifs(*new_tuple), len(indexes)) # only consider the minimum number across all layer responses
+        # only consider the minimum number across all layer responses
+        return min(countifs(*new_tuple), len(indexes))
 
     else:
         return float('inf')
 
 
-
-def xround(number, num_digits = 0): # Excel reference: https://support.office.com/en-us/article/ROUND-function-c018c5d8-40fb-4053-90b1-b3e7f61a213c
+def xround(number, num_digits=0):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   ROUND-function-c018c5d8-40fb-4053-90b1-b3e7f61a213c
 
     if not is_number(number):
         raise TypeError("%s is not a number" % str(number))
     if not is_number(num_digits):
         raise TypeError("%s is not a number" % str(num_digits))
 
-    if num_digits >= 0: # round to the right side of the point
-        return float(Decimal(repr(number)).quantize(Decimal(repr(pow(10, -num_digits))), rounding=ROUND_HALF_UP))
+    if num_digits >= 0:  # round to the right side of the point
+        return float(Decimal(repr(number)).quantize(
+            Decimal(repr(pow(10, -num_digits))),
+            rounding=ROUND_HALF_UP
+        ))
         # see https://docs.python.org/2/library/functions.html#round
         # and https://gist.github.com/ejamesc/cedc886c5f36e2d075c5
 
@@ -355,7 +373,9 @@ def xround(number, num_digits = 0): # Excel reference: https://support.office.co
         return round(number, num_digits)
 
 
-def mid(text, start_num, num_chars): # Excel reference: https://support.office.com/en-us/article/MID-MIDB-functions-d5f9e25c-d7d6-472e-b568-4ecb12433028
+def mid(text, start_num, num_chars):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   MID-MIDB-functions-d5f9e25c-d7d6-472e-b568-4ecb12433028
 
     text = str(text)
 
@@ -372,7 +392,9 @@ def mid(text, start_num, num_chars): # Excel reference: https://support.office.c
     return text[start_num:num_chars]
 
 
-def date(year, month, day): # Excel reference: https://support.office.com/en-us/article/DATE-function-e36c0c8c-4104-49da-ab83-82328b832349
+def date(year, month, day):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   DATE-function-e36c0c8c-4104-49da-ab83-82328b832349
 
     if type(year) != int:
         raise TypeError("%s is not an integer" % str(year))
@@ -384,12 +406,14 @@ def date(year, month, day): # Excel reference: https://support.office.com/en-us/
         raise TypeError("%s is not an integer" % str(day))
 
     if year < 0 or year > 9999:
-        raise ValueError("Year must be between 1 and 9999, instead %s" % str(year))
+        raise ValueError(
+            "Year must be between 1 and 9999, instead %s" % str(year))
 
     if year < 1900:
         year = 1900 + year
 
-    year, month, day = normalize_year(year, month, day) # taking into account negative month and day values
+    # taking into account negative month and day values
+    year, month, day = normalize_year(year, month, day)
 
     date_0 = datetime(1900, 1, 1)
     date = datetime(year, month, day)
@@ -402,9 +426,12 @@ def date(year, month, day): # Excel reference: https://support.office.com/en-us/
         return result
 
 
-def yearfrac(start_date, end_date, basis = 0): # Excel reference: https://support.office.com/en-us/article/YEARFRAC-function-3844141e-c76d-4143-82b6-208454ddc6a8
+def yearfrac(start_date, end_date, basis=0):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   YEARFRAC-function-3844141e-c76d-4143-82b6-208454ddc6a8
 
-    def actual_nb_days_ISDA(start, end): # needed to separate days_in_leap_year from days_not_leap_year
+    def actual_nb_days_ISDA(start, end):
+        # needed to separate days_in_leap_year from days_not_leap_year
         y1, m1, d1 = start
         y2, m2, d2 = end
 
@@ -429,9 +456,11 @@ def yearfrac(start_date, end_date, basis = 0): # Excel reference: https://suppor
             else:
                 days_not_in_leap_year += nb_days
 
-        return (days_not_in_leap_year, days_in_leap_year)
+        return days_not_in_leap_year, days_in_leap_year
 
-    def actual_nb_days_AFB_alter(start, end): # http://svn.finmath.net/finmath%20lib/trunk/src/main/java/net/finmath/time/daycount/DayCountConvention_ACT_ACT_YEARFRAC.java
+    def actual_nb_days_AFB_alter(start, end):
+        # http://svn.finmath.net/finmath%20lib/trunk/src/main/java/net/
+        #   finmath/time/daycount/DayCountConvention_ACT_ACT_YEARFRAC.java
         y1, m1, d1 = start
         y2, m2, d2 = end
 
@@ -466,29 +495,29 @@ def yearfrac(start_date, end_date, basis = 0): # Excel reference: https://suppor
     if end_date < 0:
         raise ValueError("end_date %s must be positive" % str(end_date))
 
-    if start_date > end_date: # switch dates if start_date > end_date
+    if start_date > end_date:  # switch dates if start_date > end_date
         start_date, end_date = end_date, start_date
 
     y1, m1, d1 = date_from_int(start_date)
     y2, m2, d2 = date_from_int(end_date)
 
-    if basis == 0: # US 30/360
+    if basis == 0:  # US 30/360
         d2 = 30 if d2 == 31 and (d1 == 31 or d1 == 30) else min(d2, 31)
         d1 = 30 if d1 == 31 else d1
 
         count = 360 * (y2 - y1) + 30 * (m2 - m1) + (d2 - d1)
         result = count / 360
 
-    elif basis == 1: # Actual/actual
+    elif basis == 1:  # Actual/actual
         result = actual_nb_days_AFB_alter((y1, m1, d1), (y2, m2, d2))
 
-    elif basis == 2: # Actual/360
+    elif basis == 2:  # Actual/360
         result = (end_date - start_date) / 360
 
-    elif basis == 3: # Actual/365
+    elif basis == 3:  # Actual/365
         result = (end_date - start_date) / 365
 
-    elif basis == 4: # Eurobond 30/360
+    elif basis == 4:  # Eurobond 30/360
         d2 = 30 if d2 == 31 else d2
         d1 = 30 if d1 == 31 else d1
 
@@ -497,7 +526,6 @@ def yearfrac(start_date, end_date, basis = 0): # Excel reference: https://suppor
 
     else:
         raise ValueError("%d must be 0, 1, 2, 3 or 4" % basis)
-
 
     return result
 
@@ -510,23 +538,4 @@ def isNa(value):
         return False
     except:
         return True
-
-
-
-if __name__ == '__main__':
-    pass
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

@@ -1,19 +1,25 @@
 # We will choose our wrapper with os compatibility
 #       ExcelComWrapper : Must be run on Windows as it requires a COM link to an Excel instance.
 #       ExcelOpxWrapper : Can be run anywhere but only with post 2010 Excel formats
-from pycel.excelwrapper import ExcelOpxWrapper as ExcelWrapperImpl
+import logging
 from math import *
 import pickle
-import logging
-import networkx as nx
+import sys
 
+import networkx as nx
+import openpyxl.formula.tokenizer as tokenizer
+from networkx.classes.digraph import DiGraph
+from networkx.drawing.nx_pydot import write_dot
+from networkx.readwrite.gexf import write_gexf
+
+# ::TODO:: import *, or import in the eval function, or map all excel
+# functions, or build a plugin system on failed look ups?
 from pycel.excellib import (
     FUNCTION_MAP,
     linest,
     xsum,
-)   # ::TODO:: import *, or import in the eval function, or map all excel
-    # functions, or build a plugin system on failed look ups?
-    
+)
+
 from pycel.excelutil import (
     Cell,
     CellRange,
@@ -25,16 +31,6 @@ from pycel.excelutil import (
     split_range,
     uniqueify,
 )
-from networkx.classes.digraph import DiGraph
-from networkx.drawing.nx_pydot import write_dot
-from networkx.drawing.nx_pylab import draw, draw_circular
-from networkx.readwrite.gexf import write_gexf
-
-
-import sys
-
-import openpyxl.formula.tokenizer as tokenizer
-
 
 # ::TODO:: if keeping this move to __init__ or someplace so only needed once
 ExcelWrapperImpl = None
@@ -50,7 +46,8 @@ if ExcelWrapperImpl is None:
     from pycel.excelwrapper import ExcelOpxWrapper as ExcelWrapperImpl
 
 __version__ = list(filter(str.isdigit, "$Revision: 2524 $"))
-__date__ = list(filter(str.isdigit, "$Date: 2011-09-06 17:05:00 +0100 (Tue, 06 Sep 2011) $"))
+__date__ = list(filter(str.isdigit,
+                       "$Date: 2011-09-06 17:05:00 +0100 (Tue, 06 Sep 2011) $"))
 __author__ = list(filter(str.isdigit, "$Author: dg2d09 $"))
 
 
@@ -96,7 +93,6 @@ class Token(tokenizer.Token):
 
     @classmethod
     def from_token(cls, token, value=None, type_=None, subtype=None):
-
         return cls(
             token.value if value is None else value,
             token.type if type_ is None else type_,
@@ -206,7 +202,6 @@ class ASTNode(object):
 
 
 class OperatorNode(ASTNode):
-
     # convert the operator to python equivalents
     op_map = {
         "^": "**",
@@ -243,7 +238,7 @@ class OperatorNode(ASTNode):
         elif op.startswith('>'):
             aa = args[1].emit(context)
             ss = "{} {} ({} if {} is not None else 0)".format(
-                args[0].emit(context), op, aa, aa,)
+                args[0].emit(context), op, aa, aa, )
         else:
             if op != ',':
                 op = ' ' + op
@@ -284,15 +279,15 @@ class RangeNode(OperandNode):
         if is_range(rng):
             sh, start, end = split_range(rng)
             if sh:
-                return'eval_range("' + rng + '")'
+                return 'eval_range("' + rng + '")'
             else:
-                return'eval_range("' + sheet + rng + '")'
+                return 'eval_range("' + sheet + rng + '")'
         else:
             sh, col, row = split_address(rng)
             if sh:
-                return'eval_cell("' + rng + '")'
+                return 'eval_cell("' + rng + '")'
             else:
-                return'eval_cell("' + sheet + rng + '")'
+                return 'eval_cell("' + sheet + rng + '")'
 
 
 class FunctionNode(ASTNode):
@@ -430,7 +425,7 @@ class ExcelCompiler(object):
         '<>': Operator('<>', 1, 'left'),
     }
 
-    def __init__(self, filename=None, excel=None, *args, **kwargs):
+    def __init__(self, filename=None, excel=None):
 
         self.filename = filename
 
@@ -558,18 +553,17 @@ class ExcelCompiler(object):
             return self.evaluate_range(rng)
 
         try:
-            print("Evalling: %s, %s" % (cell.address(), cell.python_expression))
+            print("Evaluating: %s, %s" % (cell.address(), cell.python_expression))
             value = eval(cell.compiled_expression)
-            print("Cell %s evalled to %s" % (cell.address(), value))
+            print("Cell %s evaluated to %s" % (cell.address(), value))
             if value is None:
                 print("WARNING %s is None" % (cell.address()))
             cell.value = value
-        except Exception as e:
-            if str(e).startswith("Problem evalling"):
-                raise e
-            else:
-                raise CompilerError("Problem evaluating: %s for %s, %s" % (
-                    e, cell.address(), cell.python_expression))
+        except Exception as exc:
+            if str(exc).startswith("Problem evaluating"):
+                raise
+            raise CompilerError("Problem evaluating: %s for %s, %s" % (
+                exc, cell.address(), cell.python_expression))
 
         return cell.value
 
@@ -668,7 +662,7 @@ class ExcelCompiler(object):
 
                 while stack and stack[-1].is_operator:
 
-                    if stack[-1].type == token.OP_PRE and stack[-1].value == "-":
+                    if stack[-1].matches(type_=Token.OP_PRE, value='-'):
                         o2 = cls.operators['u-']
                     else:
                         o2 = cls.operators[stack[-1].value]
@@ -794,21 +788,14 @@ class ExcelCompiler(object):
         self.excel.set_sheet(cursheet)
 
         # no need to output nr and nc here, since seed can be a list of unlinked cells
-        seeds, nr, nc = Cell.make_cells(self.excel, seed, sheet=cursheet)
-        seeds = list(flatten(seeds))
-
-        print("Seed %s expanded into %s cells" % (seed, len(seeds)))
+        seeds = Cell.make_cells(self.excel, seed, sheet=cursheet)[0]
 
         # only keep seeds with formulas or numbers
-        seeds = [s for s in seeds
+        seeds = [s for s in flatten(seeds)
                  if s.formula or isinstance(s.value, (int, float))]
-
-        print("%s filtered seeds " % len(seeds))
 
         # cells to analyze: only formulas
         todo = [s for s in seeds if s.formula if s not in self.cellmap]
-
-        print("%s cells on the todo list" % len(todo))
 
         # map of all new cells
         for cell in seeds:
@@ -869,7 +856,7 @@ class ExcelCompiler(object):
                         add_node_to_graph(rng)
                         self.dep_graph.add_edge(rng, self.cellmap[c1.address()])
 
-                        # cells in the range should point to the range as their parent
+                        # cells in the range have the range as their parent
                         target = rng
                 else:
                     # not a range, create the cell object
@@ -881,11 +868,10 @@ class ExcelCompiler(object):
                     # if we haven't treated this cell already
                     if c2.address() not in self.cellmap:
                         if c2.formula:
-                            # cell with a formula, needs to be added to the todo list
+                            # cell with a formula, add to the todo list
                             todo.append(c2)
-                            # print "appended ", c2.address()
                         else:
-                            # constant cell, no need for further processing, just remember to set the code
+                            # constant cell, no need for further processing
                             self.cell2code(c2)
 
                         # save in the self.cellmap
@@ -896,5 +882,7 @@ class ExcelCompiler(object):
                     # add an edge from the cell to the parent (range or cell)
                     self.dep_graph.add_edge(self.cellmap[c2.address()], target)
 
-        print("Graph construction done, %s nodes, %s edges, %s self.cellmap entries" % (
-            len(self.dep_graph.nodes()), len(self.dep_graph.edges()), len(self.cellmap)))
+        print(
+            "Graph construction done, %s nodes, %s edges, %s self.cellmap entries" % (
+                len(self.dep_graph.nodes()), len(self.dep_graph.edges()),
+                len(self.cellmap)))
