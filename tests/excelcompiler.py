@@ -132,7 +132,7 @@ test_data = [
     {
         "formula": "=SUM(123 + SUM(456) + (45<6))+456+789",
         "rpn": "123|456|SUM|+|45|6|<|+|SUM|456|+|789|+",
-        "python_code": "(xsum((123 + xsum(456)) + ((45 if 45 is not None else 0) < 6)) + 456) + 789"
+        "python_code": "(xsum((123 + xsum(456)) + (45 < 6)) + 456) + 789"
     },
     {
         "formula": "=AVG(((((123 + 4 + AVG(A1:A2))))))",
@@ -149,12 +149,12 @@ test_data = [
     {
         "formula": "=IF(R13C3>DATE(2002,1,6),0,IF(ISERROR(R[41]C[2]),0,IF(R13C3>=R[41]C[2],0, IF(AND(R[23]C[11]>=55,R[24]C[11]>=20),R53C3,0))))",
         "rpn": "R13C3|2002|1|6|DATE|>|0|R[41]C[2]|ISERROR|0|R13C3|R[41]C[2]|>=|0|R[23]C[11]|55|>=|R[24]C[11]|20|>=|AND|R53C3|0|IF|IF|IF|IF",
-        "python_code": "(0 if eval_cell(\"R13C3\") > (date(2002, 1, 6) if date(2002, 1, 6) is not None else 0) else (0 if iserror(eval_cell(\"R[41]C[2]\")) else (0 if eval_cell(\"R13C3\") >= (eval_cell(\"R[41]C[2]\") if eval_cell(\"R[41]C[2]\") is not None else 0) else (eval_cell(\"R53C3\") if all([eval_cell(\"R[23]C[11]\") >= (55 if 55 is not None else 0), eval_cell(\"R[24]C[11]\") >= (20 if 20 is not None else 0)]) else 0))))"
+        "python_code": "(0 if eval_cell(\"R13C3\") > (date(2002, 1, 6) if date(2002, 1, 6) is not None else 0) else (0 if iserror(eval_cell(\"R[41]C[2]\")) else (0 if eval_cell(\"R13C3\") >= (eval_cell(\"R[41]C[2]\") if eval_cell(\"R[41]C[2]\") is not None else 0) else (eval_cell(\"R53C3\") if all([eval_cell(\"R[23]C[11]\") >= 55, eval_cell(\"R[24]C[11]\") >= 20]) else 0))))"
     },
     {
         "formula": "=IF(R[39]C[11]>65,R[25]C[42],ROUND((R[11]C[11]*IF(OR(AND(R[39]C[11]>=55, R[40]C[11]>=20),AND(R[40]C[11]>=20,R11C3=\"YES\")),R[44]C[11],R[43]C[11]))+(R[14]C[11] *IF(OR(AND(R[39]C[11]>=55,R[40]C[11]>=20),AND(R[40]C[11]>=20,R11C3=\"YES\")), R[45]C[11],R[43]C[11])),0))",
         "rpn": "R[39]C[11]|65|>|R[25]C[42]|R[11]C[11]|R[39]C[11]|55|>=|R[40]C[11]|20|>=|AND|R[40]C[11]|20|>=|R11C3|\"YES\"|=|AND|OR|R[44]C[11]|R[43]C[11]|IF|*|R[14]C[11]|R[39]C[11]|55|>=|R[40]C[11]|20|>=|AND|R[40]C[11]|20|>=|R11C3|\"YES\"|=|AND|OR|R[45]C[11]|R[43]C[11]|IF|*|+|0|ROUND|IF",
-        "python_code": "(eval_cell(\"R[25]C[42]\") if eval_cell(\"R[39]C[11]\") > (65 if 65 is not None else 0) else xround((eval_cell(\"R[11]C[11]\") * (eval_cell(\"R[44]C[11]\") if any([all([eval_cell(\"R[39]C[11]\") >= (55 if 55 is not None else 0), eval_cell(\"R[40]C[11]\") >= (20 if 20 is not None else 0)]), all([eval_cell(\"R[40]C[11]\") >= (20 if 20 is not None else 0), eval_cell(\"R11C3\") == \"YES\"])]) else eval_cell(\"R[43]C[11]\"))) + (eval_cell(\"R[14]C[11]\") * (eval_cell(\"R[45]C[11]\") if any([all([eval_cell(\"R[39]C[11]\") >= (55 if 55 is not None else 0), eval_cell(\"R[40]C[11]\") >= (20 if 20 is not None else 0)]), all([eval_cell(\"R[40]C[11]\") >= (20 if 20 is not None else 0), eval_cell(\"R11C3\") == \"YES\"])]) else eval_cell(\"R[43]C[11]\"))), 0))"
+        "python_code": "(eval_cell(\"R[25]C[42]\") if eval_cell(\"R[39]C[11]\") > 65 else xround((eval_cell(\"R[11]C[11]\") * (eval_cell(\"R[44]C[11]\") if any([all([eval_cell(\"R[39]C[11]\") >= 55, eval_cell(\"R[40]C[11]\") >= 20]), all([eval_cell(\"R[40]C[11]\") >= 20, eval_cell(\"R11C3\") == \"YES\"])]) else eval_cell(\"R[43]C[11]\"))) + (eval_cell(\"R[14]C[11]\") * (eval_cell(\"R[45]C[11]\") if any([all([eval_cell(\"R[39]C[11]\") >= 55, eval_cell(\"R[40]C[11]\") >= 20]), all([eval_cell(\"R[40]C[11]\") >= 20, eval_cell(\"R11C3\") == \"YES\"])]) else eval_cell(\"R[43]C[11]\"))), 0))"
     },
     {
         "formula": "=(propellor_charts!B22*(propellor_charts!E21+propellor_charts!D21*(engine_data!O16*D70+engine_data!P16)+propellor_charts!C21*(engine_data!O16*D70+engine_data!P16)^2+propellor_charts!B21*(engine_data!O16*D70+engine_data!P16)^3)^2)^(1/3)*(1*D70/5.33E-18)^(2/3)*0.0000000001*28.3495231*9.81/1000",

@@ -232,13 +232,17 @@ class OperatorNode(ASTNode):
         #  (happens on blank cells)
         if op.startswith('<'):
             aa = args[0].emit(context)
-            ss = "({} if {} is not None else 0) {} {}".format(
-                aa, aa, op, args[1].emit(context))
+            if not args[0].token.matches(
+                    type_=Token.OPERAND, subtype=Token.NUMBER):
+                aa = "({} if {} is not None else 0)".format(aa, aa)
+            ss = "{} {} {}".format(aa, op, args[1].emit(context))
 
         elif op.startswith('>'):
             aa = args[1].emit(context)
-            ss = "{} {} ({} if {} is not None else 0)".format(
-                args[0].emit(context), op, aa, aa, )
+            if not args[1].token.matches(
+                    type_=Token.OPERAND, subtype=Token.NUMBER):
+                aa = "({} if {} is not None else 0)".format(aa, aa)
+            ss = "{} {} {}".format(args[0].emit(context), op, aa)
         else:
             if op != ',':
                 op = ' ' + op
