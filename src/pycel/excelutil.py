@@ -80,49 +80,53 @@ class Cell(object):
             raise Exception(
                 "Sheet name mismatch for cell address %s: %s vs %s" % (
                     address, sheet, sh))
-        elif not sh and sheet:
-            sh = sheet
-        else:
-            pass
 
         # we assume a cell's location can never change
-        self.__sheet = str(sheet)
-        self.__formula = str(formula) if formula else None
+        self._sheet = str(sheet or sh)
+        self._formula = str(formula) if formula else None
 
-        self.__sheet = sh
-        self.__col = c
-        self.__row = int(r)
-        self.__col_idx = col2num(c)
+        self._col = c
+        self._row = int(r)
+        self._col_idx = col2num(c)
 
-        self.value = str(value) if isinstance(value, str) else value
-        self.python_expression = None
+        self.value = value
+        self._python_expression = None
         self._compiled_expression = None
 
         # every cell has a unique id
-        self.__id = Cell.next_id()
+        self._id = Cell.next_id()
 
     def __repr__(self):
         return self.address()
 
     @property
     def sheet(self):
-        return self.__sheet
+        return self._sheet
 
     @property
     def row(self):
-        return self.__row
+        return self._row
 
     @property
     def col(self):
-        return self.__col
+        return self._col
 
     @property
     def formula(self):
-        return self.__formula
+        return self._formula
 
     @property
     def id(self):
-        return self.__id
+        return self._id
+
+    @property
+    def python_expression(self):
+        return self._python_expression
+
+    @python_expression.setter
+    def python_expression(self, value):
+        self._python_expression = value
+        self._compile()
 
     @property
     def compiled_expression(self):
@@ -131,28 +135,28 @@ class Cell(object):
     # code objects are not serializable
     def __getstate__(self):
         d = dict(self.__dict__)
-        f = '_compiled_expression'
-        if f in d: del d[f]
+        d.pop('_compiled_expression')
         return d
 
     def __setstate__(self, d):
         self.__dict__.update(d)
-        self.compile()
+        self._compile()
 
     def clean_name(self):
         return self.address().replace('!', '_').replace(' ', '_')
 
     def address(self, absolute=True):
         if absolute:
-            return "%s!%s%s" % (self.__sheet, self.__col, self.__row)
+            return "%s!%s%s" % (self._sheet, self._col, self._row)
         else:
-            return "%s%s" % (self.__col, self.__row)
+            return "%s%s" % (self._col, self._row)
 
     def address_parts(self):
-        return self.__sheet, self.__col, self.__row, self.__col_idx
+        return self._sheet, self._col, self._row, self._col_idx
 
-    def compile(self):
+    def _compile(self):
         if not self.python_expression:
+            self._compiled_expression = None
             return
 
         # if we are a constant string, surround by quotes

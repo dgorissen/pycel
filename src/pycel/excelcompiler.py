@@ -469,8 +469,8 @@ class ExcelCompiler(object):
         import matplotlib.pyplot as plt
 
         pos = nx.spring_layout(self.dep_graph, iterations=2000)
-        # pos=nx.spectral_layout(G)
-        # pos = nx.random_layout(G)
+        # pos=nx.spectral_layout(self.dep_graph)
+        # pos = nx.random_layout(self.dep_graph)
         nx.draw_networkx_nodes(self.dep_graph, pos)
         nx.draw_networkx_edges(self.dep_graph, pos, arrows=True)
         nx.draw_networkx_labels(self.dep_graph, pos)
@@ -538,6 +538,7 @@ class ExcelCompiler(object):
             cell = self.cellmap[cell]
         else:
             assert isinstance(cell, Cell)
+            assert cell.address() in self.cellmap
 
         # no formula, fixed value
         if not cell.formula or cell.value is not None:
@@ -748,13 +749,22 @@ class ExcelCompiler(object):
         return stack[0]
 
     def cell2code(self, cell):
-        """Generate python code for the given cell"""
+        """Generate python code for the given cell and return dependants"""
         if cell.formula:
             ast_root = self.build_ast(
                 self.parse_to_rpn(cell.formula or str(cell.value)))
+
+            # get all the cells/ranges this formula refers to, and remove dupes
+            dependants = uniqueify(
+                x.value.replace('$', '') for x, *_ in ast_root.descendents
+                if isinstance(x, RangeNode)
+            )
+
+            # build python code
             code = ast_root.emit(ASTNode.Context(cell, self.excel))
+
         else:
-            ast_root = None
+            dependants = ()
             if isinstance(cell.value, str):
                 code = '"{}"'.format(cell.value)
             else:
@@ -762,9 +772,8 @@ class ExcelCompiler(object):
 
         # set the code & compile (will flag problems sooner rather than later)
         cell.python_expression = code
-        cell.compile()
 
-        return ast_root
+        return dependants
 
     def gen_graph(self, seed, sheet=None):
         """Given a starting point (e.g., A6, or A3:B7) on a particular sheet,
@@ -814,13 +823,7 @@ class ExcelCompiler(object):
                 self.excel.set_sheet(cursheet)
 
             # parse the formula into code
-            cell_ast = self.cell2code(c1)
-
-            # get all the cells/ranges this formula refers to, and remove dupes
-            dependants = uniqueify(
-                x.value.replace('$', '') for x, *_ in cell_ast.descendents
-                if isinstance(x, RangeNode)
-            )
+            dependants = self.cell2code(c1)
 
             for dep in dependants:
 
