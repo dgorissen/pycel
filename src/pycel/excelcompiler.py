@@ -1,12 +1,10 @@
 import logging
-from math import *
 import pickle
 import sys
 
 import networkx as nx
 from networkx.drawing.nx_pydot import write_dot
 from networkx.readwrite.gexf import write_gexf
-from pycel.excellib import *
 from pycel.excelparser import ASTNode, ExcelParser, RangeNode
 from pycel.excelutil import (
     col2num,
@@ -59,6 +57,7 @@ class ExcelCompiler(object):
     def __init__(self, filename=None, excel=None):
 
         self.filename = filename
+        self.eval = None
 
         if excel:
             # if we are running as an excel addin, this gets passed to us
@@ -86,6 +85,7 @@ class ExcelCompiler(object):
     def save_to_file(self, fname):
         self.excel = None
         self.log = None
+        self.eval = None
         f = open(fname, 'wb')
         pickle.dump(self, f, protocol=2)
         f.close()
@@ -268,17 +268,11 @@ class ExcelCompiler(object):
             # print "  returning constant or cached value for ", cell.address()
             return cell.value
 
-        # recalculate formula
-        # the compiled expression calls this function
-        def eval_cell(address):
-            return self.evaluate(address)
-
-        def eval_range(rng):
-            return self.evaluate_range(rng)
-
         try:
             print("Evaluating: %s, %s" % (cell.address(), cell.python_expression))
-            value = eval(cell.compiled_expression)
+            if self.eval is None:
+                self.eval = self.build_eval()
+            value = self.eval(cell.compiled_expression)
             print("Cell %s evaluated to %s" % (cell.address(), value))
             if value is None:
                 print("WARNING %s is None" % (cell.address()))
@@ -290,6 +284,41 @@ class ExcelCompiler(object):
                 exc, cell.address(), cell.python_expression))
 
         return cell.value
+
+    def build_eval(self):
+        """eval with namespace management.  Will auto import needed functions"""
+        import importlib
+
+        modules = (
+            importlib.import_module('pycel.excellib'),
+            importlib.import_module('math'),
+        )
+
+        def eval_func(compiled_expression):
+
+            # recalculate formula
+            # the compiled expression calls this function
+            def eval_cell(address):
+                return self.evaluate(address)
+
+            def eval_range(rng):
+                return self.evaluate_range(rng)
+
+            def load_func(func_name):
+                funcs = (getattr(module, func_name, None) for module in modules)
+                return next((f for f in funcs if f is not None), None)
+
+            while True:
+                try:
+                    return eval(compiled_expression)
+                except NameError as exc:
+                    name = str(exc).split("'")[1]
+                    func = load_func(name)
+                    if func is None:
+                        raise
+                    locals()[name] = func
+
+        return eval_func
 
     def gen_graph(self, seed, sheet=None):
         """Given a starting point (e.g., A6, or A3:B7) on a particular sheet,
