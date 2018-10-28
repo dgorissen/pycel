@@ -3,296 +3,32 @@ import re
 import string
 
 
-# TODO: only supports rectangular ranges
-class CellRange(object):
-    def __init__(self, address, sheet=None):
-
-        self.__address = address.replace('$', '')
-
-        sh, start, end = split_range(address)
-        if not sh and not sheet:
-            raise Exception("Must pass in a sheet")
-
-        # make sure the address is always prefixed with the range
-        if sh:
-            sheet = sh
-        else:
-            self.__address = sheet + "!" + self.__address
-
-        addr, nrows, ncols = resolve_range(address, sheet=sheet)
-
-        # dont allow messing with these params
-        self.__celladdr = addr
-        self.__nrows = nrows
-        self.__ncols = ncols
-        self.__sheet = sheet
-
-        self.value = None
-
-    def __repr__(self):
-        return self.__address
-
-    def __str__(self):
-        return self.__address
-
-    def address(self):
-        return self.__address
-
-    @property
-    def celladdrs(self):
-        return self.__celladdr
-
-    @property
-    def nrows(self):
-        return self.__nrows
-
-    @property
-    def ncols(self):
-        return self.__ncols
-
-    @property
-    def sheet(self):
-        return self.__sheet
-
-
-class Cell(object):
-    ctr = 0
-
-    @classmethod
-    def next_id(cls):
-        cls.ctr += 1
-        return cls.ctr
-
-    def __init__(self, address, sheet, value=None, formula=None):
-        super(Cell, self).__init__()
-
-        # remove $'s
-        address = address.replace('$', '')
-
-        sh, c, r = split_address(address)
-
-        # both are empty
-        if not sheet and not sh:
-            raise Exception(
-                "Sheet name may not be empty for cell address %s" % address)
-        # both exist but disagree
-        elif sh and sheet and sh != sheet:
-            raise Exception(
-                "Sheet name mismatch for cell address %s: %s vs %s" % (
-                    address, sheet, sh))
-
-        # we assume a cell's location can never change
-        self._sheet = str(sheet or sh)
-        self._formula = str(formula) if formula else None
-
-        self._col = c
-        self._row = int(r)
-        self._col_idx = col2num(c)
-
-        self.value = value
-        self._python_expression = None
-        self._compiled_expression = None
-
-        # every cell has a unique id
-        self._id = Cell.next_id()
-
-    def __repr__(self):
-        return self.address()
-
-    @property
-    def sheet(self):
-        return self._sheet
-
-    @property
-    def row(self):
-        return self._row
-
-    @property
-    def col(self):
-        return self._col
-
-    @property
-    def formula(self):
-        return self._formula
-
-    @property
-    def id(self):
-        return self._id
-
-    @property
-    def python_expression(self):
-        return self._python_expression
-
-    @python_expression.setter
-    def python_expression(self, value):
-        self._python_expression = value
-        self._compile()
-
-    @property
-    def compiled_expression(self):
-        return self._compiled_expression
-
-    # code objects are not serializable
-    def __getstate__(self):
-        d = dict(self.__dict__)
-        d.pop('_compiled_expression')
-        return d
-
-    def __setstate__(self, d):
-        self.__dict__.update(d)
-        self._compile()
-
-    def clean_name(self):
-        return self.address().replace('!', '_').replace(' ', '_')
-
-    def address(self, absolute=True):
-        if absolute:
-            return "%s!%s%s" % (self._sheet, self._col, self._row)
-        else:
-            return "%s%s" % (self._col, self._row)
-
-    def address_parts(self):
-        return self._sheet, self._col, self._row, self._col_idx
-
-    def _compile(self):
-        if not self.python_expression:
-            self._compiled_expression = None
-            return
-
-        # if we are a constant string, surround by quotes
-        if (isinstance(self.value, str) and
-                not self.formula and
-                not self.python_expression.startswith('"')):
-            self.python_expression = '"' + self.python_expression + '"'
-
-        try:
-            self._compiled_expression = compile(self.python_expression,
-                                                '<string>', 'eval')
-        except Exception as e:
-            raise Exception(
-                "Failed to compile cell %s with expression %s: %s" % (
-                    self.address(), self.python_expression, e))
-
-    def __str__(self):
-        if self.formula:
-            return "%s%s" % (self.address(), self.formula)
-        else:
-            return "%s=%s" % (self.address(), self.value)
-
-    @staticmethod
-    def inc_col_address(address, inc):
-        sh, col, row = split_address(address)
-        return "%s!%s%s" % (sh, num2col(col2num(col) + inc), row)
-
-    @staticmethod
-    def inc_row_address(address, inc):
-        sh, col, row = split_address(address)
-        return "%s!%s%s" % (sh, col, row + inc)
-
-    @staticmethod
-    def resolve_cell(excel, address, sheet=None):
-        r = excel.get_range(address)
-        f = r.Formula if r.Formula.startswith('=') else None
-        v = r.Value
-
-        sh, c, r = split_address(address)
-
-        # use the sheet specified in the cell, else the passed sheet
-        sheet = sh or sheet
-
-        c = Cell(address, sheet, value=v, formula=f)
-        return c
-
-    @staticmethod
-    def make_cells(excel, rng, sheet=None):
-        cells = []
-
-        def convert_range(rng, sheet=None):
-            cells = []
-
-            # use the sheet specified in the range, else the passed sheet
-            sh, start, end = split_range(rng)
-            if sh:
-                sheet = sh
-
-            ads, numrows, numcols = resolve_range(rng)
-            # ensure in the same nested format as fs/vs will be
-            if numrows == 1:
-                ads = [ads]
-            elif numcols == 1:
-                ads = [[x] for x in ads]
-
-            # get everything in blocks, is faster
-            r = excel.get_range(rng)
-            fs = r.Formula
-            vs = r.Value
-
-            for it in (list(zip(*x)) for x in zip(ads, fs, vs)):
-                row = []
-                for c in it:
-                    a = c[0]
-                    f = c[1] if c[1] and c[1].startswith('=') else None
-                    v = c[2]
-                    cl = Cell(a, sheet, value=v, formula=f)
-                    row.append(cl)
-                cells.append(row)
-
-            # return as vector
-            if numrows == 1:
-                cells = cells[0]
-            elif numcols == 1:
-                cells = [x[0] for x in cells]
-            else:
-                pass
-
-            return cells, numrows, numcols
-
-        if isinstance(rng, list):  # if a list of cells
-            for cell in rng:
-                if is_range(cell):
-                    cs_in_range, nr, nc = convert_range(cell, sheet)
-                    cells.append(cs_in_range)
-                else:
-                    c = Cell.resolve_cell(excel, cell, sheet=sheet)
-                    cells.append(c)
-
-            cells = list(flatten(cells))
-
-            # numrows and numcols are irrelevant here, so we return nr=nc=-1
-            return cells, -1, -1
-
-        else:
-            if is_range(rng):
-                cells, numrows, numcols = convert_range(rng, sheet)
-
-            else:
-                c = Cell.resolve_cell(excel, rng, sheet=sheet)
-                cells.append(c)
-
-                numrows = 1
-                numcols = 1
-
-            return cells, numrows, numcols
-
-
 def is_range(address):
-    return address.find(':') > 0
+    return ':' in address
+
+
+def has_sheet(address):
+    return '!' in address
 
 
 def split_range(rng):
-    if rng.find('!') > 0:
-        sh, r = rng.split("!")
-        start, end = r.split(':')
+    rng = rng.split("!")
+    if len(rng) == 1:
+        sheet, rng = None, rng[0]
     else:
-        sh = None
-        start, end = rng.split(':')
+        sheet, rng = rng
 
-    return sh, start, end
+    if is_range(rng):
+        start, end = rng.split(':')
+    else:
+        start, end = rng, None
+
+    return sheet, start, end
 
 
 def split_address(address):
     sheet = None
-    if address.find('!') > 0:
+    if has_sheet(address):
         sheet, address = address.split('!')
 
     # ignore case
@@ -301,17 +37,20 @@ def split_address(address):
     # regular <col><row> format
     if re.match(r'^[A-Z\$]+[\d\$]+$', address):
         col, row = [_f for _f in re.split(r'([A-Z\$]+)', address) if _f]
+
     # R<row>C<col> format
     elif re.match(r'^R\d+C\d+$', address):
         row, col = address.split('C')
         row = row[1:]
+
     # R[<row>]C[<col>] format
     elif re.match(r'^R\[\d+\]C\[\d+\]$', address):
         row, col = address.split('C')
         row = row[2:-1]
         col = col[2:-1]
+
     else:
-        raise Exception('Invalid address format ' + address)
+        raise Exception('Invalid address format: {}'.format(address))
 
     return sheet, col, row
 
@@ -494,7 +233,7 @@ def is_number(s):
     try:
         float(s)
         return True
-    except ValueError:
+    except (ValueError, TypeError):
         return False
 
 
@@ -631,7 +370,7 @@ def criteria_parser(criteria):
             def check(x):
                 return x == criteria
     else:
-        raise Exception('Couldn\'t parse criteria %s' % criteria)
+        raise Exception("Couldn't parse criteria: {}".format(criteria))
 
     return check
 
