@@ -302,17 +302,20 @@ def npv(*args):
     #   NPV-function-8672CB67-2576-4D07-B67B-AC28ACF2A568
     
     rate = args[0] + 1
-    cashflow = args[1]
+    cashflow = args[1:]
     return sum([float(x) * rate ** -i for i, x in enumerate(cashflow, start=1)])
 
 
 def right(text, n):
-    # TODO: hack to deal with naca section numbers
-    if isinstance(text, str) or isinstance(text, str):
-        return text[-n:]
-    else:
-        # TODO: get rid of the decimal
-        return str(int(text))[-n:]
+    if n < 0:
+        raise ValueError("Offset for right must not be negative")
+    if n == 0:
+        return ''
+    if not isinstance(text, str):
+        # TODO: hack to deal with naca section numbers
+        text = str(int(text))
+
+    return text[-n:]
 
 
 def sumif(range, criteria, sum_range=[]):
@@ -346,7 +349,7 @@ def sumif(range, criteria, sum_range=[]):
 
 def value(text):
     # make the distinction for naca numbers
-    if text.find('.') > 0:
+    if '.' in text:
         return float(text)
     else:
         return int(text)
@@ -414,53 +417,20 @@ def yearfrac(start_date, end_date, basis=0):
     # Excel reference: https://support.office.com/en-us/article/
     #   YEARFRAC-function-3844141e-c76d-4143-82b6-208454ddc6a8
 
-    def actual_nb_days_ISDA(start, end):
-        # needed to separate days_in_leap_year from days_not_leap_year
-        y1, m1, d1 = start
-        y2, m2, d2 = end
-
-        days_in_leap_year = 0
-        days_not_in_leap_year = 0
-
-        year_range = range(y1, y2 + 1)
-
-        for y in year_range:
-
-            if y == y1 and y == y2:
-                nb_days = date(y2, m2, d2) - date(y1, m1, d1)
-            elif y == y1:
-                nb_days = date(y1 + 1, 1, 1) - date(y1, m1, d1)
-            elif y == y2:
-                nb_days = date(y2, m2, d2) - date(y2, 1, 1)
-            else:
-                nb_days = 366 if is_leap_year(y) else 365
-
-            if is_leap_year(y):
-                days_in_leap_year += nb_days
-            else:
-                days_not_in_leap_year += nb_days
-
-        return days_not_in_leap_year, days_in_leap_year
-
-    def actual_nb_days_AFB_alter(start, end):
+    def actual_nb_days_afb_alter(beg, end):
         # http://svn.finmath.net/finmath%20lib/trunk/src/main/java/net/
         #   finmath/time/daycount/DayCountConvention_ACT_ACT_YEARFRAC.java
-        y1, m1, d1 = start
-        y2, m2, d2 = end
-
-        delta = date(*end) - date(*start)
+        delta = date(*end) - date(*beg)
 
         if delta <= 365:
-            if is_leap_year(y1) and is_leap_year(y2):
-                denom = 366
-            elif is_leap_year(y1) and date(y1, m1, d1) <= date(y1, 2, 29):
-                denom = 366
-            elif is_leap_year(y2) and date(y2, m2, d2) >= date(y2, 2, 29):
+            if (is_leap_year(beg[0]) and date(*beg) <= date(beg[0], 2, 29) or
+                is_leap_year(end[0]) and date(*end) >= date(end[0], 2, 29) or
+                    is_leap_year(beg[0]) and is_leap_year(end[0])):
                 denom = 366
             else:
                 denom = 365
         else:
-            year_range = range(y1, y2 + 1)
+            year_range = range(beg[0], end[0] + 1)
             nb = 0
 
             for y in year_range:
@@ -486,14 +456,14 @@ def yearfrac(start_date, end_date, basis=0):
     y2, m2, d2 = date_from_int(end_date)
 
     if basis == 0:  # US 30/360
-        d2 = 30 if d2 == 31 and (d1 == 31 or d1 == 30) else min(d2, 31)
-        d1 = 30 if d1 == 31 else d1
+        d1 = min(d1, 30)
+        d2 = max(d2, 30) if d1 == 30 else d2
 
-        count = 360 * (y2 - y1) + 30 * (m2 - m1) + (d2 - d1)
-        result = count / 360
+        day_count = 360 * (y2 - y1) + 30 * (m2 - m1) + (d2 - d1)
+        result = day_count / 360
 
     elif basis == 1:  # Actual/actual
-        result = actual_nb_days_AFB_alter((y1, m1, d1), (y2, m2, d2))
+        result = actual_nb_days_afb_alter((y1, m1, d1), (y2, m2, d2))
 
     elif basis == 2:  # Actual/360
         result = (end_date - start_date) / 360
@@ -502,11 +472,11 @@ def yearfrac(start_date, end_date, basis=0):
         result = (end_date - start_date) / 365
 
     elif basis == 4:  # Eurobond 30/360
-        d2 = 30 if d2 == 31 else d2
-        d1 = 30 if d1 == 31 else d1
+        d2 = min(d2, 30)
+        d1 = min(d1, 30)
 
-        count = 360 * (y2 - y1) + 30 * (m2 - m1) + (d2 - d1)
-        result = count / 360
+        day_count = 360 * (y2 - y1) + 30 * (m2 - m1) + (d2 - d1)
+        result = day_count / 360
 
     else:
         raise ValueError("basis: %d must be 0, 1, 2, 3 or 4" % basis)

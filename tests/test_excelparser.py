@@ -439,12 +439,6 @@ def test_ast_node():
     assert 'a_value' == node.emit()
 
 
-def test_range_node_get_cells():
-
-    node = ASTNode.create(Token('a_value', Token.OPERAND, Token.RANGE))
-    assert ['a_value'] == node.get_cells()
-    
-
 def test_if_args_error():
 
     with pytest.raises(ParserError):

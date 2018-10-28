@@ -3,10 +3,8 @@ from networkx.classes.digraph import DiGraph
 
 from pycel.excelutil import (
     get_linest_degree,
+    has_sheet,
     is_range,
-    resolve_range,
-    split_address,
-    split_range,
 )
 
 
@@ -175,7 +173,7 @@ class OperatorNode(ASTNode):
             return "-" + args[0].emit(context)
 
         parent = self.parent
-        # dont render the ^{1,2,..} part in a linest formula
+        # don't render the ^{1,2,..} part in a linest formula
         # TODO: bit of a hack
         if op == "**":
             if parent and parent.value.lower() == "linest(":
@@ -226,25 +224,20 @@ class OperandNode(ASTNode):
 class RangeNode(OperandNode):
     """Represents a spreadsheet cell or range, e.g., A5 or B3:C20"""
 
-    def get_cells(self):
-        return resolve_range(self.value)[0]
-
     def emit(self, context=None):
         # resolve the range into cells
         rng = self.value.replace('$', '')
-        sheet = context.curcell.sheet + "!" if context else ""
+
+        if not has_sheet(rng):
+            rng = "{}{}".format(
+                context.curcell.sheet + "!" if context else "", rng)
+
         if is_range(rng):
-            sh, start, end = split_range(rng)
-            if sh:
-                return 'eval_range("' + rng + '")'
-            else:
-                return 'eval_range("' + sheet + rng + '")'
+            template = 'eval_range("{}")'
         else:
-            sh, col, row = split_address(rng)
-            if sh:
-                return 'eval_cell("' + rng + '")'
-            else:
-                return 'eval_cell("' + sheet + rng + '")'
+            template = 'eval_cell("{}")'
+            
+        return template.format(rng)
 
 
 class FunctionNode(ASTNode):

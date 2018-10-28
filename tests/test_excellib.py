@@ -1,4 +1,5 @@
 import datetime as dt
+import math
 import numpy as np
 import pytest
 
@@ -401,21 +402,22 @@ class TestMod:
         assert 2 == mod(10, 4)
 
 
-class TestRound:
+def test_npv():
+    pass
 
-    def test_nb_must_be_number(self):
-        with pytest.raises(TypeError):
-            round('er', 1)
 
-    def test_nb_digits_must_be_number(self):
-        with pytest.raises(TypeError):
-            round(2.323, 'ze')
+def test_right():
+    assert 'abcd' == right('abcd', 5)
+    assert 'abcd' == right('abcd', 4)
+    assert 'bcd' == right('abcd', 3)
+    assert 'cd' == right('abcd', 2)
+    assert 'd' == right('abcd', 1)
+    assert '' == right('abcd', 0)
 
-    def test_positive_number_of_digits(self):
-        assert 2.68 == xround(2.675, 2)
+    assert '34' == right(1234.1, 2)
 
-    def test_negative_number_of_digits(self):
-        assert 2400 == xround(2352.67, -2)
+    with pytest.raises(ValueError):
+        right('abcd', -1)
 
 
 class TestSumIf:
@@ -445,6 +447,69 @@ class TestSumIf:
 
     def test_sum_range_with_less_indexes(self):
         assert 35 == sumif([1, 2, 3, 4, 5], ">=3", [100, 123, 12, 23])
+
+
+def test_value():
+    assert 0.123 == value('.123')
+    assert 123 == value('123')
+    assert isinstance(value('123'), int)
+
+
+def test_xlog():
+    assert math.log(5) == xlog(5)
+    assert [math.log(5), math.log(6)] == xlog([5, 6])
+    assert [math.log(5), math.log(6)] == xlog((5, 6))
+    assert [math.log(5), math.log(6)] == xlog(np.array([5, 6]))
+
+
+def test_xmax():
+    assert 0 == xmax('abcd')
+    assert 3 == xmax((2, None, 'x', 3))
+
+
+def test_xmin():
+    assert 0 == xmin('abcd')
+    assert 2 == xmin((2, None, 'x', 3))
+
+
+@pytest.mark.parametrize(
+    'result, digits', (
+            (0, -5),
+            (10000, -4),
+            (12000, -3),
+            (12300, -2),
+            (12350, -1),
+            (12346, 0),
+            (12345.7, 1),
+            (12345.68, 2),
+            (12345.679, 3),
+            (12345.6789, 4),
+    )
+)
+def test_xround(result, digits):
+    assert result == xround(12345.6789, digits)
+
+
+class TestXRound:
+
+    def test_nb_must_be_number(self):
+        with pytest.raises(TypeError):
+            xround('er', 1)
+
+    def test_nb_digits_must_be_number(self):
+        with pytest.raises(TypeError):
+            xround(2.323, 'ze')
+
+    def test_positive_number_of_digits(self):
+        assert 2.68 == xround(2.675, 2)
+
+    def test_negative_number_of_digits(self):
+        assert 2400 == xround(2352.67, -2)
+
+
+def test_xsum():
+    assert 0 == xsum('abcd')
+    assert 5 == xsum((2, None, 'x', 3))
 
 
 class TestYearfrac:
@@ -492,3 +557,16 @@ class TestYearfrac:
     def test_yearfrac_inverted(self):
         assert yearfrac(date(2008, 1, 1), date(2015, 4, 20)) == pytest.approx(
             yearfrac(date(2015, 4, 20), date(2008, 1, 1)))
+
+    def test_yearfrac_basis_1_sub_year(self):
+        assert 11/365 == pytest.approx(
+            yearfrac(date(2015, 4, 20), date(2015, 5, 1), basis=1))
+
+        assert 11/366 == pytest.approx(
+            yearfrac(date(2016, 4, 20), date(2016, 5, 1), basis=1))
+
+        assert 316/366 == pytest.approx(
+            yearfrac(date(2016, 2, 20), date(2017, 1, 1), basis=1))
+
+        assert 61/366 == pytest.approx(
+            yearfrac(date(2015, 12, 31), date(2016, 3, 1), basis=1))

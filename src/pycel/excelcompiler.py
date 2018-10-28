@@ -455,7 +455,7 @@ class CellRange(object):
 
         addr, nrows, ncols = resolve_range(address, sheet=sheet)
 
-        # dont allow messing with these params
+        # don't allow messing with these params
         self.__celladdr = addr
         self.__nrows = nrows
         self.__ncols = ncols

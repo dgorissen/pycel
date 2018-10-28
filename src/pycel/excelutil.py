@@ -1,6 +1,13 @@
+import calendar
 import collections
+import datetime as dt
 import re
-import string
+
+from openpyxl.utils import (
+    column_index_from_string,
+    get_column_letter,
+    quote_sheetname,
+)
 
 
 def is_range(address):
@@ -11,12 +18,26 @@ def has_sheet(address):
     return '!' in address
 
 
-def split_range(rng):
-    rng = rng.split("!")
-    if len(rng) == 1:
-        sheet, rng = None, rng[0]
-    else:
-        sheet, rng = rng
+def get_sheet(address, sheet=''):
+    sh = ''
+    if has_sheet(address):
+        sh, address = address.split('!')
+        if sh.startswith("'") and sh.endswith("'"):
+            sh = sh[1:-1]
+        sh = sh.replace("''", "'")
+
+    if sh and sheet:
+        if sh != sheet:
+            raise Exception("Mismatched sheets %s and %s" % (sh, sheet))
+
+    if sh or sheet:
+        sheet = (sh or sheet)
+
+    return sheet, address
+
+
+def split_range(rng, sheet=''):
+    sheet, rng = get_sheet(rng, sheet=sheet)
 
     if is_range(rng):
         start, end = rng.split(':')
@@ -26,13 +47,14 @@ def split_range(rng):
     return sheet, start, end
 
 
-def split_address(address):
-    sheet = None
-    if has_sheet(address):
-        sheet, address = address.split('!')
+def split_address(address, sheet=''):
+    sheet, start, end = split_range(address, sheet=sheet)
+
+    if end is not None:
+        raise Exception('Found range {} expected address'.format(address))
 
     # ignore case
-    address = address.upper()
+    address = start.upper()
 
     # regular <col><row> format
     if re.match(r'^[A-Z\$]+[\d\$]+$', address):
@@ -41,13 +63,14 @@ def split_address(address):
     # R<row>C<col> format
     elif re.match(r'^R\d+C\d+$', address):
         row, col = address.split('C')
-        row = row[1:]
+        row = str(row[1:])
+        col = num2col(int(col))
 
     # R[<row>]C[<col>] format
     elif re.match(r'^R\[\d+\]C\[\d+\]$', address):
         row, col = address.split('C')
-        row = row[2:-1]
-        col = col[2:-1]
+        row = str(row[2:-1])
+        col = num2col(int(col[1:-1]))
 
     else:
         raise Exception('Invalid address format: {}'.format(address))
@@ -55,24 +78,15 @@ def split_address(address):
     return sheet, col, row
 
 
-def resolve_range(rng, flatten=False, sheet=''):
-    sh, start, end = split_range(rng)
+def resolve_range(rng, sheet=''):
+    sheet, start, end = split_range(rng, sheet=sheet)
 
-    if sh and sheet:
-        if sh != sheet:
-            raise Exception("Mismatched sheets %s and %s" % (sh, sheet))
-        else:
-            sheet += '!'
-    elif sh and not sheet:
-        sheet = sh + "!"
-    elif sheet and not sh:
-        sheet += "!"
-    else:
-        pass
-
+    if sheet:
+        sheet += '!'
+        
     # single cell, no range
     if not is_range(rng):
-        return [sheet + rng], 1, 1
+        return [sheet + start], 1, 1
 
     sh, start_col, start_row = split_address(start)
     sh, end_col, end_row = split_address(end)
@@ -85,7 +99,7 @@ def resolve_range(rng, flatten=False, sheet=''):
     # single column
     if start_col == end_col:
         nrows = end_row - start_row + 1
-        data = ["%s%s%s" % (s, c, r) for (s, c, r) in
+        data = [index2address(c, r, s) for (s, c, r) in
                 zip([sheet] * nrows, [start_col] * nrows,
                     list(range(start_row, end_row + 1)))]
         return data, len(data), 1
@@ -93,7 +107,7 @@ def resolve_range(rng, flatten=False, sheet=''):
     # single row
     elif start_row == end_row:
         ncols = end_col_idx - start_col_idx + 1
-        data = ["%s%s%s" % (s, num2col(c), r) for (s, c, r) in
+        data = [index2address(c, r, s) for (s, c, r) in
                 zip([sheet] * ncols,
                     list(range(start_col_idx, end_col_idx + 1)),
                     [start_row] * ncols)]
@@ -105,55 +119,36 @@ def resolve_range(rng, flatten=False, sheet=''):
         for r in range(start_row, end_row + 1):
             row = []
             for c in range(start_col_idx, end_col_idx + 1):
-                row.append(sheet + num2col(c) + str(r))
+                row.append(index2address(c, r, sheet))
 
             cells.append(row)
 
-        if flatten:
-            # flatten into one list
-            l = flatten(cells)
-            return l, 1, len(l)
-        else:
-            return cells, len(cells), len(cells[0])
-
-        # e.g., convert BA -> 53
+        return cells, len(cells), len(cells[0])
 
 
-def col2num(col):
-    if not col:
-        raise Exception("Column may not be empty")
-
-    tot = 0
-    for i, c in enumerate(c for c in col[::-1] if c != "$"):
-        if c == '$':
-            continue
-        tot += (ord(c) - 64) * 26 ** i
-    return tot
+def col2num(column):
+    # e.g., convert BA -> 53
+    return column_index_from_string(column)
 
 
-# convert back
-def num2col(num):
-    if num < 1:
-        raise Exception("Number must be larger than 0: %s" % num)
-
-    s = ''
-    q = num
-    while q > 0:
-        (q, r) = divmod(q, 26)
-        if r == 0:
-            q = q - 1
-            r = 26
-        s = string.ascii_uppercase[r - 1] + s
-    return s
+def num2col(column_number):
+    # convert back 53 -> BA
+    return get_column_letter(column_number)
 
 
-def address2index(a):
-    sh, c, r = split_address(a)
+def address2index(a, sheet=''):
+    sh, c, r = split_address(a, sheet=sheet)
     return col2num(c), int(r)
 
 
-def index2addres(c, r, sheet=None):
-    return "%s%s%s" % (sheet + "!" if sheet else "", num2col(c), r)
+def index2address(c, r, sheet=''):
+    if isinstance(c, int):
+        c = get_column_letter(c)
+
+    if sheet:
+        sheet = '{}!'.format(quote_sheetname(sheet.strip('!')))
+
+    return "{}{}{}".format(sheet, c, r)
 
 
 def get_linest_degree(excel, cl):
@@ -166,7 +161,7 @@ def get_linest_degree(excel, cl):
     # to the left
     i = ci - 1
     while i > 0:
-        f = excel.get_formula_from_range(index2addres(i, r))
+        f = excel.get_formula_from_range(index2address(i, r))
         if f is None or f != cl.formula:
             break
         else:
@@ -175,7 +170,7 @@ def get_linest_degree(excel, cl):
     # to the right
     j = ci + 1
     while True:
-        f = excel.get_formula_from_range(index2addres(j, r))
+        f = excel.get_formula_from_range(index2address(j, r))
         if f is None or f != cl.formula:
             break
         else:
@@ -217,16 +212,16 @@ def get_linest_degree(excel, cl):
 
 
 def flatten(items):
-    for el in items:
-        if isinstance(el, collections.Iterable) and not isinstance(el, str):
-            yield from flatten(el)
+    for item in items:
+        if isinstance(item, collections.Iterable) and not isinstance(item, str):
+            yield from flatten(item)
         else:
-            yield el
+            yield item
 
 
 def uniqueify(seq):
     seen = set()
-    return [x for x in seq if x not in seen and not seen.add(x)]
+    return tuple(x for x in seq if x not in seen and not seen.add(x))
 
 
 def is_number(s):
@@ -249,23 +244,14 @@ def is_leap_year(year):
 
 
 def get_max_days_in_month(month, year):
-    if not is_number(year) or not is_number(month):
-        raise TypeError("All inputs must be a number")
-    if year <= 0 or month <= 0:
-        raise TypeError("All inputs must be strictly positive")
+    if month == 2 and is_leap_year(year):
+        return 29
 
-    if month in (4, 6, 9, 11):
-        return 30
-    elif month == 2:
-        if is_leap_year(year):
-            return 29
-        else:
-            return 28
-    else:
-        return 31
+    return calendar.monthrange(year, month)[1]
 
 
 def normalize_year(y, m, d):
+    """taking into account negative month and day values"""
     if m <= 0:
         y -= int(abs(m) / 12 + 1)
         m = 12 - (abs(m) % 12)
@@ -280,62 +266,35 @@ def normalize_year(y, m, d):
         y, m, d = normalize_year(y, m, d)
 
     else:
-        if m in (4, 6, 9, 11) and d > 30:
+        days_in_month = get_max_days_in_month(m, y)
+        if d > days_in_month:
             m += 1
-            d -= 30
-            y, m, d = normalize_year(y, m, d)
-        elif m == 2:
-            if (is_leap_year(y)) and d > 29:
-                m += 1
-                d -= 29
-                y, m, d = normalize_year(y, m, d)
-            elif (not is_leap_year(y)) and d > 28:
-                m += 1
-                d -= 28
-                y, m, d = normalize_year(y, m, d)
-        elif d > 31:
-            m += 1
-            d -= 31
+            d -= days_in_month
             y, m, d = normalize_year(y, m, d)
 
     return y, m, d
 
 
-def date_from_int(nb):
-    if not is_number(nb):
-        raise TypeError("%s is not a number" % str(nb))
+def date_from_int(datestamp):
 
-    # origin of the Excel date system
-    current_year = 1900
-    current_month = 0
-    current_day = 0
+    if datestamp == 31 + 29:
+        # excel thinks 1900 is a leap year
+        return 1900, 2, 29
 
-    while nb > 0:
-        if not is_leap_year(current_year) and nb > 365:
-            current_year += 1
-            nb -= 365
-        elif is_leap_year(current_year) and nb > 366:
-            current_year += 1
-            nb -= 366
-        else:
-            current_month += 1
-            max_days = get_max_days_in_month(current_month, current_year)
+    date = dt.datetime(1899, 12, 30) + dt.timedelta(days=datestamp)
+    if datestamp < 31 + 29:
+        date += dt.timedelta(days=1)
 
-            if nb > max_days:
-                nb -= max_days
-            else:
-                current_day = nb
-                nb = 0
-
-    return current_year, current_month, current_day
+    return date.year, date.month, date.day
 
 
 def criteria_parser(criteria):
     if is_number(criteria):
         def check(x):
-            return x == criteria  # and type(x) == type(criteria)
+            return x == float(criteria)
 
     elif type(criteria) == str:
+
         search = re.search(r'(\W*)(.*)', criteria.lower()).group
         operator = search(1)
         value = search(2)
@@ -370,7 +329,7 @@ def criteria_parser(criteria):
             def check(x):
                 return x == criteria
     else:
-        raise Exception("Couldn't parse criteria: {}".format(criteria))
+        raise ValueError("Couldn't parse criteria: {}".format(criteria))
 
     return check
 
