@@ -31,7 +31,7 @@ def get_sheet(address, sheet=''):
             raise Exception("Mismatched sheets %s and %s" % (sh, sheet))
 
     if sh or sheet:
-        sheet = (sh or sheet)
+        sheet = str(sh or sheet)
 
     return sheet, address
 

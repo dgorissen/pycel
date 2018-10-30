@@ -5,7 +5,7 @@ import sys
 import networkx as nx
 from networkx.drawing.nx_pydot import write_dot
 from networkx.readwrite.gexf import write_gexf
-from pycel.excelparser import ASTNode, ExcelParser, RangeNode
+from pycel.excelformula import ExcelFormula
 from pycel.excelutil import (
     col2num,
     flatten,
@@ -14,7 +14,6 @@ from pycel.excelutil import (
     resolve_range,
     split_address,
     split_range,
-    uniqueify,
 )
 
 
@@ -96,12 +95,10 @@ class ExcelCompiler(object):
     def export_to_gexf(self, fname):
         write_gexf(self.dep_graph, fname)
 
-    def plot_graph(self):
+    def plot_graph(self, layout_type='spring_layout'):
         import matplotlib.pyplot as plt
 
-        pos = nx.spring_layout(self.dep_graph, iterations=2000)
-        # pos=nx.spectral_layout(self.dep_graph)
-        # pos = nx.random_layout(self.dep_graph)
+        pos = getattr(nx, layout_type)(self.dep_graph, iterations=2000)
         nx.draw_networkx_nodes(self.dep_graph, pos)
         nx.draw_networkx_edges(self.dep_graph, pos, arrows=True)
         nx.draw_networkx_labels(self.dep_graph, pos)
@@ -148,7 +145,7 @@ class ExcelCompiler(object):
         # use the sheet specified in the cell, else the passed sheet
         sheet = sh or sheet
 
-        c = Cell(address, sheet, value=v, formula=f)
+        c = Cell(address, sheet, value=v, formula=f, excel=self.excel)
         return c
 
     def make_cells(self, rng, sheet=None):
@@ -180,7 +177,7 @@ class ExcelCompiler(object):
                     a = c[0]
                     f = c[1] if c[1] and c[1].startswith('=') else None
                     v = c[2]
-                    cl = Cell(a, sheet, value=v, formula=f)
+                    cl = Cell(a, sheet, value=v, formula=f, excel=self.excel)
                     row.append(cl)
                 cells.append(row)
 
@@ -221,15 +218,6 @@ class ExcelCompiler(object):
 
             return cells, numrows, numcols
 
-    class Context(object):
-        """A small context object that nodes in the AST can use to emit code"""
-
-        def __init__(self, curcell, excel):
-            # the current cell for which we are generating code
-            self.curcell = curcell
-            # a handle to an excel instance
-            self.excel = excel
-
     def evaluate_range(self, rng, is_addr=True):
 
         if is_addr:
@@ -269,56 +257,23 @@ class ExcelCompiler(object):
             return cell.value
 
         try:
-            print("Evaluating: %s, %s" % (cell.address(), cell.python_expression))
+            print("Evaluating: %s, %s" % (cell.address(), cell.python_code))
             if self.eval is None:
-                self.eval = self.build_eval()
-            value = self.eval(cell.compiled_expression)
+                self.eval = ExcelFormula.build_eval_context(
+                    self.evaluate, self.evaluate_range)
+            value = self.eval(cell.compiled_python)
             print("Cell %s evaluated to %s" % (cell.address(), value))
             if value is None:
                 print("WARNING %s is None" % (cell.address()))
             cell.value = value
+            
         except Exception as exc:
             if str(exc).startswith("Problem evaluating"):
                 raise
             raise CompilerError("Problem evaluating: %s for %s, %s" % (
-                exc, cell.address(), cell.python_expression))
+                exc, cell.address(), cell.python_code))
 
         return cell.value
-
-    def build_eval(self):
-        """eval with namespace management.  Will auto import needed functions"""
-        import importlib
-
-        modules = (
-            importlib.import_module('pycel.excellib'),
-            importlib.import_module('math'),
-        )
-
-        def eval_func(compiled_expression):
-
-            # recalculate formula
-            # the compiled expression calls this function
-            def eval_cell(address):
-                return self.evaluate(address)
-
-            def eval_range(rng):
-                return self.evaluate_range(rng)
-
-            def load_func(func_name):
-                funcs = (getattr(module, func_name, None) for module in modules)
-                return next((f for f in funcs if f is not None), None)
-
-            while True:
-                try:
-                    return eval(compiled_expression)
-                except NameError as exc:
-                    name = str(exc).split("'")[1]
-                    func = load_func(name)
-                    if func is None:
-                        raise
-                    locals()[name] = func
-
-        return eval_func
 
     def gen_graph(self, seed, sheet=None):
         """Given a starting point (e.g., A6, or A3:B7) on a particular sheet,
@@ -367,15 +322,12 @@ class ExcelCompiler(object):
                 cursheet = c1.sheet
                 self.excel.set_sheet(cursheet)
 
-            # parse the formula into code
-            dependants = c1.build_python(self.Context(c1, self.excel))
-
-            for dep in dependants:
+            for addr in c1.compiled_python.needed_addresses:
 
                 # if the dependency is a multi-cell range, create a range object
-                if is_range(dep):
+                if is_range(addr):
                     # this will make sure we always have an absolute address
-                    rng = CellRange(dep, sheet=cursheet)
+                    rng = CellRange(addr, sheet=cursheet)
 
                     if rng.address() in self.cellmap:
                         # already dealt with this range
@@ -388,7 +340,7 @@ class ExcelCompiler(object):
                     else:
                         # turn into cell objects
                         cells, nrows, ncols = self.make_cells(
-                            dep, sheet=cursheet)
+                            addr, sheet=cursheet)
 
                         # get the values so we can set the range value
                         if nrows == 1 or ncols == 1:
@@ -408,7 +360,7 @@ class ExcelCompiler(object):
                         target = rng
                 else:
                     # not a range, create the cell object
-                    cells = [self.resolve_cell(dep, sheet=cursheet)]
+                    cells = [self.resolve_cell(addr, sheet=cursheet)]
                     target = self.cellmap[c1.address()]
 
                 # process each cell
@@ -418,9 +370,6 @@ class ExcelCompiler(object):
                         if c2.formula:
                             # cell with a formula, add to the todo list
                             todo.append(c2)
-                        else:
-                            # constant cell, no need for further processing
-                            c2.build_python(self.Context(c2, self.excel))
 
                         # save in the self.cellmap
                         self.cellmap[c2.address()] = c2
@@ -497,41 +446,32 @@ class Cell(object):
         cls.ctr += 1
         return cls.ctr
 
-    def __init__(self, address, sheet, value=None, formula=None):
-        super(Cell, self).__init__()
+    def __init__(self, address, sheet, value=None, formula=None, excel=None):
 
-        # remove $'s
-        address = address.replace('$', '')
-
-        sh, c, r = split_address(address)
-
-        # both are empty
-        if not sheet and not sh:
-            raise Exception(
-                "Sheet name may not be empty for cell address %s" % address)
-        # both exist but disagree
-        elif sh and sheet and sh != sheet:
-            raise Exception(
-                "Sheet name mismatch for cell address %s: %s vs %s" % (
-                    address, sheet, sh))
+        sheet, c, r = split_address(address.replace('$', ''), sheet=sheet)
 
         # we assume a cell's location can never change
-        self._sheet = str(sheet or sh)
-        self._formula = str(formula) if formula else None
+        self._sheet = sheet
+        self._excel_formula = ExcelFormula(
+            formula, context=Context(self, excel))
 
         self._col = c
         self._row = int(r)
         self._col_idx = col2num(c)
 
         self.value = value
-        self._python_expression = None
-        self._compiled_expression = None
 
         # every cell has a unique id
         self._id = Cell.next_id()
 
     def __repr__(self):
         return self.address()
+
+    def __str__(self):
+        if self.formula:
+            return "%s%s" % (self.address(), self.formula)
+        else:
+            return "%s=%s" % (self.address(), self.value)
 
     @property
     def sheet(self):
@@ -547,29 +487,19 @@ class Cell(object):
 
     @property
     def formula(self):
-        return self._formula
+        return self._excel_formula.base_formula
 
     @property
     def id(self):
         return self._id
 
     @property
-    def python_expression(self):
-        return self._python_expression
+    def python_code(self):
+        return self._excel_formula.python_code
 
     @property
-    def compiled_expression(self):
-        return self._compiled_expression
-
-    # code objects are not serializable
-    def __getstate__(self):
-        d = dict(self.__dict__)
-        d.pop('_compiled_expression')
-        return d
-
-    def __setstate__(self, d):
-        self.__dict__.update(d)
-        self._compile_python()
+    def compiled_python(self):
+        return self._excel_formula
 
     def clean_name(self):
         return self.address().replace('!', '_').replace(' ', '_')
@@ -583,59 +513,6 @@ class Cell(object):
     def address_parts(self):
         return self._sheet, self._col, self._row, self._col_idx
 
-    def build_python(self, context=None):
-        """Generate python code for the given cell and return dependants"""
-        if self.formula:
-            ast_root = ExcelParser.build_ast(self.formula or str(self.value))
-
-            # get all the cells/ranges this formula refers to, and remove dupes
-            dependants = uniqueify(
-                x.value.replace('$', '') for x, *_ in ast_root.descendants
-                if isinstance(x, RangeNode)
-            )
-
-            # build python code
-            code = ast_root.emit(context=context)
-
-        else:
-            dependants = ()
-            if isinstance(self.value, str):
-                code = '"{}"'.format(self.value)
-            else:
-                code = str(self.value)
-
-        # set the code & compile (will flag problems sooner rather than later)
-        self._python_expression = code
-        self._compile_python()
-
-        return dependants
-
-    def _compile_python(self):
-        if not self._python_expression:
-            self._compiled_expression = None
-            return
-
-        # if we are a constant string, surround by quotes
-        if (isinstance(self.value, str) and
-                not self.formula and
-                not self._python_expression.startswith('"')):
-
-            self._python_expression = '"' + self.python_expression + '"'
-
-        try:
-            self._compiled_expression = compile(
-                self._python_expression, '<string>', 'eval')
-        except Exception as e:
-            raise Exception(
-                "Failed to compile cell %s with expression %s: %s" % (
-                    self.address(), self.python_expression, e))
-
-    def __str__(self):
-        if self.formula:
-            return "%s%s" % (self.address(), self.formula)
-        else:
-            return "%s=%s" % (self.address(), self.value)
-
     @staticmethod
     def inc_col_address(address, inc):
         sh, col, row = split_address(address)
@@ -645,3 +522,14 @@ class Cell(object):
     def inc_row_address(address, inc):
         sh, col, row = split_address(address)
         return "%s!%s%s" % (sh, col, row + inc)
+
+
+class Context(object):
+    """A small context object that nodes can use to emit code"""
+
+    def __init__(self, curcell, excel):
+        # the current cell for which we are generating code
+        self.curcell = curcell
+
+        # a handle to athe excel instance
+        self.excel = excel

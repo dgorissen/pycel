@@ -1,7 +1,6 @@
 from pycel.excelcompiler import ExcelCompiler
 
 
-
 def test_end_2_end(excel, example_xls_path):
     # load & compile the file to a graph, starting from D1
     excel = ExcelCompiler(excel=excel)
@@ -29,4 +28,3 @@ def make_cells(excel):
     my_input = ['A1', 'A2:B3']
     output_cells = ExcelCompiler.make_cells(my_input, sheet=cursheet)
     assert len(output_cells) == 5
-

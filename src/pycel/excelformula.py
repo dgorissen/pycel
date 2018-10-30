@@ -5,6 +5,7 @@ from pycel.excelutil import (
     get_linest_degree,
     has_sheet,
     is_range,
+    uniqueify,
 )
 
 
@@ -153,8 +154,8 @@ class ASTNode(object):
 
 
 class OperatorNode(ASTNode):
-    # convert the operator to python equivalents
     op_map = {
+        # convert the operator to python equivalents
         "^": "**",
         "=": "==",
         "&": "+",
@@ -355,7 +356,7 @@ class FunctionNode(ASTNode):
 
 
 class Operator:
-    """Small wrapper class to manage operators during shunting yard"""
+    """Small wrapper class to manage operators during parsing"""
 
     def __init__(self, value, precedence, associativity):
         self.value = value
@@ -369,8 +370,8 @@ class Operator:
                 )
 
 
-class ExcelParser(object):
-    """Take an Excel function and compile it to Python code."""
+class ExcelFormula(object):
+    """Take an Excel formula and compile it to Python code."""
 
     operators = {
         # http://office.microsoft.com/en-us/excel-help/
@@ -393,6 +394,65 @@ class ExcelParser(object):
         '>=': Operator('>=', 1, 'left'),
         '<>': Operator('<>', 1, 'left'),
     }
+
+    def __init__(self, formula, context=None):
+        self.base_formula = formula
+        self.context = context
+        self._rpn = None
+        self._ast = None
+        self._needed_addresses = None
+        self._python_code = None
+        self._compiled_python = None
+
+    def __getstate__(self):
+        """code objects are not serializable"""
+        d = dict(self.__dict__)
+        d.pop('_compiled_python')
+        return d
+
+    @property
+    def rpn(self):
+        if self._rpn is None:
+            self._rpn = self.parse_to_rpn(self.base_formula)
+        return self._rpn                                                
+
+    @property
+    def ast(self):
+        if self._ast is None:
+            self._ast = self.build_ast(self.rpn)
+        return self._ast
+
+    @property
+    def needed_addresses(self):
+        """Return the address and address ranges this formula needs"""
+        if self._needed_addresses is None:
+            # get all the cells/ranges this formula refers to, and remove dupes
+            self._needed_addresses = uniqueify(
+                x.value.replace('$', '') for x, *_ in self.ast.descendants
+                if isinstance(x, RangeNode)
+            )
+
+        return self._needed_addresses
+
+    @property
+    def python_code(self):
+        """Use the ast to generate python code"""
+        if self._python_code is None:
+            self._python_code = self.ast.emit(context=self.context)
+        return self._python_code
+
+    @property
+    def compiled_python(self):
+        """ Using the Python code, generate compiled python code"""
+        if self._compiled_python is None:
+            try:
+                self._compiled_python = compile(
+                    self.python_code, '<string>', 'eval')
+            except Exception as exc:
+                raise ParserError("Failed to compile expression {}: {}".format(
+                    self.python_code, exc))
+
+        return self._compiled_python
 
     @classmethod
     def parse_to_rpn(cls, expression):
@@ -529,7 +589,7 @@ class ExcelParser(object):
     def build_ast(cls, rpn_expression):
         """build an AST from an Excel formula
 
-        :param rpn_expression: a string formula or the after parse_to_rpn()
+        :param rpn_expression: a string formula or the result of parse_to_rpn()
         :return: AST which can be used to generate code
         """
 
@@ -584,3 +644,51 @@ class ExcelParser(object):
 
         assert 1 == len(stack)
         return stack[0]
+
+    @classmethod
+    def build_eval_context(cls, evaluate, evaluate_range):
+        """eval with namespace management.  Will auto import needed functions
+
+        Used like:
+
+            build_eval(...)(expression returned from build_python)
+
+        :param evaluate: a function to evaluate a cell address
+        :param evaluate_range: a function to evaluate a range address
+        :return: a function to evaluate a compiled expression from build_ast
+        """
+
+        import importlib
+
+        modules = (
+            importlib.import_module('pycel.excellib'),
+            importlib.import_module('math'),
+        )
+
+        def eval_func(excel_formula):
+
+            # the compiled expressions can call these functions if
+            # referencing other cells or a range of cells
+
+            def eval_cell(address):
+                return evaluate(address)
+
+            def eval_range(rng):
+                return evaluate_range(rng)
+
+            def load_func(func_name):
+                # if a function is not already loaded, load it
+                funcs = (getattr(module, func_name, None) for module in modules)
+                return next((f for f in funcs if f is not None), None)
+
+            while True:
+                try:
+                    return eval(excel_formula.compiled_python)
+                except NameError as exc:
+                    name = str(exc).split("'")[1]
+                    func = load_func(name)
+                    if func is None:
+                        raise
+                    locals()[name] = func
+
+        return eval_func

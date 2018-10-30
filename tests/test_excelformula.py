@@ -1,7 +1,7 @@
 import pytest
-from pycel.excelparser import (
+from pycel.excelformula import (
     ASTNode,
-    ExcelParser,
+    ExcelFormula,
     ParserError,
     Token,
 )
@@ -25,13 +25,13 @@ range_inputs = [
      'B5:B15|D5:D15|SUM'),
 
     ('=SUM(B5:B15 A7:D7)',
-     'B5:B15|A7:D7||SUM'),
+     'B5:B15|A7:D7| |SUM'),
 
     ('=SUM((A:A,1:1))',
      'A:A|1:1|,|SUM'),
 
     ('=SUM((A:A A1:B1))',
-     'A:A|A1:B1||SUM'),
+     'A:A|A1:B1| |SUM'),
 
     ('=SUM(D9:D11,E9:E11,F9:F11)',
      'D9:D11|E9:E11|F9:F11|SUM'),
@@ -51,7 +51,7 @@ range_inputs = [
 
 basic_inputs = [
     ('=SUM((A:A 1:1))',
-     'A:A|1:1||SUM'),
+     'A:A|1:1| |SUM'),
 
     ('=A1',
      'A1'),
@@ -94,14 +94,14 @@ if_inputs = [
 
     (
     '=IF(R[39]C[11]>65,R[25]C[42],ROUND((R[11]C[11]*IF(OR(AND(R[39]C[11]>=55, R[40]C[11]>=20),AND(R[40]C[11]>=20,R11C3="YES")),R[44]C[11],R[43]C[11]))+(R[14]C[11] *IF(OR(AND(R[39]C[11]>=55,R[40]C[11]>=20),AND(R[40]C[11]>=20,R11C3="YES")), R[45]C[11],R[43]C[11])),0))',
-    'R[39]C[11]|65|>|R[25]C[42]|R[11]C[11]|R[39]C[11]|55|>=|R[40]C[11]|20|>=|AND|R[40]C[11]|20|>=|R11C3|YES|=|AND|OR|R[44]C[11]|R[43]C[11]|IF|*|R[14]C[11]|R[39]C[11]|55|>=|R[40]C[11]|20|>=|AND|R[40]C[11]|20|>=|R11C3|YES|=|AND|OR|R[45]C[11]|R[43]C[11]|IF|*|+|0|ROUND|IF'),
+    'R[39]C[11]|65|>|R[25]C[42]|R[11]C[11]|R[39]C[11]|55|>=|R[40]C[11]|20|>=|AND|R[40]C[11]|20|>=|R11C3|"YES"|=|AND|OR|R[44]C[11]|R[43]C[11]|IF|*|R[14]C[11]|R[39]C[11]|55|>=|R[40]C[11]|20|>=|AND|R[40]C[11]|20|>=|R11C3|"YES"|=|AND|OR|R[45]C[11]|R[43]C[11]|IF|*|+|0|ROUND|IF'),
 
     ('=IF(AI119="","",E119)',
-     'AI119||=||E119|IF'),
+     'AI119|""|=|""|E119|IF'),
 
     (
     '=IF(P5=1.0,"NA",IF(P5=2.0,"A",IF(P5=3.0,"B",IF(P5=4.0,"C",IF(P5=5.0,"D",IF(P5=6.0,"E",IF(P5=7.0,"F",IF(P5=8.0,"G"))))))))',
-    'P5|1.0|=|NA|P5|2.0|=|A|P5|3.0|=|B|P5|4.0|=|C|P5|5.0|=|D|P5|6.0|=|E|P5|7.0|=|F|P5|8.0|=|G|IF|IF|IF|IF|IF|IF|IF|IF'),
+    'P5|1.0|=|"NA"|P5|2.0|=|"A"|P5|3.0|=|"B"|P5|4.0|=|"C"|P5|5.0|=|"D"|P5|6.0|=|"E"|P5|7.0|=|"F"|P5|8.0|=|"G"|IF|IF|IF|IF|IF|IF|IF|IF'),
 
 ]
 
@@ -151,8 +151,7 @@ for test_name in test_names:
 
 @pytest.mark.parametrize('test_number, formula, rpn', test_data)
 def test_tokenizer(test_number, formula, rpn):
-    for formula, rpn in fancy_reference_inputs:
-        assert rpn == stringify(ExcelParser.parse_to_rpn(formula))
+    assert rpn == stringify(ExcelFormula(formula).rpn)
 
 
 test_data = [
@@ -379,9 +378,9 @@ def dump_test_case(formula, python_code, rpn):
 def dump_parse():
     print('[')
     for test_case in test_data:
-
-        parsed = ExcelParser.parse_to_rpn(test_case['formula'])
-        ast_root = ExcelParser.build_ast(parsed)
+        excel_formula = ExcelFormula(test_case['formula'])
+        parsed = excel_formula.rpn
+        ast_root = excel_formula.ast
         result_rpn = "|".join(str(x) for x in parsed)
         result_python_code = ast_root.emit()
         dump_test_case(test_case['formula'], result_python_code, result_rpn)
@@ -397,10 +396,10 @@ sorted_keys = tuple(map(str, sorted(test_data[0])))
 )
 def test_parse(formula, python_code, rpn):
 
-    parsed = ExcelParser.parse_to_rpn(formula)
-    ast_root = ExcelParser.build_ast(parsed)
+    excel_formula = ExcelFormula(formula)
+    parsed = excel_formula.rpn
     result_rpn = "|".join(str(x) for x in parsed)
-    result_python_code = ast_root.emit()
+    result_python_code = excel_formula.python_code
 
     if (rpn, python_code) != (result_rpn, result_python_code):
         print("***Expected: ")
@@ -417,16 +416,14 @@ def test_parse(formula, python_code, rpn):
 
 def test_descendants():
 
-    ast_root = ExcelParser.build_ast('=E54-E48')
-    descendants = ast_root.descendants
+    excel_formula = ExcelFormula('=E54-E48')
+    descendants = excel_formula.ast.descendants
 
     assert 2 == len(descendants)
     assert 'OPERAND' == descendants[0][0].type
     assert 'E54' == descendants[0][0].value
     assert 'OPERAND' == descendants[1][0].type
     assert 'E48' == descendants[1][0].value
-
-    assert descendants == ast_root.descendants
 
 
 def test_ast_node():
@@ -442,7 +439,7 @@ def test_ast_node():
 def test_if_args_error():
 
     with pytest.raises(ParserError):
-        ExcelParser.build_ast('=if(1)').emit()
+        ExcelFormula('=if(1)').python_code
 
 
 @pytest.mark.parametrize(
@@ -460,7 +457,40 @@ def test_if_args_error():
 def test_parser_error(formula):
 
     with pytest.raises(ParserError):
-        ExcelParser.build_ast(formula)
+        ExcelFormula(formula).ast
+
+
+def test_needed_addresses():
+
+    formula = '=(3600/1000)*E40*(E8/E39)*(E15/E19)*LN(E54/(E54-E48))'
+    needed = sorted(('E40', 'E8', 'E39', 'E15', 'E19', 'E54', 'E48'))
+
+    assert needed == sorted(ExcelFormula(formula).needed_addresses)
+
+
+def test_build_eval_context():
+    null_func = lambda x: 1
+
+    eval_context = ExcelFormula.build_eval_context(null_func, null_func)
+
+    assert 42 == eval_context(ExcelFormula('=2 * 21'))
+    assert 44 == eval_context(ExcelFormula('=2 * 21 + A1 + a1:a2'))
+    assert 1 == eval_context(ExcelFormula('=1 + sin(0)'))
+
+    with pytest.raises(NameError):
+        eval_context(ExcelFormula('=unknown_function(0)'))
+
+
+def test_compiled_python_error():
+    formula = ExcelFormula('=1 + 2')
+    formula._python_code = 'this will be a syntax error'
+    with pytest.raises(ParserError, match='Failed to compile expression'):
+        x = formula.compiled_python
+
+
+def test_build_ast_from_formula():
+    ast = ExcelFormula.build_ast('=1 + 2')
+    assert '1 + 2' == ast.emit()
 
 
 if __name__ == '__main__':
