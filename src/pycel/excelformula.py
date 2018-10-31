@@ -21,7 +21,7 @@ class Tokenizer(tokenizer.Tokenizer):
         self.items = self._items()
 
     def _items(self):
-        """ convert to use our Token"""
+        """Convert to use our Token"""
         t = [None] + [Token.from_token(t) for t in self.items] + [None]
 
         # convert or remove unneeded whitespace
@@ -49,6 +49,42 @@ class Token(tokenizer.Token):
     INTERSECT = "INTERSECT"
     ARRAYROW = "ARRAYROW"
 
+    class Precedence:
+        """Small wrapper class to manage operator precedence during parsing"""
+
+        def __init__(self, precedence, associativity):
+            self.precedence = precedence
+            self.associativity = associativity
+
+        def __lt__(self, other):
+            return (self.precedence < other.precedence or
+                    self.associativity == "left" and
+                    self.precedence == other.precedence
+                    )
+
+    precedences = {
+        # http://office.microsoft.com/en-us/excel-help/
+        #   calculation-operators-and-precedence-HP010078886.aspx
+        ':': Precedence(8, 'left'),
+        ' ': Precedence(8, 'left'),  # range intersection
+        ',': Precedence(8, 'left'),
+        'u': Precedence(7, 'left'),  # unary operator
+        '%': Precedence(6, 'left'),
+        '^': Precedence(5, 'left'),
+        '*': Precedence(4, 'left'),
+        '/': Precedence(4, 'left'),
+        '+': Precedence(3, 'left'),
+        '-': Precedence(3, 'left'),
+        '&': Precedence(2, 'left'),
+        '=': Precedence(1, 'left'),
+        '<': Precedence(1, 'left'),
+        '>': Precedence(1, 'left'),
+        '<=': Precedence(1, 'left'),
+        '>=': Precedence(1, 'left'),
+        '<>': Precedence(1, 'left'),
+        None: Precedence(0, ''),
+    }
+
     @classmethod
     def from_token(cls, token, value=None, type_=None, subtype=None):
         return cls(
@@ -70,6 +106,17 @@ class Token(tokenizer.Token):
         return ((type_ is None or self.type == type_) and
                 (subtype is None or self.subtype == subtype) and
                 (value is None or self.value == value))
+
+    @property
+    def precedence(self):
+        if not self.is_operator:
+            return self.precedences[None]
+        else:
+            return self.precedences[
+                'u' if self.type == Token.OP_PRE else self.value]
+
+    def __lt__(self, other):
+        return self.precedence < other.precedence
 
 
 class ASTNode(object):
@@ -355,45 +402,8 @@ class FunctionNode(ASTNode):
         return "any([{}])".format(self.comma_join_emit(context))
 
 
-class Operator:
-    """Small wrapper class to manage operators during parsing"""
-
-    def __init__(self, value, precedence, associativity):
-        self.value = value
-        self.precedence = precedence
-        self.associativity = associativity
-
-    def __lt__(self, other):
-        return (self.precedence < other.precedence or
-                self.associativity == "left" and
-                self.precedence == other.precedence
-                )
-
-
 class ExcelFormula(object):
     """Take an Excel formula and compile it to Python code."""
-
-    operators = {
-        # http://office.microsoft.com/en-us/excel-help/
-        #   calculation-operators-and-precedence-HP010078886.aspx
-        ':': Operator(':', 8, 'left'),
-        ' ': Operator(' ', 8, 'left'),  # range intersection
-        ',': Operator(',', 8, 'left'),
-        'u-': Operator('u-', 7, 'left'),  # unary negation
-        '%': Operator('%', 6, 'left'),
-        '^': Operator('^', 5, 'left'),
-        '*': Operator('*', 4, 'left'),
-        '/': Operator('/', 4, 'left'),
-        '+': Operator('+', 3, 'left'),
-        '-': Operator('-', 3, 'left'),
-        '&': Operator('&', 2, 'left'),
-        '=': Operator('=', 1, 'left'),
-        '<': Operator('<', 1, 'left'),
-        '>': Operator('>', 1, 'left'),
-        '<=': Operator('<=', 1, 'left'),
-        '>=': Operator('>=', 1, 'left'),
-        '<>': Operator('<>', 1, 'left'),
-    }
 
     def __init__(self, formula, context=None):
         self.base_formula = formula
@@ -539,19 +549,8 @@ class ExcelFormula(object):
 
             elif token.is_operator:
 
-                if token.type == token.OP_PRE and token.value == "-":
-                    o1 = cls.operators['u-']
-                else:
-                    o1 = cls.operators[token.value]
-
                 while stack and stack[-1].is_operator:
-
-                    if stack[-1].matches(type_=Token.OP_PRE, value='-'):
-                        o2 = cls.operators['u-']
-                    else:
-                        o2 = cls.operators[stack[-1].value]
-
-                    if o1 < o2:
+                    if token < stack[-1]:
                         output.append(ASTNode.create(stack.pop()))
                     else:
                         break
