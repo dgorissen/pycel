@@ -1,8 +1,12 @@
+import os
+import pickle
+from unittest import mock
+
 import pytest
 from pycel.excelformula import (
     ASTNode,
     ExcelFormula,
-    ParserError,
+    FormulaParserError,
     Token,
 )
 
@@ -427,7 +431,7 @@ def test_descendants():
 
 
 def test_ast_node():
-    with pytest.raises(ParserError):
+    with pytest.raises(FormulaParserError):
         ASTNode.create(Token('a_value', None, None))
 
     node = ASTNode(Token('a_value', None, None))
@@ -438,7 +442,7 @@ def test_ast_node():
 
 def test_if_args_error():
 
-    with pytest.raises(ParserError):
+    with pytest.raises(FormulaParserError):
         ExcelFormula('=if(1)').python_code
 
 
@@ -456,7 +460,7 @@ def test_if_args_error():
 )
 def test_parser_error(formula):
 
-    with pytest.raises(ParserError):
+    with pytest.raises(FormulaParserError):
         ExcelFormula(formula).ast
 
 
@@ -484,8 +488,38 @@ def test_build_eval_context():
 def test_compiled_python_error():
     formula = ExcelFormula('=1 + 2')
     formula._python_code = 'this will be a syntax error'
-    with pytest.raises(ParserError, match='Failed to compile expression'):
+    with pytest.raises(FormulaParserError, match='Failed to compile expression'):
         x = formula.compiled_python
+
+
+def test_save_to_file(fixture_dir):
+    formula = ExcelFormula('=1+2')
+    filename = os.path.join(fixture_dir, 'formula_save_test.pickle')
+    with open(filename, 'wb') as f:
+        pickle.dump(formula, f, protocol=2)
+
+    with open(filename, 'rb') as f:
+        loaded_formula = pickle.load(f)
+
+    os.unlink(filename)
+
+    assert formula.python_code == loaded_formula.python_code
+
+
+def test_get_linest_degree_with_cell():
+    with mock.patch('pycel.excelformula.get_linest_degree') as get:
+        get.return_value = -1, -1
+
+        class Cell:
+            @property
+            def sheet(self):
+                return 'Phony Sheet'
+            
+        cell = Cell()
+        formula = ExcelFormula('=linest(C1)', cell=cell)
+
+        expected = 'linest(eval_cell("Phony Sheet!C1"), degree=-1)[-2]'
+        assert expected == formula.python_code
 
 
 if __name__ == '__main__':

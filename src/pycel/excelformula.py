@@ -9,7 +9,7 @@ from pycel.excelutil import (
 )
 
 
-class ParserError(Exception):
+class FormulaParserError(Exception):
     """"Base class for Parser errors"""
 
 
@@ -112,9 +112,6 @@ class Token(tokenizer.Token):
         return self.precedences[
             'u' if self.type == Token.OP_PRE else self.value]
 
-    def __lt__(self, other):
-        return self.precedence < other.precedence
-
 
 class ASTNode(object):
     """A generic node in the AST used to compile a cell's formula"""
@@ -143,7 +140,7 @@ class ASTNode(object):
         elif token.is_operator:
             return OperatorNode(token, cell)
 
-        raise ParserError('Unknown token type: {}'.format(repr(token)))
+        raise FormulaParserError('Unknown token type: {}'.format(repr(token)))
 
     def __str__(self):
         return str(self.token.value.strip('('))
@@ -352,7 +349,7 @@ class FunctionNode(ASTNode):
         if len(args) in (3, 4):
             return "({} if {} else {})".format(args[1], args[0], args[2])
 
-        raise ParserError(
+        raise FormulaParserError(
             "IF with %s arguments not supported".format(len(args) - 1))
 
     def func_array(self):
@@ -414,7 +411,7 @@ class ExcelFormula(object):
     def __getstate__(self):
         """code objects are not serializable"""
         d = dict(self.__dict__)
-        d.pop('_compiled_python')
+        d['_compiled_python'] = None
         return d
 
     @property
@@ -456,8 +453,9 @@ class ExcelFormula(object):
                 self._compiled_python = compile(
                     self.python_code, '<string>', 'eval')
             except Exception as exc:
-                raise ParserError("Failed to compile expression {}: {}".format(
-                    self.python_code, exc))
+                raise FormulaParserError(
+                    "Failed to compile expression {}: {}".format(
+                        self.python_code, exc))
 
         return self._compiled_python
 
@@ -540,7 +538,8 @@ class ExcelFormula(object):
                     output.append(self.ast_node(stack.pop()))
 
                 if not len(were_values):
-                    raise ParserError("Mismatched or misplaced parentheses")
+                    raise FormulaParserError(
+                        "Mismatched or misplaced parentheses")
 
                 if were_values.pop():
                     arg_count[-1] += 1
@@ -549,7 +548,7 @@ class ExcelFormula(object):
             elif token.is_operator:
 
                 while stack and stack[-1].is_operator:
-                    if token < stack[-1]:
+                    if token.precedence < stack[-1].precedence:
                         output.append(self.ast_node(stack.pop()))
                     else:
                         break
@@ -566,7 +565,8 @@ class ExcelFormula(object):
                     output.append(self.ast_node(stack.pop()))
 
                 if not stack:
-                    raise ParserError("Mismatched or misplaced parentheses")
+                    raise FormulaParserError(
+                        "Mismatched or misplaced parentheses")
 
                 stack.pop()
 
@@ -577,13 +577,14 @@ class ExcelFormula(object):
 
         while stack:
             if stack[-1].subtype in (Token.OPEN, Token.CLOSE):
-                raise ParserError("Mismatched or misplaced parentheses")
+                raise FormulaParserError("Mismatched or misplaced parentheses")
 
             output.append(self.ast_node(stack.pop()))
 
         return output
 
-    def build_ast(self, rpn_expression):
+    @classmethod
+    def build_ast(cls, rpn_expression):
         """build an AST from an Excel formula
 
         :param rpn_expression: a string formula or the result of parse_to_rpn()
@@ -607,7 +608,7 @@ class ExcelFormula(object):
                         arg2 = stack.pop()
                         arg1 = stack.pop()
                     except IndexError:
-                        raise ParserError(
+                        raise FormulaParserError(
                             "'{}' operator missing operand".format(
                                 node.token.value))
                     ast.add_node(arg1, pos=0)
@@ -618,7 +619,7 @@ class ExcelFormula(object):
                     try:
                         arg1 = stack.pop()
                     except IndexError:
-                        raise ParserError(
+                        raise FormulaParserError(
                             "'{}' operator missing operand".format(
                                 node.token.value))
                     ast.add_node(arg1, pos=1)
