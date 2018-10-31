@@ -151,18 +151,18 @@ def index2address(c, r, sheet=''):
     return "{}{}{}".format(sheet, c, r)
 
 
-def get_linest_degree(excel, cl):
+def get_linest_degree(cell):
     # TODO: assumes a row or column of linest formulas &
     # that all coefficients are needed
 
-    sh, c, r, ci = cl.address_parts()
+    sh, c, r, ci = cell.address_parts()
     # figure out where we are in the row
 
     # to the left
     i = ci - 1
     while i > 0:
-        f = excel.get_formula_from_range(index2address(i, r))
-        if f is None or f != cl.formula:
+        f = cell.excel.get_formula_from_range(index2address(i, r))
+        if f is None or f != cell.formula:
             break
         else:
             i = i - 1
@@ -170,8 +170,8 @@ def get_linest_degree(excel, cl):
     # to the right
     j = ci + 1
     while True:
-        f = excel.get_formula_from_range(index2address(j, r))
-        if f is None or f != cl.formula:
+        f = cell.excel.get_formula_from_range(index2address(j, r))
+        if f is None or f != cell.formula:
             break
         else:
             j = j + 1
@@ -188,8 +188,8 @@ def get_linest_degree(excel, cl):
         # up
         i = r - 1
         while i > 0:
-            f = excel.get_formula_from_range("%s%s" % (c, i))
-            if f is None or f != cl.formula:
+            f = cell.excel.get_formula_from_range("%s%s" % (c, i))
+            if f is None or f != cell.formula:
                 break
             else:
                 i = i - 1
@@ -197,8 +197,8 @@ def get_linest_degree(excel, cl):
         # down
         j = r + 1
         while True:
-            f = excel.get_formula_from_range("%s%s" % (c, j))
-            if f is None or f != cl.formula:
+            f = cell.excel.get_formula_from_range("%s%s" % (c, j))
+            if f is None or f != cell.formula:
                 break
             else:
                 j = j + 1

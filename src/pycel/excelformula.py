@@ -82,7 +82,6 @@ class Token(tokenizer.Token):
         '<=': Precedence(1, 'left'),
         '>=': Precedence(1, 'left'),
         '<>': Precedence(1, 'left'),
-        None: Precedence(0, ''),
     }
 
     @classmethod
@@ -109,11 +108,9 @@ class Token(tokenizer.Token):
 
     @property
     def precedence(self):
-        if not self.is_operator:
-            return self.precedences[None]
-        else:
-            return self.precedences[
-                'u' if self.type == Token.OP_PRE else self.value]
+        assert self.is_operator
+        return self.precedences[
+            'u' if self.type == Token.OP_PRE else self.value]
 
     def __lt__(self, other):
         return self.precedence < other.precedence
@@ -122,28 +119,29 @@ class Token(tokenizer.Token):
 class ASTNode(object):
     """A generic node in the AST used to compile a cell's formula"""
 
-    def __init__(self, token):
+    def __init__(self, token, cell=None):
         super(ASTNode, self).__init__()
         self.token = token
+        self.cell = cell
         self._ast = None
         self._parent = None
         self._children = None
         self._descendants = None
 
     @classmethod
-    def create(cls, token):
+    def create(cls, token, cell=None):
         """Simple factory function"""
         if token.type == Token.OPERAND:
             if token.subtype == Token.RANGE:
-                return RangeNode(token)
+                return RangeNode(token, cell)
             else:
-                return OperandNode(token)
+                return OperandNode(token, cell)
 
         elif token.is_funcopen:
-            return FunctionNode(token)
+            return FunctionNode(token, cell)
 
         elif token.is_operator:
-            return OperatorNode(token)
+            return OperatorNode(token, cell)
 
         raise ParserError('Unknown token type: {}'.format(repr(token)))
 
@@ -195,7 +193,7 @@ class ASTNode(object):
             self._parent = next(self.ast.successors(self), None)
         return self._parent
 
-    def emit(self, context=None):
+    def emit(self):
         """Emit code"""
         return self.value
 
@@ -209,7 +207,7 @@ class OperatorNode(ASTNode):
         " ": "+"  # range intersection
     }
 
-    def emit(self, context=None):
+    def emit(self):
         xop = self.value
 
         # Get the arguments
@@ -218,35 +216,35 @@ class OperatorNode(ASTNode):
         op = self.op_map.get(xop, xop)
 
         if self.type == Token.OP_PRE:
-            return "-" + args[0].emit(context)
+            return "-" + args[0].emit()
 
         parent = self.parent
         # don't render the ^{1,2,..} part in a linest formula
         # TODO: bit of a hack
         if op == "**":
             if parent and parent.value.lower() == "linest(":
-                return args[0].emit(context)
+                return args[0].emit()
 
         # TODO silly hack to work around the fact that None < 0 is True
         #  (happens on blank cells)
         if op.startswith('<'):
-            aa = args[0].emit(context)
+            aa = args[0].emit()
             if not args[0].token.matches(
                     type_=Token.OPERAND, subtype=Token.NUMBER):
                 aa = "({} if {} is not None else 0)".format(aa, aa)
-            ss = "{} {} {}".format(aa, op, args[1].emit(context))
+            ss = "{} {} {}".format(aa, op, args[1].emit())
 
         elif op.startswith('>'):
-            aa = args[1].emit(context)
+            aa = args[1].emit()
             if not args[1].token.matches(
                     type_=Token.OPERAND, subtype=Token.NUMBER):
                 aa = "({} if {} is not None else 0)".format(aa, aa)
-            ss = "{} {} {}".format(args[0].emit(context), op, aa)
+            ss = "{} {} {}".format(args[0].emit(), op, aa)
         else:
             if op != ',':
                 op = ' ' + op
             ss = '{}{} {}'.format(
-                args[0].emit(context), op, args[1].emit(context))
+                args[0].emit(), op, args[1].emit())
 
         # avoid needless parentheses
         if parent and not isinstance(parent, FunctionNode):
@@ -257,7 +255,7 @@ class OperatorNode(ASTNode):
 
 class OperandNode(ASTNode):
 
-    def emit(self, context=None):
+    def emit(self):
         if self.subtype == self.token.LOGICAL:
             return str(self.value.lower() == "true")
 
@@ -272,13 +270,12 @@ class OperandNode(ASTNode):
 class RangeNode(OperandNode):
     """Represents a spreadsheet cell or range, e.g., A5 or B3:C20"""
 
-    def emit(self, context=None):
+    def emit(self):
         # resolve the range into cells
         rng = self.value.replace('$', '')
 
         if not has_sheet(rng):
-            rng = "{}{}".format(
-                context.curcell.sheet + "!" if context else "", rng)
+            rng = "{}{}".format(self.cell.sheet + "!" if self.cell else "", rng)
 
         if is_range(rng):
             template = 'eval_range("{}")'
@@ -319,67 +316,67 @@ class FunctionNode(ASTNode):
         super(FunctionNode, self).__init__(*args)
         self.num_args = 0
 
-    def comma_join_emit(self, context=None, fmt_str=None):
+    def comma_join_emit(self, fmt_str=None):
         if fmt_str is None:
-            return ", ".join(n.emit(context) for n in self.children)
+            return ", ".join(n.emit() for n in self.children)
         else:
             return ", ".join(
-                fmt_str.format(n.emit(context)) for n in self.children)
+                fmt_str.format(n.emit()) for n in self.children)
 
-    def emit(self, context=None):
+    def emit(self):
         func = self.value.lower().strip('(')
 
         # if a special handler is needed
         handler = getattr(self, 'func_{}'.format(func), None)
         if handler is not None:
-            return handler(context)
+            return handler()
 
         else:
             # map to the correct name
             return "{}({})".format(
-                self.func_map.get(func, func), self.comma_join_emit(context))
+                self.func_map.get(func, func), self.comma_join_emit())
 
-    def func_atan2(self, context=None):
+    def func_atan2(self):
         # swap arguments
-        a1, a2 = (a.emit(context) for a in self.children)
+        a1, a2 = (a.emit() for a in self.children)
         return "atan2({}, {})".format(a2, a1)
 
     @staticmethod
-    def func_pi(context=None):
+    def func_pi():
         # constant, no parens
         return "pi"
 
-    def func_if(self, context=None):
+    def func_if(self):
         # inline the if
-        args = [c.emit(context) for c in self.children] + [0]
+        args = [c.emit() for c in self.children] + [0]
         if len(args) in (3, 4):
             return "({} if {} else {})".format(args[1], args[0], args[2])
 
         raise ParserError(
             "IF with %s arguments not supported".format(len(args) - 1))
 
-    def func_array(self, context=None):
+    def func_array(self):
         if len(self.children) == 1:
-            return '[{}]'.format(self.children[0].emit(context))
+            return '[{}]'.format(self.children[0].emit())
         else:
             # multiple rows
-            return '[{}]'.format(self.comma_join_emit(context, '[{}]'))
+            return '[{}]'.format(self.comma_join_emit('[{}]'))
 
-    def func_arrayrow(self, context=None):
+    def func_arrayrow(self):
         # simply create a list
-        return self.comma_join_emit(context)
+        return self.comma_join_emit()
 
-    def func_linest(self, context=None):
+    def func_linest(self):
         func = self.value.lower().strip('(')
-        code = '{}({}'.format(func, self.comma_join_emit(context))
+        code = '{}({}'.format(func, self.comma_join_emit())
 
-        if not context:
+        if not self.cell:
             degree, coef = -1, -1
         else:
             # linests are often used as part of an array formula spanning
             # multiple cells, one cell for each coefficient.  We have to
             # figure out where we currently are in that range.
-            degree, coef = get_linest_degree(context.excel, context.curcell)
+            degree, coef = get_linest_degree(self.cell)
 
         # if we are the only linest (degree is one) and linest is nested
         # return vector, else return the coef.
@@ -395,19 +392,19 @@ class FunctionNode(ASTNode):
 
     func_linestmario = func_linest
 
-    def func_and(self, context=None):
-        return "all([{}])".format(self.comma_join_emit(context))
+    def func_and(self):
+        return "all([{}])".format(self.comma_join_emit())
 
-    def func_or(self, context=None):
-        return "any([{}])".format(self.comma_join_emit(context))
+    def func_or(self):
+        return "any([{}])".format(self.comma_join_emit())
 
 
 class ExcelFormula(object):
     """Take an Excel formula and compile it to Python code."""
 
-    def __init__(self, formula, context=None):
+    def __init__(self, formula, cell=None):
         self.base_formula = formula
-        self.context = context
+        self.cell = cell
         self._rpn = None
         self._ast = None
         self._needed_addresses = None
@@ -448,7 +445,7 @@ class ExcelFormula(object):
     def python_code(self):
         """Use the ast to generate python code"""
         if self._python_code is None:
-            self._python_code = self.ast.emit(context=self.context)
+            self._python_code = self.ast.emit()
         return self._python_code
 
     @property
@@ -464,8 +461,10 @@ class ExcelFormula(object):
 
         return self._compiled_python
 
-    @classmethod
-    def parse_to_rpn(cls, expression):
+    def ast_node(self, token):
+        return ASTNode.create(token, self.cell)
+
+    def parse_to_rpn(self, expression):
         """
         Parse an excel formula expression into reverse polish notation
 
@@ -520,7 +519,7 @@ class ExcelFormula(object):
         for token in tokens:
             if token.type == token.OPERAND:
 
-                output.append(ASTNode.create(token))
+                output.append(self.ast_node(token))
                 if were_values:
                     were_values[-1] = True
 
@@ -538,7 +537,7 @@ class ExcelFormula(object):
             elif token.type == token.SEP:
 
                 while stack and (stack[-1].subtype != token.OPEN):
-                    output.append(ASTNode.create(stack.pop()))
+                    output.append(self.ast_node(stack.pop()))
 
                 if not len(were_values):
                     raise ParserError("Mismatched or misplaced parentheses")
@@ -551,7 +550,7 @@ class ExcelFormula(object):
 
                 while stack and stack[-1].is_operator:
                     if token < stack[-1]:
-                        output.append(ASTNode.create(stack.pop()))
+                        output.append(self.ast_node(stack.pop()))
                     else:
                         break
 
@@ -564,7 +563,7 @@ class ExcelFormula(object):
             elif token.subtype == token.CLOSE:
 
                 while stack and stack[-1].subtype != Token.OPEN:
-                    output.append(ASTNode.create(stack.pop()))
+                    output.append(self.ast_node(stack.pop()))
 
                 if not stack:
                     raise ParserError("Mismatched or misplaced parentheses")
@@ -572,7 +571,7 @@ class ExcelFormula(object):
                 stack.pop()
 
                 if stack and stack[-1].is_funcopen:
-                    f = ASTNode.create(stack.pop())
+                    f = self.ast_node(stack.pop())
                     f.num_args = arg_count.pop() + int(were_values.pop())
                     output.append(f)
 
@@ -580,20 +579,16 @@ class ExcelFormula(object):
             if stack[-1].subtype in (Token.OPEN, Token.CLOSE):
                 raise ParserError("Mismatched or misplaced parentheses")
 
-            output.append(ASTNode.create(stack.pop()))
+            output.append(self.ast_node(stack.pop()))
 
         return output
 
-    @classmethod
-    def build_ast(cls, rpn_expression):
+    def build_ast(self, rpn_expression):
         """build an AST from an Excel formula
 
         :param rpn_expression: a string formula or the result of parse_to_rpn()
         :return: AST which can be used to generate code
         """
-
-        if not isinstance(rpn_expression, list):
-            rpn_expression = cls.parse_to_rpn(rpn_expression)
 
         # use a directed graph to store the syntax tree
         ast = DiGraph()

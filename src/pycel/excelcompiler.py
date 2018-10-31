@@ -452,8 +452,8 @@ class Cell(object):
 
         # we assume a cell's location can never change
         self._sheet = sheet
-        self._excel_formula = ExcelFormula(
-            formula, context=Context(self, excel))
+        self._excel = excel
+        self._excel_formula = ExcelFormula(formula, cell=self)
 
         self._col = c
         self._row = int(r)
@@ -472,6 +472,10 @@ class Cell(object):
             return "%s%s" % (self.address(), self.formula)
         else:
             return "%s=%s" % (self.address(), self.value)
+
+    @property
+    def excel(self):
+        return self._excel
 
     @property
     def sheet(self):
@@ -522,14 +526,3 @@ class Cell(object):
     def inc_row_address(address, inc):
         sh, col, row = split_address(address)
         return "%s!%s%s" % (sh, col, row + inc)
-
-
-class Context(object):
-    """A small context object that nodes can use to emit code"""
-
-    def __init__(self, curcell, excel):
-        # the current cell for which we are generating code
-        self.curcell = curcell
-
-        # a handle to athe excel instance
-        self.excel = excel

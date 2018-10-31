@@ -488,10 +488,5 @@ def test_compiled_python_error():
         x = formula.compiled_python
 
 
-def test_build_ast_from_formula():
-    ast = ExcelFormula.build_ast('=1 + 2')
-    assert '1 + 2' == ast.emit()
-
-
 if __name__ == '__main__':
     dump_parse()
