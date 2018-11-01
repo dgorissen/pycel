@@ -152,7 +152,47 @@ def test_index2address():
 
 
 def test_get_linest_degree():
-    """"""
+    # build a spreadsheet with linest formulas horiz and vert
+
+    class Excel:
+
+        def __init__(self, columns, rows):
+            self.columns = columns
+            self.rows = rows
+
+        def get_formula_from_range(self, address):
+            sheet, col, row = split_address(address)
+            found = col in self.columns and row in self.rows
+            return '=linest()' if found else ''
+
+    class Cell:
+        def __init__(self, excel):
+            self.excel = excel
+
+        @property
+        def sheet(self):
+            return 'PhonySheet'
+
+        @property
+        def formula(self):
+            return '=linest()'
+
+        def address_parts(self):
+            return self.sheet, 'E', 5, 5
+
+    assert (1, 1) == get_linest_degree(Cell(Excel('E', '5')))
+
+    assert (4, 5) == get_linest_degree(Cell(Excel('E', '12345')))
+    assert (4, 4) == get_linest_degree(Cell(Excel('E', '23456')))
+    assert (4, 3) == get_linest_degree(Cell(Excel('E', '34567')))
+    assert (4, 2) == get_linest_degree(Cell(Excel('E', '45678')))
+    assert (4, 1) == get_linest_degree(Cell(Excel('E', '56789')))
+
+    assert (4, 5) == get_linest_degree(Cell(Excel('ABCDE', '5')))
+    assert (4, 4) == get_linest_degree(Cell(Excel('BCDEF', '5')))
+    assert (4, 3) == get_linest_degree(Cell(Excel('CDEFG', '5')))
+    assert (4, 2) == get_linest_degree(Cell(Excel('DEFGH', '5')))
+    assert (4, 1) == get_linest_degree(Cell(Excel('EFGHI', '5')))
 
 
 def test_flatten():
