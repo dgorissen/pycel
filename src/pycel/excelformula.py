@@ -2,9 +2,8 @@ import openpyxl.formula.tokenizer as tokenizer
 from networkx.classes.digraph import DiGraph
 
 from pycel.excelutil import (
+    AddressRange,
     get_linest_degree,
-    has_sheet,
-    is_range,
     uniqueify,
 )
 
@@ -269,17 +268,11 @@ class RangeNode(OperandNode):
 
     def emit(self):
         # resolve the range into cells
-        rng = self.value.replace('$', '')
-
-        if not has_sheet(rng):
-            rng = "{}{}".format(self.cell.sheet + "!" if self.cell else "", rng)
-
-        if is_range(rng):
-            template = 'eval_range("{}")'
-        else:
-            template = 'eval_cell("{}")'
-            
-        return template.format(rng)
+        sheet = self.cell and self.cell.sheet or ''
+        address = AddressRange.create(
+            self.value.replace('$', ''), sheet=sheet, cell=self.cell)
+        template = 'eval_range("{}")' if address.is_range else 'eval_cell("{}")'
+        return template.format(address)
 
 
 class FunctionNode(ASTNode):
@@ -367,7 +360,7 @@ class FunctionNode(ASTNode):
         func = self.value.lower().strip('(')
         code = '{}({}'.format(func, self.comma_join_emit())
 
-        if not self.cell:
+        if not self.cell or not self.cell.excel:
             degree, coef = -1, -1
         else:
             # linests are often used as part of an array formula spanning
@@ -422,7 +415,7 @@ class ExcelFormula(object):
 
     @property
     def ast(self):
-        if self._ast is None:
+        if self._ast is None and self.rpn:
             self._ast = self.build_ast(self.rpn)
         return self._ast
 
@@ -431,10 +424,19 @@ class ExcelFormula(object):
         """Return the address and address ranges this formula needs"""
         if self._needed_addresses is None:
             # get all the cells/ranges this formula refers to, and remove dupes
-            self._needed_addresses = uniqueify(
-                x.value.replace('$', '') for x, *_ in self.ast.descendants
-                if isinstance(x, RangeNode)
-            )
+            if not self.ast:
+                self._needed_addresses = ()
+            else:
+                needed_addresses = ((AddressRange(x.value),
+                                     x.cell and x.cell.address.sheet)
+                                    for x, *_ in self.ast.descendants
+                                    if isinstance(x, RangeNode))
+
+                self._needed_addresses = uniqueify(
+                    addr if addr.has_sheet else
+                    AddressRange.create(addr, sheet=sheet)
+                    for addr, sheet in needed_addresses
+                )
 
         return self._needed_addresses
 
@@ -442,13 +444,16 @@ class ExcelFormula(object):
     def python_code(self):
         """Use the ast to generate python code"""
         if self._python_code is None:
-            self._python_code = self.ast.emit()
+            if self.ast is None:
+                self._python_code = ''
+            else:
+                self._python_code = self.ast.emit()
         return self._python_code
 
     @property
     def compiled_python(self):
         """ Using the Python code, generate compiled python code"""
-        if self._compiled_python is None:
+        if self._compiled_python is None and self.python_code:
             try:
                 self._compiled_python = compile(
                     self.python_code, '<string>', 'eval')

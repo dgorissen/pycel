@@ -17,6 +17,8 @@ from os import path
 from openpyxl import load_workbook
 from openpyxl.cell import Cell
 
+from pycel.excelutil import AddressCell, AddressRange
+
 
 class ExcelWrapper(object):
     __metaclass__ = abc.ABCMeta
@@ -311,19 +313,20 @@ class ExcelOpxWrapper(ExcelWrapper):
         return self.workbook.active
 
     def get_range(self, address):
+        if not isinstance(address, (AddressRange, AddressCell)):
+            address = AddressRange(address)
 
         sheet = self.workbook.active
         sheetDO = self.workbookDO.active
-        if address.find('!') > 0:
-            title, address = address.split('!')
-            sheet = self.workbook[title]
-            sheetDO = self.workbookDO[title]
+        if address.sheet:
+            sheet = self.workbook[address.sheet]
+            sheetDO = self.workbookDO[address.sheet]
 
-        cells = sheet[address]
+        cells = sheet[address.coordinate]
         if isinstance(cells, Cell):
             cells = ((cells,),)
 
-        cellsDO = sheetDO[address]
+        cellsDO = sheetDO[address.coordinate]
         if isinstance(cellsDO, Cell):
             cellsDO = ((cellsDO,),)
 

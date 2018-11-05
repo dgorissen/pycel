@@ -1,3 +1,5 @@
+import collections
+import itertools as it
 import logging
 import pickle
 import sys
@@ -7,13 +9,10 @@ from networkx.drawing.nx_pydot import write_dot
 from networkx.readwrite.gexf import write_gexf
 from pycel.excelformula import ExcelFormula
 from pycel.excelutil import (
-    col2num,
+    AddressCell,
+    AddressRange,
     flatten,
-    is_range,
-    num2col,
     resolve_range,
-    split_address,
-    split_range,
 )
 
 
@@ -73,8 +72,14 @@ class ExcelCompiler(object):
         # directed graph for cell dependencies
         self.dep_graph = nx.DiGraph()
 
-        # cell address to Cell mapping
-        self.cellmap = {}
+        # cell address to Cell mapping, cells and ranges already built
+        self.cell_map = {}
+
+        # cells, ranges and graph_edges that need to be built
+        self.address_todos = []
+        self.graph_todos = []
+        self.range_todos = []
+
 
     @staticmethod
     def load_from_file(fname):
@@ -106,7 +111,8 @@ class ExcelCompiler(object):
 
     def set_value(self, cell, val, is_addr=True):
         if is_addr:
-            cell = self.cellmap[cell]
+            address = AddressRange(cell)
+            cell = self.cell_map[address]
 
         if cell.value != val:
             # reset the node + its dependencies
@@ -117,325 +123,242 @@ class ExcelCompiler(object):
     def reset(self, cell):
         if cell.value is None:
             return
-        print("resetting {}".format(cell.address()))
+        print("resetting {}".format(cell.address))
         cell.value = None
         for cell in self.dep_graph.successors(cell):
             self.reset(cell)
 
     def print_value_tree(self, addr, indent):
-        cell = self.cellmap[addr]
+        cell = self.cell_map[addr]
         print("%s %s = %s" % (" " * indent, addr, cell.value))
         for c in self.dep_graph.predecessors(cell):
             self.print_value_tree(c.address(), indent + 1)
 
     def recalculate(self):
-        for c in self.cellmap.values():
-            if isinstance(c, CellRange):
-                self.evaluate_range(c, is_addr=False)
+        for cell in self.cell_map.values():
+            if isinstance(cell, CellRange) or cell.formula:
+                cell.value = None
+
+        for cell in self.cell_map.values():
+            if isinstance(cell, CellRange):
+                self.evaluate_range(cell)
             else:
-                self.evaluate(c, is_addr=False)
+                self.evaluate(cell)
 
-    def resolve_cell(self, address, sheet=None):
-        r = self.excel.get_range(address)
-        f = r.Formula if r.Formula.startswith('=') else None
-        v = r.Value
+    def make_cells(self, address):
+        """Given an AddressRange or AddressCell generate compiler Cells"""
 
-        sh, c, r = split_address(address)
-
-        # use the sheet specified in the cell, else the passed sheet
-        sheet = sh or sheet
-
-        c = Cell(address, sheet, value=v, formula=f, excel=self.excel)
-        return c
-
-    def make_cells(self, rng, sheet=None):
-        cells = []
-
-        def convert_range(rng, sheet=None):
-            cells = []
-
-            # use the sheet specified in the range, else the passed sheet
-            sh, start, end = split_range(rng)
-            if sh:
-                sheet = sh
-
-            ads, numrows, numcols = resolve_range(rng)
-            # ensure in the same nested format as fs/vs will be
-            if numrows == 1:
-                ads = [ads]
-            elif numcols == 1:
-                ads = [[x] for x in ads]
-
-            # get everything in blocks, is faster
-            r = self.excel.get_range(rng)
-            fs = r.Formula
-            vs = r.Value
-
-            for it in (list(zip(*x)) for x in zip(ads, fs, vs)):
-                row = []
-                for c in it:
-                    a = c[0]
-                    f = c[1] if c[1] and c[1].startswith('=') else None
-                    v = c[2]
-                    cl = Cell(a, sheet, value=v, formula=f, excel=self.excel)
-                    row.append(cl)
-                cells.append(row)
-
-            # return as vector
-            if numrows == 1:
-                cells = cells[0]
-            elif numcols == 1:
-                cells = [x[0] for x in cells]
-            else:
-                pass
-
-            return cells, numrows, numcols
-
-        if isinstance(rng, list):  # if a list of cells
-            for cell in rng:
-                if is_range(cell):
-                    cs_in_range, nr, nc = convert_range(cell, sheet)
-                    cells.append(cs_in_range)
-                else:
-                    c = self.resolve_cell(cell, sheet=sheet)
-                    cells.append(c)
-
-            cells = list(flatten(cells))
-
-            # numrows and numcols are irrelevant here, so we return nr=nc=-1
-            return cells, -1, -1
-
-        else:
-            if is_range(rng):
-                cells, numrows, numcols = convert_range(rng, sheet)
-
-            else:
-                c = self.resolve_cell(rng, sheet=sheet)
-                cells.append(c)
-
-                numrows = 1
-                numcols = 1
-
-            return cells, numrows, numcols
-
-    def evaluate_range(self, rng, is_addr=True):
-
-        if is_addr:
-            rng = self.cellmap[rng]
-        else:
-            assert isinstance(rng, CellRange)
-
-        # it's important that [] gets treated as false here
-        if rng.value:
-            return rng.value
-
-        cells, nrows, ncols = rng.celladdrs, rng.nrows, rng.ncols
-
-        if nrows == 1 or ncols == 1:
-            data = [self.evaluate(c) for c in cells]
-        else:
-            data = [[self.evaluate(c) for c in cells[i]] for i in
-                    range(len(cells))]
-
-        rng.value = data
-
-        return data
-
-    def evaluate(self, cell, is_addr=True):
-
-        if is_addr:
-            if cell not in self.cellmap:
-                self.gen_graph(cell)
-            cell = self.cellmap[cell]
-        else:
-            assert isinstance(cell, Cell)
-            assert cell.address() in self.cellmap
-
-        # no formula, fixed value
-        if not cell.formula or cell.value is not None:
-            # print "  returning constant or cached value for ", cell.address()
-            return cell.value
-
-        try:
-            print("Evaluating: %s, %s" % (cell.address(), cell.python_code))
-            if self.eval is None:
-                self.eval = ExcelFormula.build_eval_context(
-                    self.evaluate, self.evaluate_range)
-            value = self.eval(cell.compiled_python)
-            print("Cell %s evaluated to %s" % (cell.address(), value))
-            if value is None:
-                print("WARNING %s is None" % (cell.address()))
-            cell.value = value
-            
-        except Exception as exc:
-            if str(exc).startswith("Problem evaluating"):
-                raise
-            raise CompilerError("Problem evaluating: %s for %s, %s" % (
-                exc, cell.address(), cell.python_code))
-
-        return cell.value
-
-    def gen_graph(self, seed, sheet=None):
-        """Given a starting point (e.g., A6, or A3:B7) on a particular sheet,
-        generate a Spreadsheet instance that captures the logic and control
-        flow of the equations.
-        """
+        # from here don't build cells that are already in the cellmap
+        # ::TODO:: remove this when refactoring done
+        assert address not in self.cell_map
 
         def add_node_to_graph(node):
             self.dep_graph.add_node(node)
             self.dep_graph.node[node]['sheet'] = node.sheet
+            self.dep_graph.node[node]['label'] = node.address.coordinate
 
-            if isinstance(node, Cell):
-                self.dep_graph.node[node]['label'] = node.col + str(node.row)
-            else:
-                # strip the sheet
-                self.dep_graph.node[node]['label'] = \
-                    node.address()[node.address().find('!') + 1:]
+            # stick in queue to add edges
+            self.graph_todos.append(node)
 
-        # starting points
-        cursheet = sheet or self.excel.get_active_sheet()
-        self.excel.set_sheet(cursheet)
+        def build_cell(addr):
 
-        # no need to output nr and nc here, since seed can be a list of unlinked cells
-        seeds = self.make_cells(seed, sheet=cursheet)[0]
+            excel_range = self.excel.get_range(addr)
+            formula = None
+            if excel_range.Formula.startswith('='):
+                formula = excel_range.Formula
 
-        # only keep seeds with formulas or numbers
-        seeds = [s for s in flatten(seeds)
-                 if s.formula or isinstance(s.value, (int, float))]
+            return Cell(addr, value=excel_range.Value,
+                        formula=formula, excel=self.excel)
 
-        # cells to analyze: only formulas
-        todo = [s for s in seeds if s.formula if s not in self.cellmap]
+        def build_range(rng):
 
-        # map of all new cells
-        for cell in seeds:
-            if cell.address() not in self.cellmap:
-                self.cellmap[cell.address()] = cell
+            # ensure in the same nested format as fs/vs will be
+            height, width = address.size
+            addrs = resolve_range(rng)
+            if height == 1:
+                addrs = [addrs]
+            elif width == 1:
+                addrs = [[x] for x in addrs]
+
+            # get everything in blocks, as it is faster
+            excel_range = self.excel.get_range(rng)
+            excel_cells = zip(addrs, excel_range.Formula, excel_range.Value)
+
+            cells = []
+            for row in (zip(*x) for x in excel_cells):
+                for cell_address, f, value in row:
+                    formula = f if f and f.startswith('=') else None
+                    if None not in (f, value):
+                        cl = Cell(cell_address, value=value,
+                                  formula=formula, excel=self.excel)
+                        cells.append(cl)
+
+            # return as vector
+            return cells
+
+        if address.is_range:
+            cell_range = CellRange(address)
+            self.range_todos.append(cell_range)
+            self.cell_map[address] = cell_range
+            add_node_to_graph(cell_range)
+
+            new_cells = build_range(address)
+        else:
+            new_cells = [build_cell(address)]
+
+        for cell in flatten(new_cells):
+            # ::TODO:: move this if to build_range
+            if cell.address not in self.cell_map:
+                self.cell_map[cell.address] = cell
+
+            if cell.formula:
+                # cells to analyze: only formulas have precedents
                 add_node_to_graph(cell)
 
-        while todo:
-            c1 = todo.pop()
+    def evaluate_range(self, cell_range):
 
-            print("Handling ", c1.address())
+        if isinstance(cell_range, CellRange):
+            assert cell_range.address in self.cell_map
+        else:
+            cell_range = AddressRange(cell_range)
+            if cell_range not in self.cell_map:
+                self.gen_graph(cell_range)
+            cell_range = self.cell_map[cell_range]
 
-            # set the current sheet so relative addresses resolve properly
-            if c1.sheet != cursheet:
-                cursheet = c1.sheet
-                self.excel.set_sheet(cursheet)
+        if cell_range.value is None:
+            cells = cell_range.addresses
 
-            for addr in c1.compiled_python.needed_addresses:
+            if 1 in cell_range.address.size:
+                data = [self.evaluate(c) for c in cells]
+            else:
+                data = [[self.evaluate(c) for c in cells[i]] for i in
+                        range(len(cells))]
 
-                # if the dependency is a multi-cell range, create a range object
-                if is_range(addr):
-                    # this will make sure we always have an absolute address
-                    rng = CellRange(addr, sheet=cursheet)
+            cell_range.value = data
 
-                    if rng.address() in self.cellmap:
-                        # already dealt with this range
-                        # add an edge from the range to the parent
-                        self.dep_graph.add_edge(
-                            self.cellmap[rng.address()],
-                            self.cellmap[c1.address()]
-                        )
-                        continue
-                    else:
-                        # turn into cell objects
-                        cells, nrows, ncols = self.make_cells(
-                            addr, sheet=cursheet)
+        return cell_range.value
 
-                        # get the values so we can set the range value
-                        if nrows == 1 or ncols == 1:
-                            rng.value = [c.value for c in cells]
-                        else:
-                            rng.value = [[c.value for c in cells[i]]
-                                         for i in range(len(cells))]
+    def evaluate(self, cell):
 
-                        # save the range
-                        self.cellmap[rng.address()] = rng
+        if isinstance(cell, Cell):
+            assert cell.address in self.cell_map
+        else:
+            address = AddressRange.create(cell)
+            if address not in self.cell_map:
+                self.gen_graph(address)
+            cell = self.cell_map[address]
 
-                        # add an edge from the range to the parent
-                        add_node_to_graph(rng)
-                        self.dep_graph.add_edge(rng, self.cellmap[c1.address()])
+        # calculate the cell value for formulas
+        if cell.compiled_python and cell.value is None:
 
-                        # cells in the range have the range as their parent
-                        target = rng
-                else:
-                    # not a range, create the cell object
-                    cells = [self.resolve_cell(addr, sheet=cursheet)]
-                    target = self.cellmap[c1.address()]
+            try:
+                print("Evaluating: %s, %s" % (cell.address, cell.python_code))
+                if self.eval is None:
+                    self.eval = ExcelFormula.build_eval_context(
+                        self.evaluate, self.evaluate_range)
+                value = self.eval(cell.formula)
+                print("Cell %s evaluated to %s" % (cell.address, value))
+                if value is None:
+                    print("WARNING %s is None" % cell.address)
+                cell.value = value
 
-                # process each cell
-                for c2 in flatten(cells):
-                    # if we haven't treated this cell already
-                    if c2.address() not in self.cellmap:
-                        if c2.formula:
-                            # cell with a formula, add to the todo list
-                            todo.append(c2)
+            except Exception as exc:
+                if str(exc).startswith("Problem evaluating"):
+                    raise
+                raise CompilerError("Problem evaluating: %s for %s, %s" % (
+                    exc, cell.address, cell.python_code))
 
-                        # save in the self.cellmap
-                        self.cellmap[c2.address()] = c2
-                        # add to the graph
-                        add_node_to_graph(c2)
+        return cell.value
 
-                    # add an edge from the cell to the parent (range or cell)
-                    self.dep_graph.add_edge(self.cellmap[c2.address()], target)
+    def gen_graph(self, seed, recursed=False, sheet=None):
+        """Given a starting point (e.g., A6, or A3:B7) on a particular sheet,
+        generate a Spreadsheet instance that captures the logic and control
+        flow of the equations.
+        """
+        if not isinstance(seed, (AddressCell, AddressRange)):
+            if isinstance(seed, str):
+                seed = AddressRange(seed, sheet=sheet)
+            elif isinstance(seed, collections.Iterable):
+                for s in seed:
+                    self.gen_graph(s, sheet=sheet)
+                return
+            else:
+                raise ValueError('Unknown seed: {}'.format(seed))
+
+        # get/set the current sheet
+        if not seed.has_sheet:
+            seed = AddressRange(seed, self.excel.get_active_sheet())
+        else:
+            self.excel.set_sheet(seed.sheet)
+
+        if seed in self.cell_map:
+            # already did this cell/range
+            return
+
+        # queue the work for the seed
+        self.address_todos.append(seed)
+
+        while self.address_todos or self.graph_todos:
+            if self.address_todos:
+                self.make_cells(self.address_todos.pop())
+
+            elif recursed:
+                # entered to queue up the cell / cellrange creation, so exit
+                return
+
+            else:
+                # connect the dependant cells in the graph
+                dependant = self.graph_todos.pop()
+
+                print("Handling ", dependant.address)
+
+                for precedent_address in dependant.needed_addresses:
+                    if precedent_address not in self.cell_map:
+                        self.gen_graph(precedent_address, recursed=True)
+
+                    self.dep_graph.add_edge(
+                        self.cell_map[precedent_address], dependant)
+
+        # calc the values for ranges
+        for range_todo in reversed(self.range_todos):
+            self.evaluate_range(range_todo)
 
         print(
             "Graph construction done, %s nodes, %s edges, %s self.cellmap entries" % (
                 len(self.dep_graph.nodes()), len(self.dep_graph.edges()),
-                len(self.cellmap)))
+                len(self.cell_map)))
 
 
 class CellRange(object):
     # TODO: only supports rectangular ranges
 
-    def __init__(self, address, sheet=None):
-
-        self.__address = address.replace('$', '')
-
-        sh, start, end = split_range(address)
-        if not sh and not sheet:
+    def __init__(self, address):
+        self.address = AddressRange(address)
+        if not self.address.sheet:
             raise Exception("Must pass in a sheet")
 
-        # make sure the address is always prefixed with the range
-        if sh:
-            sheet = sh
-        else:
-            self.__address = sheet + "!" + self.__address
-
-        addr, nrows, ncols = resolve_range(address, sheet=sheet)
-
-        # don't allow messing with these params
-        self.__celladdr = addr
-        self.__nrows = nrows
-        self.__ncols = ncols
-        self.__sheet = sheet
-
+        self.addresses = resolve_range(self.address)
+        self.size = self.address.size
         self.value = None
 
     def __repr__(self):
-        return self.__address
+        return str(self.address)
 
-    def __str__(self):
-        return self.__address
+    __str__ = __repr__
 
-    def address(self):
-        return self.__address
-
-    @property
-    def celladdrs(self):
-        return self.__celladdr
+    def __iter__(self):
+        if 1 in self.size:
+            return iter(self.addresses)
+        else:
+            return it.chain.from_iterable(self.addresses)
 
     @property
-    def nrows(self):
-        return self.__nrows
-
-    @property
-    def ncols(self):
-        return self.__ncols
+    def needed_addresses(self):
+        return iter(self)
 
     @property
     def sheet(self):
-        return self.__sheet
+        return self.address.sheet
 
 
 class Cell(object):
@@ -446,83 +369,35 @@ class Cell(object):
         cls.ctr += 1
         return cls.ctr
 
-    def __init__(self, address, sheet, value=None, formula=None, excel=None):
-
-        sheet, c, r = split_address(address.replace('$', ''), sheet=sheet)
-
-        # we assume a cell's location can never change
-        self._sheet = sheet
-        self._excel = excel
-        self._excel_formula = ExcelFormula(formula, cell=self)
-
-        self._col = c
-        self._row = int(r)
-        self._col_idx = col2num(c)
-
+    def __init__(self, address, value=None, formula=None, excel=None):
+        if not value and not formula:
+            x = 1
+        self.address = address
+        self.excel = excel
+        self.formula = ExcelFormula(formula, cell=self)
         self.value = value
 
         # every cell has a unique id
-        self._id = Cell.next_id()
+        self.id = Cell.next_id()
 
     def __repr__(self):
-        return self.address()
+        return str(self)
 
     def __str__(self):
-        if self.formula:
-            return "%s%s" % (self.address(), self.formula)
-        else:
-            return "%s=%s" % (self.address(), self.value)
+        return "{} -> {}".format(self.address, self.formula or self.value)
 
     @property
-    def excel(self):
-        return self._excel
+    def needed_addresses(self):
+        return self.formula.needed_addresses
 
     @property
     def sheet(self):
-        return self._sheet
-
-    @property
-    def row(self):
-        return self._row
-
-    @property
-    def col(self):
-        return self._col
-
-    @property
-    def formula(self):
-        return self._excel_formula.base_formula
-
-    @property
-    def id(self):
-        return self._id
+        return self.address.sheet
 
     @property
     def python_code(self):
-        return self._excel_formula.python_code
+        return self.formula.python_code
 
     @property
     def compiled_python(self):
-        return self._excel_formula
-
-    def clean_name(self):
-        return self.address().replace('!', '_').replace(' ', '_')
-
-    def address(self, absolute=True):
-        if absolute:
-            return "%s!%s%s" % (self._sheet, self._col, self._row)
-        else:
-            return "%s%s" % (self._col, self._row)
-
-    def address_parts(self):
-        return self._sheet, self._col, self._row, self._col_idx
-
-    @staticmethod
-    def inc_col_address(address, inc):
-        sh, col, row = split_address(address)
-        return "%s!%s%s" % (sh, num2col(col2num(col) + inc), row)
-
-    @staticmethod
-    def inc_row_address(address, inc):
-        sh, col, row = split_address(address)
-        return "%s!%s%s" % (sh, col, row + inc)
+        return self.formula.compiled_python

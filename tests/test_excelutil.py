@@ -2,138 +2,165 @@ import pytest
 from pycel.excelutil import *
 
 
+class TestCell:
+
+    def __init__(self, col, row, sheet=''):
+        self.row = row
+        self.col = col
+        self.col_idx = column_index_from_string(col)
+        self.sheet = sheet
+        self.excel = None
+
+
+def test_address_range():
+    a = AddressRange('a1:b2')
+    b = AddressRange('A1:B2')
+    c = AddressRange(a)
+
+    assert a == b
+    assert b == c
+
+    assert AddressRange('sh!a1:b2') == AddressRange(a, sheet='sh')
+    assert AddressCell('C13') == AddressCell('R13C3')
+
+    with pytest.raises(Exception):
+        AddressRange(AddressRange('sh!a1:b2'), sheet='sheet')
+        
+    a = AddressRange('A:A')
+    assert 'A' == a.start.column
+    assert 'A' == a.end.column
+    assert 0 == a.start.row
+    assert 0 == a.end.row
+
+    b = AddressRange('1:1')
+    assert '' == b.start.column
+    assert '' == b.end.column
+    assert 1 == b.start.row
+    assert 1 == b.end.row
+
+
+def test_address_range_errors():
+
+    with pytest.raises(ValueError):
+        AddressRange('B32:B')
+
+
 def test_is_range():
 
-    assert is_range('a1:b2')
-    assert not is_range('a1')
+    assert AddressRange('a1:b2').is_range
+    assert not AddressRange('a1').is_range
 
 
 def test_has_sheet():
 
-    assert has_sheet('Sheet1!a1')
-    assert not has_sheet('a1')
-    assert has_sheet('Sheet1!a1:b2')
-    assert not has_sheet('a1:b2')
+    assert AddressRange('Sheet1!a1').has_sheet
+    assert not AddressRange('a1').has_sheet
+    assert AddressRange('Sheet1!a1:b2').has_sheet
+    assert not AddressRange('a1:b2').has_sheet
 
 
-def test_get_sheet():
+def test_address_range_size():
 
-    assert ('', 'B1') == get_sheet('B1')
-    assert ('sheet', 'B1') == get_sheet('sheet!B1')
-    assert ('', 'B1:C2') == get_sheet('B1:C2')
-    assert ('sheet', 'B1:C2') == get_sheet('sheet!B1:C2')
+    assert (1, 1) == AddressRange('B1').size
+    assert (1, 2) == AddressRange('B1:C1').size
+    assert (2, 1) == AddressRange('B1:B2').size
+    assert (2, 2) == AddressRange('B1:C2').size
 
-    assert ("shee't", 'B1:C2') == get_sheet("shee''t!B1:C2")
-    assert ("shee t", 'B1:C2') == get_sheet("'shee t'!B1:C2")
+    assert (MAX_ROW, 2) == AddressRange('B:C').size
+    assert (3, MAX_COL) == AddressRange('2:4').size
 
-    with pytest.raises(Exception):
-        get_sheet('sh!B1', sheet='shx')
+
+def test_unquote_sheetname():
+    """"""
+
+
+def test_split_sheetname():
+
+    assert ('', 'B1') == split_sheetname('B1')
+    assert ('sheet', 'B1') == split_sheetname('sheet!B1')
+    assert ('', 'B1:C2') == split_sheetname('B1:C2')
+    assert ('sheet', 'B1:C2') == split_sheetname('sheet!B1:C2')
+
+    assert ("shee't", 'B1:C2') == split_sheetname("'shee''t'!B1:C2")
+    assert ("shee t", 'B1:C2') == split_sheetname("'shee t'!B1:C2")
+
+    with pytest.raises(ValueError):
+        split_sheetname('sh!B1', sheet='shx')
     
 
-def test_split_range():
+def test_address_cell_enum():
+    assert ('', 'B', 1, 'B1', 'B1') == AddressCell('B1')
+    assert ('sheet', 'B', 1, 'B1', 'sheet!B1') == AddressCell('sheet!B1')
 
-    assert ('', 'B1', None) == split_range('B1')
-    assert ('sheet', 'B1', None) == split_range('sheet!B1')
-    assert ('', 'B1', 'C2') == split_range('B1:C2')
-    assert ('sheet', 'B1', 'C2') == split_range('sheet!B1:C2')
+    assert ('', 'A', 1, 'A1', 'A1') == AddressCell('R1C1')
+    assert ('sheet', 'A', 1, 'A1', 'sheet!A1') == AddressCell('sheet!R1C1')
 
+    cell = TestCell('A', 1)
+    assert ('', 'B', 2, 'B2', 'B2') == AddressCell.create(
+        'R[1]C[1]', cell=cell)
+    assert ('sheet', 'B', 2, 'B2', 'sheet!B2') == AddressCell.create(
+        'sheet!R[1]C[1]', cell=cell)
 
-def test_split_address():
-    assert ('', 'B', '1') == split_address('B1')
-    assert ('sheet', 'B', '1') == split_address('sheet!B1')
-
-    assert ('', 'A', '1') == split_address('R1C1')
-    assert ('sheet', 'A', '1') == split_address('sheet!R1C1')
-
-    assert ('', 'A', '1') == split_address('R[1]C[1]')
-    assert ('sheet', 'A', '1') == split_address('sheet!R[1]C[1]')
-
-    with pytest.raises(Exception):
-        split_address('B1:C2')
+    with pytest.raises(ValueError):
+        AddressCell('B1:C2')
         
-    with pytest.raises(Exception):
-        split_address('sheet!B1:C2')
+    with pytest.raises(ValueError):
+        AddressCell('sheet!B1:C2')
 
-    with pytest.raises(Exception):
-        split_address('xyzzy')
+    with pytest.raises(ValueError):
+        AddressCell('xyzzy')
 
 
 def test_resolve_range():
+    a = AddressRange.create
 
-    assert (['B1'], 1, 1) == resolve_range('B1')
-    assert (['B1', 'C1'], 1, 2) == resolve_range('B1:C1')
-    assert (['B1', 'B2'], 2, 1) == resolve_range('B1:B2')
-    assert ([['B1', 'C1'], ['B2', 'C2']], 2, 2) == resolve_range('B1:C2')
+    assert [a('B1')] == resolve_range(a('B1'))
+    assert [a('B1'), a('C1')] == resolve_range(a('B1:C1'))
+    assert [a('B1'), a('B2')] == resolve_range(a('B1:B2'))
+    assert [[a('B1'), a('C1')], [a('B2'), a('C2')]] == resolve_range(a('B1:C2'))
 
-    assert (['sh!B1'], 1, 1) == resolve_range('sh!B1')
-    assert (['sh!B1', 'sh!C1'], 1, 2) == resolve_range('sh!B1:C1')
-    assert (['sh!B1', 'sh!B2'], 2, 1) == resolve_range('sh!B1:B2')
-    assert ([['sh!B1', 'sh!C1'], ['sh!B2', 'sh!C2']], 2, 2
-            ) == resolve_range('sh!B1:C2')
+    assert [a('sh!B1')] == resolve_range(a('sh!B1'))
+    assert [a('sh!B1'), a('sh!C1')] == resolve_range(a('sh!B1:C1'))
+    assert [a('sh!B1'), a('sh!B2')] == resolve_range(a('sh!B1:B2'))
+    assert [[a('sh!B1'), a('sh!C1')],
+            [a('sh!B2'), a('sh!C2')]] == resolve_range(a('sh!B1:C2'))
 
-    assert (['sh!B1'], 1, 1) == resolve_range('sh!B1', sheet='sh')
-    assert (['sh!B1', 'sh!C1'], 1, 2) == resolve_range('sh!B1:C1', sheet='sh')
-    assert (['sh!B1', 'sh!B2'], 2, 1) == resolve_range('sh!B1:B2', sheet='sh')
-    assert ([['sh!B1', 'sh!C1'], ['sh!B2', 'sh!C2']], 2, 2
-            ) == resolve_range('sh!B1:C2', sheet='sh')
-
-    assert (['sh!B1'], 1, 1) == resolve_range('sh!B1')
-    assert (['sh!B1', 'sh!C1'], 1, 2) == resolve_range('sh!B1:C1', sheet='sh')
-    assert (['sh!B1', 'sh!B2'], 2, 1) == resolve_range('sh!B1:B2', sheet='sh')
-    assert ([['sh!B1', 'sh!C1'], ['sh!B2', 'sh!C2']], 2, 2
-            ) == resolve_range('sh!B1:C2', sheet='sh')
+    assert [a('sh!B1')] == resolve_range(a('sh!B1', sheet='sh'))
+    assert [a('sh!B1'), a('sh!C1')] == resolve_range(a('sh!B1:C1', sheet='sh'))
+    assert [a('sh!B1'), a('sh!B2')] == resolve_range(a('sh!B1:B2', sheet='sh'))
+    assert [[a('sh!B1'), a('sh!C1')],[a('sh!B2'), a('sh!C2')]] == \
+           resolve_range(a('sh!B1:C2', sheet='sh'))
 
     with pytest.raises(Exception):
-        resolve_range('sh!B1', sheet='shx')
+        resolve_range(a('sh!B1'), sheet='shx')
 
 
-def test_col2num():
-    assert 1 == col2num('A')
-    assert 1 == col2num('a')
-    assert 53 == col2num('BA')
-    assert 53 == col2num('Ba')
+def test_extended_range_boundaries():
+    cell = TestCell('A', 1)
 
-    with pytest.raises(ValueError):
-        col2num('')
+    assert (1, 2) * 2 == extended_range_boundaries('A2')
+    assert (2, 1) * 2 == extended_range_boundaries('B1')
+    assert (1, 2) * 2 == extended_range_boundaries('R2C1')
+    assert (2, 1) * 2 == extended_range_boundaries('R1C2')
+    assert (2, 3) * 2 == extended_range_boundaries('R[2]C[1]', cell)
+    assert (3, 2) * 2 == extended_range_boundaries('R[1]C[2]', cell)
 
-    with pytest.raises(AttributeError):
-        col2num(2)
+    assert (1, 1, 2, 2) == extended_range_boundaries('A1:B2')
+    assert (1, 1, 2, 2) == extended_range_boundaries('R1C1:R2C2')
+    assert (2, 1, 2, 3) == extended_range_boundaries('R1C2:R[2]C[1]', cell)
 
-
-def test_num2col():
-    assert 'A' == num2col(1)
-    assert 'BA' == num2col(53)
-
-    with pytest.raises(ValueError):
-        num2col('')
-
-    with pytest.raises(ValueError):
-        num2col(0)
-
-
-def test_address2index():
-    assert (1, 2) == address2index('A2')
-
-    assert (2, 1) == address2index('B1')
-    assert (2, 1) == address2index('sheet!B1')
-
-    assert (1, 2) == address2index('R2C1')
-    assert (2, 1) == address2index('sheet!R1C2')
-
-    assert (1, 2) == address2index('R[2]C[1]')
-    assert (2, 1) == address2index('sheet!R[1]C[2]')
+    assert (3, 13) * 2 == extended_range_boundaries('R13C3')
 
     with pytest.raises(Exception):
-        address2index('B1:C2')
+        extended_range_boundaries('sheet!B1')
 
     with pytest.raises(Exception):
-        address2index('sheet!B1:C2')
-
-    with pytest.raises(Exception):
-        address2index('xyzzy')
+        extended_range_boundaries('xyzzy')
 
 
-def test_index2address():
+def xx_test_index2address():
+
+    # ::TODO:: convert to test the inc methods on AddressCell
 
     assert 'B1' == index2address(2, 1)
     assert 'sh!B1' == index2address(2, 1, sheet='sh')
@@ -161,13 +188,14 @@ def test_get_linest_degree():
             self.rows = rows
 
         def get_formula_from_range(self, address):
-            sheet, col, row = split_address(address)
-            found = col in self.columns and row in self.rows
+            addr = AddressRange.create(address)
+            found = addr.column in self.columns and str(addr.row) in self.rows
             return '=linest()' if found else ''
 
     class Cell:
         def __init__(self, excel):
             self.excel = excel
+            self.address = AddressCell('E5')
 
         @property
         def sheet(self):
@@ -176,9 +204,6 @@ def test_get_linest_degree():
         @property
         def formula(self):
             return '=linest()'
-
-        def address_parts(self):
-            return self.sheet, 'E', 5, 5
 
     assert (1, 1) == get_linest_degree(Cell(Excel('E', '5')))
 

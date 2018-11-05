@@ -10,6 +10,8 @@ from pycel.excelformula import (
     Token,
 )
 
+from tests.test_excelutil import TestCell
+
 
 def stringify(e):
     return "|".join([str(x) for x in e])
@@ -309,12 +311,11 @@ test_data = [
     dict(
         formula='=IF(R13C3>DATE(2002,1,6),0,IF(ISERROR(R[41]C[2]),0,IF(R13C3>=R[41]C[2],0, IF(AND(R[23]C[11]>=55,R[24]C[11]>=20),R53C3,0))))',
         rpn='R13C3|2002|1|6|DATE|>|0|R[41]C[2]|ISERROR|0|R13C3|R[41]C[2]|>=|0|R[23]C[11]|55|>=|R[24]C[11]|20|>=|AND|R53C3|0|IF|IF|IF|IF',
-        python_code='(0 if eval_cell("R13C3") > (date(2002, 1, 6) if date(2002, 1, 6) is not None else 0) else (0 if iserror(eval_cell("R[41]C[2]")) else (0 if eval_cell("R13C3") >= (eval_cell("R[41]C[2]") if eval_cell("R[41]C[2]") is not None else 0) else (eval_cell("R53C3") if all([eval_cell("R[23]C[11]") >= 55, eval_cell("R[24]C[11]") >= 20]) else 0))))',
-    ),
+        python_code='(0 if eval_cell("C13") > (date(2002, 1, 6) if date(2002, 1, 6) is not None else 0) else (0 if iserror(eval_cell("C42")) else (0 if eval_cell("C13") >= (eval_cell("C42") if eval_cell("C42") is not None else 0) else (eval_cell("C53") if all([eval_cell("L24") >= 55, eval_cell("L25") >= 20]) else 0))))',    ),
     dict(
         formula='=IF(R[39]C[11]>65,R[25]C[42],ROUND((R[11]C[11]*IF(OR(AND(R[39]C[11]>=55, R[40]C[11]>=20),AND(R[40]C[11]>=20,R11C3="YES")),R[44]C[11],R[43]C[11]))+(R[14]C[11] *IF(OR(AND(R[39]C[11]>=55,R[40]C[11]>=20),AND(R[40]C[11]>=20,R11C3="YES")), R[45]C[11],R[43]C[11])),0))',
         rpn='R[39]C[11]|65|>|R[25]C[42]|R[11]C[11]|R[39]C[11]|55|>=|R[40]C[11]|20|>=|AND|R[40]C[11]|20|>=|R11C3|"YES"|=|AND|OR|R[44]C[11]|R[43]C[11]|IF|*|R[14]C[11]|R[39]C[11]|55|>=|R[40]C[11]|20|>=|AND|R[40]C[11]|20|>=|R11C3|"YES"|=|AND|OR|R[45]C[11]|R[43]C[11]|IF|*|+|0|ROUND|IF',
-        python_code='(eval_cell("R[25]C[42]") if eval_cell("R[39]C[11]") > 65 else xround((eval_cell("R[11]C[11]") * (eval_cell("R[44]C[11]") if any([all([eval_cell("R[39]C[11]") >= 55, eval_cell("R[40]C[11]") >= 20]), all([eval_cell("R[40]C[11]") >= 20, eval_cell("R11C3") == "YES"])]) else eval_cell("R[43]C[11]"))) + (eval_cell("R[14]C[11]") * (eval_cell("R[45]C[11]") if any([all([eval_cell("R[39]C[11]") >= 55, eval_cell("R[40]C[11]") >= 20]), all([eval_cell("R[40]C[11]") >= 20, eval_cell("R11C3") == "YES"])]) else eval_cell("R[43]C[11]"))), 0))',
+        python_code='(eval_cell("AQ26") if eval_cell("L40") > 65 else xround((eval_cell("L12") * (eval_cell("L45") if any([all([eval_cell("L40") >= 55, eval_cell("L41") >= 20]), all([eval_cell("L41") >= 20, eval_cell("C11") == "YES"])]) else eval_cell("L44"))) + (eval_cell("L15") * (eval_cell("L46") if any([all([eval_cell("L40") >= 55, eval_cell("L41") >= 20]), all([eval_cell("L41") >= 20, eval_cell("C11") == "YES"])]) else eval_cell("L44"))), 0))',
     ),
     dict(
         formula='=(propellor_charts!B22*(propellor_charts!E21+propellor_charts!D21*(engine_data!O16*D70+engine_data!P16)+propellor_charts!C21*(engine_data!O16*D70+engine_data!P16)^2+propellor_charts!B21*(engine_data!O16*D70+engine_data!P16)^3)^2)^(1/3)*(1*D70/5.33E-18)^(2/3)*0.0000000001*28.3495231*9.81/1000',
@@ -362,9 +363,9 @@ test_data = [
         python_code='("" if eval_cell("AI119") == "" else eval_cell("E119"))',
     ),
     dict(
-        formula='=LINEST(B32:(INDEX(B32:B119,MATCH(0,B32:B<6119,-1),1)),(F32:(INDEX(B32:F119,MATCH(0,B32:B119,-1),5)))^{1,2,3,4})',
-        rpn='B32:B119|0|B32:B|6119|<|1|-|MATCH|1|INDEX|B32:|B32:F119|0|B32:B119|1|-|MATCH|5|INDEX|F32:|1|2|3|4|ARRAYROW|ARRAY|^|LINEST',
-        python_code='linest(b32:(index(eval_range("B32:B119"), match(0, (eval_range("B32:B") if eval_range("B32:B") is not None else 0) < 6119, -1), 1)), f32:(index(eval_range("B32:F119"), match(0, eval_range("B32:B119"), -1), 5)), degree=-1)[-2]',
+        formula='=LINEST(B32:(INDEX(B32:B119,MATCH(0,B32:B119<6,-1),1)),(F32:(INDEX(B32:F119,MATCH(0,B32:B119,-1),5)))^{1,2,3,4})',
+        rpn='B32:B119|0|B32:B119|6|<|1|-|MATCH|1|INDEX|B32:|B32:F119|0|B32:B119|1|-|MATCH|5|INDEX|F32:|1|2|3|4|ARRAYROW|ARRAY|^|LINEST',
+        python_code='linest(b32:(index(eval_range("B32:B119"), match(0, (eval_range("B32:B119") if eval_range("B32:B119") is not None else 0) < 6, -1), 1)), f32:(index(eval_range("B32:F119"), match(0, eval_range("B32:B119"), -1), 5)), degree=-1)[-2]',
     ),
 ]
 
@@ -399,8 +400,9 @@ sorted_keys = tuple(map(str, sorted(test_data[0])))
     [tuple(test_case[k] for k in sorted_keys) for test_case in test_data]
 )
 def test_parse(formula, python_code, rpn):
+    cell = TestCell('A', 1)
 
-    excel_formula = ExcelFormula(formula)
+    excel_formula = ExcelFormula(formula, cell=cell)
     parsed = excel_formula.rpn
     result_rpn = "|".join(str(x) for x in parsed)
     result_python_code = excel_formula.python_code
@@ -469,7 +471,8 @@ def test_needed_addresses():
     formula = '=(3600/1000)*E40*(E8/E39)*(E15/E19)*LN(E54/(E54-E48))'
     needed = sorted(('E40', 'E8', 'E39', 'E15', 'E19', 'E54', 'E48'))
 
-    assert needed == sorted(ExcelFormula(formula).needed_addresses)
+    assert needed == sorted(x.address for x in
+                            ExcelFormula(formula).needed_addresses)
 
 
 def test_build_eval_context():
@@ -510,12 +513,7 @@ def test_get_linest_degree_with_cell():
     with mock.patch('pycel.excelformula.get_linest_degree') as get:
         get.return_value = -1, -1
 
-        class Cell:
-            @property
-            def sheet(self):
-                return 'Phony Sheet'
-            
-        cell = Cell()
+        cell = TestCell('A', 1, 'Phony Sheet')
         formula = ExcelFormula('=linest(C1)', cell=cell)
 
         expected = 'linest(eval_cell("Phony Sheet!C1"), degree=-1)[-2]'
