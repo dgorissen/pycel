@@ -3,7 +3,7 @@ Python equivalents of various excel functions
 """
 
 from datetime import datetime
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal, ROUND_HALF_UP, ROUND_UP
 from math import log
 
 import numpy as np
@@ -316,6 +316,18 @@ def right(text, n):
         text = str(int(text))
 
     return text[-n:]
+
+
+def roundup(number, num_digits):
+    # Excel refeence: https://support.office.com/en-us/article/
+    #   ROUNDUP-function-F8BC9B23-E795-47DB-8703-DB171D0C42A7
+    if not is_number(number):
+        raise TypeError("%s is not a number" % str(number))
+    if not is_number(num_digits):
+        raise TypeError("%s is not a number" % str(num_digits))
+
+    quant = Decimal('1E{}{}'.format('+-'[num_digits >= 0], abs(num_digits)))
+    return float(Decimal(repr(number)).quantize(quant, rounding=ROUND_UP))
 
 
 def sumif(range, criteria, sum_range=[]):

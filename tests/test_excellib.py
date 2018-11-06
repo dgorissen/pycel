@@ -20,6 +20,7 @@ from pycel.excellib import (
     mod,
     npv,
     right,
+    roundup,
     sumif,
     value,
     xcmp,
@@ -421,6 +422,19 @@ def test_right():
         right('abcd', -1)
 
 
+@pytest.mark.parametrize(
+    'number, digits, result', (
+            (3.2, 0, 4),
+            (76.9, 0, 77),
+            (3.14159, 3, 3.142),
+            (-3.14159, 1, -3.2),
+            (31415.92654, -2, 31500),
+    )
+)
+def test_roundup(number, digits, result):
+    assert result == roundup(number, digits)
+
+
 class TestSumIf:
 
     def test_range_is_a_list(self):
@@ -499,6 +513,21 @@ def test_xmin():
 )
 def test_xround(result, digits):
     assert result == xround(12345.6789, digits)
+
+
+@pytest.mark.parametrize(
+    'number, digits, result', (
+            (2.15, 1, 2.2),
+            (2.149, 1, 2.1),
+            (-1.475, 2, -1.48),
+            (21.5, -1, 20),
+            (626.3, -3, 1000),
+            (1.98, -1, 0),
+            (-50.55, -2, -100),
+    )
+)
+def test_xround2(number, digits, result):
+    assert result == xround(number, digits)
 
 
 class TestXRound:
