@@ -161,13 +161,11 @@ def index(array, row_num, col_num=None):
         row_num, col_num, array))
 
 
-def isNa(value):
+def isNa(arg):
     # This function might need more solid testing
-
     try:
-        eval(value)
+        eval(arg)
         return False
-
     except:
         return True
 
@@ -189,10 +187,10 @@ def linest(Y, X, const=True, degree=1):
     return coefs
 
 
-def lookup(value, lookup_range, result_range):
+def lookup(arg, lookup_range, result_range):
     # TODO
-    if not isinstance(value, (int, float)):
-        raise Exception("Non numeric lookups (%s) not supported" % value)
+    if not isinstance(arg, (int, float)):
+        raise Exception("Non numeric lookups (%s) not supported" % arg)
 
     # TODO: note, may return the last equal value
 
@@ -200,7 +198,7 @@ def lookup(value, lookup_range, result_range):
     lastnum = -1
     for i, v in enumerate(lookup_range):
         if isinstance(v, (int, float)):
-            if v > value:
+            if v > arg:
                 break
             else:
                 lastnum = i
@@ -210,7 +208,7 @@ def lookup(value, lookup_range, result_range):
     else:
         if i == 0:
             raise Exception(
-                "All values in the lookup range are bigger than %s" % value)
+                "All values in the lookup range are bigger than %s" % arg)
         else:
             if i >= len(lookup_range) - 1:
                 # return the biggest number smaller than value
@@ -220,13 +218,13 @@ def lookup(value, lookup_range, result_range):
 
 
 def match(lookup_value, lookup_array, match_type=1):
-    def type_convert(value):
-        if type(value) == str:
-            value = value.lower()
-        elif type(value) == int:
-            value = float(value)
+    def type_convert(arg):
+        if type(arg) == str:
+            arg = arg.lower()
+        elif type(arg) == int:
+            arg = float(arg)
 
-        return value
+        return arg
 
     lookup_value = type_convert(lookup_value)
 
