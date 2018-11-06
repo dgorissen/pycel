@@ -121,10 +121,11 @@ class ExcelCompiler(object):
     def reset(self, cell):
         if cell.value is None:
             return
-        print("resetting {}".format(cell.address))
+        print("Resetting {}".format(cell.address))
         cell.value = None
-        for cell in self.dep_graph.successors(cell):
-            self.reset(cell)
+        for child_cell in self.dep_graph.successors(cell):
+            if child_cell.value is not None:
+                self.reset(child_cell)
 
     def print_value_tree(self, addr, indent):
         cell = self.cell_map[addr]
@@ -159,14 +160,17 @@ class ExcelCompiler(object):
             self.graph_todos.append(node)
 
         def build_cell(addr):
+            if address in self.cell_map:
+                return
 
             excel_range = self.excel.get_range(addr)
             formula = None
             if excel_range.Formula.startswith('='):
                 formula = excel_range.Formula
 
-            return Cell(addr, value=excel_range.Value,
-                        formula=formula, excel=self.excel)
+            self.cell_map[addr] = Cell(addr, value=excel_range.Value,
+                                       formula=formula, excel=self.excel)
+            return self.cell_map[addr]
 
         def build_range(rng):
 
@@ -185,13 +189,13 @@ class ExcelCompiler(object):
             cells = []
             for row in (zip(*x) for x in excel_cells):
                 for cell_address, f, value in row:
-                    formula = f if f and f.startswith('=') else None
-                    if None not in (f, value):
-                        cl = Cell(cell_address, value=value,
-                                  formula=formula, excel=self.excel)
-                        cells.append(cl)
-
-            # return as vector
+                    if cell_address not in self.cell_map:
+                        formula = f if f and f.startswith('=') else None
+                        if None not in (f, value):
+                            cl = Cell(cell_address, value=value,
+                                      formula=formula, excel=self.excel)
+                            self.cell_map[cell_address] = cl
+                            cells.append(cl)
             return cells
 
         if address.is_range:
@@ -204,11 +208,7 @@ class ExcelCompiler(object):
         else:
             new_cells = [build_cell(address)]
 
-        for cell in flatten(new_cells):
-            # ::TODO:: move this if to build_range
-            if cell.address not in self.cell_map:
-                self.cell_map[cell.address] = cell
-
+        for cell in new_cells:
             if cell.formula:
                 # cells to analyze: only formulas have precedents
                 add_node_to_graph(cell)
@@ -219,6 +219,8 @@ class ExcelCompiler(object):
             assert cell_range.address in self.cell_map
         else:
             cell_range = AddressRange(cell_range)
+            assert AddressRange.has_sheet, \
+                "{} missing sheetname".format(cell_range)
             if cell_range not in self.cell_map:
                 self.gen_graph(cell_range)
             cell_range = self.cell_map[cell_range]
@@ -255,7 +257,8 @@ class ExcelCompiler(object):
                     self.eval = ExcelFormula.build_eval_context(
                         self.evaluate, self.evaluate_range)
                 value = self.eval(cell.formula)
-                print("Cell %s evaluated to %s" % (cell.address, value))
+                print("Cell %s evaluated to '%s' (%s)" % (
+                    cell.address, value, type(value).__name__))
                 if value is None:
                     print("WARNING %s is None" % cell.address)
                 cell.value = value
@@ -308,7 +311,7 @@ class ExcelCompiler(object):
                 # connect the dependant cells in the graph
                 dependant = self.graph_todos.pop()
 
-                print("Handling ", dependant.address)
+                # print("Handling ", dependant.address)
 
                 for precedent_address in dependant.needed_addresses:
                     if precedent_address not in self.cell_map:

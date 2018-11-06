@@ -281,6 +281,8 @@ class RangeNode(OperandNode):
     def emit(self):
         # resolve the range into cells
         sheet = self.cell and self.cell.sheet or ''
+        if '!' in self.value:
+            sheet = ''
         address = AddressRange.create(
             self.value.replace('$', ''), sheet=sheet, cell=self.cell)
         template = 'eval_range("{}")' if address.is_range else 'eval_cell("{}")'
