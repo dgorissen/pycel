@@ -90,9 +90,8 @@ class ExcelCompiler(object):
         self.excel = None
         self.log = None
         self.eval = None
-        f = open(fname, 'wb')
-        pickle.dump(self, f, protocol=2)
-        f.close()
+        with open(fname, 'wb') as f:
+            pickle.dump(self, f, protocol=pickle.HIGHEST_PROTOCOL)
 
     def export_to_dot(self, fname):
         write_dot(self.dep_graph, fname)
