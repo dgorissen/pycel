@@ -10,7 +10,7 @@ from pycel.excelformula import (
     Token,
 )
 
-from tests.test_excelutil import TestCell
+from tests.test_excelutil import ATestCell
 
 
 def stringify(e):
@@ -410,7 +410,7 @@ sorted_keys = tuple(map(str, sorted(test_data[0])))
     [tuple(test_case[k] for k in sorted_keys) for test_case in test_data]
 )
 def test_parse(formula, python_code, rpn):
-    cell = TestCell('A', 1)
+    cell = ATestCell('A', 1)
 
     excel_formula = ExcelFormula(formula, cell=cell)
     parsed = excel_formula.rpn
@@ -523,7 +523,7 @@ def test_get_linest_degree_with_cell():
     with mock.patch('pycel.excelformula.get_linest_degree') as get:
         get.return_value = -1, -1
 
-        cell = TestCell('A', 1, 'Phony Sheet')
+        cell = ATestCell('A', 1, 'Phony Sheet')
         formula = ExcelFormula('=linest(C1)', cell=cell)
 
         expected = 'linest(eval_cell("Phony Sheet!C1"), degree=-1)[-2]'

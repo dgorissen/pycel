@@ -1,6 +1,7 @@
 import calendar
 import collections
 import datetime as dt
+import operator
 import re
 
 from openpyxl.utils import (
@@ -37,8 +38,17 @@ VALID_R1C1_RANGE_ITEM_COMBOS = {
     (1, 1, 1, 1),
 }
 
+OPERATORS = {
+    '': operator.eq,
+    '<': operator.lt,
+    '>': operator.gt,
+    '<=': operator.le,
+    '>=': operator.ge,
+    '<>': operator.ne,
+}
 
-#::TODO:: test if case is insensitive
+
+# ::TODO:: test if case is insensitive
 # ::TODO:: validate that A:A and 1:1 produce a range with correct size
 
 class AddressRange(collections.namedtuple(
@@ -511,44 +521,38 @@ def date_from_int(datestamp):
 
 def criteria_parser(criteria):
     if is_number(criteria):
+        # numeric equals comparision
         def check(x):
-            return x == float(criteria)
+            return is_number(x) and x == float(criteria)
 
     elif type(criteria) == str:
 
-        search = re.search(r'(\W*)(.*)', criteria.lower()).group
-        operator = search(1)
+        search = re.search(r'(\W*)(.*)', criteria).group
+        criteria_operator = search(1)
+        op = OPERATORS[criteria_operator]
         value = search(2)
-        value = float(value) if is_number(value) else str(value)
 
-        def test_is_number(x):
-            if not is_number(x):
-                raise TypeError('excellib.countif() doesnt\'t work for checking'
-                                ' non number items against non equality')
+        # all operators except == (blank) are numeric
+        numeric_compare = bool(criteria_operator) or is_number(value)
+                
+        def validate_number(x):
+            if is_number(x):
+                return True
+            else:
+                if numeric_compare:
+                    raise TypeError(
+                        'excellib.countif() doesnt\'t work for checking'
+                        ' non number items against non equality')
+                return False
 
-        if operator == '<':
-            def check(x):
-                test_is_number(x)
-                return x < value
-        elif operator == '>':
-            def check(x):
-                test_is_number(x)
-                return x > value
-        elif operator == '>=':
-            def check(x):
-                test_is_number(x)
-                return x >= value
-        elif operator == '<=':
-            def check(x):
-                test_is_number(x)
-                return x <= value
-        elif operator == '<>':
-            def check(x):
-                test_is_number(x)
-                return x != value
-        else:
-            def check(x):
-                return x == criteria
+        value = float(value) if validate_number(value) else str(value).lower()
+
+        def check(x):
+            if is_number(x):
+                return op(x, value)
+            else:
+                return x.lower() == value
+
     else:
         raise ValueError("Couldn't parse criteria: {}".format(criteria))
 
@@ -556,13 +560,8 @@ def criteria_parser(criteria):
 
 
 def find_corresponding_index(rng, criteria):
+    """This does not parse all of the patterns available to countif, etc"""
     # parse criteria
     check = criteria_parser(criteria)
 
-    valid = []
-
-    for index, item in enumerate(rng):
-        if check(item):
-            valid.append(index)
-
-    return valid
+    return [index for index, item in enumerate(rng) if check(item)]

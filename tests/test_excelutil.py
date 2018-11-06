@@ -2,7 +2,7 @@ import pytest
 from pycel.excelutil import *
 
 
-class TestCell:
+class ATestCell:
 
     def __init__(self, col, row, sheet=''):
         self.row = row
@@ -95,7 +95,7 @@ def test_address_cell_enum():
     assert ('', 'A', 1, 'A1', 'A1') == AddressCell('R1C1')
     assert ('sheet', 'A', 1, 'A1', 'sheet!A1') == AddressCell('sheet!R1C1')
 
-    cell = TestCell('A', 1)
+    cell = ATestCell('A', 1)
     assert ('', 'B', 2, 'B2', 'B2') == AddressCell.create(
         'R[1]C[1]', cell=cell)
     assert ('sheet', 'B', 2, 'B2', 'sheet!B2') == AddressCell.create(
@@ -136,7 +136,7 @@ def test_resolve_range():
 
 
 def test_extended_range_boundaries():
-    cell = TestCell('A', 1)
+    cell = ATestCell('A', 1)
 
     assert (1, 2) * 2 == extended_range_boundaries('A2')
     assert (2, 1) * 2 == extended_range_boundaries('B1')
@@ -327,7 +327,7 @@ def test_find_corresponding_index():
     assert [] == find_corresponding_index('ABB', 'D')
 
     with pytest.raises(TypeError):
-        find_corresponding_index('ABB', '<2')
+        find_corresponding_index('ABB', '<B')
 
     with pytest.raises(ValueError):
         find_corresponding_index('ABB', None)
