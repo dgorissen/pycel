@@ -395,10 +395,10 @@ class FunctionNode(ASTNode):
     func_linestmario = func_linest
 
     def func_and(self):
-        return "all([{}])".format(self.comma_join_emit())
+        return "all(({},))".format(self.comma_join_emit())
 
     def func_or(self):
-        return "any([{}])".format(self.comma_join_emit())
+        return "any(({},))".format(self.comma_join_emit())
 
 
 class ExcelFormula(object):

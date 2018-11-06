@@ -80,7 +80,6 @@ class ExcelCompiler(object):
         self.graph_todos = []
         self.range_todos = []
 
-
     @staticmethod
     def load_from_file(fname):
         with open(fname, 'rb') as f:
