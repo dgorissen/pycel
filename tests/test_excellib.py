@@ -12,6 +12,7 @@ from pycel.excellib import (
     countifs,
     date,
     index,
+    istext,
     isNa,
     linest,
     lookup,
@@ -147,6 +148,12 @@ class TestDate:
         assert (dt.datetime(1900, 1, 1) - zero).days == date(0, 1, 1)
         assert (dt.datetime(1900 + 1899, 1, 1) - zero).days == date(1899, 1, 1)
         assert (dt.datetime(1900 + 1899, 1, 1) - zero).days == date(1899, 1, 1)
+
+
+def test_is_text():
+    assert istext('a')
+    assert not istext(1)
+    assert not istext(None)
 
 
 class TestIndex:

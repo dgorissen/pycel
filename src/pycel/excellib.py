@@ -161,6 +161,10 @@ def index(array, row_num, col_num=None):
         row_num, col_num, array))
 
 
+def istext(arg):
+    return isinstance(arg, str)
+
+
 def isNa(arg):
     # This function might need more solid testing
     try:
