@@ -355,6 +355,12 @@ def value(text):
         return int(text)
 
 
+def xcmp(a, b):
+    if isinstance(a, str) and isinstance(b, str):
+        return a.lower() == b.lower()
+    return a == b
+
+
 def xlog(a):
     if isinstance(a, (list, tuple, np.ndarray)):
         return [log(x) for x in flatten(a)]

@@ -172,6 +172,16 @@ test_data = [
         python_code='eval_cell("A1")',
     ),
     dict(
+        formula='="x"="y"',
+        rpn='"x"|"y"|=',
+        python_code='xcmp("x", "y")',
+    ),
+    dict(
+        formula='="x"=1',
+        rpn='"x"|1|=',
+        python_code='"x" == 1',
+    ),
+    dict(
         formula='=atan2(A1,B1)',
         rpn='A1|B1|atan2',
         python_code='atan2(eval_cell("B1"), eval_cell("A1"))',
@@ -315,7 +325,7 @@ test_data = [
     dict(
         formula='=IF(R[39]C[11]>65,R[25]C[42],ROUND((R[11]C[11]*IF(OR(AND(R[39]C[11]>=55, R[40]C[11]>=20),AND(R[40]C[11]>=20,R11C3="YES")),R[44]C[11],R[43]C[11]))+(R[14]C[11] *IF(OR(AND(R[39]C[11]>=55,R[40]C[11]>=20),AND(R[40]C[11]>=20,R11C3="YES")), R[45]C[11],R[43]C[11])),0))',
         rpn='R[39]C[11]|65|>|R[25]C[42]|R[11]C[11]|R[39]C[11]|55|>=|R[40]C[11]|20|>=|AND|R[40]C[11]|20|>=|R11C3|"YES"|=|AND|OR|R[44]C[11]|R[43]C[11]|IF|*|R[14]C[11]|R[39]C[11]|55|>=|R[40]C[11]|20|>=|AND|R[40]C[11]|20|>=|R11C3|"YES"|=|AND|OR|R[45]C[11]|R[43]C[11]|IF|*|+|0|ROUND|IF',
-        python_code='(eval_cell("AQ26") if eval_cell("L40") > 65 else xround((eval_cell("L12") * (eval_cell("L45") if any([all([eval_cell("L40") >= 55, eval_cell("L41") >= 20]), all([eval_cell("L41") >= 20, eval_cell("C11") == "YES"])]) else eval_cell("L44"))) + (eval_cell("L15") * (eval_cell("L46") if any([all([eval_cell("L40") >= 55, eval_cell("L41") >= 20]), all([eval_cell("L41") >= 20, eval_cell("C11") == "YES"])]) else eval_cell("L44"))), 0))',
+        python_code='(eval_cell("AQ26") if eval_cell("L40") > 65 else xround((eval_cell("L12") * (eval_cell("L45") if any([all([eval_cell("L40") >= 55, eval_cell("L41") >= 20]), all([eval_cell("L41") >= 20, xcmp(eval_cell("C11"), "YES")])]) else eval_cell("L44"))) + (eval_cell("L15") * (eval_cell("L46") if any([all([eval_cell("L40") >= 55, eval_cell("L41") >= 20]), all([eval_cell("L41") >= 20, xcmp(eval_cell("C11"), "YES")])]) else eval_cell("L44"))), 0))',
     ),
     dict(
         formula='=(propellor_charts!B22*(propellor_charts!E21+propellor_charts!D21*(engine_data!O16*D70+engine_data!P16)+propellor_charts!C21*(engine_data!O16*D70+engine_data!P16)^2+propellor_charts!B21*(engine_data!O16*D70+engine_data!P16)^3)^2)^(1/3)*(1*D70/5.33E-18)^(2/3)*0.0000000001*28.3495231*9.81/1000',
@@ -360,7 +370,7 @@ test_data = [
     dict(
         formula='=IF(AI119="","",E119)',
         rpn='AI119|""|=|""|E119|IF',
-        python_code='("" if eval_cell("AI119") == "" else eval_cell("E119"))',
+        python_code='("" if xcmp(eval_cell("AI119"), "") else eval_cell("E119"))',
     ),
     dict(
         formula='=LINEST(B32:(INDEX(B32:B119,MATCH(0,B32:B119<6,-1),1)),(F32:(INDEX(B32:F119,MATCH(0,B32:B119,-1),5)))^{1,2,3,4})',

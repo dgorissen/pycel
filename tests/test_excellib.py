@@ -22,6 +22,7 @@ from pycel.excellib import (
     right,
     sumif,
     value,
+    xcmp,
     xlog,
     xmax,
     xmin,
@@ -453,6 +454,16 @@ def test_value():
     assert 0.123 == value('.123')
     assert 123 == value('123')
     assert isinstance(value('123'), int)
+
+
+def test_xcmp():
+    assert not xcmp(1, 'a')
+    assert not xcmp(1, 2)
+    assert not xcmp('a', 'b')
+
+    assert xcmp(1, 1)
+    assert xcmp('A', 'A')
+    assert xcmp('A', 'a')
 
 
 def test_xlog():

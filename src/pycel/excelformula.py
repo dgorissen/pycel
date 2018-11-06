@@ -199,9 +199,14 @@ class OperatorNode(ASTNode):
         # convert the operator to python equivalents
         "^": "**",
         "=": "==",
+        "<>": "!=",
         "&": "+",
         " ": "+"  # range intersection
     }
+
+    def known_not_text(self):
+        return any(t.subtype not in (Token.TEXT, Token.RANGE)
+                   for t in self.children)
 
     def emit(self):
         xop = self.value
@@ -236,6 +241,13 @@ class OperatorNode(ASTNode):
                     type_=Token.OPERAND, subtype=Token.NUMBER):
                 aa = "({} if {} is not None else 0)".format(aa, aa)
             ss = "{} {} {}".format(args[0].emit(), op, aa)
+
+        elif op == '==' and not self.known_not_text():
+            ss = 'xcmp({}, {})'.format(args[0].emit(), args[1].emit())
+
+        elif op == '!=' and not self.known_not_text():
+            ss = 'not xcmp({}, {})'.format(args[0].emit(), args[1].emit())
+            
         else:
             if op != ',':
                 op = ' ' + op
@@ -400,6 +412,9 @@ class ExcelFormula(object):
         self._needed_addresses = None
         self._python_code = None
         self._compiled_python = None
+
+    def __str__(self):
+        return self.base_formula
 
     def __getstate__(self):
         """code objects are not serializable"""
