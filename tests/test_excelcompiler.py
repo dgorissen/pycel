@@ -18,7 +18,23 @@ def test_end_2_end(excel, example_xls_path):
     # sp.export_to_gexf(fname + ".gexf")
 
     # Serializing to disk...
-    excel_compiler.save_to_file(example_xls_path + ".pickle")
+    # excel_compiler.save_to_file(example_xls_path + ".pickle")
+
+
+def test_round_trip_through_json(excel, example_xls_path):
+    excel_compiler = ExcelCompiler(excel=excel)
+    excel_compiler.evaluate('Sheet1!D1')
+    excel_compiler.extra_data = {1: 3}
+    excel_compiler.to_json()
+
+    # read the spreadsheet from json
+    excel_compiler = ExcelCompiler.from_json(excel.filename)
+
+    # test evaluation
+    assert -0.02286 == round(excel_compiler.evaluate('Sheet1!D1'), 5)
+
+    excel_compiler.set_value('Sheet1!A1', 200)
+    assert -0.00331 == round(excel_compiler.evaluate('Sheet1!D1'), 5)
 
 
 def make_cells(excel):

@@ -1,7 +1,7 @@
 import collections
 import itertools as it
+import json
 import logging
-import pickle
 import sys
 
 import networkx as nx
@@ -54,17 +54,18 @@ class ExcelCompiler(object):
 
     def __init__(self, filename=None, excel=None):
 
-        self.filename = filename
         self.eval = None
 
         if excel:
             # if we are running as an excel addin, this gets passed to us
             self.excel = excel
+            self.filename = excel.filename
         else:
             # TODO: use a proper interface so we can (eventually) support
             # loading from file (much faster)  Still need to find a good lib.
             self.excel = ExcelWrapperImpl(filename=filename)
             self.excel.connect()
+            self.filename = filename
 
         self.log = logging.getLogger(
             "decode.{0}".format(self.__class__.__name__))
@@ -80,17 +81,52 @@ class ExcelCompiler(object):
         self.graph_todos = []
         self.range_todos = []
 
-    @staticmethod
-    def load_from_file(fname):
-        with open(fname, 'rb') as f:
-            return pickle.load(f)
+        self.extra_data = None
 
-    def save_to_file(self, fname):
-        self.excel = None
-        self.log = None
-        self.eval = None
-        with open(fname, 'wb') as f:
-            pickle.dump(self, f, protocol=pickle.HIGHEST_PROTOCOL)
+    def to_json(self):
+        """Serialize to a json file"""
+        extra_data = {} if self.extra_data is None else self.extra_data
+
+        def cell_value(a_cell):
+            if a_cell.formula and a_cell.formula.python_code:
+                return '=' + a_cell.formula.python_code
+            else:
+                return a_cell.value
+
+        extra_data.update(dict(
+            cell_map=dict(
+                (addr.address, cell_value(cell))
+                for addr, cell in self.cell_map.items() if not addr.is_range
+            ),
+        ))
+        filename = self.filename
+        if not filename.endswith('.json'):
+            filename += '.json'
+
+        with open(filename, 'w') as f:
+            json.dump(extra_data, f, indent=4)
+        del extra_data['cell_map']
+
+    @classmethod
+    def from_json(cls, filename):
+        if not filename.endswith('.json'):
+            filename += '.json'
+        with open(filename, 'r') as f:
+            data = json.load(f)
+
+        excel = CompiledImporter(filename)
+        excel_compiler = cls(excel=excel)
+        excel.compiler = excel_compiler
+
+        for address, python_code in data['cell_map'].items():
+            excel.value = python_code
+            excel_compiler.make_cells(AddressRange(address))
+
+        excel_compiler.process_gen_graph()
+
+        del data['cell_map']
+        excel_compiler.extra_data = data
+        return excel_compiler
 
     def export_to_dot(self, fname):
         write_dot(self.dep_graph, fname)
@@ -281,7 +317,8 @@ class ExcelCompiler(object):
                 seed = AddressRange(seed, sheet=sheet)
             elif isinstance(seed, collections.Iterable):
                 for s in seed:
-                    self.gen_graph(s, sheet=sheet)
+                    self.gen_graph(s, recursed=True, sheet=sheet)
+                self.process_gen_graph()
                 return
             else:
                 raise ValueError('Unknown seed: {}'.format(seed))
@@ -296,16 +333,18 @@ class ExcelCompiler(object):
             # already did this cell/range
             return
 
-        # queue the work for the seed
-        self.address_todos.append(seed)
+        # process the seed
+        self.make_cells(seed)
+
+        if not recursed:
+            # if not entered to process one cell / cellrange process other work
+            self.process_gen_graph()
+
+    def process_gen_graph(self):
 
         while self.address_todos or self.graph_todos:
             if self.address_todos:
                 self.make_cells(self.address_todos.pop())
-
-            elif recursed:
-                # entered to queue up the cell / cellrange creation, so exit
-                return
 
             else:
                 # connect the dependant cells in the graph
@@ -372,8 +411,15 @@ class Cell(object):
 
     def __init__(self, address, value=None, formula=None, excel=None):
         self.address = address
+        if isinstance(excel, CompiledImporter):
+            excel = None
+            cell = None
+        else:
+            cell = self
+
         self.excel = excel
-        self.formula = ExcelFormula(formula, cell=self)
+        self.formula = formula and ExcelFormula(
+            formula, cell=cell, formula_is_python_code=(cell is None))
         self.value = value
 
         # every cell has a unique id
@@ -395,8 +441,43 @@ class Cell(object):
 
     @property
     def python_code(self):
-        return self.formula.python_code
+        return self.formula and self.formula.python_code
 
     @property
     def compiled_python(self):
-        return self.formula.compiled_python
+        return self.formula and self.formula.compiled_python or self.value
+
+
+class CompiledImporter:
+    def __init__(self, filename):
+        self.filename = filename
+        self.value = None
+        self.compiler = None
+
+    CellValue = collections.namedtuple('CellValue', 'Formula Value')
+
+    def get_range(self, address):
+        if address in self.compiler.cell_map:
+            cell_map = self.compiler.cell_map
+            cell = cell_map[address]
+            cells = [cell_map[addr] for addr in cell.addresses]
+            formulas = [c.formula for c in cells]
+            values = [c.value for c in cells]
+
+            height, width = address.size
+            if height == 1:
+                formulas = [formulas]
+                values = [values]
+            elif width == 1:
+                formulas = [[x] for x in formulas]
+                values = [[x] for x in values]
+
+            return self.CellValue(formulas, values)
+
+        elif isinstance(self.value, str) and self.value.startswith('='):
+            return self.CellValue(self.value, None)
+        else:
+            return self.CellValue('', self.value)
+
+    def set_sheet(self, *args):
+        return
