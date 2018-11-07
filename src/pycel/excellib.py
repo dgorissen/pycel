@@ -424,13 +424,8 @@ def xround(number, num_digits=0):
 
 
 def xsum(*args):
-    data = _numerics(args)
-
-    # however, if no non numeric cells, return zero (is what excel does)
-    if len(data) < 1:
-        return 0
-    else:
-        return sum(data)
+    # if no non numeric cells, return zero (is what excel does)
+    return sum(_numerics(args))
 
 
 def yearfrac(start_date, end_date, basis=0):
