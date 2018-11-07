@@ -11,6 +11,7 @@ from pycel.excellib import (
     countif,
     countifs,
     date,
+    iferror,
     index,
     istext,
     isNa,
@@ -148,6 +149,14 @@ class TestDate:
         assert (dt.datetime(1900, 1, 1) - zero).days == date(0, 1, 1)
         assert (dt.datetime(1900 + 1899, 1, 1) - zero).days == date(1899, 1, 1)
         assert (dt.datetime(1900 + 1899, 1, 1) - zero).days == date(1899, 1, 1)
+
+
+def test_iferror():
+    assert 'A' == iferror('A', 2)
+
+    for error in ("#NULL!", "#DIV/0!", "#VALUE!", "#REF!", "#NAME?",
+                  "#NUM!", "#N/A", "#GETTING_DATA"):
+        assert 2 == iferror(error, 2)
 
 
 def test_is_text():

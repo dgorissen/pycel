@@ -17,6 +17,8 @@ from pycel.excelutil import (
     find_corresponding_index
 )
 
+from pycel.excelformula import Tokenizer
+
 
 def _numerics(args):
     # ignore non numeric cells
@@ -129,6 +131,13 @@ def date(year, month, day):
     if result <= 0:
         raise ArithmeticError("Date result is negative")
     return result
+
+
+def iferror(arg, value_if_error):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   IFERROR-function-C526FD07-CAEB-47B8-8BB6-63F3E417F611
+
+    return value_if_error if arg in Tokenizer.ERROR_CODES else arg
 
 
 def index(array, row_num, col_num=None):
