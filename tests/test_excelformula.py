@@ -528,5 +528,15 @@ def test_get_linest_degree_with_cell():
         assert expected == formula.python_code
 
 
+def test_init_from_python_code():
+    excel_formula1 = ExcelFormula('=B32:B119 + P5')
+    assert 'eval_range("B32:B119") + eval_cell("P5")' == \
+        excel_formula1.python_code
+
+    python_code = '=eval_range("B32:B119") + eval_cell("P5")'
+    excel_formula2 = ExcelFormula(python_code, formula_is_python_code=True)
+    assert excel_formula1.needed_addresses == excel_formula2.needed_addresses
+
+
 if __name__ == '__main__':
     dump_parse()

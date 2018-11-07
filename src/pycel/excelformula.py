@@ -409,17 +409,22 @@ class FunctionNode(ASTNode):
 class ExcelFormula(object):
     """Take an Excel formula and compile it to Python code."""
 
-    def __init__(self, formula, cell=None):
-        self.base_formula = formula
+    def __init__(self, formula, cell=None, formula_is_python_code=False):
+        if formula_is_python_code:
+            self.base_formula = None
+            self._python_code = formula[1:]
+        else:
+            self.base_formula = formula
+            self._python_code = None
+
         self.cell = cell
         self._rpn = None
         self._ast = None
         self._needed_addresses = None
-        self._python_code = None
         self._compiled_python = None
 
     def __str__(self):
-        return self.base_formula
+        return self.base_formula or self._python_code
 
     def __getstate__(self):
         """code objects are not serializable"""
