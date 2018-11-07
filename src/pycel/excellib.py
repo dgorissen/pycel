@@ -32,7 +32,7 @@ def average(*args):
 
 def count(*args):
     # Excel reference: https://support.office.com/en-us/article/
-    # COUNT-function-a59cd7fc-b623-4d93-87a4-d23bf411294c
+    #   COUNT-function-a59cd7fc-b623-4d93-87a4-d23bf411294c
 
     total = 0
 
@@ -201,6 +201,18 @@ def linest(Y, X, const=True, degree=1):
 
 
 def lookup(arg, lookup_range, result_range):
+    """
+    MATCH(lookup_value, lookup_array, [match_type])
+    VLOOKUP(
+        Value you want to look up,
+        range where you want to lookup the value,
+        the column number in the range containing the return value,
+        Exact Match or Approximate Match indicated as 0/FALSE or 1/TRUE
+    )
+    HLOOKUP(lookup_value, table_array, row_index_num, [range_lookup])
+    LOOKUP(lookup_value, lookup_vector, [result_vector])
+    LOOKUP(lookup_value, array)  # should not use array form, use vlookup instead
+    """
     # TODO
     if not isinstance(arg, (int, float)):
         raise Exception("Non numeric lookups (%s) not supported" % arg)
@@ -231,6 +243,8 @@ def lookup(arg, lookup_range, result_range):
 
 
 def match(lookup_value, lookup_array, match_type=1):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   MATCH-function-E8DFFD45-C762-47D6-BF89-533F4A37673A
     def type_convert(arg):
         if type(arg) == str:
             arg = arg.lower()
@@ -376,6 +390,30 @@ def value(text):
         return float(text)
     else:
         return int(text)
+
+
+def vlookup(lookup_value, table_array, col_index_num, range_lookup=False):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   VLOOKUP-function-0BBC8083-26FE-4963-8AB8-93A18AD188A1
+
+    assert not range_lookup, "range_lookup not implemented in vlookup"
+
+    if col_index_num <= 0:
+        return '#VALUE!'
+
+    if col_index_num > len(table_array[0]):
+        return '#REF!'
+
+    try:
+        result_idx = match(
+            lookup_value,
+            [row[0] for row in table_array],
+            match_type=0
+        )
+    except ValueError:
+        return '#N/A'
+
+    return table_array[result_idx - 1][col_index_num - 1]
 
 
 def xcmp(a, b):

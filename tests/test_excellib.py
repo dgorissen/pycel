@@ -25,6 +25,7 @@ from pycel.excellib import (
     roundup,
     sumif,
     value,
+    vlookup,
     xcmp,
     xlog,
     xmax,
@@ -484,6 +485,31 @@ def test_value():
     assert 0.123 == value('.123')
     assert 123 == value('123')
     assert isinstance(value('123'), int)
+
+
+@pytest.mark.parametrize(
+    'lookup, col_idx, result', (
+            ('A', 0, '#VALUE!'),
+            ('A', 1, 'A'),
+            ('A', 2, 1),
+            ('A', 3, 'Z'),
+            ('A', 4, '#REF!'),
+            ('B', 1, 'B'),
+            ('C', 1, 'C'),
+            ('B', 2, 2),
+            ('C', 2, 3),
+            ('B', 3, 'Y'),
+            ('C', 3, 'X'),
+            ('D', 3, '#N/A'),
+    )
+)
+def test_vlookup(lookup, col_idx, result):
+    table = (
+        ('A', 1, 'Z'),
+        ('B', 2, 'Y'),
+        ('C', 3, 'X'),
+    )
+    assert result == vlookup(lookup, table, col_idx)
 
 
 def test_xcmp():
