@@ -371,8 +371,6 @@ class Cell(object):
         return cls.ctr
 
     def __init__(self, address, value=None, formula=None, excel=None):
-        if not value and not formula:
-            x = 1
         self.address = address
         self.excel = excel
         self.formula = ExcelFormula(formula, cell=self)

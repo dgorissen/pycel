@@ -1,4 +1,5 @@
 import openpyxl.formula.tokenizer as tokenizer
+import re
 from networkx.classes.digraph import DiGraph
 
 from pycel.excelutil import (
@@ -6,6 +7,8 @@ from pycel.excelutil import (
     get_linest_degree,
     uniqueify,
 )
+
+EVAL_REGEX = re.compile(r'(eval_cell|eval_range)(\([^)]*\))')
 
 
 class FormulaParserError(Exception):
@@ -441,22 +444,16 @@ class ExcelFormula(object):
 
     @property
     def needed_addresses(self):
-        """Return the address and address ranges this formula needs"""
+        """Return the addresses and address ranges this formula needs"""
         if self._needed_addresses is None:
             # get all the cells/ranges this formula refers to, and remove dupes
-            if not self.ast:
-                self._needed_addresses = ()
-            else:
-                needed_addresses = ((AddressRange(x.value),
-                                     x.cell and x.cell.address.sheet)
-                                    for x, *_ in self.ast.descendants
-                                    if isinstance(x, RangeNode))
-
+            if self.python_code:
                 self._needed_addresses = uniqueify(
-                    addr if addr.has_sheet else
-                    AddressRange.create(addr, sheet=sheet)
-                    for addr, sheet in needed_addresses
+                    AddressRange(eval_call[1][2:-2])
+                    for eval_call in EVAL_REGEX.findall(self.python_code)
                 )
+            else:
+                self._needed_addresses = ()
 
         return self._needed_addresses
 

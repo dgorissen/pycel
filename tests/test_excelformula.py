@@ -486,9 +486,7 @@ def test_needed_addresses():
 
 
 def test_build_eval_context():
-    null_func = lambda x: 1
-
-    eval_context = ExcelFormula.build_eval_context(null_func, null_func)
+    eval_context = ExcelFormula.build_eval_context(lambda x: 1, lambda x: 1)
 
     assert 42 == eval_context(ExcelFormula('=2 * 21'))
     assert 44 == eval_context(ExcelFormula('=2 * 21 + A1 + a1:a2'))
@@ -502,7 +500,7 @@ def test_compiled_python_error():
     formula = ExcelFormula('=1 + 2')
     formula._python_code = 'this will be a syntax error'
     with pytest.raises(FormulaParserError, match='Failed to compile expression'):
-        x = formula.compiled_python
+        formula.compiled_python
 
 
 def test_save_to_file(fixture_dir):
