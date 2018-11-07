@@ -69,13 +69,16 @@ def countifs(*args):
                         'pair number of arguments, here %d' % len(args))
 
     if len(args):
-        indexes = find_corresponding_index(args[0], args[
-            1])  # find indexes that match first layer of countif
+        # find indexes that match first layer of countif
+        indexes = find_corresponding_index(args[0], args[1])
 
-        remaining_ranges = [elem for i, elem in enumerate(args[2:]) if
-                            i % 2 == 0]  # get only ranges
-        remaining_criteria = [elem for i, elem in enumerate(args[2:]) if
-                              i % 2 == 1]  # get only criteria
+        # get only ranges
+        remaining_ranges = [elem for i, elem in enumerate(args[2:])
+                            if i % 2 == 0]
+
+        # get only criteria
+        remaining_criteria = [elem for i, elem in enumerate(args[2:])
+                              if i % 2 == 1]
 
         filtered_remaining_ranges = []
 
