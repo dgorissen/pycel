@@ -12,7 +12,7 @@ def fixture_dir():
 
 @pytest.fixture('session')
 def example_xls_path(fixture_dir):
-    return os.path.join(fixture_dir, "../example/example.xlsx")
+    return os.path.join(fixture_dir, "fixtures/excelcompiler.xlsx")
 
 
 @pytest.fixture('session')

@@ -180,6 +180,54 @@ class ExcelCompiler(object):
             else:
                 self.evaluate(cell)
 
+    def trim_graph(self, input_addrs, output_addrs):
+        """Remove uneeded cells from the graph"""
+
+        # build network for all needed outputs
+        self.gen_graph(output_addrs)
+
+        # walk the dependant tree and find needed nodes
+        needed_cells = set()
+
+        def walk_dependents(cell):
+            for child_cell in self.dep_graph.successors(cell):
+                if child_cell.address not in needed_cells:
+                    needed_cells.add(child_cell.address)
+                    walk_dependents(child_cell)
+
+        for addr in input_addrs:
+            if addr in self.cell_map:
+                walk_dependents(self.cell_map[addr])
+            else:
+                print('Address {} not found in cell_map'.format(addr))
+
+        for addr in output_addrs:
+            needed_cells.add(addr)
+
+        # now walk the precedent tree and prune unneeded cells
+        processed_cells = set()
+
+        def walk_precedents(cell):
+            for child_address in cell.needed_addresses:
+                if child_address not in processed_cells:
+                    processed_cells.add(child_address)
+                    child_cell = self.cell_map[child_address]
+                    if child_address in needed_cells or child_address.is_range:
+                        walk_precedents(child_cell)
+                    else:
+                        # trim this cell, now we will need only its value
+                        needed_cells.add(child_address)
+                        child_cell.formula = None
+                        # print('Trimming {}'.format(child_address))
+
+        for addr in output_addrs:
+            walk_precedents(self.cell_map[addr])
+
+        cells_to_remove = tuple(addr for addr in self.cell_map
+                                if addr not in needed_cells)
+        for addr in cells_to_remove:
+            del self.cell_map[addr]
+
     def make_cells(self, address):
         """Given an AddressRange or AddressCell generate compiler Cells"""
 
@@ -196,9 +244,6 @@ class ExcelCompiler(object):
             self.graph_todos.append(node)
 
         def build_cell(addr):
-            if address in self.cell_map:
-                return
-
             excel_range = self.excel.get_range(addr)
             formula = None
             if excel_range.Formula.startswith('='):
@@ -433,7 +478,7 @@ class Cell(object):
 
     @property
     def needed_addresses(self):
-        return self.formula.needed_addresses
+        return self.formula and self.formula.needed_addresses or ()
 
     @property
     def sheet(self):
@@ -460,17 +505,17 @@ class CompiledImporter:
         if address in self.compiler.cell_map:
             cell_map = self.compiler.cell_map
             cell = cell_map[address]
-            cells = [cell_map[addr] for addr in cell.addresses]
-            formulas = [c.formula for c in cells]
-            values = [c.value for c in cells]
+            addrs = cell.addresses
 
             height, width = address.size
             if height == 1:
-                formulas = [formulas]
-                values = [values]
+                addrs = [addrs]
             elif width == 1:
-                formulas = [[x] for x in formulas]
-                values = [[x] for x in values]
+                addrs = [[x] for x in addrs]
+
+            cells = [[cell_map[addr] for addr in row] for row in addrs]
+            formulas = [[c.formula for c in row] for row in cells]
+            values = [[c.value for c in row] for row in cells]
 
             return self.CellValue(formulas, values)
 

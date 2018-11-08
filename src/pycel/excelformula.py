@@ -426,15 +426,6 @@ class ExcelFormula(object):
     def __str__(self):
         return self.base_formula or self._python_code
 
-    def __getstate__(self):
-        """code objects are not serializable"""
-        d = dict(self.__dict__)
-        d['_rpn'] = None
-        d['_ast'] = None
-        d['_needed_addresses'] = None
-        d['_compiled_python'] = None
-        return d
-
     @property
     def rpn(self):
         if self._rpn is None:

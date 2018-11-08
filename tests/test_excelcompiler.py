@@ -1,4 +1,8 @@
 from pycel.excelcompiler import ExcelCompiler
+from pycel.excelutil import AddressRange
+
+
+# ::TODO:: need some rectangular ranges for testing
 
 
 def test_end_2_end(excel, example_xls_path):
@@ -44,3 +48,19 @@ def make_cells(excel):
     my_input = ['A1', 'A2:B3']
     output_cells = ExcelCompiler.make_cells(my_input, sheet=cursheet)
     assert len(output_cells) == 5
+
+
+def test_trim_cells(excel):
+    excel_compiler = ExcelCompiler(excel=excel)
+    input_addrs = [AddressRange('trim-range!D5')]
+    output_addrs = [AddressRange('trim-range!B2')]
+
+    old_value = excel_compiler.evaluate(output_addrs[0])
+
+    excel_compiler.trim_graph(input_addrs, output_addrs)
+    excel_compiler.to_json()
+
+    new_value = ExcelCompiler.from_json(
+        excel_compiler.filename).evaluate(output_addrs[0])
+
+    assert old_value == new_value
