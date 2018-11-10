@@ -1,3 +1,4 @@
+import ast
 import re
 
 import openpyxl.formula.tokenizer as tokenizer
@@ -208,10 +209,6 @@ class OperatorNode(ASTNode):
         " ": "+"  # range intersection
     }
 
-    def known_not_text(self):
-        return any(t.subtype not in (Token.TEXT, Token.RANGE)
-                   for t in self.children)
-
     def emit(self):
         xop = self.value
 
@@ -245,12 +242,6 @@ class OperatorNode(ASTNode):
                     type_=Token.OPERAND, subtype=Token.NUMBER):
                 aa = "({} if {} is not None else 0)".format(aa, aa)
             ss = "{} {} {}".format(args[0].emit(), op, aa)
-
-        elif op == '==' and not self.known_not_text():
-            ss = 'xcmp({}, {})'.format(args[0].emit(), args[1].emit())
-
-        elif op == '!=' and not self.known_not_text():
-            ss = 'not xcmp({}, {})'.format(args[0].emit(), args[1].emit())
 
         else:
             if op != ',':
@@ -469,8 +460,7 @@ class ExcelFormula(object):
         """ Using the Python code, generate compiled python code"""
         if self._compiled_python is None and self.python_code:
             try:
-                self._compiled_python = compile(
-                    self.python_code, '<string>', 'eval')
+                self._compile_python_ast()
             except Exception as exc:
                 raise FormulaParserError(
                     "Failed to compile expression {}: {}".format(
@@ -706,3 +696,37 @@ class ExcelFormula(object):
                     locals()[name] = func
 
         return eval_func
+
+    def _compile_python_ast(self):
+        kwargs = dict(
+            mode='eval',
+            filename=str(self.cell.address) if self.cell else '<string>',
+        )
+        tree = ast.parse(self.python_code, **kwargs)
+
+        # edit the ast with a few changes to be more excel like
+
+        class LogicOpWrapper(ast.NodeTransformer):
+            """Apply excel consistent type conversions"""
+
+            def visit_Compare(self, node):
+                """ change the compare node to a function node """
+                node = ast.NodeTransformer.generic_visit(self, node)
+
+                left = node.left
+                op = ast.Str(s=type(node.ops[0]).__name__)
+                right = node.comparators[0]
+
+                return ast.Call(
+                    func=ast.Name(id='excel_logic_op', ctx=ast.Load()),
+                    args=[left, op, right],
+                    keywords=[],
+                    lineno=node.lineno,
+                    col_offset=node.col_offset,
+                )
+
+        # modify the ast tree to convert Compare to Call
+        tree = ast.fix_missing_locations(LogicOpWrapper().visit(tree))
+
+        # compile the tree
+        self._compiled_python = compile(tree, **kwargs)

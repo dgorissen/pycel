@@ -467,6 +467,19 @@ def is_number(s):
         return False
 
 
+def coerce_to_number(value):
+    try:
+        if isinstance(value, str) and '.' not in value:
+            return int(value)
+    except (ValueError, TypeError):
+        pass
+
+    try:
+        return float(value)
+    except (ValueError, TypeError):
+        return value
+
+
 def is_leap_year(year):
     if not is_number(year):
         raise TypeError("%s must be a number" % str(year))

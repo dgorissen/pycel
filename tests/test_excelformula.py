@@ -174,7 +174,7 @@ test_data = [
     dict(
         formula='="x"="y"',
         rpn='"x"|"y"|=',
-        python_code='xcmp("x", "y")',
+        python_code='"x" == "y"',
     ),
     dict(
         formula='="x"=1',
@@ -325,7 +325,7 @@ test_data = [
     dict(
         formula='=IF(R[39]C[11]>65,R[25]C[42],ROUND((R[11]C[11]*IF(OR(AND(R[39]C[11]>=55, R[40]C[11]>=20),AND(R[40]C[11]>=20,R11C3="YES")),R[44]C[11],R[43]C[11]))+(R[14]C[11] *IF(OR(AND(R[39]C[11]>=55,R[40]C[11]>=20),AND(R[40]C[11]>=20,R11C3="YES")), R[45]C[11],R[43]C[11])),0))',
         rpn='R[39]C[11]|65|>|R[25]C[42]|R[11]C[11]|R[39]C[11]|55|>=|R[40]C[11]|20|>=|AND|R[40]C[11]|20|>=|R11C3|"YES"|=|AND|OR|R[44]C[11]|R[43]C[11]|IF|*|R[14]C[11]|R[39]C[11]|55|>=|R[40]C[11]|20|>=|AND|R[40]C[11]|20|>=|R11C3|"YES"|=|AND|OR|R[45]C[11]|R[43]C[11]|IF|*|+|0|ROUND|IF',
-        python_code='(eval_cell("AQ26") if eval_cell("L40") > 65 else xround((eval_cell("L12") * (eval_cell("L45") if any((all((eval_cell("L40") >= 55, eval_cell("L41") >= 20,)), all((eval_cell("L41") >= 20, xcmp(eval_cell("C11"), "YES"),)),)) else eval_cell("L44"))) + (eval_cell("L15") * (eval_cell("L46") if any((all((eval_cell("L40") >= 55, eval_cell("L41") >= 20,)), all((eval_cell("L41") >= 20, xcmp(eval_cell("C11"), "YES"),)),)) else eval_cell("L44"))), 0))',
+        python_code='(eval_cell("AQ26") if eval_cell("L40") > 65 else xround((eval_cell("L12") * (eval_cell("L45") if any((all((eval_cell("L40") >= 55, eval_cell("L41") >= 20,)), all((eval_cell("L41") >= 20, eval_cell("C11") == "YES",)),)) else eval_cell("L44"))) + (eval_cell("L15") * (eval_cell("L46") if any((all((eval_cell("L40") >= 55, eval_cell("L41") >= 20,)), all((eval_cell("L41") >= 20, eval_cell("C11") == "YES",)),)) else eval_cell("L44"))), 0))',
     ),
     dict(
         formula='=(propellor_charts!B22*(propellor_charts!E21+propellor_charts!D21*(engine_data!O16*D70+engine_data!P16)+propellor_charts!C21*(engine_data!O16*D70+engine_data!P16)^2+propellor_charts!B21*(engine_data!O16*D70+engine_data!P16)^3)^2)^(1/3)*(1*D70/5.33E-18)^(2/3)*0.0000000001*28.3495231*9.81/1000',
@@ -370,7 +370,7 @@ test_data = [
     dict(
         formula='=IF(AI119="","",E119)',
         rpn='AI119|""|=|""|E119|IF',
-        python_code='("" if xcmp(eval_cell("AI119"), "") else eval_cell("E119"))',
+        python_code='("" if eval_cell("AI119") == "" else eval_cell("E119"))',
     ),
     dict(
         formula='=LINEST(B32:(INDEX(B32:B119,MATCH(0,B32:B119<6,-1),1)),(F32:(INDEX(B32:F119,MATCH(0,B32:B119,-1),5)))^{1,2,3,4})',
@@ -536,6 +536,36 @@ def test_init_from_python_code():
     python_code = '=eval_range("B32:B119") + eval_cell("P5")'
     excel_formula2 = ExcelFormula(python_code, formula_is_python_code=True)
     assert excel_formula1.needed_addresses == excel_formula2.needed_addresses
+    
+
+def test_string_number_compare():
+    eval_ctx = ExcelFormula.build_eval_context(None, None)
+
+    assert 1 == eval_ctx(ExcelFormula('=sum(1=1.0, "1"=1, 1="1")'))
+    assert 1 == eval_ctx(ExcelFormula('=sum("1"="1", "x"=1)'))
+    assert 'b' == eval_ctx(ExcelFormula('=if("x"<>"x", "a", "b")'))
+
+
+def test_empty_cell_logic_op():
+    eval_ctx = ExcelFormula.build_eval_context(lambda x: None, None)
+    assert 1 == eval_ctx(ExcelFormula('=sum(A1=0, A1=1)'))
+
+
+def test_numerics_type_coercion():
+    eval_ctx = ExcelFormula.build_eval_context(None, None)
+    assert 7 == eval_ctx(ExcelFormula('=sum(1, 2, "4")'))
+
+
+def test_string_compare():
+    eval_ctx = ExcelFormula.build_eval_context(None, None)
+
+    assert not eval_ctx(ExcelFormula('=1="a"'))
+    assert not eval_ctx(ExcelFormula('=1=2'))
+    assert not eval_ctx(ExcelFormula('="a"="b"'))
+
+    assert eval_ctx(ExcelFormula('=1=1'))
+    assert eval_ctx(ExcelFormula('="A"="a"'))
+    assert eval_ctx(ExcelFormula('="a"="A"'))
 
 
 if __name__ == '__main__':

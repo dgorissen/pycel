@@ -26,7 +26,6 @@ from pycel.excellib import (
     sumif,
     value,
     vlookup,
-    xcmp,
     xlog,
     xmax,
     xmin,
@@ -37,14 +36,14 @@ from pycel.excellib import (
 
 
 def test_numerics():
-    assert [1, 2, 3] == _numerics((1, '3', 2.0, pytest, 3))
+    assert [1, 3, 2, 3.1] == _numerics((1, '3', 2.0, pytest, 3.1, 'x'))
 
 
 def test_average():
-    assert 2.0 == average((1, '3', 2.0, pytest, 3))
+    assert 2.25 == average((1, '3', 2.0, pytest, 3, 'x'))
 
     with pytest.raises(ZeroDivisionError):
-        average('3')
+        average('x')
 
 
 class TestCount:
@@ -515,16 +514,6 @@ def test_vlookup(lookup, col_idx, result):
         ('C', 3, 'X'),
     )
     assert result == vlookup(lookup, table, col_idx)
-
-
-def test_xcmp():
-    assert not xcmp(1, 'a')
-    assert not xcmp(1, 2)
-    assert not xcmp('a', 'b')
-
-    assert xcmp(1, 1)
-    assert xcmp('A', 'A')
-    assert xcmp('A', 'a')
 
 
 def test_xlog():

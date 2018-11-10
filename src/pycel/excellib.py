@@ -5,11 +5,13 @@ Python equivalents of various excel functions
 from datetime import datetime
 from decimal import Decimal, ROUND_HALF_UP, ROUND_UP
 from math import log
+import operator
 
 import numpy as np
 
 from pycel.excelformula import Tokenizer
 from pycel.excelutil import (
+    coerce_to_number,
     date_from_int,
     find_corresponding_index,
     flatten,
@@ -19,9 +21,20 @@ from pycel.excelutil import (
 )
 
 
+PYTHON_AST_OPERATORS = {
+    'Eq': operator.eq,
+    'Lt': operator.lt,
+    'Ge': operator.gt,
+    'LtE': operator.le,
+    'GtE': operator.ge,
+    'NotEq': operator.ne,
+}
+
+
 def _numerics(args):
     # ignore non numeric cells
-    return [x for x in flatten(args) if isinstance(x, (int, float))]
+    return [x for x in (coerce_to_number(y) for y in flatten(args))
+            if isinstance(x, (int, float))]
 
 
 def average(*args):
@@ -418,12 +431,6 @@ def vlookup(lookup_value, table_array, col_index_num, range_lookup=False):
     return table_array[result_idx - 1][col_index_num - 1]
 
 
-def xcmp(a, b):
-    if isinstance(a, str) and isinstance(b, str):
-        return a.lower() == b.lower()
-    return a == b
-
-
 def xlog(a):
     if isinstance(a, (list, tuple, np.ndarray)):
         return [log(x) for x in flatten(a)]
@@ -546,3 +553,19 @@ def yearfrac(start_date, end_date, basis=0):
         raise ValueError("basis: %d must be 0, 1, 2, 3 or 4" % basis)
 
     return result
+
+
+def excel_logic_op(left_op, op, right_op):
+    """Fix for empty cells and case-insensitive string compare"""
+    if left_op is None:
+        left_op = '' if isinstance(right_op, str) else 0
+
+    if right_op is None:
+        right_op = '' if isinstance(left_op, str) else 0
+
+    if (op in ('Eq', 'NotEq') and
+            isinstance(left_op, str) and
+            isinstance(right_op, str)):
+        return PYTHON_AST_OPERATORS[op](left_op.lower(), right_op.lower())
+
+    return PYTHON_AST_OPERATORS[op](left_op, right_op)
