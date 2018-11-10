@@ -8,16 +8,15 @@ from math import log
 
 import numpy as np
 
-from pycel.excelutil import (
-    flatten,
-    is_number,
-    date_from_int,
-    normalize_year,
-    is_leap_year,
-    find_corresponding_index
-)
-
 from pycel.excelformula import Tokenizer
+from pycel.excelutil import (
+    date_from_int,
+    find_corresponding_index,
+    flatten,
+    is_leap_year,
+    is_number,
+    normalize_year,
+)
 
 
 def _numerics(args):
@@ -182,7 +181,7 @@ def isNa(arg):
     try:
         eval(arg)
         return False
-    except:
+    except Exception:
         return True
 
 
@@ -328,7 +327,7 @@ def mod(nb, q):
 def npv(*args):
     # Excel reference: https://support.office.com/en-us/article/
     #   NPV-function-8672CB67-2576-4D07-B67B-AC28ACF2A568
-    
+
     rate = args[0] + 1
     cashflow = args[1:]
     return sum([float(x) * rate ** -i for i, x in enumerate(cashflow, start=1)])

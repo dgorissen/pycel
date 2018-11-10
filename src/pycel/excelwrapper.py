@@ -1,17 +1,15 @@
 #       ExcelComWrapper : Must be run on Windows as it requires a COM link to an Excel instance.
 #       ExcelOpxWrapper : Can be run anywhere but only with post 2010 Excel formats
 try:
-    import win32com.client
     from win32com.client import Dispatch
     from win32com.client import constants
-    import pythoncom
     import numpy as np
-except:
+except ImportError:
     pass
 
 import abc
 import os
-from abc import abstractproperty, abstractmethod
+from abc import abstractmethod, abstractproperty
 from os import path
 
 from openpyxl import load_workbook
@@ -152,7 +150,8 @@ class ExcelComWrapper(ExcelWrapper):
         # else -> if we are running as an excel addin, this gets passed to us
 
         # Range Names reading
-        # WARNING: by default numpy array require dtype declaration to specify character length (here 'S200', i.e. 200 characters)
+        # WARNING: by default numpy array require dtype declaration to
+        #   specify character length (here 'S200', i.e. 200 characters)
         # WARNING: win32.com cannot get ranges with single column/line, would require way to read Office Open XML
         # TODO: automate detection of max string length to set up numpy array accordingly
         # TODO: discriminate between worksheet & workbook ranged names

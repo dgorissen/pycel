@@ -1,4 +1,5 @@
 import collections
+import hashlib
 import itertools as it
 import json
 import logging
@@ -11,7 +12,6 @@ from pycel.excelformula import ExcelFormula
 from pycel.excelutil import (
     AddressCell,
     AddressRange,
-    flatten,
     resolve_range,
 )
 
@@ -25,8 +25,8 @@ from pycel.excelutil import (
 
 if sys.platform in ('win32', 'cygwin'):
     try:
-        import win32com.client
-        import pythoncom
+        import win32com.client  # flake8: noqa
+        import pythoncom  # flake8: noqa
         from pycel.excelwrapper import ExcelComWrapper as ExcelWrapperImpl
     except ImportError:
         ExcelWrapperImpl = None
@@ -60,12 +60,16 @@ class ExcelCompiler(object):
             # if we are running as an excel addin, this gets passed to us
             self.excel = excel
             self.filename = excel.filename
+            self.hash = None
         else:
             # TODO: use a proper interface so we can (eventually) support
             # loading from file (much faster)  Still need to find a good lib.
             self.excel = ExcelWrapperImpl(filename=filename)
             self.excel.connect()
             self.filename = filename
+
+        # grab a copy of the current hash
+        self._excel_file_md5_digest = self._compute_excel_file_md5_digest
 
         self.log = logging.getLogger(
             "decode.{0}".format(self.__class__.__name__))
@@ -83,7 +87,20 @@ class ExcelCompiler(object):
 
         self.extra_data = None
 
-    def to_json(self):
+    @property
+    def _compute_excel_file_md5_digest(self):
+        hash_md5 = hashlib.md5()
+        with open(self.filename, "rb") as f:
+            for chunk in iter(lambda: f.read(4096), b""):
+                hash_md5.update(chunk)
+        return hash_md5.hexdigest()
+
+    @property
+    def hash_matches(self):
+        current_hash = self._compute_excel_file_md5_digest
+        return self._excel_file_md5_digest == current_hash
+
+    def to_json(self, filename=None):
         """Serialize to a json file"""
         extra_data = {} if self.extra_data is None else self.extra_data
 
@@ -94,12 +111,13 @@ class ExcelCompiler(object):
                 return a_cell.value
 
         extra_data.update(dict(
+            excel_hash=self._excel_file_md5_digest,
             cell_map=dict(
                 (addr.address, cell_value(cell))
                 for addr, cell in self.cell_map.items() if not addr.is_range
             ),
         ))
-        filename = self.filename
+        filename = filename or self.filename
         if not filename.endswith('.json'):
             filename += '.json'
 
@@ -123,8 +141,11 @@ class ExcelCompiler(object):
             excel_compiler.make_cells(AddressRange(address))
 
         excel_compiler.process_gen_graph()
-
         del data['cell_map']
+
+        excel_compiler._excel_file_md5_digest = data['excel_hash']
+        del data['excel_hash']
+
         excel_compiler.extra_data = data
         return excel_compiler
 
@@ -195,11 +216,15 @@ class ExcelCompiler(object):
                     needed_cells.add(child_cell.address)
                     walk_dependents(child_cell)
 
-        for addr in input_addrs:
-            if addr in self.cell_map:
-                walk_dependents(self.cell_map[addr])
-            else:
-                print('Address {} not found in cell_map'.format(addr))
+        try:
+            for addr in input_addrs:
+                if addr in self.cell_map:
+                    walk_dependents(self.cell_map[addr])
+                else:
+                    print('Address {} not found in cell_map'.format(addr))
+        except nx.exception.NetworkXError as exc:
+            raise ValueError('{}: which usually means no outputs are dependant '
+                             'on it.'.format(exc))
 
         for addr in output_addrs:
             needed_cells.add(addr)
@@ -495,7 +520,7 @@ class Cell(object):
 
 class CompiledImporter:
     def __init__(self, filename):
-        self.filename = filename
+        self.filename = filename[:-5]  # remove the '.json'
         self.value = None
         self.compiler = None
 

@@ -59,6 +59,9 @@ class AddressRange(collections.namedtuple(
         if isinstance(address, str):
             return cls.create(address, sheet=sheet)
 
+        elif isinstance(address, AddressCell):
+            return AddressCell(address, sheet=sheet)
+
         elif isinstance(address, AddressRange):
             if not sheet or sheet == address.sheet:
                 return address
@@ -263,7 +266,7 @@ def split_sheetname(address, sheet=''):
 def extended_range_boundaries(address, cell=None):
     """
     R1C1 reference style
-    
+
     You can also use a reference style where both the rows and the columns on
     the worksheet are numbered. The R1C1 reference style is useful for
     computing row and column positions in macros. In the R1C1 style, Excel
@@ -323,7 +326,8 @@ def extended_range_boundaries(address, cell=None):
 
     min_col, min_row, max_col, max_row = (
         g if g is None else from_relative_to_absolute(g) for g in (
-        m.group(n) for n in ('min_col', 'min_row', 'max_col', 'max_row'))
+            m.group(n) for n in ('min_col', 'min_row', 'max_col', 'max_row')
+        )
     )
 
     items_present = (min_col is not None, min_row is not None,
@@ -354,7 +358,7 @@ def extended_range_boundaries(address, cell=None):
 
 def resolve_range(address):
     """Return a list or nested lists with AddressCell for each element"""
-    
+
     # ::TODO:: look at removing the assert
     assert isinstance(address, (AddressRange, AddressCell))
 
@@ -534,7 +538,7 @@ def criteria_parser(criteria):
 
         # all operators except == (blank) are numeric
         numeric_compare = bool(criteria_operator) or is_number(value)
-                
+
         def validate_number(x):
             if is_number(x):
                 return True

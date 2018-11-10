@@ -1,7 +1,7 @@
-import openpyxl.formula.tokenizer as tokenizer
 import re
-from networkx.classes.digraph import DiGraph
 
+import openpyxl.formula.tokenizer as tokenizer
+from networkx.classes.digraph import DiGraph
 from pycel.excelutil import (
     AddressRange,
     get_linest_degree,
@@ -12,7 +12,7 @@ EVAL_REGEX = re.compile(r'(eval_cell|eval_range)(\([^)]*\))')
 
 
 class FormulaParserError(Exception):
-    """"Base class for Parser errors"""
+    """Base class for Parser errors"""
 
 
 class Tokenizer(tokenizer.Tokenizer):
@@ -32,9 +32,10 @@ class Tokenizer(tokenizer.Tokenizer):
             if token.type != Token.WSPACE or not prev_token or not next_token:
                 tokens.append(token)
 
-            elif (prev_token.matches(type_=Token.FUNC, subtype=Token.CLOSE) or
-                  prev_token.matches(type_=Token.PAREN, subtype=Token.CLOSE) or
-                  prev_token.type == Token.OPERAND
+            elif (
+                prev_token.matches(type_=Token.FUNC, subtype=Token.CLOSE) or
+                prev_token.matches(type_=Token.PAREN, subtype=Token.CLOSE) or
+                prev_token.type == Token.OPERAND
             ) and (
                 next_token.matches(type_=Token.FUNC, subtype=Token.OPEN) or
                 next_token.matches(type_=Token.PAREN, subtype=Token.OPEN) or
@@ -250,7 +251,7 @@ class OperatorNode(ASTNode):
 
         elif op == '!=' and not self.known_not_text():
             ss = 'not xcmp({}, {})'.format(args[0].emit(), args[1].emit())
-            
+
         else:
             if op != ',':
                 op = ' ' + op
@@ -430,7 +431,7 @@ class ExcelFormula(object):
     def rpn(self):
         if self._rpn is None:
             self._rpn = self.parse_to_rpn(self.base_formula)
-        return self._rpn                                                
+        return self._rpn
 
     @property
     def ast(self):
