@@ -305,7 +305,7 @@ class ExcelCompiler(object):
             return cells
 
         if address.is_range:
-            cell_range = CellRange(address)
+            cell_range = CellRange(address, self)
             self.range_todos.append(cell_range)
             self.cell_map[address] = cell_range
             add_node_to_graph(cell_range)
@@ -332,7 +332,7 @@ class ExcelCompiler(object):
             cell_range = self.cell_map[cell_range]
 
         if cell_range.value is None:
-            cells = cell_range.addresses
+            cells = cell_range.cells
 
             if 1 in cell_range.address.size:
                 data = [self.evaluate(c) for c in cells]
@@ -442,12 +442,14 @@ class ExcelCompiler(object):
 class CellRange(object):
     # TODO: only supports rectangular ranges
 
-    def __init__(self, address):
+    def __init__(self, address, excel):
         self.address = AddressRange(address)
+        self.excel = excel
         if not self.address.sheet:
             raise Exception("Must pass in a sheet")
 
         self.addresses = resolve_range(self.address)
+        self._cells = None
         self.size = self.address.size
         self.value = None
 
@@ -461,6 +463,18 @@ class CellRange(object):
             return iter(self.addresses)
         else:
             return it.chain.from_iterable(self.addresses)
+
+    @property
+    def cells(self):
+        if self._cells is None:
+            cell_map = self.excel.cell_map
+            if 1 in self.size:
+                self._cells = [cell_map[addr]
+                               for addr in self.addresses]
+            else:
+                self._cells = [[cell_map[addr] for addr in row]
+                               for row in self.addresses]
+        return self._cells
 
     @property
     def needed_addresses(self):
