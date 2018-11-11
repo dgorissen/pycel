@@ -30,7 +30,7 @@ R1C1_RANGE_EXPR = """
 
 R1C1_RANGE_RE = re.compile('^' + R1C1_RANGE_EXPR + '$', re.VERBOSE)
 
-MAX_COL = 18278
+MAX_COL = 16384
 MAX_ROW = 1048576
 
 VALID_R1C1_RANGE_ITEM_COMBOS = {
@@ -48,9 +48,6 @@ OPERATORS = {
     '<>': operator.ne,
 }
 
-
-# ::TODO:: test if case is insensitive
-# ::TODO:: validate that A:A and 1:1 produce a range with correct size
 
 class AddressRange(collections.namedtuple(
         'Address', 'sheet start end coordinate address')):

@@ -81,6 +81,34 @@ def test_address_range_size():
     assert (3, MAX_COL) == AddressRange('2:4').size
 
 
+def test_address_cell_addr_inc():
+
+    cell_addr = AddressCell('sh!C2')
+
+    assert MAX_COL - 1 == cell_addr.inc_col(-4)
+    assert MAX_COL == cell_addr.inc_col(-3)
+    assert 1 == cell_addr.inc_col(-2)
+    assert 5 == cell_addr.inc_col(2)
+    assert 6 == cell_addr.inc_col(3)
+
+    assert MAX_ROW - 1 == cell_addr.inc_row(-3)
+    assert MAX_ROW == cell_addr.inc_row(-2)
+    assert 1 == cell_addr.inc_row(-1)
+    assert 5 == cell_addr.inc_row(3)
+    assert 6 == cell_addr.inc_row(4)
+
+
+def test_address_cell_addr_offset():
+
+    cell_addr = AddressCell('sh!C2')
+
+    assert AddressCell('sh!XFC1048575') == cell_addr.address_at_offset(-3, -4)
+    assert AddressCell('sh!XFD1048576') == cell_addr.address_at_offset(-2, -3)
+    assert AddressCell('sh!A1') == cell_addr.address_at_offset(-1, -2)
+    assert AddressCell('sh!E5') == cell_addr.address_at_offset(3, 2)
+    assert AddressCell('sh!F6') == cell_addr.address_at_offset(4, 3)
+
+
 @pytest.mark.parametrize(
     'sheet_name',
     [
@@ -229,26 +257,6 @@ def test_coerce_to_number():
 
     with pytest.raises(ZeroDivisionError):
         coerce_to_number(DIV0)
-
-
-def xx_test_index2address():
-
-    # ::TODO:: convert to test the inc methods on AddressCell
-
-    assert 'B1' == index2address(2, 1)
-    assert 'sh!B1' == index2address(2, 1, sheet='sh')
-
-    assert 'A2' == index2address(1, 2)
-    assert 'sh!A2' == index2address(1, 2, sheet='sh')
-
-    assert 'A2' == index2address('A', 2)
-    assert 'sh!A2' == index2address('A', 2, sheet='sh')
-
-    assert 'A2' == index2address('A', '2')
-    assert 'sh!A2' == index2address('A', '2', sheet='sh')
-
-    assert "'shee t'!A2" == index2address('A', '2', sheet="shee t")
-    assert "'shee''t'!A2" == index2address('A', '2', sheet="shee't")
 
 
 def test_get_linest_degree():
