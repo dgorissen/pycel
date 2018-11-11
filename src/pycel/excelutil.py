@@ -30,9 +30,6 @@ MAX_COL = 18278
 MAX_ROW = 1048576
 
 VALID_R1C1_RANGE_ITEM_COMBOS = {
-    (0, 1, 0, 0),
-    (1, 0, 0, 0),
-    (1, 1, 0, 0),
     (0, 1, 0, 1),
     (1, 0, 1, 0),
     (1, 1, 1, 1),
@@ -192,9 +189,6 @@ class AddressCell(collections.namedtuple(
     def __str__(self):
         return self.address
 
-    def __contains__(self, item):
-        return item in self.address
-
     @property
     def is_range(self):
         return False
@@ -286,12 +280,14 @@ def extended_range_boundaries(address, cell=None):
 
     R[-1]       A relative reference to the entire row above the active cell
 
-    R           An absolute reference to the current row
+    R           An absolute reference to the current row as part of a range
 
     """
     try:
         # if this is normal reference then just use the openpyxl converter
-        return range_boundaries(address)
+        boundaries = range_boundaries(address)
+        if None not in boundaries or ':' in address:
+            return boundaries
     except ValueError:
         pass
 
@@ -315,7 +311,7 @@ def extended_range_boundaries(address, cell=None):
                 if r1_or_c1[0].upper() == 'R':
                     return cell.row
                 else:
-                    return cell.col
+                    return cell.col_idx
 
         else:
             require_cell()
@@ -333,7 +329,9 @@ def extended_range_boundaries(address, cell=None):
     items_present = (min_col is not None, min_row is not None,
                      max_col is not None, max_row is not None)
 
-    if items_present not in VALID_R1C1_RANGE_ITEM_COMBOS:
+    is_range = ':' in address
+    if (is_range and items_present not in VALID_R1C1_RANGE_ITEM_COMBOS or
+            not is_range and sum(items_present) < 2):
         raise ValueError(
             "{0} is not a valid coordinate or range".format(address))
 

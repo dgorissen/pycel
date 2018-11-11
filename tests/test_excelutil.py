@@ -1,5 +1,6 @@
 import pytest
 from pycel.excelutil import *
+from openpyxl.utils import quote_sheetname
 
 
 class ATestCell:
@@ -19,6 +20,9 @@ def test_address_range():
 
     assert a == b
     assert b == c
+
+    assert b == AddressRange(b)
+    assert b == AddressRange.create(b)
 
     assert AddressRange('sh!a1:b2') == AddressRange(a, sheet='sh')
     assert AddressCell('C13') == AddressCell('R13C3')
@@ -58,6 +62,11 @@ def test_has_sheet():
     assert AddressRange('Sheet1!a1:b2').has_sheet
     assert not AddressRange('a1:b2').has_sheet
 
+    assert AddressCell('sh!a1') == AddressRange(AddressRange('a1'), sheet='sh')
+
+    with pytest.raises(ValueError, match='Mismatched sheets'):
+        AddressRange(AddressRange('shx!a1'), sheet='sh')
+
 
 def test_address_range_size():
 
@@ -70,8 +79,19 @@ def test_address_range_size():
     assert (3, MAX_COL) == AddressRange('2:4').size
 
 
-def test_unquote_sheetname():
-    """"""
+@pytest.mark.parametrize(
+    'sheet_name',
+    [
+        u'In Dusseldorf',
+        u'My-Sheet',
+        u"Demande d'autorisation",
+        "1sheet",
+        ".sheet",
+        '"',
+    ]
+)
+def test_unquote_sheetname(sheet_name):
+    assert sheet_name == unquote_sheetname(quote_sheetname(sheet_name))
 
 
 def test_split_sheetname():
@@ -151,11 +171,44 @@ def test_extended_range_boundaries():
 
     assert (3, 13) * 2 == extended_range_boundaries('R13C3')
 
-    with pytest.raises(Exception):
-        extended_range_boundaries('sheet!B1')
+    assert (1, 1, 1, 1) == extended_range_boundaries('RC', cell)
 
-    with pytest.raises(Exception):
-        extended_range_boundaries('xyzzy')
+    assert (None, 1, None, 4) == extended_range_boundaries('R:R[3]', cell)
+    assert (None, 1, None, 4) == extended_range_boundaries('R1:R[3]', cell)
+    assert (None, 2, None, 4) == extended_range_boundaries('R2:R[3]', cell)
+
+    assert (1, None, 4, None) == extended_range_boundaries('C:C[3]', cell)
+    assert (1, None, 4, None) == extended_range_boundaries('C1:C[3]', cell)
+    assert (2, None, 4, None) == extended_range_boundaries('C2:C[3]', cell)
+
+
+@pytest.mark.parametrize(
+    'address_string',
+    [
+        'R',
+        'C',
+        ':',
+        'R:',
+        'C:',
+        ':R',
+        ':C',
+        'RC:',
+        ':RC',
+        'R:C1',
+        'C:R1',
+        'C1:RC',
+        'R1:RC',
+        'RC:R1',
+        'RC:C1',
+        'sheet!B1',
+        'xyzzy',
+    ]
+)
+def test_extended_range_boundaries_errors(address_string):
+    cell = ATestCell('A', 1)
+
+    with pytest.raises(Exception, match='not a valid coordinate or range'):
+        extended_range_boundaries(address_string, cell)
 
 
 def xx_test_index2address():
