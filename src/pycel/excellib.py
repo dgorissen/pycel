@@ -24,7 +24,7 @@ from pycel.excelutil import (
 PYTHON_AST_OPERATORS = {
     'Eq': operator.eq,
     'Lt': operator.lt,
-    'Ge': operator.gt,
+    'Gt': operator.gt,
     'LtE': operator.le,
     'GtE': operator.ge,
     'NotEq': operator.ne,

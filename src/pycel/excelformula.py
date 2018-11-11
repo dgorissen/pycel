@@ -226,27 +226,10 @@ class OperatorNode(ASTNode):
             if parent and parent.value.lower() == "linest(":
                 return args[0].emit()
 
-        # TODO silly hack to work around the fact that None < 0 is True
-        #  (happens on blank cells)
-        if op.startswith('<'):
-            aa = args[0].emit()
-            if not args[0].token.matches(
-                    type_=Token.OPERAND, subtype=Token.NUMBER):
-                aa = "({} if {} is not None else 0)".format(aa, aa)
-            ss = "{} {} {}".format(aa, op, args[1].emit())
-
-        elif op.startswith('>'):
-            aa = args[1].emit()
-            if not args[1].token.matches(
-                    type_=Token.OPERAND, subtype=Token.NUMBER):
-                aa = "({} if {} is not None else 0)".format(aa, aa)
-            ss = "{} {} {}".format(args[0].emit(), op, aa)
-
-        else:
-            if op != ',':
-                op = ' ' + op
-            ss = '{}{} {}'.format(
-                args[0].emit(), op, args[1].emit())
+        if op != ',':
+            op = ' ' + op
+        ss = '{}{} {}'.format(
+            args[0].emit(), op, args[1].emit())
 
         # avoid needless parentheses
         if parent and not isinstance(parent, FunctionNode):

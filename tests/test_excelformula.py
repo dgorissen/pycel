@@ -321,7 +321,7 @@ test_data = [
     dict(
         formula='=IF(R13C3>DATE(2002,1,6),0,IF(ISERROR(R[41]C[2]),0,IF(R13C3>=R[41]C[2],0, IF(AND(R[23]C[11]>=55,R[24]C[11]>=20),R53C3,0))))',
         rpn='R13C3|2002|1|6|DATE|>|0|R[41]C[2]|ISERROR|0|R13C3|R[41]C[2]|>=|0|R[23]C[11]|55|>=|R[24]C[11]|20|>=|AND|R53C3|0|IF|IF|IF|IF',
-        python_code='(0 if _C_("C13") > (date(2002, 1, 6) if date(2002, 1, 6) is not None else 0) else (0 if iserror(_C_("C42")) else (0 if _C_("C13") >= (_C_("C42") if _C_("C42") is not None else 0) else (_C_("C53") if all((_C_("L24") >= 55, _C_("L25") >= 20,)) else 0))))',    ),
+        python_code='(0 if _C_("C13") > date(2002, 1, 6) else (0 if iserror(_C_("C42")) else (0 if _C_("C13") >= _C_("C42") else (_C_("C53") if all((_C_("L24") >= 55, _C_("L25") >= 20,)) else 0))))',    ),
     dict(
         formula='=IF(R[39]C[11]>65,R[25]C[42],ROUND((R[11]C[11]*IF(OR(AND(R[39]C[11]>=55, R[40]C[11]>=20),AND(R[40]C[11]>=20,R11C3="YES")),R[44]C[11],R[43]C[11]))+(R[14]C[11] *IF(OR(AND(R[39]C[11]>=55,R[40]C[11]>=20),AND(R[40]C[11]>=20,R11C3="YES")), R[45]C[11],R[43]C[11])),0))',
         rpn='R[39]C[11]|65|>|R[25]C[42]|R[11]C[11]|R[39]C[11]|55|>=|R[40]C[11]|20|>=|AND|R[40]C[11]|20|>=|R11C3|"YES"|=|AND|OR|R[44]C[11]|R[43]C[11]|IF|*|R[14]C[11]|R[39]C[11]|55|>=|R[40]C[11]|20|>=|AND|R[40]C[11]|20|>=|R11C3|"YES"|=|AND|OR|R[45]C[11]|R[43]C[11]|IF|*|+|0|ROUND|IF',
@@ -375,7 +375,7 @@ test_data = [
     dict(
         formula='=LINEST(B32:(INDEX(B32:B119,MATCH(0,B32:B119<6,-1),1)),(F32:(INDEX(B32:F119,MATCH(0,B32:B119,-1),5)))^{1,2,3,4})',
         rpn='B32:B119|0|B32:B119|6|<|1|-|MATCH|1|INDEX|B32:|B32:F119|0|B32:B119|1|-|MATCH|5|INDEX|F32:|1|2|3|4|ARRAYROW|ARRAY|^|LINEST',
-        python_code='linest(b32:(index(_R_("B32:B119"), match(0, (_R_("B32:B119") if _R_("B32:B119") is not None else 0) < 6, -1), 1)), f32:(index(_R_("B32:F119"), match(0, _R_("B32:B119"), -1), 5)), degree=-1)[-2]',
+        python_code='linest(b32:(index(_R_("B32:B119"), match(0, _R_("B32:B119") < 6, -1), 1)), f32:(index(_R_("B32:F119"), match(0, _R_("B32:B119"), -1), 5)), degree=-1)[-2]',
     ),
 ]
 
@@ -549,6 +549,7 @@ def test_string_number_compare():
 def test_empty_cell_logic_op():
     eval_ctx = ExcelFormula.build_eval_context(lambda x: None, None)
     assert 1 == eval_ctx(ExcelFormula('=sum(A1=0, A1=1)'))
+    assert 3 == eval_ctx(ExcelFormula('=sum(A1<0, A1<=0, A1=0, A1>=0, A1>0)'))
 
 
 def test_numerics_type_coercion():
@@ -584,7 +585,7 @@ def test_string_concat():
 
 def test_div_zero():
     eval_ctx = ExcelFormula.build_eval_context(
-        lambda x: '#DIV/0!', lambda x:[[1, 1], [1, '#DIV/0!']])
+        lambda x: '#DIV/0!', lambda x: [[1, 1], [1, '#DIV/0!']])
 
     assert '#DIV/0!' == eval_ctx(ExcelFormula('=1/0'))
     assert '#DIV/0!' == eval_ctx(ExcelFormula('=sum(A1)'))
