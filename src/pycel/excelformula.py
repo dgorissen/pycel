@@ -9,7 +9,7 @@ from pycel.excelutil import (
     uniqueify,
 )
 
-EVAL_REGEX = re.compile(r'(eval_cell|eval_range)(\([^)]*\))')
+EVAL_REGEX = re.compile(r'(_C_|_R_)(\([^)]*\))')
 
 
 class FormulaParserError(Exception):
@@ -279,7 +279,7 @@ class RangeNode(OperandNode):
             sheet = ''
         address = AddressRange.create(
             self.value.replace('$', ''), sheet=sheet, cell=self.cell)
-        template = 'eval_range("{}")' if address.is_range else 'eval_cell("{}")'
+        template = '_R_("{}")' if address.is_range else '_C_("{}")'
         return template.format(address)
 
 
@@ -673,10 +673,10 @@ class ExcelFormula(object):
             # the compiled expressions can call these functions if
             # referencing other cells or a range of cells
 
-            def eval_cell(address):
+            def _C_(address):
                 return evaluate(address)
 
-            def eval_range(rng):
+            def _R_(rng):
                 return evaluate_range(rng)
 
             def load_func(func_name):
