@@ -9,8 +9,9 @@ import operator
 
 import numpy as np
 
-from pycel.excelformula import Tokenizer
 from pycel.excelutil import (
+    DIV0,
+    ERROR_CODES,
     coerce_to_number,
     date_from_int,
     find_corresponding_index,
@@ -58,7 +59,7 @@ def excel_operator_operand_fixup(left_op, op, right_op):
         String to Number coercion
         String / Number multiplication
     """
-    if '#DIV/0!' in (left_op, right_op):
+    if DIV0 in (left_op, right_op):
         return 1 / 0
 
     if left_op is None:
@@ -205,7 +206,7 @@ def iferror(arg, value_if_error):
     # Excel reference: https://support.office.com/en-us/article/
     #   IFERROR-function-C526FD07-CAEB-47B8-8BB6-63F3E417F611
 
-    return value_if_error if arg in Tokenizer.ERROR_CODES else arg
+    return value_if_error if arg in ERROR_CODES else arg
 
 
 def index(array, row_num, col_num=None):

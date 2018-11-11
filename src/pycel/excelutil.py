@@ -4,11 +4,15 @@ import datetime as dt
 import operator
 import re
 
+from openpyxl.formula.tokenizer import Tokenizer
 from openpyxl.utils import (
     column_index_from_string,
     get_column_letter,
     range_boundaries,
 )
+
+ERROR_CODES = frozenset(Tokenizer.ERROR_CODES)
+DIV0 = '#DIV/0!'
 
 R1C1_ROW_RE_STR = r"R(\[-?\d+\]|\d+)?"
 R1C1_COL_RE_STR = r"C(\[-?\d+\]|\d+)?"
@@ -470,7 +474,7 @@ def coerce_to_number(value):
         return value
 
     try:
-        if value == '#DIV/0!':
+        if value == DIV0:
             return 1/0
         elif '.' not in value:
             return int(value)

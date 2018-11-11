@@ -2,6 +2,8 @@ import pytest
 from pycel.excelutil import *
 from openpyxl.utils import quote_sheetname
 
+from pycel.excelutil import DIV0
+
 
 class ATestCell:
 
@@ -226,7 +228,7 @@ def test_coerce_to_number():
     assert 'xyzzy' == coerce_to_number('xyzzy')
 
     with pytest.raises(ZeroDivisionError):
-        coerce_to_number('#DIV/0!')
+        coerce_to_number(DIV0)
 
 
 def xx_test_index2address():

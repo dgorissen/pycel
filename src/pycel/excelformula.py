@@ -5,6 +5,7 @@ import openpyxl.formula.tokenizer as tokenizer
 from networkx.classes.digraph import DiGraph
 from pycel.excelutil import (
     AddressRange,
+    DIV0,
     get_linest_degree,
     uniqueify,
 )
@@ -678,7 +679,7 @@ class ExcelFormula(object):
                     locals()[name] = func
 
                 except ZeroDivisionError:
-                    return '#DIV/0!'
+                    return DIV0
 
         return eval_func
 

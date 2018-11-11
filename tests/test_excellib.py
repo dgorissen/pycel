@@ -3,6 +3,7 @@ import math
 import numpy as np
 import pytest
 
+from pycel.excelutil import DIV0, ERROR_CODES
 from pycel.excellib import (
     # ::TODO:: finish test cases for remainder of functions
     _numerics,
@@ -108,8 +109,8 @@ def test_excel_operator_operand_fixup(left_op, op, right_op, expected):
 @pytest.mark.parametrize(
     'left_op, op, right_op, exc',
     [
-        ('#DIV/0!', '', '', ZeroDivisionError),
-        ('', '', '#DIV/0!', ZeroDivisionError),
+        (DIV0, '', '', ZeroDivisionError),
+        ('', '', DIV0, ZeroDivisionError),
         
         ('1', 'Div', '0', ZeroDivisionError),
         ('1', 'Div', 0, ZeroDivisionError),
@@ -255,8 +256,7 @@ class TestDate:
 def test_iferror():
     assert 'A' == iferror('A', 2)
 
-    for error in ("#NULL!", "#DIV/0!", "#VALUE!", "#REF!", "#NAME?",
-                  "#NUM!", "#N/A", "#GETTING_DATA"):
+    for error in ERROR_CODES:
         assert 2 == iferror(error, 2)
 
 

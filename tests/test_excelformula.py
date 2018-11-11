@@ -3,12 +3,14 @@ import pickle
 from unittest import mock
 
 import pytest
+
 from pycel.excelformula import (
     ASTNode,
     ExcelFormula,
     FormulaParserError,
     Token,
 )
+from pycel.excelutil import DIV0
 
 from tests.test_excelutil import ATestCell
 
@@ -600,13 +602,13 @@ def test_string_concat():
 
 def test_div_zero():
     eval_ctx = ExcelFormula.build_eval_context(
-        lambda x: '#DIV/0!', lambda x: [[1, 1], [1, '#DIV/0!']])
+        lambda x: DIV0, lambda x: [[1, 1], [1, DIV0]])
 
-    assert '#DIV/0!' == eval_ctx(ExcelFormula('=1/0'))
-    assert '#DIV/0!' == eval_ctx(ExcelFormula('=sum(A1)'))
-    assert '#DIV/0!' == eval_ctx(ExcelFormula('=sum(A1:B2)'))
-    assert '#DIV/0!' == eval_ctx(ExcelFormula('=a1=1'))
-    assert '#DIV/0!' == eval_ctx(ExcelFormula('=a1+"l"'))
+    assert DIV0 == eval_ctx(ExcelFormula('=1/0'))
+    assert DIV0 == eval_ctx(ExcelFormula('=sum(A1)'))
+    assert DIV0 == eval_ctx(ExcelFormula('=sum(A1:B2)'))
+    assert DIV0 == eval_ctx(ExcelFormula('=a1=1'))
+    assert DIV0 == eval_ctx(ExcelFormula('=a1+"l"'))
 
 
 if __name__ == '__main__':
