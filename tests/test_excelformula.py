@@ -430,6 +430,20 @@ def test_parse(formula, python_code, rpn):
     assert python_code == result_python_code
 
 
+def test_str():
+    excel_formula = ExcelFormula('=E54-E48')
+    assert '=E54-E48' == str(excel_formula)
+
+    assert '_C_("E54") - _C_("E48")' == excel_formula.python_code
+    excel_formula.base_formula = None
+    assert '_C_("E54") - _C_("E48")' == str(excel_formula)
+
+    excel_formula._ast = None
+    excel_formula._rpn = None
+    excel_formula._python_code = None
+    assert '' == str(excel_formula)
+
+
 def test_descendants():
 
     excel_formula = ExcelFormula('=E54-E48')
@@ -453,7 +467,6 @@ def test_ast_node():
 
 
 def test_if_args_error():
-
     with pytest.raises(FormulaParserError):
         ExcelFormula('=if(1)').python_code
 
@@ -471,7 +484,6 @@ def test_if_args_error():
     )
 )
 def test_parser_error(formula):
-
     with pytest.raises(FormulaParserError):
         ExcelFormula(formula).ast
 
@@ -483,6 +495,8 @@ def test_needed_addresses():
 
     assert needed == sorted(x.address for x in
                             ExcelFormula(formula).needed_addresses)
+
+    assert () == ExcelFormula('').needed_addresses
 
 
 def test_build_eval_context():
@@ -499,7 +513,8 @@ def test_build_eval_context():
 def test_compiled_python_error():
     formula = ExcelFormula('=1 + 2')
     formula._python_code = 'this will be a syntax error'
-    with pytest.raises(FormulaParserError, match='Failed to compile expression'):
+    with pytest.raises(FormulaParserError,
+                       match='Failed to compile expression'):
         formula.compiled_python
 
 

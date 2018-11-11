@@ -398,7 +398,7 @@ class ExcelFormula(object):
         self._compiled_python = None
 
     def __str__(self):
-        return self.base_formula or self._python_code
+        return self.base_formula or self.python_code
 
     @property
     def rpn(self):
