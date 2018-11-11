@@ -211,6 +211,24 @@ def test_extended_range_boundaries_errors(address_string):
         extended_range_boundaries(address_string, cell)
 
 
+def test_coerce_to_number():
+    assert 1 == coerce_to_number(1)
+    assert 1.0 == coerce_to_number(1.0)
+
+    assert coerce_to_number(None) is None
+
+    assert 1 == coerce_to_number('1')
+    assert isinstance(coerce_to_number('1'), int)
+
+    assert 1 == coerce_to_number('1.')
+    assert isinstance(coerce_to_number('1.'), float)
+
+    assert 'xyzzy' == coerce_to_number('xyzzy')
+
+    with pytest.raises(ZeroDivisionError):
+        coerce_to_number('#DIV/0!')
+
+
 def xx_test_index2address():
 
     # ::TODO:: convert to test the inc methods on AddressCell
