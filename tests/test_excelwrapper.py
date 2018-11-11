@@ -10,8 +10,8 @@ def test_connect(unconnected_excel):
     assert connected
 
 
-def test_save_as(excel, fixture_dir):
-    path_copy = os.path.join(fixture_dir, "../example/exampleCopy.xlsx")
+def test_save_as(excel, tmpdir):
+    path_copy = os.path.join(tmpdir, "exampleCopy.xlsx")
     if os.path.exists(path_copy):
         os.remove(path_copy)
     excel.save_as(path_copy)

@@ -1,4 +1,6 @@
 import os
+import shutil
+
 import pytest
 from unittest import mock
 
@@ -11,8 +13,16 @@ def fixture_dir():
 
 
 @pytest.fixture('session')
-def example_xls_path(fixture_dir):
-    return os.path.join(fixture_dir, "fixtures/excelcompiler.xlsx")
+def tmpdir(tmpdir_factory):
+    return tmpdir_factory.mktemp('fixtures')
+
+
+@pytest.fixture('session')
+def example_xls_path(fixture_dir, tmpdir):
+    src = os.path.join(fixture_dir, "fixtures/excelcompiler.xlsx")
+    dst = os.path.join(tmpdir, "excelcompiler.xlsx")
+    shutil.copy(src, dst)
+    return dst
 
 
 @pytest.fixture('session')
