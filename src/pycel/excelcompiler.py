@@ -71,8 +71,7 @@ class ExcelCompiler(object):
         # grab a copy of the current hash
         self._excel_file_md5_digest = self._compute_excel_file_md5_digest
 
-        self.log = logging.getLogger(
-            "decode.{0}".format(self.__class__.__name__))
+        self.log = logging.getLogger('pycel')
 
         # directed graph for cell dependencies
         self.dep_graph = nx.DiGraph()
@@ -202,7 +201,7 @@ class ExcelCompiler(object):
     def reset(self, cell):
         if cell.value is None:
             return
-        print("Resetting {}".format(cell.address))
+        self.log.info("Resetting {}".format(cell.address))
         cell.value = None
         for child_cell in self.dep_graph.successors(cell):
             if child_cell.value is not None:
@@ -245,7 +244,8 @@ class ExcelCompiler(object):
                 if addr in self.cell_map:
                     walk_dependents(self.cell_map[addr])
                 else:
-                    print('Address {} not found in cell_map'.format(addr))
+                    self.log.warn(
+                        'Address {} not found in cell_map'.format(addr))
         except nx.exception.NetworkXError as exc:
             raise ValueError('{}: which usually means no outputs are dependant '
                              'on it.'.format(exc))
@@ -267,7 +267,7 @@ class ExcelCompiler(object):
                         # trim this cell, now we will need only its value
                         needed_cells.add(child_address)
                         child_cell.formula = None
-                        # print('Trimming {}'.format(child_address))
+                        self.log.debug('Trimming {}'.format(child_address))
 
         for addr in output_addrs:
             walk_precedents(self.cell_map[addr])
@@ -281,7 +281,6 @@ class ExcelCompiler(object):
         """Given an AddressRange or AddressCell generate compiler Cells"""
 
         # from here don't build cells that are already in the cellmap
-        # ::TODO:: remove this when refactoring done
         assert address not in self.cell_map
 
         def add_node_to_graph(node):
@@ -322,10 +321,10 @@ class ExcelCompiler(object):
                     if cell_address not in self.cell_map:
                         formula = f if f and f.startswith('=') else None
                         if None not in (f, value):
-                            cl = Cell(cell_address, value=value,
-                                      formula=formula, excel=self.excel)
-                            self.cell_map[cell_address] = cl
-                            cells.append(cl)
+                            cell = Cell(cell_address, value=value,
+                                        formula=formula, excel=self.excel)
+                            self.cell_map[cell_address] = cell
+                            cells.append(cell)
             return cells
 
         if address.is_range:
@@ -358,10 +357,10 @@ class ExcelCompiler(object):
         if cell_range.value is None:
             cells = cell_range.cells
 
-            if 1 in cell_range.address.size:
-                data = [self.evaluate(c) for c in cells]
+            if 1 == min(cell_range.address.size):
+                data = [self.evaluate(cell) for cell in cells]
             else:
-                data = [[self.evaluate(c) for c in cells[i]] for i in
+                data = [[self.evaluate(cell) for cell in cells[i]] for i in
                         range(len(cells))]
 
             cell_range.value = data
@@ -382,15 +381,16 @@ class ExcelCompiler(object):
         if cell.compiled_python and cell.value is None:
 
             try:
-                print("Evaluating: %s, %s" % (cell.address, cell.python_code))
+                self.log.debug(
+                    "Evaluating: %s, %s" % (cell.address, cell.python_code))
                 if self.eval is None:
                     self.eval = ExcelFormula.build_eval_context(
                         self.evaluate, self.evaluate_range)
                 value = self.eval(cell.formula)
-                print("Cell %s evaluated to '%s' (%s)" % (
+                self.log.info("Cell %s evaluated to '%s' (%s)" % (
                     cell.address, value, type(value).__name__))
                 if value is None:
-                    print("WARNING %s is None" % cell.address)
+                    self.log.warn("%s is None" % cell.address)
                 cell.value = value
 
             except Exception as exc:
@@ -444,7 +444,7 @@ class ExcelCompiler(object):
                 # connect the dependant cells in the graph
                 dependant = self.graph_todos.pop()
 
-                # print("Handling ", dependant.address)
+                self.log.debug("Handling {}".format(dependant.address))
 
                 for precedent_address in dependant.needed_addresses:
                     if precedent_address not in self.cell_map:
@@ -457,10 +457,13 @@ class ExcelCompiler(object):
         for range_todo in reversed(self.range_todos):
             self.evaluate_range(range_todo)
 
-        print(
-            "Graph construction done, %s nodes, %s edges, %s self.cellmap entries" % (
-                len(self.dep_graph.nodes()), len(self.dep_graph.edges()),
-                len(self.cell_map)))
+        self.log.info(
+            "Graph construction done, %s nodes, "
+            "%s edges, %s self.cellmap entries" % (
+                len(self.dep_graph.nodes()),
+                len(self.dep_graph.edges()),
+                len(self.cell_map))
+        )
 
 
 class CellRange(object):
@@ -483,7 +486,7 @@ class CellRange(object):
     __str__ = __repr__
 
     def __iter__(self):
-        if 1 in self.size:
+        if 1 == min(self.size):
             return iter(self.addresses)
         else:
             return it.chain.from_iterable(self.addresses)
@@ -492,9 +495,8 @@ class CellRange(object):
     def cells(self):
         if self._cells is None:
             cell_map = self.excel.cell_map
-            if 1 in self.size:
-                self._cells = [cell_map[addr]
-                               for addr in self.addresses]
+            if 1 == min(self.size):
+                self._cells = [cell_map[addr] for addr in self.addresses]
             else:
                 self._cells = [[cell_map[addr] for addr in row]
                                for row in self.addresses]
