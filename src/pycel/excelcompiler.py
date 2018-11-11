@@ -208,11 +208,11 @@ class ExcelCompiler(object):
             if child_cell.value is not None:
                 self.reset(child_cell)
 
-    def print_value_tree(self, addr, indent):
-        cell = self.cell_map[addr]
-        print("%s %s = %s" % (" " * indent, addr, cell.value))
-        for c in self.dep_graph.predecessors(cell):
-            self.print_value_tree(c.address(), indent + 1)
+    def value_tree_str(self, address, indent=0):
+        cell = self.cell_map[AddressRange(address)]
+        yield "{}{} = {}".format(" " * indent, address, cell.value)
+        for children in self.dep_graph.predecessors(cell):
+            yield from self.value_tree_str(children.address, indent + 1)
 
     def recalculate(self):
         for cell in self.cell_map.values():
@@ -226,7 +226,7 @@ class ExcelCompiler(object):
                 self.evaluate(cell)
 
     def trim_graph(self, input_addrs, output_addrs):
-        """Remove uneeded cells from the graph"""
+        """Remove unneeded cells from the graph"""
 
         # build network for all needed outputs
         self.gen_graph(output_addrs)
@@ -470,7 +470,7 @@ class CellRange(object):
         self.address = AddressRange(address)
         self.excel = excel
         if not self.address.sheet:
-            raise Exception("Must pass in a sheet")
+            raise ValueError("Must pass in a sheet: {}".format(address))
 
         self.addresses = resolve_range(self.address)
         self._cells = None

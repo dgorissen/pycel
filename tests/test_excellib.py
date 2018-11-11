@@ -557,6 +557,17 @@ def test_roundup(number, digits, result):
     assert result == roundup(number, digits)
 
 
+@pytest.mark.parametrize(
+    'number, digits', (
+            (3.2, 'X'),
+            ('X', 0),
+    )
+)
+def test_roundup_errors(number, digits):
+    with pytest.raises(TypeError):
+        roundup(number, digits)
+
+
 class TestSumIf:
 
     def test_range_is_a_list(self):
@@ -584,6 +595,10 @@ class TestSumIf:
 
     def test_sum_range_with_less_indexes(self):
         assert 35 == sumif([1, 2, 3, 4, 5], ">=3", [100, 123, 12, 23])
+
+    def test_sum_range_not_list(self):
+        with pytest.raises(TypeError):
+            sumif([], [], None)
 
 
 def test_value():
