@@ -316,7 +316,7 @@ test_data = [
     dict(
         formula='=IF("a"={"a","b";"c",#N/A;-1,TRUE}, "yes", "no") &   "  more ""test"" text"',
         rpn='"a"|"a"|"b"|ARRAYROW|"c"|#N/A|ARRAYROW|1|-|TRUE|ARRAYROW|ARRAY|=|"yes"|"no"|IF|"  more ""test"" text"|&',
-        python_code='("yes" if "a" == [["a", "b"], ["c", "#N/A"], [-1, True]] else "no") + "  more \\"test\\" text"',
+        python_code='("yes" if "a" == [["a", "b"], ["c", "#N/A"], [-1, True]] else "no") & "  more \\"test\\" text"',
     ),
     dict(
         formula='=IF(R13C3>DATE(2002,1,6),0,IF(ISERROR(R[41]C[2]),0,IF(R13C3>=R[41]C[2],0, IF(AND(R[23]C[11]>=55,R[24]C[11]>=20),R53C3,0))))',
@@ -553,6 +553,7 @@ def test_empty_cell_logic_op():
 
 def test_numerics_type_coercion():
     eval_ctx = ExcelFormula.build_eval_context(None, None)
+    assert 7 == eval_ctx(ExcelFormula('=1+2+"4"'))
     assert 7 == eval_ctx(ExcelFormula('=sum(1, 2, "4")'))
 
 
@@ -566,6 +567,30 @@ def test_string_compare():
     assert eval_ctx(ExcelFormula('=1=1'))
     assert eval_ctx(ExcelFormula('="A"="a"'))
     assert eval_ctx(ExcelFormula('="a"="A"'))
+
+
+def test_string_concat():
+    eval_ctx = ExcelFormula.build_eval_context(None, None)
+
+    assert '6A' == eval_ctx(ExcelFormula('=2*3&"A"'))
+
+    assert '1a' == eval_ctx(ExcelFormula('=1&"a"'))
+    assert '12' == eval_ctx(ExcelFormula('="1"&2'))
+    assert 'ab' == eval_ctx(ExcelFormula('="a"&"b"'))
+    assert '11' == eval_ctx(ExcelFormula('=1&1'))
+    assert 'Aa' == eval_ctx(ExcelFormula('="A"&"a"'))
+    assert 'aA' == eval_ctx(ExcelFormula('="a"&"A"'))
+
+
+def test_div_zero():
+    eval_ctx = ExcelFormula.build_eval_context(
+        lambda x: '#DIV/0!', lambda x:[[1, 1], [1, '#DIV/0!']])
+
+    assert '#DIV/0!' == eval_ctx(ExcelFormula('=1/0'))
+    assert '#DIV/0!' == eval_ctx(ExcelFormula('=sum(A1)'))
+    assert '#DIV/0!' == eval_ctx(ExcelFormula('=sum(A1:B2)'))
+    assert '#DIV/0!' == eval_ctx(ExcelFormula('=a1=1'))
+    assert '#DIV/0!' == eval_ctx(ExcelFormula('=a1+"l"'))
 
 
 if __name__ == '__main__':

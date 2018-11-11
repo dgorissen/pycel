@@ -468,8 +468,13 @@ def is_number(s):
 
 
 def coerce_to_number(value):
+    if not isinstance(value, str):
+        return value
+
     try:
-        if isinstance(value, str) and '.' not in value:
+        if value == '#DIV/0!':
+            return 1/0
+        elif '.' not in value:
             return int(value)
     except (ValueError, TypeError):
         pass

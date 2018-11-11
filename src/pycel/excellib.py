@@ -28,6 +28,19 @@ PYTHON_AST_OPERATORS = {
     'LtE': operator.le,
     'GtE': operator.ge,
     'NotEq': operator.ne,
+    'Add': operator.add,
+    'Sub': operator.sub,
+    'Mult': operator.mul,
+    'Div': operator.truediv,
+    'FloorDiv': operator.floordiv,
+    'Mod': operator.mod,
+    'Pow': operator.pow,
+    'LShift': operator.lshift,
+    'RShift': operator.rshift,
+    'BitOr': operator.or_,
+    'BitXor': operator.xor,
+    'BitAnd': operator.and_,
+    'MatMult': operator.matmul,
 }
 
 
@@ -555,17 +568,35 @@ def yearfrac(start_date, end_date, basis=0):
     return result
 
 
-def excel_logic_op(left_op, op, right_op):
-    """Fix for empty cells and case-insensitive string compare"""
+def excel_operator_operand_fixup(left_op, op, right_op):
+    """Fix up python operations to be more excel like in these case:
+
+        Empty cells
+        Case-insensitive string compare
+        String to Number coercion
+    """
+    if '#DIV/0!' in (left_op, right_op):
+        return 1 / 0
+
     if left_op is None:
         left_op = '' if isinstance(right_op, str) else 0
 
     if right_op is None:
         right_op = '' if isinstance(left_op, str) else 0
 
-    if (op in ('Eq', 'NotEq') and
-            isinstance(left_op, str) and
-            isinstance(right_op, str)):
-        return PYTHON_AST_OPERATORS[op](left_op.lower(), right_op.lower())
+    if op in ('Eq', 'NotEq'):
+        if isinstance(left_op, str) and isinstance(right_op, str):
+            left_op = left_op.lower()
+            right_op = right_op.lower()
+
+    elif op == 'BitAnd':
+        # use bitwise and '&' as string concat not '+'
+        left_op = str(left_op)
+        right_op = str(right_op)
+        op = 'Add'
+
+    else:
+        left_op = coerce_to_number(left_op)
+        right_op = coerce_to_number(right_op)
 
     return PYTHON_AST_OPERATORS[op](left_op, right_op)

@@ -205,7 +205,6 @@ class OperatorNode(ASTNode):
         "^": "**",
         "=": "==",
         "<>": "!=",
-        "&": "+",
         " ": "+"  # range intersection
     }
 
@@ -695,6 +694,9 @@ class ExcelFormula(object):
                         raise
                     locals()[name] = func
 
+                except ZeroDivisionError:
+                    return '#DIV/0!'
+
         return eval_func
 
     def _compile_python_ast(self):
@@ -706,7 +708,7 @@ class ExcelFormula(object):
 
         # edit the ast with a few changes to be more excel like
 
-        class LogicOpWrapper(ast.NodeTransformer):
+        class OperatorWrapper(ast.NodeTransformer):
             """Apply excel consistent type conversions"""
 
             def visit_Compare(self, node):
@@ -718,7 +720,25 @@ class ExcelFormula(object):
                 right = node.comparators[0]
 
                 return ast.Call(
-                    func=ast.Name(id='excel_logic_op', ctx=ast.Load()),
+                    func=ast.Name(id='excel_operator_operand_fixup',
+                                  ctx=ast.Load()),
+                    args=[left, op, right],
+                    keywords=[],
+                    lineno=node.lineno,
+                    col_offset=node.col_offset,
+                )
+
+            def visit_BinOp(self, node):
+                """ change the compare node to a function node """
+                node = ast.NodeTransformer.generic_visit(self, node)
+
+                left = node.left
+                op = ast.Str(s=type(node.op).__name__)
+                right = node.right
+
+                return ast.Call(
+                    func=ast.Name(id='excel_operator_operand_fixup',
+                                  ctx=ast.Load()),
                     args=[left, op, right],
                     keywords=[],
                     lineno=node.lineno,
@@ -726,7 +746,7 @@ class ExcelFormula(object):
                 )
 
         # modify the ast tree to convert Compare to Call
-        tree = ast.fix_missing_locations(LogicOpWrapper().visit(tree))
+        tree = ast.fix_missing_locations(OperatorWrapper().visit(tree))
 
         # compile the tree
         self._compiled_python = compile(tree, **kwargs)
