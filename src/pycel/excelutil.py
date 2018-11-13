@@ -8,8 +8,57 @@ from openpyxl.formula.tokenizer import Tokenizer
 from openpyxl.utils import (
     column_index_from_string,
     get_column_letter,
-    range_boundaries,
+    # range_boundaries,
 )
+
+
+# ::TODO:: 2018nov12 - this version of the function has been accepted to openpyxl
+# but is not yet released.  (delete after release happens)
+
+def range_boundaries(range_string):
+    """
+    Convert a range string into a tuple of boundaries:
+    (min_col, min_row, max_col, max_row)
+    Cell coordinates will be converted into a range with the cell at both end
+    """
+    from openpyxl.utils.cell import ABSOLUTE_RE
+
+    msg = "{0} is not a valid coordinate or range".format(range_string)
+    m = ABSOLUTE_RE.match(range_string)
+    if not m:
+        raise ValueError(msg)
+
+    min_col, min_row, sep, max_col, max_row = m.groups()
+
+    if sep:
+        cols = min_col, max_col
+        rows = min_row, max_row
+
+        if not  (
+            all(cols + rows) or
+            all(cols) and not any(rows) or
+            all(rows) and not any(cols)
+        ):
+            raise ValueError(msg)
+
+    if min_col is not None:
+        min_col = column_index_from_string(min_col)
+
+    if min_row is not None:
+        min_row = int(min_row)
+
+    if max_col is not None:
+        max_col = column_index_from_string(max_col)
+    else:
+        max_col = min_col
+
+    if max_row is not None:
+        max_row = int(max_row)
+    else:
+        max_row = min_row
+
+    return min_col, min_row, max_col, max_row
+
 
 ERROR_CODES = frozenset(Tokenizer.ERROR_CODES)
 DIV0 = '#DIV/0!'
