@@ -60,7 +60,7 @@ def excel_operator_operand_fixup(left_op, op, right_op):
         String / Number multiplication
     """
     if DIV0 in (left_op, right_op):
-        return 1 / 0
+        return DIV0
 
     if left_op is None:
         left_op = '' if isinstance(right_op, str) else 0
@@ -88,7 +88,10 @@ def excel_operator_operand_fixup(left_op, op, right_op):
             raise TypeError("Cannot multiple type: {} * {}".format(
                 type(left_op).__name__, type(right_op).__name__))
 
-    return PYTHON_AST_OPERATORS[op](left_op, right_op)
+    try:
+        return PYTHON_AST_OPERATORS[op](left_op, right_op)
+    except ZeroDivisionError:
+        return DIV0
 
 
 def average(*args):

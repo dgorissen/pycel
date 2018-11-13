@@ -112,15 +112,6 @@ def test_value_tree_str(excel):
     assert expected == list(excel_compiler.value_tree_str(out_address))
 
 
-def make_cells(excel):
-    # ::TODO:: finish/fix this
-    cursheet = excel.get_active_sheet()
-
-    my_input = ['A1', 'A2:B3']
-    output_cells = ExcelCompiler.make_cells(my_input, sheet=cursheet)
-    assert len(output_cells) == 5
-
-
 def test_trim_cells(excel):
     excel_compiler = ExcelCompiler(excel=excel)
     input_addrs = [AddressRange('trim-range!D5')]

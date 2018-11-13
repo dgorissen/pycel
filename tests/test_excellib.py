@@ -70,6 +70,18 @@ def test_numerics():
         (0, 'BitAnd', 'X', '0X'),
         ('X', 'BitAnd', 0, 'X0'),
 
+        # divsion by zero
+        (DIV0, '', '', DIV0),
+        ('', '', DIV0, DIV0),
+
+        ('1', 'Div', '0', DIV0),
+        ('1', 'Div', 0, DIV0),
+        (1, 'Div', '0', DIV0),
+        (1, 'Div', 0, DIV0),
+
+        (1, 'Mod', '0', DIV0),
+        (1, 'Mod', 0, DIV0),
+
         # type coercion
         (1, 'Add', 2, 3),
         (1, 'Add', '2', 3),
@@ -109,17 +121,6 @@ def test_excel_operator_operand_fixup(left_op, op, right_op, expected):
 @pytest.mark.parametrize(
     'left_op, op, right_op, exc',
     [
-        (DIV0, '', '', ZeroDivisionError),
-        ('', '', DIV0, ZeroDivisionError),
-        
-        ('1', 'Div', '0', ZeroDivisionError),
-        ('1', 'Div', 0, ZeroDivisionError),
-        (1, 'Div', '0', ZeroDivisionError),
-        (1, 'Div', 0, ZeroDivisionError),
-
-        (1, 'Mod', '0', ZeroDivisionError),
-        (1, 'Mod', 0, ZeroDivisionError),
-
         ('', 'BadOp', '', KeyError),
 
         ('X', 'Add', 0, TypeError),

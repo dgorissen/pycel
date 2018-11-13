@@ -729,7 +729,7 @@ class ExcelFormula(object):
                     col_offset=node.col_offset,
                 )
 
-        # modify the ast tree to convert Compare to Call
+        # modify the ast tree to convert Compare and BinOp to Call
         tree = ast.fix_missing_locations(OperatorWrapper().visit(tree))
 
         # compile the tree
