@@ -17,6 +17,10 @@ class FormulaParserError(Exception):
     """Base class for Parser errors"""
 
 
+class CompilerError(Exception):
+    """"Base class for Compiler errors"""
+
+
 class Tokenizer(tokenizer.Tokenizer):
     """Amend openpyxl tokenizer"""
 
@@ -393,6 +397,7 @@ class ExcelFormula(object):
             self._python_code = None
 
         self.cell = cell
+        self.lineno = 1
         self._rpn = None
         self._ast = None
         self._needed_addresses = None
@@ -657,6 +662,11 @@ class ExcelFormula(object):
             # the compiled expressions can call these functions if
             # referencing other cells or a range of cells
 
+            def report_error():
+                import traceback
+                raise CompilerError("{}    {}".format(
+                    traceback.format_exc(), excel_formula.python_code))
+
             def _C_(address):
                 return evaluate(address)
 
@@ -675,20 +685,24 @@ class ExcelFormula(object):
                     name = str(exc).split("'")[1]
                     func = load_func(name)
                     if func is None:
-                        raise
+                        report_error()
                     locals()[name] = func
 
                 except ZeroDivisionError:
                     return DIV0
+
+                except Exception:
+                    report_error()
 
         return eval_func
 
     def _compile_python_ast(self):
         kwargs = dict(
             mode='eval',
-            filename=str(self.cell.address) if self.cell else '<string>',
+            filename=str(self.cell.address) if self.cell else self.python_code,
         )
         tree = ast.parse(self.python_code, **kwargs)
+        ast.increment_lineno(tree, self.lineno - 1)
 
         # edit the ast with a few changes to be more excel like
 

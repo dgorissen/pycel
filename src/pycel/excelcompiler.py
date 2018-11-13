@@ -43,10 +43,6 @@ __date__ = list(filter(str.isdigit,
 __author__ = list(filter(str.isdigit, "$Author: dg2d09 $"))
 
 
-class CompilerError(Exception):
-    """"Base class for Compiler errors"""
-
-
 class ExcelCompiler(object):
     """Class responsible for taking an Excel spreadsheet and compiling it
     to a Spreadsheet instance that can be serialized to disk, and executed
@@ -159,8 +155,13 @@ class ExcelCompiler(object):
         excel.compiler = excel_compiler
 
         for address, python_code in data['cell_map'].items():
+            lineno = data['cell_map'].lc.data[address][0]
+            address = AddressRange(address)
             excel.value = python_code
-            excel_compiler.make_cells(AddressRange(address))
+            excel_compiler.make_cells(address)
+            formula = excel_compiler.cell_map[address].formula
+            if formula is not None:
+                formula.lineno = lineno
 
         excel_compiler.process_gen_graph()
         del data['cell_map']
@@ -379,24 +380,17 @@ class ExcelCompiler(object):
         # calculate the cell value for formulas
         if cell.compiled_python and cell.value is None:
 
-            try:
-                self.log.debug(
-                    "Evaluating: %s, %s" % (cell.address, cell.python_code))
-                if self.eval is None:
-                    self.eval = ExcelFormula.build_eval_context(
-                        self.evaluate, self.evaluate_range)
-                value = self.eval(cell.formula)
-                self.log.info("Cell %s evaluated to '%s' (%s)" % (
-                    cell.address, value, type(value).__name__))
-                if value is None:
-                    self.log.warn("%s is None" % cell.address)
-                cell.value = value
-
-            except Exception as exc:
-                if str(exc).startswith("Problem evaluating"):
-                    raise
-                raise CompilerError("Problem evaluating: %s for %s, %s" % (
-                    exc, cell.address, cell.python_code))
+            self.log.debug(
+                "Evaluating: %s, %s" % (cell.address, cell.python_code))
+            if self.eval is None:
+                self.eval = ExcelFormula.build_eval_context(
+                    self.evaluate, self.evaluate_range)
+            value = self.eval(cell.formula)
+            self.log.info("Cell %s evaluated to '%s' (%s)" % (
+                cell.address, value, type(value).__name__))
+            if value is None:
+                self.log.warn("%s is None" % cell.address)
+            cell.value = value
 
         return cell.value
 
@@ -522,13 +516,10 @@ class Cell(object):
         self.address = address
         if isinstance(excel, CompiledImporter):
             excel = None
-            cell = None
-        else:
-            cell = self
 
         self.excel = excel
         self.formula = formula and ExcelFormula(
-            formula, cell=cell, formula_is_python_code=(cell is None))
+            formula, cell=self, formula_is_python_code=(excel is None))
         self.value = value
 
         # every cell has a unique id

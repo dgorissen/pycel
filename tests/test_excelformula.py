@@ -6,6 +6,7 @@ import pytest
 
 from pycel.excelformula import (
     ASTNode,
+    CompilerError,
     ExcelFormula,
     FormulaParserError,
     Token,
@@ -508,7 +509,8 @@ def test_build_eval_context():
     assert 44 == eval_context(ExcelFormula('=2 * 21 + A1 + a1:a2'))
     assert 1 == eval_context(ExcelFormula('=1 + sin(0)'))
 
-    with pytest.raises(NameError):
+    with pytest.raises(CompilerError,
+                       match="name 'unknown_function' is not defined"):
         eval_context(ExcelFormula('=unknown_function(0)'))
 
 
@@ -611,6 +613,24 @@ def test_div_zero():
     assert DIV0 == eval_ctx(ExcelFormula('=a1+"l"'))
 
     assert 3 == eval_ctx(ExcelFormula('=iferror(1/0,3)'))
+
+
+def test_lineno_on_error_reporting(capsys):
+    eval_ctx = ExcelFormula.build_eval_context(None, None)
+
+    excel_formula = ExcelFormula('')
+    excel_formula._python_code = 'X'
+    excel_formula.lineno = 6
+
+    with pytest.raises(CompilerError, match='File "X", line 6'):
+        eval_ctx(excel_formula)
+
+    excel_formula._python_code = 'object() + 1'
+    excel_formula._compiled_python = None
+    excel_formula.lineno = 60
+
+    with pytest.raises(CompilerError, match=', line 60,'):
+        eval_ctx(excel_formula)
 
 
 if __name__ == '__main__':

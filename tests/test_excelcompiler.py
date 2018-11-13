@@ -1,6 +1,7 @@
 import pytest
 
 from pycel.excelcompiler import Cell, CellRange, ExcelCompiler
+from pycel.excelformula import CompilerError
 from pycel.excelutil import AddressRange
 
 
@@ -126,6 +127,23 @@ def test_trim_cells(excel):
         excel_compiler.filename).evaluate(output_addrs[0])
 
     assert old_value == new_value
+
+
+def test_compile_error_message_line_number(excel):
+    excel_compiler = ExcelCompiler(excel=excel)
+
+    input_addrs = [AddressRange('trim-range!D5')]
+    output_addrs = [AddressRange('trim-range!B2')]
+
+    excel_compiler.trim_graph(input_addrs, output_addrs)
+    excel_compiler.to_file()
+
+    excel_compiler = ExcelCompiler.from_file(excel_compiler.filename)
+    formula = excel_compiler.cell_map[output_addrs[0]].formula
+    formula._python_code = '(x)'
+    formula.lineno = 3000
+    with pytest.raises(CompilerError, match='File "trim-range!B2", line 3000'):
+        excel_compiler.evaluate(output_addrs[0])
 
 
 def test_init_cell_address_error(excel):
