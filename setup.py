@@ -10,7 +10,7 @@ setup(name='Pycel',
       description='A library for compiling excel spreadsheets to python code '
                   '& visualizing them as a graph',
       url='https://github.com/dgorissen/pycel',
-      tests_require=['pytest', 'pytest-cov'],
+      tests_require=['pytest'],
       test_suite='pytest',
       install_requires=['networkx', 'openpyxl', 'numpy', 'ruamel.yaml'],
       author='Dirk Gorissen',
