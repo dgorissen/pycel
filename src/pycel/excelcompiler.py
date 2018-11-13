@@ -210,7 +210,8 @@ class ExcelCompiler(object):
     def value_tree_str(self, address, indent=0):
         cell = self.cell_map[AddressRange(address)]
         yield "{}{} = {}".format(" " * indent, address, cell.value)
-        for children in self.dep_graph.predecessors(cell):
+        for children in sorted(self.dep_graph.predecessors(cell),
+                               key=lambda a: a.address.address):
             yield from self.value_tree_str(children.address, indent + 1)
 
     def recalculate(self):

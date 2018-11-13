@@ -20,7 +20,7 @@ def tmpdir(tmpdir_factory):
 @pytest.fixture('session')
 def example_xls_path(fixture_dir, tmpdir):
     src = os.path.join(fixture_dir, "fixtures/excelcompiler.xlsx")
-    dst = os.path.join(tmpdir, "excelcompiler.xlsx")
+    dst = os.path.join(str(tmpdir), "excelcompiler.xlsx")
     shutil.copy(src, dst)
     return dst
 

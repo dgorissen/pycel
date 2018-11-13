@@ -13,7 +13,7 @@ from pycel.excelformula import (
 )
 from pycel.excelutil import DIV0
 
-from tests.test_excelutil import ATestCell
+from test_excelutil import ATestCell
 
 
 def stringify(e):
@@ -454,9 +454,10 @@ def test_descendants():
 
     assert 2 == len(descendants)
     assert 'OPERAND' == descendants[0][0].type
-    assert 'E54' == descendants[0][0].value
     assert 'OPERAND' == descendants[1][0].type
-    assert 'E48' == descendants[1][0].value
+    assert {'E48', 'E54'} == {
+        descendants[0][0].value, descendants[1][0].value
+    }
 
 
 def test_ast_node():
