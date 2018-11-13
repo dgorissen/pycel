@@ -14,6 +14,7 @@ from pycel.excelutil import (
     AddressRange,
     resolve_range,
 )
+from ruamel.yaml import YAML
 
 
 # We will choose our wrapper with os compatibility
@@ -99,7 +100,11 @@ class ExcelCompiler(object):
         current_hash = self._compute_excel_file_md5_digest
         return self._excel_file_md5_digest == current_hash
 
-    def to_json(self, filename=None, yaml=False):
+    def to_json(self, filename=None):
+        self.to_file(filename=filename, is_json=True)
+
+    def to_file(self, filename=None, is_json=False):
+
         """Serialize to a json file"""
         extra_data = {} if self.extra_data is None else self.extra_data
 
@@ -118,11 +123,10 @@ class ExcelCompiler(object):
         ))
         filename = filename or self.filename
 
-        if yaml:
+        if not is_json:
             if not filename.split('.')[-1].startswith('.y'):
                 filename += '.yml'
 
-            from ruamel.yaml import YAML
             with open(filename, 'w') as f:
                 YAML().dump(extra_data, f)
         else:
@@ -133,23 +137,22 @@ class ExcelCompiler(object):
 
         del extra_data['cell_map']
 
-    def to_yaml(self, filename=None):
-        self.to_json(filename=filename, yaml=True)
+    @classmethod
+    def from_json(cls, filename):
+        return cls.from_file(filename, is_json=True)
 
     @classmethod
-    def from_json(cls, filename, yaml=False):
-        if yaml:
+    def from_file(cls, filename, is_json=False):
+
+        if not is_json:
             if not filename.split('.')[-1].startswith('.y'):
                 filename += '.yml'
-
-            from ruamel.yaml import YAML
-            with open(filename, 'r') as f:
-                data = YAML().load(f)
         else:
             if not filename.endswith('.json'):
                 filename += '.json'
-            with open(filename, 'r') as f:
-                data = json.load(f)
+
+        with open(filename, 'r') as f:
+            data = YAML().load(f)
 
         excel = CompiledImporter(filename)
         excel_compiler = cls(excel=excel)
@@ -167,10 +170,6 @@ class ExcelCompiler(object):
 
         excel_compiler.extra_data = data
         return excel_compiler
-
-    @classmethod
-    def from_yaml(cls, filename, yaml=True):
-        return cls.from_json(filename=filename, yaml=True)
 
     def export_to_dot(self, fname):
         write_dot(self.dep_graph, fname)

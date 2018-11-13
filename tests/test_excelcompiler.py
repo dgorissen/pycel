@@ -33,11 +33,11 @@ def test_round_trip_through_json_and_yaml(excel, example_xls_path):
     excel_compiler.evaluate('Sheet1!D1')
     excel_compiler.extra_data = {1: 3}
     excel_compiler.to_json()
-    excel_compiler.to_yaml()
+    excel_compiler.to_file()
 
     # read the spreadsheet from json
     excel_compiler = ExcelCompiler.from_json(excel.filename)
-    excel_compiler_yaml = ExcelCompiler.from_yaml(excel.filename)
+    excel_compiler_yaml = ExcelCompiler.from_file(excel.filename)
 
     # test evaluation
     assert -0.02286 == round(excel_compiler.evaluate('Sheet1!D1'), 5)

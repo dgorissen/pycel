@@ -610,6 +610,8 @@ def test_div_zero():
     assert DIV0 == eval_ctx(ExcelFormula('=a1=1'))
     assert DIV0 == eval_ctx(ExcelFormula('=a1+"l"'))
 
+    assert 3 == eval_ctx(ExcelFormula('=iferror(1/0,3)'))
+
 
 if __name__ == '__main__':
     dump_parse()
