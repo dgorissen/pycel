@@ -118,6 +118,10 @@ class AddressRange(collections.namedtuple(
         return bool(self.sheet)
 
     @property
+    def sort_key(self):
+        return self.sheet, self.start.col_idx, self.start.row
+
+    @property
     def rows(self):
         """Get each addresses for every cell, yields one row at a time."""
         col_range = self.start.col_idx, self.end.col_idx + 1
@@ -202,6 +206,10 @@ class AddressCell(collections.namedtuple(
     @property
     def has_sheet(self):
         return bool(self.sheet)
+
+    @property
+    def sort_key(self):
+        return self.sheet, self.col_idx, self.row
 
     @property
     def col_idx(self):
@@ -469,6 +477,8 @@ def is_number(s):
 
 def coerce_to_number(value):
     if not isinstance(value, str):
+        if is_number(value) and int(value) == float(value):
+            return int(value)
         return value
 
     try:

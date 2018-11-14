@@ -28,4 +28,3 @@ setup(name='Pycel',
         'License ::  OSI Approved ',
         ]
       )
-

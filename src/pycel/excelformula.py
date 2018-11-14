@@ -556,7 +556,8 @@ class ExcelFormula(object):
                 assert token.type in (token.FUNC, token.PAREN, token.ARRAY)
                 stack.append(token)
 
-            elif token.subtype == token.CLOSE:
+            else:
+                assert token.subtype == token.CLOSE
 
                 while stack and stack[-1].subtype != Token.OPEN:
                     output.append(self.ast_node(stack.pop()))

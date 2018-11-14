@@ -527,7 +527,7 @@ def test_save_to_file(fixture_dir):
     formula = ExcelFormula('=1+2')
     filename = os.path.join(fixture_dir, 'formula_save_test.pickle')
     with open(filename, 'wb') as f:
-        pickle.dump(formula, f, protocol=2)
+        pickle.dump(formula, f)
 
     with open(filename, 'rb') as f:
         loaded_formula = pickle.load(f)
@@ -573,9 +573,13 @@ def test_empty_cell_logic_op():
 
 
 def test_numerics_type_coercion():
-    eval_ctx = ExcelFormula.build_eval_context(None, None)
+    eval_ctx = ExcelFormula.build_eval_context(lambda x: 3.0, None)
     assert 7 == eval_ctx(ExcelFormula('=1+2+"4"'))
     assert 7 == eval_ctx(ExcelFormula('=sum(1, 2, "4")'))
+
+    assert '3A' == eval_ctx(ExcelFormula('=3&"A"'))
+    assert '3A' == eval_ctx(ExcelFormula('=3.0&"A"'))
+    assert '3A' == eval_ctx(ExcelFormula('=A1&"A"'))
 
 
 def test_string_compare():

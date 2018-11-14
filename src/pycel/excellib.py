@@ -74,9 +74,9 @@ def excel_operator_operand_fixup(left_op, op, right_op):
             right_op = right_op.lower()
 
     elif op == 'BitAnd':
-        # use bitwise and '&' as string concat not '+'
-        left_op = str(left_op)
-        right_op = str(right_op)
+        # use bitwise-and '&' as string concat not '+'
+        left_op = str(coerce_to_number(left_op))
+        right_op = str(coerce_to_number(right_op))
         op = 'Add'
 
     else:
