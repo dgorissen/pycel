@@ -6,7 +6,6 @@ import re
 
 from openpyxl.formula.tokenizer import Tokenizer
 from openpyxl.utils import (
-    column_index_from_string,
     get_column_letter,
     range_boundaries,
 )
@@ -155,7 +154,7 @@ class AddressRange(collections.namedtuple(
 
 
 class AddressCell(collections.namedtuple(
-        'AddressCell', 'sheet column row coordinate address')):
+        'AddressCell', 'sheet col_idx row coordinate address')):
 
     def __new__(cls, address, sheet=None):
 
@@ -167,7 +166,7 @@ class AddressCell(collections.namedtuple(
                 return address
 
             elif not address.sheet:
-                column, row, coordinate = address[1:4]
+                row, col_idx, coordinate = address[1:4]
 
             else:
                 raise ValueError("Mismatched sheets '{}' and '{}'".format(
@@ -179,9 +178,9 @@ class AddressCell(collections.namedtuple(
                     None not in address or address[0:2] == address[2:]), \
                 "AddressCell expected a cell '{}'".format(address)
 
-            column, row = (a or '' for a in address[:2])
-            column = column and get_column_letter(column)
-            coordinate = '{0}{1}'.format(column, row)
+            col_idx, row = (a or 0 for a in address[:2])
+            column = (col_idx or '') and get_column_letter(col_idx)
+            coordinate = '{0}{1}'.format(column, row or '')
 
         if sheet:
             format_str = '{0}!{1}'
@@ -189,7 +188,7 @@ class AddressCell(collections.namedtuple(
             format_str = '{1}'
 
         return super(AddressCell, cls).__new__(
-            cls, sheet, column, row or 0, coordinate,
+            cls, sheet, col_idx, row, coordinate,
             format_str.format(sheet, coordinate))
 
     def __str__(self):
@@ -212,8 +211,8 @@ class AddressCell(collections.namedtuple(
         return self.sheet, self.col_idx, self.row
 
     @property
-    def col_idx(self):
-        return column_index_from_string(self.column) if self.column else 0
+    def column(self):
+        return (self.col_idx or '') and get_column_letter(self.col_idx)
 
     def inc_col(self, inc):
         return (self.col_idx + inc - 1) % MAX_COL + 1
