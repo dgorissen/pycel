@@ -12,7 +12,7 @@ setup(name='Pycel',
       url='https://github.com/dgorissen/pycel',
       tests_require=['pytest'],
       test_suite='pytest',
-      install_requires=['networkx', 'openpyxl', 'numpy', 'ruamel.yaml'],
+      install_requires=['networkx', 'openpyxl>=2.5.10', 'numpy', 'ruamel.yaml'],
       author='Dirk Gorissen',
       author_email='dgorissen@gmail.com',
       long_description="Pycel is a small python library that can translate an "
