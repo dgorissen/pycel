@@ -419,6 +419,7 @@ def test_parse(formula, python_code, rpn):
     parsed = excel_formula.rpn
     result_rpn = "|".join(str(x) for x in parsed)
     result_python_code = excel_formula.python_code
+    assert result_python_code == excel_formula.ast.emit()
 
     if (rpn, python_code) != (result_rpn, result_python_code):
         print("***Expected: ")
@@ -451,6 +452,7 @@ def test_descendants():
 
     excel_formula = ExcelFormula('=E54-E48')
     descendants = excel_formula.ast.descendants
+    assert descendants == excel_formula.ast.descendants
 
     assert 2 == len(descendants)
     assert 'OPERAND' == descendants[0][0].type
@@ -497,8 +499,10 @@ def test_needed_addresses():
     formula = '=(3600/1000)*E40*(E8/E39)*(E15/E19)*LN(E54/(E54-E48))'
     needed = sorted(('E40', 'E8', 'E39', 'E15', 'E19', 'E54', 'E48'))
 
-    assert needed == sorted(x.address for x in
-                            ExcelFormula(formula).needed_addresses)
+    excel_formula = ExcelFormula(formula)
+
+    assert needed == sorted(x.address for x in excel_formula.needed_addresses)
+    assert needed == sorted(x.address for x in excel_formula.needed_addresses)
 
     assert () == ExcelFormula('').needed_addresses
 

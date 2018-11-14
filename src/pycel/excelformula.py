@@ -503,8 +503,7 @@ class ExcelFormula(object):
             elif token.matches(Token.PAREN, Token.CLOSE):
                 token.value = ')'
 
-            if token:
-                tokens.append(token)
+            tokens.append(token)
 
         output = []
         stack = []
@@ -538,8 +537,8 @@ class ExcelFormula(object):
                     raise FormulaParserError(
                         "Mismatched or misplaced parentheses")
 
-                if were_values.pop():
-                    arg_count[-1] += 1
+                were_values.pop()
+                arg_count[-1] += 1
                 were_values.append(False)
 
             elif token.is_operator:

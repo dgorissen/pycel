@@ -128,6 +128,25 @@ def test_address_cell_addr_offset():
     assert AddressCell('sh!F6') == cell_addr.address_at_offset(4, 3)
 
 
+def test_address_sort_keys():
+
+    a1_b2 = AddressRange('sh!A1:B2')
+    a1 = AddressRange('sh!A1')
+    b2 = AddressRange('sh!B2')
+
+    assert a1.sort_key == a1_b2.sort_key
+    assert a1.sort_key < b2.sort_key
+
+
+def test_address_range_columns():
+    columns = list(list(x) for x in AddressRange('sh!A1:C3').cols)
+    assert 3 == len(columns)
+    assert 3 == len(columns[0])
+
+    assert all('A' == addr.column for addr in columns[0])
+    assert all('C' == addr.column for addr in columns[-1])
+
+
 @pytest.mark.parametrize(
     'sheet_name',
     [
