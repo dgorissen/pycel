@@ -18,7 +18,7 @@ class FormulaParserError(Exception):
 
 
 class CompilerError(Exception):
-    """"Base class for Compiler errors"""
+    """Base class for Compiler errors"""
 
 
 class Tokenizer(tokenizer.Tokenizer):

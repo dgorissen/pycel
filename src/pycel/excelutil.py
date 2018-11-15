@@ -7,7 +7,7 @@ import re
 from openpyxl.formula.tokenizer import Tokenizer
 from openpyxl.utils import (
     get_column_letter,
-    range_boundaries,
+    range_boundaries as openpyxl_range_boundaries
 )
 
 
@@ -145,7 +145,8 @@ class AddressRange(collections.namedtuple(
             return AddressCell(address, sheet=sheet)
 
         sheetname, addr = split_sheetname(address, sheet=sheet)
-        addr_tuple = extended_range_boundaries(addr, cell=cell)
+        addr_tuple, sheetname = range_boundaries(
+            addr, sheet=sheetname, cell=cell)
 
         if None in addr_tuple or addr_tuple[0:2] != addr_tuple[2:]:
             return AddressRange(addr_tuple, sheet=sheetname)
@@ -266,7 +267,7 @@ def split_sheetname(address, sheet=''):
     return sheet or sh, address
 
 
-def extended_range_boundaries(address, cell=None):
+def range_boundaries(address, cell=None, sheet=None):
     """
     R1C1 reference style
 
@@ -294,14 +295,19 @@ def extended_range_boundaries(address, cell=None):
     """
     try:
         # if this is normal reference then just use the openpyxl converter
-        boundaries = range_boundaries(address)
+        boundaries = openpyxl_range_boundaries(address)
         if None not in boundaries or ':' in address:
-            return boundaries
+            return boundaries, sheet
     except ValueError:
         pass
 
     m = R1C1_RANGE_RE.match(address)
     if not m:
+        name_addr = (cell and cell.excel and
+                     cell.excel.defined_names.get(address))
+        if name_addr:
+            return AddressRange(
+                openpyxl_range_boundaries(name_addr[0]), sheet=name_addr[1])
         raise ValueError(
             "{0} is not a valid coordinate or range".format(address))
 
@@ -360,7 +366,7 @@ def extended_range_boundaries(address, cell=None):
     else:
         max_row = min_row
 
-    return min_col, min_row, max_col, max_row
+    return (min_col, min_row, max_col, max_row), sheet
 
 
 def resolve_range(address):
@@ -482,7 +488,7 @@ def coerce_to_number(value):
 
     try:
         if value == DIV0:
-            return 1/0
+            return 1 / 0
         elif '.' not in value:
             return int(value)
     except (ValueError, TypeError):

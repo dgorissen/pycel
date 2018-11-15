@@ -2,18 +2,19 @@
 Python equivalents of various excel functions
 """
 
+import operator
 from datetime import datetime
 from decimal import Decimal, ROUND_HALF_UP, ROUND_UP
+
 from math import log
-import operator
 
 import numpy as np
 
 from pycel.excelutil import (
-    DIV0,
-    ERROR_CODES,
     coerce_to_number,
     date_from_int,
+    DIV0,
+    ERROR_CODES,
     find_corresponding_index,
     flatten,
     is_leap_year,

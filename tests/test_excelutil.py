@@ -6,7 +6,7 @@ from pycel.excelutil import (
     AddressRange,
     coerce_to_number,
     date_from_int,
-    extended_range_boundaries,
+    range_boundaries,
     find_corresponding_index,
     flatten,
     get_linest_degree,
@@ -226,28 +226,32 @@ def test_resolve_range():
 def test_extended_range_boundaries():
     cell = ATestCell('A', 1)
 
-    assert (1, 2) * 2 == extended_range_boundaries('A2')
-    assert (2, 1) * 2 == extended_range_boundaries('B1')
-    assert (1, 2) * 2 == extended_range_boundaries('R2C1')
-    assert (2, 1) * 2 == extended_range_boundaries('R1C2')
-    assert (2, 3) * 2 == extended_range_boundaries('R[2]C[1]', cell)
-    assert (3, 2) * 2 == extended_range_boundaries('R[1]C[2]', cell)
+    assert (1, 2) * 2 == range_boundaries('A2')[0]
+    assert (2, 1) * 2 == range_boundaries('B1')[0]
+    assert (1, 2) * 2 == range_boundaries('R2C1')[0]
+    assert (2, 1) * 2 == range_boundaries('R1C2')[0]
+    assert (2, 3) * 2 == range_boundaries('R[2]C[1]', cell)[0]
+    assert (3, 2) * 2 == range_boundaries('R[1]C[2]', cell)[0]
 
-    assert (1, 1, 2, 2) == extended_range_boundaries('A1:B2')
-    assert (1, 1, 2, 2) == extended_range_boundaries('R1C1:R2C2')
-    assert (2, 1, 2, 3) == extended_range_boundaries('R1C2:R[2]C[1]', cell)
+    assert (1, 1, 2, 2) == range_boundaries('A1:B2')[0]
+    assert (1, 1, 2, 2) == range_boundaries('R1C1:R2C2')[0]
+    assert (2, 1, 2, 3) == range_boundaries('R1C2:R[2]C[1]', cell)[0]
 
-    assert (3, 13) * 2 == extended_range_boundaries('R13C3')
+    assert (3, 13) * 2 == range_boundaries('R13C3')[0]
 
-    assert (1, 1, 1, 1) == extended_range_boundaries('RC', cell)
+    assert (1, 1, 1, 1) == range_boundaries('RC', cell)[0]
 
-    assert (None, 1, None, 4) == extended_range_boundaries('R:R[3]', cell)
-    assert (None, 1, None, 4) == extended_range_boundaries('R1:R[3]', cell)
-    assert (None, 2, None, 4) == extended_range_boundaries('R2:R[3]', cell)
+    assert (None, 1, None, 4) == range_boundaries('R:R[3]', cell)[0]
+    assert (None, 1, None, 4) == range_boundaries('R1:R[3]', cell)[0]
+    assert (None, 2, None, 4) == range_boundaries('R2:R[3]', cell)[0]
 
-    assert (1, None, 4, None) == extended_range_boundaries('C:C[3]', cell)
-    assert (1, None, 4, None) == extended_range_boundaries('C1:C[3]', cell)
-    assert (2, None, 4, None) == extended_range_boundaries('C2:C[3]', cell)
+    assert (1, None, 4, None) == range_boundaries('C:C[3]', cell)[0]
+    assert (1, None, 4, None) == range_boundaries('C1:C[3]', cell)[0]
+    assert (2, None, 4, None) == range_boundaries('C2:C[3]', cell)[0]
+
+
+def test_extended_range_boundaries_defined_names():
+    """  """
 
 
 @pytest.mark.parametrize(
@@ -276,7 +280,7 @@ def test_extended_range_boundaries_errors(address_string):
     cell = ATestCell('A', 1)
 
     with pytest.raises(Exception, match='not a valid coordinate or range'):
-        extended_range_boundaries(address_string, cell)
+        range_boundaries(address_string, cell)
 
 
 def test_coerce_to_number():

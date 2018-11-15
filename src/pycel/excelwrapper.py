@@ -14,6 +14,7 @@ from os import path
 
 from openpyxl import load_workbook
 from openpyxl.cell import Cell
+from openpyxl.formula.tokenizer import TokenizerError
 
 from pycel.excelutil import AddressCell, AddressRange
 
@@ -265,6 +266,24 @@ class ExcelOpxWrapper(ExcelWrapper):
         super(ExcelWrapper, self).__init__()
 
         self.filename = path.abspath(filename)
+        self._defined_names = None
+
+    @property
+    def defined_names(self):
+        if self.workbook is not None and self._defined_names is None:
+            self._defined_names = {}
+
+            for named_range in self.workbook.defined_names.definedName:
+                try:
+                    for worksheet, range_alias in named_range.destinations:
+                        if worksheet in self.workbook:
+                            self._defined_names[str(named_range.name)] = (
+                                range_alias, worksheet)
+                except TokenizerError:
+                    # ::TODO:: this is a workaround for openpyxl throwing
+                    # this exception when given a range of sheet!#REF!
+                    pass
+        return self._defined_names
 
     @property
     def rangednames(self):
