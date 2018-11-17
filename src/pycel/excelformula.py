@@ -589,7 +589,7 @@ class ExcelFormula(object):
         """
 
         # use a directed graph to store the syntax tree
-        ast = DiGraph()
+        tree = DiGraph()
 
         # production stack
         stack = []
@@ -598,7 +598,7 @@ class ExcelFormula(object):
             # The graph does not maintain the order of adding nodes/edges, so
             # add an attribute 'pos' so we can always sort to the correct order
 
-            node.ast = ast
+            node.ast = tree
             if isinstance(node, OperatorNode):
                 if node.token.type == node.token.OP_IN:
                     try:
@@ -608,10 +608,10 @@ class ExcelFormula(object):
                         raise FormulaParserError(
                             "'{}' operator missing operand".format(
                                 node.token.value))
-                    ast.add_node(arg1, pos=0)
-                    ast.add_node(arg2, pos=1)
-                    ast.add_edge(arg1, node)
-                    ast.add_edge(arg2, node)
+                    tree.add_node(arg1, pos=0)
+                    tree.add_node(arg2, pos=1)
+                    tree.add_edge(arg1, node)
+                    tree.add_edge(arg2, node)
                 else:
                     try:
                         arg1 = stack.pop()
@@ -619,18 +619,18 @@ class ExcelFormula(object):
                         raise FormulaParserError(
                             "'{}' operator missing operand".format(
                                 node.token.value))
-                    ast.add_node(arg1, pos=1)
-                    ast.add_edge(arg1, node)
+                    tree.add_node(arg1, pos=1)
+                    tree.add_edge(arg1, node)
 
             elif isinstance(node, FunctionNode):
                 if node.num_args:
                     args = stack[-node.num_args:]
                     del stack[-node.num_args:]
                     for i, a in enumerate(args):
-                        ast.add_node(a, pos=i)
-                        ast.add_edge(a, node)
+                        tree.add_node(a, pos=i)
+                        tree.add_edge(a, node)
             else:
-                ast.add_node(node, pos=0)
+                tree.add_node(node, pos=0)
 
             stack.append(node)
 

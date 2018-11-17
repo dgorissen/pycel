@@ -124,7 +124,9 @@ class ExcelCompiler(object):
                 filename += '.yml'
 
             with open(filename, 'w') as f:
-                YAML().dump(extra_data, f)
+                ymlo = YAML()
+                ymlo.width = 120
+                ymlo.dump(extra_data, f)
         else:
             if not filename.endswith('.json'):
                 filename += '.json'
@@ -154,8 +156,9 @@ class ExcelCompiler(object):
         excel_compiler = cls(excel=excel)
         excel.compiler = excel_compiler
 
+        # ::TODO:: can we defer these operations until needed?
         for address, python_code in data['cell_map'].items():
-            lineno = data['cell_map'].lc.data[address][0]
+            lineno = data['cell_map'].lc.data[address][0] + 1
             address = AddressRange(address)
             excel.value = python_code
             excel_compiler.make_cells(address)
@@ -187,16 +190,16 @@ class ExcelCompiler(object):
         nx.draw_networkx_labels(self.dep_graph, pos)
         plt.show()
 
-    def set_value(self, cell, val, is_addr=True):
+    def set_value(self, cell, value, is_addr=True):
         if is_addr:
             address = AddressRange(cell)
             cell = self.cell_map[address]
 
-        if cell.value != val:
+        if cell.value != value:
             # reset the node + its dependencies
             self.reset(cell)
             # set the value
-            cell.value = val
+            cell.value = value
 
     def reset(self, cell):
         if cell.value is None:
@@ -387,10 +390,10 @@ class ExcelCompiler(object):
                 self.eval = ExcelFormula.build_eval_context(
                     self.evaluate, self.evaluate_range)
             value = self.eval(cell.formula)
+            if value is None:
+                value = '#EMPTY!'
             self.log.info("Cell %s evaluated to '%s' (%s)" % (
                 cell.address, value, type(value).__name__))
-            if value is None:
-                self.log.warn("%s is None" % cell.address)
             cell.value = value
 
         return cell.value

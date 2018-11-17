@@ -273,11 +273,11 @@ class ExcelOpxWrapper(ExcelWrapper):
         if self.workbook is not None and self._defined_names is None:
             self._defined_names = {}
 
-            for named_range in self.workbook.defined_names.definedName:
+            for defined_name in self.workbook.defined_names.definedName:
                 try:
-                    for worksheet, range_alias in named_range.destinations:
+                    for worksheet, range_alias in defined_name.destinations:
                         if worksheet in self.workbook:
-                            self._defined_names[str(named_range.name)] = (
+                            self._defined_names[str(defined_name.name)] = (
                                 range_alias, worksheet)
                 except TokenizerError:
                     # ::TODO:: this is a workaround for openpyxl throwing

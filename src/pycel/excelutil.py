@@ -306,8 +306,8 @@ def range_boundaries(address, cell=None, sheet=None):
         name_addr = (cell and cell.excel and
                      cell.excel.defined_names.get(address))
         if name_addr:
-            return AddressRange(
-                openpyxl_range_boundaries(name_addr[0]), sheet=name_addr[1])
+            return openpyxl_range_boundaries(name_addr[0]), name_addr[1]
+
         raise ValueError(
             "{0} is not a valid coordinate or range".format(address))
 
