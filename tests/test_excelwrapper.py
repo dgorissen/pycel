@@ -10,17 +10,9 @@ def test_connect(unconnected_excel):
     assert connected
 
 
-def test_save_as(excel, tmpdir):
-    path_copy = os.path.join(str(tmpdir), "exampleCopy.xlsx")
-    if os.path.exists(path_copy):
-        os.remove(path_copy)
-    excel.save_as(path_copy)
-    assert os.path.exists(path_copy)
-
-
 def test_set_and_get_active_sheet(excel):
     excel.set_sheet("Sheet3")
-    assert excel.get_active_sheet() == 'Sheet3'
+    assert excel.get_active_sheet_name() == 'Sheet3'
 
 
 def test_get_range(excel):
@@ -45,30 +37,47 @@ def test_get_formula(excel):
     assert excel.get_formula(3, 12) is None
 
 
-def test_has_formula(excel):
-    excel.set_sheet("Sheet1")
-    assert excel.has_formula("Sheet1!C2:C5")
-    assert not excel.has_formula("Sheet1!A2:A5")
-
-
 def test_get_formula_from_range(excel):
     excel.set_sheet("Sheet1")
     formulas = excel.get_formula_from_range("Sheet1!C2:C5")
     assert len(formulas) == 4
     assert formulas[1] == "=SIN(B3*A3^2)"
 
+    formulas = excel.get_formula_from_range("Sheet1!C600:C601")
+    assert formulas is None
+
+    formula = excel.get_formula_from_range("Sheet1!C3")
+    assert formula == "=SIN(B3*A3^2)"
+
 
 def test_get_formula_or_value(excel):
-    excel.set_sheet("Sheet1")
     result = excel.get_formula_or_value("Sheet1!A2:C2")
     assert (('2', '=SUM(A2:A4)', '=SIN(B2*A2^2)'),) == result
+
     result = excel.get_formula_or_value("Sheet1!A1:A3")
     assert (('1',), ('2',), ('3',)) == result
 
 
-def test_get_row(excel):
-    excel.set_sheet("Sheet1")
-    assert len(excel.get_row(2)) == 4
+def test_get_range_formula(excel):
+    result = excel.get_range("Sheet1!A2:C2").Formula
+    assert (('2', '=SUM(A2:A4)', '=SIN(B2*A2^2)'),) == result
+
+    result = excel.get_range("Sheet1!A1:A3").Formula
+    assert (('1',), ('2',), ('3',)) == result
+
+    result = excel.get_range("Sheet1!C2").Formula
+    assert '=SIN(B2*A2^2)' == result
+
+
+def test_get_range_value(excel):
+    result = excel.get_range("Sheet1!A2:C2").Value
+    assert ((2, 9, -0.9917788534431158),) == result
+
+    result = excel.get_range("Sheet1!A1:A3").Value
+    assert ((1,), (2,), (3,)) == result
+
+    result = excel.get_range("Sheet1!A1").Value
+    assert 1 == result
 
 
 def test_get_ranged_names(excel):

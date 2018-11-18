@@ -14,28 +14,9 @@ from pycel.excelutil import (
     AddressRange,
     resolve_range,
 )
+from pycel.excelwrapper import ExcelOpxWrapper
 from ruamel.yaml import YAML
 
-
-# We will choose our wrapper with os compatibility
-#       ExcelComWrapper : Must be run on Windows as it requires a
-#                         COM link to an Excel instance.
-#       ExcelOpxWrapper : Can be run anywhere but only with post
-#                         2010 Excel formats
-# ::TODO:: if keeping this move to __init__ or someplace so only needed once
-
-if sys.platform in ('win32', 'cygwin'):
-    try:
-        import win32com.client  # flake8: noqa
-        import pythoncom  # flake8: noqa
-        from pycel.excelwrapper import ExcelComWrapper as ExcelWrapperImpl
-    except ImportError:
-        ExcelWrapperImpl = None
-else:
-    ExcelWrapperImpl = None
-
-if ExcelWrapperImpl is None:
-    from pycel.excelwrapper import ExcelOpxWrapper as ExcelWrapperImpl
 
 __version__ = list(filter(str.isdigit, "$Revision: 2524 $"))
 __date__ = list(filter(str.isdigit,
@@ -61,7 +42,7 @@ class ExcelCompiler(object):
         else:
             # TODO: use a proper interface so we can (eventually) support
             # loading from file (much faster)  Still need to find a good lib.
-            self.excel = ExcelWrapperImpl(filename=filename)
+            self.excel = ExcelOpxWrapper(filename=filename)
             self.excel.connect()
             self.filename = filename
 
@@ -416,7 +397,7 @@ class ExcelCompiler(object):
 
         # get/set the current sheet
         if not seed.has_sheet:
-            seed = AddressRange(seed, self.excel.get_active_sheet())
+            seed = AddressRange(seed, self.excel.get_active_sheet_name())
         else:
             self.excel.set_sheet(seed.sheet)
 
