@@ -18,23 +18,13 @@ def test_set_and_get_active_sheet(excel):
 def test_get_range(excel):
     excel.set_sheet("Sheet2")
     excel_range = excel.get_range('Sheet2!A5:B7')
-    assert sum(map(len, excel_range.cells)) == 6
+    assert sum(map(len, excel_range.formulas)) == 6
+    assert sum(map(len, excel_range.values)) == 6
 
 
 def test_get_used_range(excel):
     excel.set_sheet("Sheet1")
     assert sum(map(len, excel.get_used_range())) == 72
-
-
-def test_get_value(excel):
-    excel.set_sheet("Sheet1")
-    assert excel.get_value(2, 2) == 9
-
-
-def test_get_formula(excel):
-    excel.set_sheet("Sheet1")
-    assert excel.get_formula(2, 2) == "=SUM(A2:A4)"
-    assert excel.get_formula(3, 12) is None
 
 
 def test_get_formula_from_range(excel):
@@ -68,6 +58,16 @@ def test_get_range_formula(excel):
     result = excel.get_range("Sheet1!C2").Formula
     assert '=SIN(B2*A2^2)' == result
 
+    excel.set_sheet('Sheet1')
+    result = excel.get_range("C2").Formula
+    assert '=SIN(B2*A2^2)' == result
+
+    result = excel.get_range("Sheet1!AA1:AA3").Formula
+    assert (('',), ('',), ('',)) == result
+
+    result = excel.get_range("Sheet1!CC2").Formula
+    assert '' == result
+
 
 def test_get_range_value(excel):
     result = excel.get_range("Sheet1!A2:C2").Value
@@ -78,6 +78,12 @@ def test_get_range_value(excel):
 
     result = excel.get_range("Sheet1!A1").Value
     assert 1 == result
+
+    result = excel.get_range("Sheet1!AA1:AA3").Value
+    assert ((None,), (None,), (None,)) == result
+
+    result = excel.get_range("Sheet1!CC2").Value
+    assert None == result
 
 
 def test_get_ranged_names(excel):

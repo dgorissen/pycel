@@ -9,7 +9,7 @@ import os
 
 from openpyxl import load_workbook
 from openpyxl.cell import Cell
-from openpyxl.cell.read_only import EmptyCell, ReadOnlyCell
+from openpyxl.cell.read_only import EMPTY_CELL
 from openpyxl.formula.tokenizer import TokenizerError
 
 from pycel.excelutil import AddressCell, AddressRange
@@ -37,17 +37,6 @@ class ExcelWrapper(object):
     @abc.abstractmethod
     def get_active_sheet_name(self):
         """"""
-
-    @abc.abstractmethod
-    def get_cell(self, r, c):
-        """"""
-
-    def get_value(self, r, c):
-        return self.get_cell(r, c).Value
-
-    def get_formula(self, r, c):
-        f = self.get_cell(r, c).Formula
-        return f if f.startswith("=") else None
 
     def get_formula_from_range(self, address):
         f = self.get_range(address).Formula
@@ -135,9 +124,6 @@ class ExcelComWrapper(ExcelWrapper):  # pragma: no cover
     def get_active_sheet_name(self):
         return self.app.ActiveWorkbook.ActiveSheet.Name
 
-    def get_cell(self, r, c):
-        return self.app.ActiveWorkbook.ActiveSheet.Cells(r, c)
-
     def set_calc_mode(self, automatic=True):
         from win32com.client import constants
         if automatic:
@@ -152,35 +138,40 @@ class ExcelComWrapper(ExcelWrapper):  # pragma: no cover
         self.app.Run(macro)
 
 
-class OpxRange(object):
+class _OpxRange:
     """ Excel range wrapper that distributes reduced api used by compiler
         (Formula & Value)
     """
-
     def __init__(self, cells, cells_dataonly):
-        super(OpxRange, self).__init__()
+        self.formulas = tuple(tuple(self.cell_to_formula(cell) for cell in row)
+                              for row in cells)
+        self.values = tuple(tuple(self.cell_to_value(cell) for cell in row)
+                            for row in cells_dataonly)
 
-        self.cells = cells
-        self.cells_dataonly = cells_dataonly
+    @classmethod
+    def cell_to_formula(cls, cell):
+        return str(cell.value) if cell.value is not None else ''
+
+    @classmethod
+    def cell_to_value(cls, cell):
+        return None if cell.data_type is Cell.TYPE_FORMULA else cell.value
 
     @property
     def Formula(self):
-        formulas = tuple(tuple(str(cell.value) for cell in row)
-                         for row in self.cells)
-        if sum(map(len, formulas)) == 1:
-            return formulas[0][0]
-        return formulas
+        return self.formulas
 
     @property
     def Value(self):
-        values = tuple(tuple(cell.value
-                             if cell.data_type is not Cell.TYPE_FORMULA
-                             else None for cell in row
-                             ) for row in self.cells_dataonly
-                       )
-        if sum(map(len, values)) == 1:
-            return values[0][0]
-        return values
+        return self.values
+
+
+class _OpxCell(_OpxRange):
+    """ Excel cell wrapper that distributes reduced api used by compiler
+        (Formula & Value)
+    """
+    def __init__(self, cell, cell_dataonly):
+        self.formulas = self.cell_to_formula(cell)
+        self.values = self.cell_to_value(cell)
 
 
 class ExcelOpxWrapper(ExcelWrapper):
@@ -192,6 +183,8 @@ class ExcelOpxWrapper(ExcelWrapper):
         self.filename = os.path.abspath(filename)
         self._defined_names = None
         self._rangednames = None
+        self.workbook = None
+        self.workbook_dataonly = None
 
     @property
     def defined_names(self):
@@ -212,7 +205,6 @@ class ExcelOpxWrapper(ExcelWrapper):
 
     @property
     def rangednames(self):
-
         if self.workbook is not None and self._rangednames is None:
             rangednames = []
 
@@ -233,7 +225,6 @@ class ExcelOpxWrapper(ExcelWrapper):
 
             self._rangednames = rangednames
         return self._rangednames
-
 
     def connect(self):
         self.workbook = load_workbook(self.filename)
@@ -259,20 +250,27 @@ class ExcelOpxWrapper(ExcelWrapper):
 
         cells = sheet[address.coordinate]
         if isinstance(cells, Cell):
-            cells = ((cells,),)
+            cell = cells
+            cell_dataonly = sheet_dataonly[address.coordinate]
+            return _OpxCell(cell, cell_dataonly)
 
-        cells_dataonly = sheet_dataonly[address.coordinate]
-        if isinstance(cells_dataonly, (EmptyCell, ReadOnlyCell)):
-            cells_dataonly = ((cells_dataonly,),)
+        else:
+            cells_dataonly = sheet_dataonly[address.coordinate]
 
-        return OpxRange(cells, cells_dataonly)
+            if len(cells) != len(cells_dataonly):
+                # The read_only version of an openpyxl worksheet has the
+                # somewhat annoying property of not giving empty rows at the
+                # end.  Which is not the same behavior as the non-readonly
+                # version.  So we need to align the data here by adding
+                # empty rows.
+                empty_row = (EMPTY_CELL, ) * len(cells[0])
+                empty_rows = (empty_row, ) * (len(cells) - len(cells_dataonly))
+                cells_dataonly += empty_rows
+
+            return _OpxRange(cells, cells_dataonly)
 
     def get_used_range(self):
         return self.workbook.active.iter_rows()
 
     def get_active_sheet_name(self):
         return self.workbook.active.title
-
-    def get_cell(self, r, c):
-        # this could be improved in order not to call get_range
-        return self.get_range(self.workbook.active.cell(r, c).coordinate)
