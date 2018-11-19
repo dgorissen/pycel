@@ -59,7 +59,6 @@ class ExcelCompiler(object):
         self.cell_map = {}
 
         # cells, ranges and graph_edges that need to be built
-        self.address_todos = []
         self.graph_todos = []
         self.range_todos = []
 
@@ -172,7 +171,7 @@ class ExcelCompiler(object):
         filename = filename or self.filename
 
         # round trip through yaml to strip out junk
-        yaml_name = filename + '.yml'
+        yaml_name = self.filename + '.yml'
         self.to_yaml(yaml_name)
         excel_compiler = self.from_yaml(yaml_name)
         os.unlink(yaml_name)
@@ -240,12 +239,13 @@ class ExcelCompiler(object):
 
         for cell in self.cell_map.values():
             if isinstance(cell, CellRange):
-                self.evaluate_range(cell)
+                self._evaluate_range(cell)
             else:
                 self.evaluate(cell)
 
     def trim_graph(self, input_addrs, output_addrs):
         """Remove unneeded cells from the graph"""
+        output_addrs = tuple(AddressRange(addr) for addr in output_addrs)
 
         # build network for all needed outputs
         self.gen_graph(output_addrs)
@@ -260,11 +260,11 @@ class ExcelCompiler(object):
                     walk_dependents(child_cell)
 
         try:
-            for addr in input_addrs:
+            for addr in (AddressRange(a) for a in input_addrs):
                 if addr in self.cell_map:
                     walk_dependents(self.cell_map[addr])
                 else:
-                    self.log.warn(
+                    self.log.warning(
                         'Address {} not found in cell_map'.format(addr))
         except nx.exception.NetworkXError as exc:
             raise ValueError('{}: which usually means no outputs are dependant '
@@ -362,7 +362,7 @@ class ExcelCompiler(object):
                 # cells to analyze: only formulas have precedents
                 add_node_to_graph(cell)
 
-    def evaluate_range(self, cell_range):
+    def _evaluate_range(self, cell_range):
 
         if isinstance(cell_range, CellRange):
             assert cell_range.address in self.cell_map
@@ -404,7 +404,7 @@ class ExcelCompiler(object):
                 "Evaluating: %s, %s" % (cell.address, cell.python_code))
             if self.eval is None:
                 self.eval = ExcelFormula.build_eval_context(
-                    self.evaluate, self.evaluate_range)
+                    self.evaluate, self._evaluate_range)
             value = self.eval(cell.formula)
             if value is None:
                 value = '#EMPTY!'
@@ -449,26 +449,22 @@ class ExcelCompiler(object):
 
     def process_gen_graph(self):
 
-        while self.address_todos or self.graph_todos:
-            if self.address_todos:
-                self.make_cells(self.address_todos.pop())
+        while self.graph_todos:
+            # connect the dependant cells in the graph
+            dependant = self.graph_todos.pop()
 
-            else:
-                # connect the dependant cells in the graph
-                dependant = self.graph_todos.pop()
+            self.log.debug("Handling {}".format(dependant.address))
 
-                self.log.debug("Handling {}".format(dependant.address))
+            for precedent_address in dependant.needed_addresses:
+                if precedent_address not in self.cell_map:
+                    self.gen_graph(precedent_address, recursed=True)
 
-                for precedent_address in dependant.needed_addresses:
-                    if precedent_address not in self.cell_map:
-                        self.gen_graph(precedent_address, recursed=True)
-
-                    self.dep_graph.add_edge(
-                        self.cell_map[precedent_address], dependant)
+                self.dep_graph.add_edge(
+                    self.cell_map[precedent_address], dependant)
 
         # calc the values for ranges
         for range_todo in reversed(self.range_todos):
-            self.evaluate_range(range_todo)
+            self._evaluate_range(range_todo)
 
         self.log.info(
             "Graph construction done, %s nodes, "

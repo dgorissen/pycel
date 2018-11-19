@@ -1,4 +1,7 @@
+import os
 import pytest
+
+from unittest import mock
 
 from pycel.excelcompiler import Cell, CellRange, ExcelCompiler
 from pycel.excelformula import CompilerError
@@ -30,25 +33,54 @@ def test_end_2_end(excel, example_xls_path):
 
 
 def test_round_trip_through_json_and_pickle(excel, example_xls_path):
-    excel_compiler_json = ExcelCompiler(excel=excel)
-    excel_compiler_json.evaluate('Sheet1!D1')
-    excel_compiler_json.extra_data = {1: 3}
-    excel_compiler_json.to_json()
-    excel_compiler_json.to_file()
+    excel_compiler = ExcelCompiler(excel=excel)
+    excel_compiler.evaluate('Sheet1!D1')
+    excel_compiler.extra_data = {1: 3}
+    excel_compiler.to_file()
+    excel_compiler.to_yaml()
+    excel_compiler.to_json()
 
     # read the spreadsheet from json
     excel_compiler_json = ExcelCompiler.from_json(excel.filename)
+    excel_compiler_yaml = ExcelCompiler.from_yaml(excel.filename)
     excel_compiler = ExcelCompiler.from_file(excel.filename)
 
     # test evaluation
     assert -0.02286 == round(excel_compiler_json.evaluate('Sheet1!D1'), 5)
+    assert -0.02286 == round(excel_compiler_yaml.evaluate('Sheet1!D1'), 5)
     assert -0.02286 == round(excel_compiler.evaluate('Sheet1!D1'), 5)
 
     excel_compiler_json.set_value('Sheet1!A1', 200)
     assert -0.00331 == round(excel_compiler_json.evaluate('Sheet1!D1'), 5)
 
+    excel_compiler_yaml.set_value('Sheet1!A1', 200)
+    assert -0.00331 == round(excel_compiler_yaml.evaluate('Sheet1!D1'), 5)
+
     excel_compiler.set_value('Sheet1!A1', 200)
     assert -0.00331 == round(excel_compiler.evaluate('Sheet1!D1'), 5)
+
+
+def test_filename_ext(excel, example_xls_path):
+    excel_compiler = ExcelCompiler(excel=excel)
+    excel_compiler.evaluate('Sheet1!D1')
+    excel_compiler.extra_data = {1: 3}
+    pickle_name = excel_compiler.filename + '.pkl'
+    yaml_name = excel_compiler.filename + '.yaml'
+    json_name = excel_compiler.filename + '.json'
+
+    for name in (pickle_name, yaml_name, json_name):
+        try:
+            os.unlink(name)
+        except FileNotFoundError:
+            pass
+
+    excel_compiler.to_file(pickle_name)
+    excel_compiler.to_yaml(yaml_name)
+    excel_compiler.to_json(json_name)
+
+    assert os.path.exists(pickle_name)
+    assert os.path.exists(yaml_name)
+    assert os.path.exists(json_name)
 
 
 def test_hash_matches(excel):
@@ -115,8 +147,8 @@ def test_value_tree_str(excel):
 
 def test_trim_cells(excel):
     excel_compiler = ExcelCompiler(excel=excel)
-    input_addrs = [AddressRange('trim-range!D5')]
-    output_addrs = [AddressRange('trim-range!B2')]
+    input_addrs = ['trim-range!D5']
+    output_addrs = ['trim-range!B2']
 
     old_value = excel_compiler.evaluate(output_addrs[0])
 
@@ -127,6 +159,31 @@ def test_trim_cells(excel):
         excel_compiler.filename).evaluate(output_addrs[0])
 
     assert old_value == new_value
+
+
+def test_trim_cells_warn_address_not_found(excel):
+    excel_compiler = ExcelCompiler(excel=excel)
+    input_addrs = ['trim-range!D5', 'trim-range!H1']
+    output_addrs = ['trim-range!B2']
+
+    excel_compiler.evaluate(output_addrs[0])
+    excel_compiler.log.warning = mock.Mock()
+    excel_compiler.trim_graph(input_addrs, output_addrs)
+    assert 1 == excel_compiler.log.warning.call_count
+
+
+def test_trim_cells_exception_input_unused(excel):
+
+    excel_compiler = ExcelCompiler(excel=excel)
+    input_addrs = ['trim-range!G1']
+    output_addrs = ['trim-range!B2']
+    excel_compiler.evaluate(output_addrs[0])
+    excel_compiler.evaluate(input_addrs[0])
+
+    with pytest.raises(
+            ValueError,
+            match=' which usually means no outputs are dependant on it'):
+        excel_compiler.trim_graph(input_addrs, output_addrs)
 
 
 def test_compile_error_message_line_number(excel):
