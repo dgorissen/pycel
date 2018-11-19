@@ -3,7 +3,8 @@ import hashlib
 import itertools as it
 import json
 import logging
-import sys
+import os
+import pickle
 
 import networkx as nx
 from networkx.drawing.nx_pydot import write_dot
@@ -64,6 +65,18 @@ class ExcelCompiler(object):
 
         self.extra_data = None
 
+    def __getstate__(self):
+        # code objects are not serializable
+        state = dict(self.__dict__)
+        for to_remove in 'eval excel log'.split():
+            if to_remove in state:
+                state[to_remove] = None
+        return state
+
+    def __setstate__(self, d):
+        self.__dict__.update(d)
+        self.log = logging.getLogger('pycel')
+
     @property
     def _compute_excel_file_md5_digest(self):
         hash_md5 = hashlib.md5()
@@ -78,10 +91,9 @@ class ExcelCompiler(object):
         return self._excel_file_md5_digest == current_hash
 
     def to_json(self, filename=None):
-        self.to_file(filename=filename, is_json=True)
+        self.to_yaml(filename=filename, is_json=True)
 
-    def to_file(self, filename=None, is_json=False):
-
+    def to_yaml(self, filename=None, is_json=False):
         """Serialize to a json file"""
         extra_data = {} if self.extra_data is None else self.extra_data
 
@@ -101,7 +113,7 @@ class ExcelCompiler(object):
         filename = filename or self.filename
 
         if not is_json:
-            if not filename.split('.')[-1].startswith('.y'):
+            if not filename.split('.')[-1].startswith('y'):
                 filename += '.yml'
 
             with open(filename, 'w') as f:
@@ -118,13 +130,13 @@ class ExcelCompiler(object):
 
     @classmethod
     def from_json(cls, filename):
-        return cls.from_file(filename, is_json=True)
+        return cls.from_yaml(filename, is_json=True)
 
     @classmethod
-    def from_file(cls, filename, is_json=False):
+    def from_yaml(cls, filename, is_json=False):
 
         if not is_json:
-            if not filename.split('.')[-1].startswith('.y'):
+            if not filename.split('.')[-1].startswith('y'):
                 filename += '.yml'
         else:
             if not filename.endswith('.json'):
@@ -137,7 +149,6 @@ class ExcelCompiler(object):
         excel_compiler = cls(excel=excel)
         excel.compiler = excel_compiler
 
-        # ::TODO:: can we defer these operations until needed?
         for address, python_code in data['cell_map'].items():
             lineno = data['cell_map'].lc.data[address][0] + 1
             address = AddressRange(address)
@@ -154,6 +165,30 @@ class ExcelCompiler(object):
         del data['excel_hash']
 
         excel_compiler.extra_data = data
+        return excel_compiler
+
+    def to_file(self, filename=None):
+        """"""
+        filename = filename or self.filename
+
+        # round trip through yaml to strip out junk
+        yaml_name = filename + '.yml'
+        self.to_yaml(yaml_name)
+        excel_compiler = self.from_yaml(yaml_name)
+        os.unlink(yaml_name)
+
+        if not filename.split('.')[-1].startswith('p'):
+            filename += '.pkl'
+        with open(filename, 'wb') as f:
+            pickle.dump(excel_compiler, f)
+
+    @classmethod
+    def from_file(cls, filename):
+        if not filename.split('.')[-1].startswith('p'):
+            filename += '.pkl'
+
+        with open(filename, 'rb') as f:
+            excel_compiler = pickle.load(f)
         return excel_compiler
 
     def export_to_dot(self, fname):

@@ -29,26 +29,26 @@ def test_end_2_end(excel, example_xls_path):
     # excel_compiler.save_to_file(example_xls_path + ".pickle")
 
 
-def test_round_trip_through_json_and_yaml(excel, example_xls_path):
-    excel_compiler = ExcelCompiler(excel=excel)
-    excel_compiler.evaluate('Sheet1!D1')
-    excel_compiler.extra_data = {1: 3}
-    excel_compiler.to_json()
-    excel_compiler.to_file()
+def test_round_trip_through_json_and_pickle(excel, example_xls_path):
+    excel_compiler_json = ExcelCompiler(excel=excel)
+    excel_compiler_json.evaluate('Sheet1!D1')
+    excel_compiler_json.extra_data = {1: 3}
+    excel_compiler_json.to_json()
+    excel_compiler_json.to_file()
 
     # read the spreadsheet from json
-    excel_compiler = ExcelCompiler.from_json(excel.filename)
-    excel_compiler_yaml = ExcelCompiler.from_file(excel.filename)
+    excel_compiler_json = ExcelCompiler.from_json(excel.filename)
+    excel_compiler = ExcelCompiler.from_file(excel.filename)
 
     # test evaluation
+    assert -0.02286 == round(excel_compiler_json.evaluate('Sheet1!D1'), 5)
     assert -0.02286 == round(excel_compiler.evaluate('Sheet1!D1'), 5)
-    assert -0.02286 == round(excel_compiler_yaml.evaluate('Sheet1!D1'), 5)
+
+    excel_compiler_json.set_value('Sheet1!A1', 200)
+    assert -0.00331 == round(excel_compiler_json.evaluate('Sheet1!D1'), 5)
 
     excel_compiler.set_value('Sheet1!A1', 200)
     assert -0.00331 == round(excel_compiler.evaluate('Sheet1!D1'), 5)
-
-    excel_compiler_yaml.set_value('Sheet1!A1', 200)
-    assert -0.00331 == round(excel_compiler_yaml.evaluate('Sheet1!D1'), 5)
 
 
 def test_hash_matches(excel):

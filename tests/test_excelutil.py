@@ -1,3 +1,5 @@
+import os
+import pickle
 import pytest
 from pycel.excelutil import (
     MAX_COL,
@@ -146,6 +148,35 @@ def test_address_range_columns():
     assert all('A' == addr.column for addr in columns[0])
     assert all('C' == addr.column for addr in columns[-1])
 
+
+def test_address_pickle(tmpdir):
+    addrs = [
+        AddressRange('B1'),
+        AddressRange('B1:C1'),
+        AddressRange('B1:B2'),
+        AddressRange('B1:C2'),
+        AddressRange('sh!B1'),
+        AddressRange('sh!B1:C1'),
+        AddressRange('sh!B1:B2'),
+        AddressRange('sh!B1:C2'),
+        AddressRange('B:C'),
+        AddressRange('2:4'),
+        AddressCell('sh!XFC1048575'),
+        AddressCell('sh!XFD1048576'),
+        AddressCell('sh!A1'),
+        AddressCell('sh!E5'),
+        AddressCell('sh!F6'),
+    ]
+
+    filename = os.path.join(tmpdir, 'test_addrs.pkl')
+    with open(filename, 'wb') as f:
+        pickle.dump(addrs, f)
+
+    with open(filename, 'rb') as f:
+        new_addrs = pickle.load(f)
+
+    assert addrs == new_addrs
+    
 
 @pytest.mark.parametrize(
     'sheet_name',

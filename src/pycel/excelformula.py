@@ -406,6 +406,14 @@ class ExcelFormula(object):
     def __str__(self):
         return self.base_formula or self.python_code
 
+    def __getstate__(self):
+        # code objects are not serializable
+        state = dict(self.__dict__)
+        for to_remove in '_compiled_python _ast _rpn _dep_graph'.split():
+            if to_remove in state:
+                state[to_remove] = None
+        return state
+
     @property
     def rpn(self):
         if self._rpn is None:

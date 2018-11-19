@@ -52,7 +52,11 @@ OPERATORS = {
 class AddressRange(collections.namedtuple(
         'Address', 'sheet start end coordinate address')):
 
-    def __new__(cls, address, sheet=''):
+    def __new__(cls, address, *args, **kwargs):
+        if args:
+            return super(AddressRange, cls).__new__(cls, address, *args)
+
+        sheet = kwargs.get('sheet', '')
 
         if isinstance(address, str):
             return cls.create(address, sheet=sheet)
@@ -80,9 +84,9 @@ class AddressRange(collections.namedtuple(
 
             start_col, start_row, end_col, end_row = address
             start = AddressCell(
-                (start_col, start_row, start_col, start_row), sheet)
+                (start_col, start_row, start_col, start_row), sheet=sheet)
             end = AddressCell(
-                (end_col, end_row, end_col, end_row), sheet)
+                (end_col, end_row, end_col, end_row), sheet=sheet)
 
         coordinate = '{0}:{1}'.format(start.coordinate, end.coordinate)
 
@@ -125,7 +129,7 @@ class AddressRange(collections.namedtuple(
         """Get each addresses for every cell, yields one row at a time."""
         col_range = self.start.col_idx, self.end.col_idx + 1
         for row in range(self.start.row, self.end.row + 1):
-            yield (AddressCell((col, row, col, row), self.sheet)
+            yield (AddressCell((col, row, col, row), sheet=self.sheet)
                    for col in range(*col_range))
 
     @property
@@ -133,7 +137,7 @@ class AddressRange(collections.namedtuple(
         """Get each addresses for every cell, yields one column at a time."""
         col_range = self.start.col_idx, self.end.col_idx + 1
         for col in range(*col_range):
-            yield (AddressCell((col, row, col, row), self.sheet)
+            yield (AddressCell((col, row, col, row), sheet=self.sheet)
                    for row in range(self.start.row, self.end.row + 1))
 
     @classmethod
@@ -157,7 +161,11 @@ class AddressRange(collections.namedtuple(
 class AddressCell(collections.namedtuple(
         'AddressCell', 'sheet col_idx row coordinate address')):
 
-    def __new__(cls, address, sheet=None):
+    def __new__(cls, address, *args, **kwargs):
+        if args:
+            return super(AddressCell, cls).__new__(cls, address, *args)
+
+        sheet = kwargs.get('sheet', '')
 
         if isinstance(address, str):
             return cls.create(address, sheet=sheet)
