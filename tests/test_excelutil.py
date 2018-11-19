@@ -208,16 +208,16 @@ def test_split_sheetname():
     
 
 def test_address_cell_enum():
-    assert ('', 2, 1, 'B1', 'B1') == AddressCell('B1')
-    assert ('sheet', 2, 1, 'B1', 'sheet!B1') == AddressCell('sheet!B1')
+    assert ('B1', '', 2, 1, 'B1') == AddressCell('B1')
+    assert ('sheet!B1', 'sheet', 2, 1, 'B1') == AddressCell('sheet!B1')
 
-    assert ('', 1, 1, 'A1', 'A1') == AddressCell('R1C1')
-    assert ('sheet', 1, 1, 'A1', 'sheet!A1') == AddressCell('sheet!R1C1')
+    assert ('A1', '', 1, 1, 'A1') == AddressCell('R1C1')
+    assert ('sheet!A1', 'sheet', 1, 1, 'A1') == AddressCell('sheet!R1C1')
 
     cell = ATestCell('A', 1)
-    assert ('', 2, 2, 'B2', 'B2') == AddressCell.create(
+    assert ('B2', '', 2, 2, 'B2') == AddressCell.create(
         'R[1]C[1]', cell=cell)
-    assert ('sheet', 2, 2, 'B2', 'sheet!B2') == AddressCell.create(
+    assert ('sheet!B2', 'sheet', 2, 2, 'B2') == AddressCell.create(
         'sheet!R[1]C[1]', cell=cell)
 
     with pytest.raises(ValueError):

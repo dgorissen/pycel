@@ -50,13 +50,11 @@ OPERATORS = {
 
 
 class AddressRange(collections.namedtuple(
-        'Address', 'sheet start end coordinate address')):
+        'Address', 'address sheet start end coordinate')):
 
-    def __new__(cls, address, *args, **kwargs):
+    def __new__(cls, address, *args, sheet=''):
         if args:
             return super(AddressRange, cls).__new__(cls, address, *args)
-
-        sheet = kwargs.get('sheet', '')
 
         if isinstance(address, str):
             return cls.create(address, sheet=sheet)
@@ -92,8 +90,8 @@ class AddressRange(collections.namedtuple(
 
         format_str = '{0}!{1}' if sheet else '{1}'
         return super(AddressRange, cls).__new__(
-            cls, sheet, start, end, coordinate,
-            format_str.format(sheet, coordinate))
+            cls, format_str.format(sheet, coordinate),
+            sheet, start, end, coordinate)
 
     def __str__(self):
         return self.address
@@ -159,13 +157,11 @@ class AddressRange(collections.namedtuple(
 
 
 class AddressCell(collections.namedtuple(
-        'AddressCell', 'sheet col_idx row coordinate address')):
+        'AddressCell', 'address sheet col_idx row coordinate')):
 
-    def __new__(cls, address, *args, **kwargs):
+    def __new__(cls, address, *args, sheet=''):
         if args:
             return super(AddressCell, cls).__new__(cls, address, *args)
-
-        sheet = kwargs.get('sheet', '')
 
         if isinstance(address, str):
             return cls.create(address, sheet=sheet)
@@ -175,7 +171,7 @@ class AddressCell(collections.namedtuple(
                 return address
 
             elif not address.sheet:
-                row, col_idx, coordinate = address[1:4]
+                row, col_idx, coordinate = address[2:5]
 
             else:
                 raise ValueError("Mismatched sheets '{}' and '{}'".format(
@@ -197,8 +193,8 @@ class AddressCell(collections.namedtuple(
             format_str = '{1}'
 
         return super(AddressCell, cls).__new__(
-            cls, sheet, col_idx, row, coordinate,
-            format_str.format(sheet, coordinate))
+            cls, format_str.format(sheet, coordinate),
+            sheet, col_idx, row, coordinate)
 
     def __str__(self):
         return self.address
