@@ -122,6 +122,28 @@ def test_recalculate(excel):
     assert -0.02286 == round(excel_compiler.cell_map[out_address].value, 5)
 
 
+def test_evaluate_range(excel):
+    excel_compiler = ExcelCompiler(excel=excel)
+    result = excel_compiler.evaluate_range('trim-range!B2')
+    assert 136 == result
+
+
+def test_evaluate_empty(excel):
+    excel_compiler = ExcelCompiler(excel=excel)
+    assert 0 == excel_compiler.evaluate('Empty!B1')
+    excel_compiler.recalculate()
+    assert '#EMPTY!' == excel_compiler.evaluate('Empty!B1')
+
+
+def test_gen_graph(excel):
+    excel_compiler = ExcelCompiler(excel=excel)
+    excel.set_sheet('trim-range')
+    excel_compiler.gen_graph('B2')
+
+    with pytest.raises(ValueError, match='Unknown seed'):
+        excel_compiler.gen_graph(None)
+
+
 def test_value_tree_str(excel):
     out_address = AddressRange('trim-range!B2')
     excel_compiler = ExcelCompiler(excel=excel)
@@ -216,3 +238,40 @@ def test_cell_range_repr(excel):
 def test_cell_repr(excel):
     cell_range = Cell('sheet!A1', value=0)
     assert 'sheet!A1 -> 0' == repr(cell_range)
+
+
+def test_gen_gexf(excel, tmpdir):
+    excel_compiler = ExcelCompiler(excel=excel)
+    filename = os.path.join(tmpdir, 'test.gexf')
+    assert not os.path.exists(filename)
+    excel_compiler.export_to_gexf(filename)
+    assert os.path.exists(filename)
+
+
+def test_gen_dot(excel, tmpdir):
+    excel_compiler = ExcelCompiler(excel=excel)
+    filename = os.path.join(tmpdir, 'test.dot')
+    assert not os.path.exists(filename)
+    excel_compiler.export_to_dot(filename)
+    assert os.path.exists(filename)
+
+
+def test_plot_graph(excel, tmpdir):
+    from unittest import mock
+    import sys
+    mock_imports = (
+        'matplotlib',
+        'matplotlib.pyplot',
+        'matplotlib.cbook',
+        'matplotlib.colors',
+        'matplotlib.collections',
+        'matplotlib.patches',
+    )
+    for mock_import in mock_imports:
+        sys.modules[mock_import] = mock.MagicMock()
+    out_address = AddressRange('trim-range!B2')
+    excel_compiler = ExcelCompiler(excel=excel)
+    excel_compiler.evaluate(out_address)
+
+    with mock.patch('pycel.excelcompiler.nx'):
+        excel_compiler.plot_graph()

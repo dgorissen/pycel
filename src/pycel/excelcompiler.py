@@ -432,7 +432,7 @@ class ExcelCompiler(object):
 
         # get/set the current sheet
         if not seed.has_sheet:
-            seed = AddressRange(seed, self.excel.get_active_sheet_name())
+            seed = AddressRange(seed, sheet=self.excel.get_active_sheet_name())
         else:
             # ::TODO:: Is this needed?!?
             self.excel.set_sheet(seed.sheet)
