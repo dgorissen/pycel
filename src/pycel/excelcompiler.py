@@ -239,7 +239,7 @@ class ExcelCompiler(object):
 
         for cell in self.cell_map.values():
             if isinstance(cell, CellRange):
-                self._evaluate_range(cell)
+                self.evaluate_range(cell)
             else:
                 self.evaluate(cell)
 
@@ -362,7 +362,7 @@ class ExcelCompiler(object):
                 # cells to analyze: only formulas have precedents
                 add_node_to_graph(cell)
 
-    def _evaluate_range(self, cell_range):
+    def evaluate_range(self, cell_range):
 
         if isinstance(cell_range, CellRange):
             assert cell_range.address in self.cell_map
@@ -404,7 +404,7 @@ class ExcelCompiler(object):
                 "Evaluating: %s, %s" % (cell.address, cell.python_code))
             if self.eval is None:
                 self.eval = ExcelFormula.build_eval_context(
-                    self.evaluate, self._evaluate_range)
+                    self.evaluate, self.evaluate_range)
             value = self.eval(cell.formula)
             if value is None:
                 value = '#EMPTY!'
@@ -434,6 +434,7 @@ class ExcelCompiler(object):
         if not seed.has_sheet:
             seed = AddressRange(seed, self.excel.get_active_sheet_name())
         else:
+            # ::TODO:: Is this needed?!?
             self.excel.set_sheet(seed.sheet)
 
         if seed in self.cell_map:
@@ -464,7 +465,7 @@ class ExcelCompiler(object):
 
         # calc the values for ranges
         for range_todo in reversed(self.range_todos):
-            self._evaluate_range(range_todo)
+            self.evaluate_range(range_todo)
 
         self.log.info(
             "Graph construction done, %s nodes, "

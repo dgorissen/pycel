@@ -65,11 +65,11 @@ def excel_operator_operand_fixup(left_op, op, right_op):
 
     if left_op in (None, '#EMPTY!'):
         left_op = 0 if (
-                not isinstance(right_op, str) or right_op == '#EMPTY!') else ''
+            not isinstance(right_op, str) or right_op == '#EMPTY!') else ''
 
     if right_op in (None, '#EMPTY!'):
         right_op = 0 if (
-                not isinstance(left_op, str) or left_op == '#EMPTY!') else ''
+            not isinstance(left_op, str) or left_op == '#EMPTY!') else ''
 
     if op in ('Eq', 'NotEq'):
         if isinstance(left_op, str) and isinstance(right_op, str):

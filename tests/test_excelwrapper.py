@@ -69,6 +69,27 @@ def test_get_range_formula(excel):
     assert '' == result
 
 
+def test_get_value_with_formula(excel):
+    result = excel.get_range("Sheet1!A2:C2").Value
+    assert ((2, 9, -0.9917788534431158),) == result
+
+    result = excel.get_range("Sheet1!A1:A3").Value
+    assert ((1,), (2,), (3,)) == result
+
+    result = excel.get_range("Sheet1!B2").Value
+    assert 9 == result
+
+    excel.set_sheet('Sheet1')
+    result = excel.get_range("B2").Value
+    assert 9 == result
+
+    result = excel.get_range("Sheet1!AA1:AA3").Value
+    assert ((None,), (None,), (None,)) == result
+
+    result = excel.get_range("Sheet1!CC2").Value
+    assert result is None
+
+
 def test_get_range_value(excel):
     result = excel.get_range("Sheet1!A2:C2").Value
     assert ((2, 9, -0.9917788534431158),) == result
@@ -83,7 +104,7 @@ def test_get_range_value(excel):
     assert ((None,), (None,), (None,)) == result
 
     result = excel.get_range("Sheet1!CC2").Value
-    assert None == result
+    assert result is None
 
 
 def test_get_ranged_names(excel):

@@ -171,7 +171,7 @@ class _OpxCell(_OpxRange):
     """
     def __init__(self, cell, cell_dataonly):
         self.formulas = self.cell_to_formula(cell)
-        self.values = self.cell_to_value(cell)
+        self.values = self.cell_to_value(cell_dataonly)
 
 
 class ExcelOpxWrapper(ExcelWrapper):
