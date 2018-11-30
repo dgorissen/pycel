@@ -1,3 +1,4 @@
+import logging
 import os
 import pickle
 from unittest import mock
@@ -6,12 +7,12 @@ import pytest
 
 from pycel.excelformula import (
     ASTNode,
-    CompilerError,
+    FormulaEvalError,
     ExcelFormula,
     FormulaParserError,
     Token,
 )
-from pycel.excelutil import DIV0
+from pycel.excelutil import DIV0, VALUE_ERROR
 
 from test_excelutil import ATestCell
 
@@ -514,7 +515,7 @@ def test_build_eval_context():
     assert 44 == eval_context(ExcelFormula('=2 * 21 + A1 + a1:a2'))
     assert 1 == eval_context(ExcelFormula('=1 + sin(0)'))
 
-    with pytest.raises(CompilerError,
+    with pytest.raises(FormulaEvalError,
                        match="name 'unknown_function' is not defined"):
         eval_context(ExcelFormula('=unknown_function(0)'))
 
@@ -611,17 +612,84 @@ def test_string_concat():
     assert 'aA' == eval_ctx(ExcelFormula('="a"&"A"'))
 
 
-def test_div_zero():
+def test_div_zero(caplog):
     eval_ctx = ExcelFormula.build_eval_context(
-        lambda x: DIV0, lambda x: [[1, 1], [1, DIV0]])
+        lambda x: DIV0, lambda x: [[1, 1], [1, DIV0]],
+        logging.getLogger('pycel_x'))
 
-    assert DIV0 == eval_ctx(ExcelFormula('=1/0'))
     assert DIV0 == eval_ctx(ExcelFormula('=sum(A1)'))
     assert DIV0 == eval_ctx(ExcelFormula('=sum(A1:B2)'))
     assert DIV0 == eval_ctx(ExcelFormula('=a1=1'))
     assert DIV0 == eval_ctx(ExcelFormula('=a1+"l"'))
 
     assert 3 == eval_ctx(ExcelFormula('=iferror(1/0,3)'))
+    assert 1 == len(caplog.records)
+    assert "WARNING" == caplog.records[0].levelname
+    assert "1 Div 0" in caplog.records[0].message
+
+    assert DIV0 == eval_ctx(ExcelFormula('=1/0'))
+    assert 2 == len(caplog.records)
+    assert "WARNING" == caplog.records[1].levelname
+
+    message = """return PYTHON_AST_OPERATORS[op](left_op, right_op)
+ZeroDivisionError: division by zero
+Eval: 1 / 0
+Values: 1 Div 0"""
+    assert message in caplog.records[1].message
+
+
+def test_value_error(caplog):
+    eval_ctx = ExcelFormula.build_eval_context(
+        lambda x: VALUE_ERROR, lambda x: [[1, 1], [1, VALUE_ERROR]],
+        logging.getLogger('pycel_x'))
+
+    assert VALUE_ERROR == eval_ctx(ExcelFormula('=sum(A1)'))
+    assert VALUE_ERROR == eval_ctx(ExcelFormula('=sum(A1:B2)'))
+    assert VALUE_ERROR == eval_ctx(ExcelFormula('=a1=1'))
+    assert VALUE_ERROR == eval_ctx(ExcelFormula('=a1+"l"'))
+
+    assert 3 == eval_ctx(ExcelFormula('=iferror(1+"A",3)'))
+    assert 1 == len(caplog.records)
+    assert "WARNING" == caplog.records[0].levelname
+    assert "unsupported operand type(s)" in caplog.records[0].message
+
+    assert VALUE_ERROR == eval_ctx(ExcelFormula('=1+"A"'))
+    assert 2 == len(caplog.records)
+    assert "WARNING" == caplog.records[1].levelname
+
+    message = """return PYTHON_AST_OPERATORS[op](left_op, right_op)
+TypeError: unsupported operand type(s) for +: 'int' and 'str'
+Eval: 1 + "A"
+Values: 1 Add A"""
+    assert message in caplog.records[1].message
+
+
+def test_string_number_mult(caplog):
+    eval_ctx = ExcelFormula.build_eval_context(
+        lambda x: VALUE_ERROR, lambda x: [[1, 1], [1, VALUE_ERROR]],
+        logging.getLogger('pycel_x'))
+
+    assert 3 == eval_ctx(ExcelFormula('=iferror(2*"A",3)'))
+    assert 1 == len(caplog.records)
+    assert "WARNING" == caplog.records[0].levelname
+    assert "Cannot multiple type:" in caplog.records[0].message
+
+    assert VALUE_ERROR == eval_ctx(ExcelFormula('="a"*2'))
+    assert 2 == len(caplog.records)
+    assert "WARNING" == caplog.records[1].levelname
+
+    message = """Eval: "a" * 2
+Cannot multiple type: str(a) * int(2)"""
+    assert message in caplog.records[1].message
+
+
+def test_eval_exception():
+    eval_ctx = ExcelFormula.build_eval_context(
+        lambda x: 1 + 'a', lambda x: [[1, 1], [1, DIV0]],
+        logging.getLogger('pycel'))
+
+    with pytest.raises(FormulaEvalError):
+        eval_ctx(ExcelFormula('=a1'))
 
 
 def test_lineno_on_error_reporting(capsys):
@@ -631,14 +699,14 @@ def test_lineno_on_error_reporting(capsys):
     excel_formula._python_code = 'X'
     excel_formula.lineno = 6
 
-    with pytest.raises(CompilerError, match='File "X", line 6'):
+    with pytest.raises(FormulaEvalError, match='File "X", line 6'):
         eval_ctx(excel_formula)
 
-    excel_formula._python_code = 'object() + 1'
+    excel_formula._python_code = '(x)'
     excel_formula._compiled_python = None
     excel_formula.lineno = 60
 
-    with pytest.raises(CompilerError, match=', line 60,'):
+    with pytest.raises(FormulaEvalError, match=', line 60,'):
         eval_ctx(excel_formula)
 
 

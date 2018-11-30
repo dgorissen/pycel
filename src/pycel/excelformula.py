@@ -1,10 +1,12 @@
 import ast
+import logging
 import re
 
 import openpyxl.formula.tokenizer as tokenizer
 from networkx.classes.digraph import DiGraph
 from pycel.excelutil import (
     AddressRange,
+    build_operator_operand_fixup,
     DIV0,
     get_linest_degree,
     uniqueify,
@@ -13,12 +15,16 @@ from pycel.excelutil import (
 EVAL_REGEX = re.compile(r'(_C_|_R_)(\([^)]*\))')
 
 
-class FormulaParserError(Exception):
+class PyCelException(Exception):
     """Base class for Parser errors"""
 
 
-class CompilerError(Exception):
-    """Base class for Compiler errors"""
+class FormulaParserError(PyCelException):
+    """Error during parsing"""
+
+
+class FormulaEvalError(PyCelException):
+    """Error during eval"""
 
 
 class Tokenizer(tokenizer.Tokenizer):
@@ -646,7 +652,7 @@ class ExcelFormula(object):
         return stack[0]
 
     @classmethod
-    def build_eval_context(cls, evaluate, evaluate_range):
+    def build_eval_context(cls, evaluate, evaluate_range, logger=None):
         """eval with namespace management.  Will auto import needed functions
 
         Used like:
@@ -655,6 +661,7 @@ class ExcelFormula(object):
 
         :param evaluate: a function to evaluate a cell address
         :param evaluate_range: a function to evaluate a range address
+        :param logger: a looger to use (defaults to pycel)
         :return: a function to evaluate a compiled expression from build_ast
         """
 
@@ -665,15 +672,41 @@ class ExcelFormula(object):
             importlib.import_module('math'),
         )
 
+        logger = logger or logging.getLogger('pycel')
+        error_messages = []
+
+        def capture_error_state(is_exception, msg):
+            if is_exception:
+                import traceback
+                trace = traceback.format_exc()
+            else:
+                trace = ''
+            error_messages.append((trace, msg))
+
+        def error_logger(level, python_code, msg=None, exc=None):
+            """ Log a traceback, a msg, and reraise if asked
+
+            :param level: level for the logger "error", "warning", "debug"...
+            :param python_code: Code which caused the error
+            :param msg: Additional information for logging
+            :param exc: An exception to reraise, if desired
+            :return: the constructed error message if not reraising
+            """
+            if exc:
+                capture_error_state(exc, msg)
+                assert 1 == len(error_messages)
+            trace, msg = error_messages.pop()
+            fmt_str = "{0}Eval: {1}" if msg is None else "{0}Eval: {1}\n{2}"
+            error_msg = fmt_str.format(trace, python_code, msg)
+            getattr(logger, level)(error_msg)
+            if exc is not None:
+                raise exc(error_msg)
+            return error_msg
+
         def eval_func(excel_formula):
 
             # the compiled expressions can call these functions if
             # referencing other cells or a range of cells
-
-            def report_error():
-                import traceback
-                raise CompilerError("{}    {}".format(
-                    traceback.format_exc(), excel_formula.python_code))
 
             def _C_(address):
                 return evaluate(address)
@@ -686,21 +719,30 @@ class ExcelFormula(object):
                 funcs = (getattr(module, func_name, None) for module in modules)
                 return next((f for f in funcs if f is not None), None)
 
+            locals()['excel_operator_operand_fixup'] = \
+                build_operator_operand_fixup(capture_error_state)
+
             while True:
                 try:
-                    return eval(excel_formula.compiled_python)
+                    ret_val = eval(excel_formula.compiled_python)
+                    break
                 except NameError as exc:
                     name = str(exc).split("'")[1]
                     func = load_func(name)
                     if func is None:
-                        report_error()
+                        error_logger('error', excel_formula.python_code,
+                                     exc=FormulaEvalError)
                     locals()[name] = func
 
-                except ZeroDivisionError:
-                    return DIV0
-
                 except Exception:
-                    report_error()
+                    error_logger('error', excel_formula.python_code,
+                                 exc=FormulaEvalError)
+
+            if error_messages:
+                error_logger('warning', excel_formula.python_code)
+
+            return ret_val
+
 
         return eval_func
 

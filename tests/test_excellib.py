@@ -3,11 +3,10 @@ import math
 import numpy as np
 import pytest
 
-from pycel.excelutil import DIV0, ERROR_CODES
+from pycel.excelutil import DIV0, ERROR_CODES, VALUE_ERROR
 from pycel.excellib import (
     # ::TODO:: finish test cases for remainder of functions
     _numerics,
-    excel_operator_operand_fixup,
     average,
     count,
     countif,
@@ -39,107 +38,6 @@ from pycel.excellib import (
 
 def test_numerics():
     assert [1, 3, 2, 3.1] == _numerics((1, '3', 2.0, pytest, 3.1, 'x'))
-
-
-@pytest.mark.parametrize(
-    'left_op, op, right_op, expected',
-    [
-        # left None
-        (None, 'Eq', '', True),
-        (None, 'Eq', '0', False),
-        (None, 'Eq', 0, True),
-        (None, 'Eq', 1, False),
-
-        # right None
-        ('', 'Eq', None, True),
-        ('0', 'Eq', None, False),
-        (0, 'Eq', None, True),
-        (1, 'Eq', None, False),
-
-        # case in-sensitive
-        ('a', 'Eq', 'A', True),
-        ('A', 'NotEq', 'a', False),
-        ('b', 'NotEq', 'A', True),
-        ('A', 'Eq', 'b', False),
-
-        # string concat
-        ('0', 'BitAnd', 0, '00'),
-        (0, 'BitAnd', '0', '00'),
-        ('1', 'BitAnd', 1, '11'),
-        (1, 'BitAnd', '1', '11'),
-        (0, 'BitAnd', 'X', '0X'),
-        ('X', 'BitAnd', 0, 'X0'),
-
-        # divsion by zero
-        (DIV0, '', '', DIV0),
-        ('', '', DIV0, DIV0),
-
-        ('1', 'Div', '0', DIV0),
-        ('1', 'Div', 0, DIV0),
-        (1, 'Div', '0', DIV0),
-        (1, 'Div', 0, DIV0),
-
-        (1, 'Mod', '0', DIV0),
-        (1, 'Mod', 0, DIV0),
-
-        # type coercion
-        (1, 'Add', 2, 3),
-        (1, 'Add', '2', 3),
-        ('1', 'Add', 2, 3),
-        ('1', 'Add', '2', 3),
-
-        (1, 'Sub', 2, -1),
-        (1, 'Sub', '2', -1),
-        ('1', 'Sub', 2, -1),
-        ('1', 'Sub', '2', -1),
-
-        (1, 'Mult', 2, 2),
-        (1, 'Mult', '2', 2),
-        ('1', 'Mult', 2, 2),
-        ('1', 'Mult', '2', 2),
-
-        (1, 'Div', 2, 0.5),
-        (1, 'Div', '2', 0.5),
-        ('1', 'Div', 2, 0.5),
-        ('1', 'Div', '2', 0.5),
-
-        (5, 'Mod', 2, 1),
-        (5, 'Mod', '2', 1),
-        ('5', 'Mod', 2, 1),
-        ('5', 'Mod', '2', 1),
-
-        (2, 'Pow', 2, 4),
-        (2, 'Pow', '2', 4),
-        ('2', 'Pow', 2, 4),
-        ('2', 'Pow', '2', 4),
-    ]
-)
-def test_excel_operator_operand_fixup(left_op, op, right_op, expected):
-    assert expected == excel_operator_operand_fixup(left_op, op, right_op)
-
-
-@pytest.mark.parametrize(
-    'left_op, op, right_op, exc',
-    [
-        ('', 'BadOp', '', KeyError),
-
-        ('X', 'Add', 0, TypeError),
-        (0, 'Add', 'X', TypeError),
-        ('X', 'Sub', 0, TypeError),
-        (0, 'Sub', 'X', TypeError),
-        ('X', 'Mult', 0, TypeError),
-        (0, 'Mult', 'X', TypeError),
-        ('X', 'Div', 0, TypeError),
-        (0, 'Div', 'X', TypeError),
-        ('X', 'Mod', 0, TypeError),
-        (0, 'Mod', 'X', TypeError),
-        ('X', 'Pow', 0, TypeError),
-        (0, 'Pow', 'X', TypeError),
-    ]
-)
-def test_excel_operator_operand_fixup_errors(left_op, op, right_op, exc):
-    with pytest.raises(exc):
-        excel_operator_operand_fixup(left_op, op, right_op)
 
 
 def test_average():

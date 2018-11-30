@@ -404,7 +404,7 @@ class ExcelCompiler(object):
                 "Evaluating: %s, %s" % (cell.address, cell.python_code))
             if self.eval is None:
                 self.eval = ExcelFormula.build_eval_context(
-                    self.evaluate, self.evaluate_range)
+                    self.evaluate, self.evaluate_range, self.log)
             value = self.eval(cell.formula)
             if value is None:
                 value = '#EMPTY!'

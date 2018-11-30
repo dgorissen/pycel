@@ -2,7 +2,6 @@
 Python equivalents of various excel functions
 """
 
-import operator
 from datetime import datetime
 from decimal import Decimal, ROUND_HALF_UP, ROUND_UP
 
@@ -13,7 +12,6 @@ import numpy as np
 from pycel.excelutil import (
     coerce_to_number,
     date_from_int,
-    DIV0,
     ERROR_CODES,
     find_corresponding_index,
     flatten,
@@ -23,83 +21,23 @@ from pycel.excelutil import (
 )
 
 
-PYTHON_AST_OPERATORS = {
-    'Eq': operator.eq,
-    'Lt': operator.lt,
-    'Gt': operator.gt,
-    'LtE': operator.le,
-    'GtE': operator.ge,
-    'NotEq': operator.ne,
-    'Add': operator.add,
-    'Sub': operator.sub,
-    'Mult': operator.mul,
-    'Div': operator.truediv,
-    'FloorDiv': operator.floordiv,
-    'Mod': operator.mod,
-    'Pow': operator.pow,
-    'LShift': operator.lshift,
-    'RShift': operator.rshift,
-    'BitOr': operator.or_,
-    'BitXor': operator.xor,
-    'BitAnd': operator.and_,
-    'MatMult': operator.matmul,
-}
-
-
 def _numerics(args):
     # ignore non numeric cells
-    return [x for x in (coerce_to_number(y) for y in flatten(args))
-            if isinstance(x, (int, float))]
-
-
-def excel_operator_operand_fixup(left_op, op, right_op):
-    """Fix up python operations to be more excel like in these case:
-
-        Empty cells
-        Case-insensitive string compare
-        String to Number coercion
-        String / Number multiplication
-    """
-    if DIV0 in (left_op, right_op):
-        return DIV0
-
-    if left_op in (None, '#EMPTY!'):
-        left_op = 0 if (
-            not isinstance(right_op, str) or right_op == '#EMPTY!') else ''
-
-    if right_op in (None, '#EMPTY!'):
-        right_op = 0 if (
-            not isinstance(left_op, str) or left_op == '#EMPTY!') else ''
-
-    if op in ('Eq', 'NotEq'):
-        if isinstance(left_op, str) and isinstance(right_op, str):
-            left_op = left_op.lower()
-            right_op = right_op.lower()
-
-    elif op == 'BitAnd':
-        # use bitwise-and '&' as string concat not '+'
-        left_op = str(coerce_to_number(left_op))
-        right_op = str(coerce_to_number(right_op))
-        op = 'Add'
-
+    args = tuple(flatten(args))
+    errors = [x for x in args if x in ERROR_CODES]
+    if errors:
+        return errors[0]
     else:
-        left_op = coerce_to_number(left_op)
-        right_op = coerce_to_number(right_op)
-
-    if op == 'Mult':
-        if isinstance(left_op, str) or isinstance(right_op, str):
-            raise TypeError("Cannot multiple type: {} * {}".format(
-                type(left_op).__name__, type(right_op).__name__))
-
-    try:
-        return PYTHON_AST_OPERATORS[op](left_op, right_op)
-    except ZeroDivisionError:
-        return DIV0
+        return [x for x in (coerce_to_number(y) for y in args)
+                if isinstance(x, (int, float))]
 
 
 def average(*args):
-    args = _numerics(args)
-    return sum(args) / len(args)
+    data = _numerics(args)
+    if isinstance(data, str):
+        return data
+    else:
+        return sum(data) / len(data)
 
 
 def count(*args):
@@ -500,9 +438,11 @@ def xlog(a):
 
 def xmax(*args):
     data = _numerics(args)
+    if isinstance(data, str):
+        return data
 
     # however, if no non numeric cells, return zero (is what excel does)
-    if len(data) < 1:
+    elif len(data) < 1:
         return 0
     else:
         return max(data)
@@ -510,9 +450,11 @@ def xmax(*args):
 
 def xmin(*args):
     data = _numerics(args)
+    if isinstance(data, str):
+        return data
 
     # however, if no non numeric cells, return zero (is what excel does)
-    if len(data) < 1:
+    elif len(data) < 1:
         return 0
     else:
         return min(data)
@@ -540,8 +482,12 @@ def xround(number, num_digits=0):
 
 
 def xsum(*args):
+    data = _numerics(args)
+    if isinstance(data, str):
+        return data
+
     # if no non numeric cells, return zero (is what excel does)
-    return sum(_numerics(args))
+    return sum(data)
 
 
 def yearfrac(start_date, end_date, basis=0):

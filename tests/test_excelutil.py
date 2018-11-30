@@ -6,6 +6,7 @@ from pycel.excelutil import (
     MAX_ROW,
     AddressCell,
     AddressRange,
+    build_operator_operand_fixup,
     coerce_to_number,
     date_from_int,
     range_boundaries,
@@ -20,6 +21,7 @@ from pycel.excelutil import (
     split_sheetname,
     uniqueify,
     unquote_sheetname,
+    VALUE_ERROR,
 )
 from openpyxl.utils import column_index_from_string, quote_sheetname
 
@@ -248,7 +250,7 @@ def test_resolve_range():
     assert [a('sh!B1'), a('sh!C1')] == resolve_range(a('sh!B1:C1', sheet='sh'))
     assert [a('sh!B1'), a('sh!B2')] == resolve_range(a('sh!B1:B2', sheet='sh'))
     assert [[a('sh!B1'), a('sh!C1')],[a('sh!B2'), a('sh!C2')]] == \
-           resolve_range(a('sh!B1:C2', sheet='sh'))
+        resolve_range(a('sh!B1:C2', sheet='sh'))
 
     with pytest.raises(Exception):
         resolve_range(a('sh!B1'), sheet='shx')
@@ -485,3 +487,129 @@ def test_find_corresponding_index():
 
     with pytest.raises(ValueError):
         find_corresponding_index('ABB', None)
+
+
+@pytest.mark.parametrize(
+    'left_op, op, right_op, expected',
+    [
+        # left None
+        (None, 'Eq', '', True),
+        (None, 'Eq', '0', False),
+        (None, 'Eq', 0, True),
+        (None, 'Eq', 1, False),
+
+        # right None
+        ('', 'Eq', None, True),
+        ('0', 'Eq', None, False),
+        (0, 'Eq', None, True),
+        (1, 'Eq', None, False),
+
+        # case in-sensitive
+        ('a', 'Eq', 'A', True),
+        ('A', 'NotEq', 'a', False),
+        ('b', 'NotEq', 'A', True),
+        ('A', 'Eq', 'b', False),
+
+        # string concat
+        ('0', 'BitAnd', 0, '00'),
+        (0, 'BitAnd', '0', '00'),
+        ('1', 'BitAnd', 1, '11'),
+        (1, 'BitAnd', '1', '11'),
+        (0, 'BitAnd', 'X', '0X'),
+        ('X', 'BitAnd', 0, 'X0'),
+
+        # divsion by zero
+        (DIV0, '', '', DIV0),
+        ('', '', DIV0, DIV0),
+
+        ('1', 'Div', '0', DIV0),
+        ('1', 'Div', 0, DIV0),
+        (1, 'Div', '0', DIV0),
+        (1, 'Div', 0, DIV0),
+
+        (1, 'Mod', '0', DIV0),
+        (1, 'Mod', 0, DIV0),
+
+        # type coercion
+        (1, 'Add', 2, 3),
+        (1, 'Add', '2', 3),
+        ('1', 'Add', 2, 3),
+        ('1', 'Add', '2', 3),
+
+        (1, 'Sub', 2, -1),
+        (1, 'Sub', '2', -1),
+        ('1', 'Sub', 2, -1),
+        ('1', 'Sub', '2', -1),
+
+        (1, 'Mult', 2, 2),
+        (1, 'Mult', '2', 2),
+        ('1', 'Mult', 2, 2),
+        ('1', 'Mult', '2', 2),
+
+        (1, 'Div', 2, 0.5),
+        (1, 'Div', '2', 0.5),
+        ('1', 'Div', 2, 0.5),
+        ('1', 'Div', '2', 0.5),
+
+        (5, 'Mod', 2, 1),
+        (5, 'Mod', '2', 1),
+        ('5', 'Mod', 2, 1),
+        ('5', 'Mod', '2', 1),
+
+        (2, 'Pow', 2, 4),
+        (2, 'Pow', '2', 4),
+        ('2', 'Pow', 2, 4),
+        ('2', 'Pow', '2', 4),
+
+        # value errors
+        (VALUE_ERROR, 'Add', 0, VALUE_ERROR),
+        (0, 'Add', VALUE_ERROR, VALUE_ERROR),
+        ('X', 'Add', 0, VALUE_ERROR),
+        (0, 'Add', 'X', VALUE_ERROR),
+        ('X', 'Sub', 0, VALUE_ERROR),
+        (0, 'Sub', 'X', VALUE_ERROR),
+        ('X', 'Mult', 0, VALUE_ERROR),
+        (0, 'Mult', 'X', VALUE_ERROR),
+        ('X', 'Div', 0, VALUE_ERROR),
+        (0, 'Div', 'X', VALUE_ERROR),
+        ('X', 'Mod', 0, VALUE_ERROR),
+        (0, 'Mod', 'X', VALUE_ERROR),
+        ('X', 'Pow', 0, VALUE_ERROR),
+        (0, 'Pow', 'X', VALUE_ERROR),
+    ]
+)
+def test_excel_operator_operand_fixup(left_op, op, right_op, expected):
+    error_messages = []
+
+    def capture_error_state(is_exception, msg):
+        error_messages.append((is_exception, msg))
+
+    assert expected == build_operator_operand_fixup(
+        capture_error_state)(left_op, op, right_op)
+
+    if expected == VALUE_ERROR:
+        if op == 'Mult':
+            assert 'Cannot multiple type: ' in error_messages[0][1]
+        elif expected == VALUE_ERROR and VALUE_ERROR not in (left_op, right_op):
+            assert [(True, 'Values: {} {} {}'.format(left_op, op, right_op))
+                    ] == error_messages
+
+    elif expected == DIV0 and DIV0 not in (left_op, right_op):
+        assert [(True, 'Values: {} {} {}'.format(left_op, op, right_op))
+                ] == error_messages
+
+
+@pytest.mark.parametrize(
+    'left_op, op, right_op, exc',
+    [
+        ('', 'BadOp', '', KeyError),
+    ]
+)
+def test_excel_operator_operand_fixup_errors(left_op, op, right_op, exc):
+    error_messages = []
+
+    def capture_error_state(is_exception, msg):
+        error_messages.append((is_exception, msg))
+
+    with pytest.raises(exc):
+        build_operator_operand_fixup(capture_error_state)(left_op, op, right_op)

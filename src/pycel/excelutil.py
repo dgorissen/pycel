@@ -13,6 +13,7 @@ from openpyxl.utils import (
 
 ERROR_CODES = frozenset(Tokenizer.ERROR_CODES)
 DIV0 = '#DIV/0!'
+VALUE_ERROR = '#VALUE!'
 
 R1C1_ROW_RE_STR = r"R(\[-?\d+\]|\d+)?"
 R1C1_COL_RE_STR = r"C(\[-?\d+\]|\d+)?"
@@ -46,6 +47,28 @@ OPERATORS = {
     '<=': operator.le,
     '>=': operator.ge,
     '<>': operator.ne,
+}
+
+PYTHON_AST_OPERATORS = {
+    'Eq': operator.eq,
+    'Lt': operator.lt,
+    'Gt': operator.gt,
+    'LtE': operator.le,
+    'GtE': operator.ge,
+    'NotEq': operator.ne,
+    'Add': operator.add,
+    'Sub': operator.sub,
+    'Mult': operator.mul,
+    'Div': operator.truediv,
+    'FloorDiv': operator.floordiv,
+    'Mod': operator.mod,
+    'Pow': operator.pow,
+    'LShift': operator.lshift,
+    'RShift': operator.rshift,
+    'BitOr': operator.or_,
+    'BitXor': operator.xor,
+    'BitAnd': operator.and_,
+    'MatMult': operator.matmul,
 }
 
 
@@ -606,3 +629,72 @@ def find_corresponding_index(rng, criteria):
     check = criteria_parser(criteria)
 
     return [index for index, item in enumerate(rng) if check(item)]
+
+
+def build_operator_operand_fixup(capture_error_state):
+
+    def fixup(left_op, op, right_op):
+        """Fix up python operations to be more excel like in these cases:
+
+            divide by zero
+            value errors
+
+            Empty cells
+            Case-insensitive string compare
+            String to Number coercion
+            String / Number multiplication
+        """
+
+        if DIV0 in (left_op, right_op):
+            return DIV0
+
+        if VALUE_ERROR in (left_op, right_op):
+            return VALUE_ERROR
+
+        if left_op in (None, '#EMPTY!'):
+            left_op = 0 if (not isinstance(
+                right_op, str) or right_op == '#EMPTY!') else ''
+
+        if right_op in (None, '#EMPTY!'):
+            right_op = 0 if (not isinstance(
+                left_op, str) or left_op == '#EMPTY!') else ''
+
+        if op in ('Eq', 'NotEq'):
+            if isinstance(left_op, str) and isinstance(right_op, str):
+                left_op = left_op.lower()
+                right_op = right_op.lower()
+
+        elif op == 'BitAnd':
+            # use bitwise-and '&' as string concat not '+'
+            left_op = str(coerce_to_number(left_op))
+            right_op = str(coerce_to_number(right_op))
+            op = 'Add'
+
+        else:
+            left_op = coerce_to_number(left_op)
+            right_op = coerce_to_number(right_op)
+
+        if op == 'Mult':
+            if isinstance(left_op, str) or isinstance(right_op, str):
+                # Python is quite happy to multiply strings and numbers
+                capture_error_state(
+                    False,
+                    "Cannot multiple type: {}({}) * {}({})".format(
+                        type(left_op).__name__, left_op,
+                        type(right_op).__name__, right_op
+                    )
+                )
+                return VALUE_ERROR
+
+        try:
+            return PYTHON_AST_OPERATORS[op](left_op, right_op)
+        except ZeroDivisionError:
+            capture_error_state(
+                True, 'Values: {} {} {}'.format(left_op, op, right_op))
+            return DIV0
+        except TypeError:
+            capture_error_state(
+                True, 'Values: {} {} {}'.format(left_op, op, right_op))
+            return VALUE_ERROR
+
+    return fixup

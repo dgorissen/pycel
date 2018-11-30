@@ -4,7 +4,7 @@ import pytest
 from unittest import mock
 
 from pycel.excelcompiler import Cell, CellRange, ExcelCompiler
-from pycel.excelformula import CompilerError
+from pycel.excelformula import FormulaEvalError
 from pycel.excelutil import AddressRange
 
 
@@ -221,7 +221,8 @@ def test_compile_error_message_line_number(excel):
     formula = excel_compiler.cell_map[output_addrs[0]].formula
     formula._python_code = '(x)'
     formula.lineno = 3000
-    with pytest.raises(CompilerError, match='File "trim-range!B2", line 3000'):
+    with pytest.raises(
+            FormulaEvalError, match='File "trim-range!B2", line 3000'):
         excel_compiler.evaluate(output_addrs[0])
 
 
