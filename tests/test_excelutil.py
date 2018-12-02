@@ -36,6 +36,7 @@ class ATestCell:
         self.col_idx = column_index_from_string(col)
         self.sheet = sheet
         self.excel = None
+        self.address = 'A1'
 
 
 def test_address_range():

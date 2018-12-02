@@ -698,12 +698,14 @@ def test_lineno_on_error_reporting(capsys):
     excel_formula = ExcelFormula('')
     excel_formula._python_code = 'X'
     excel_formula.lineno = 6
+    excel_formula.filename = 'a_file'
 
-    with pytest.raises(FormulaEvalError, match='File "X", line 6'):
+    with pytest.raises(FormulaEvalError, match='File "a_file", line 6'):
         eval_ctx(excel_formula)
 
     excel_formula._python_code = '(x)'
     excel_formula._compiled_python = None
+    excel_formula.compiled_lambda = None
     excel_formula.lineno = 60
 
     with pytest.raises(FormulaEvalError, match=', line 60,'):

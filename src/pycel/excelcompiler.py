@@ -156,6 +156,7 @@ class ExcelCompiler(object):
             formula = excel_compiler.cell_map[address].formula
             if formula is not None:
                 formula.lineno = lineno
+                formula.filename = filename
 
         excel_compiler.process_gen_graph()
         del data['cell_map']
@@ -398,7 +399,7 @@ class ExcelCompiler(object):
             cell = self.cell_map[address]
 
         # calculate the cell value for formulas
-        if cell.compiled_python and cell.value is None:
+        if cell.python_code and cell.value is None:
 
             self.log.debug(
                 "Evaluating: %s, %s" % (cell.address, cell.python_code))
@@ -543,10 +544,9 @@ class Cell(object):
         self.id = Cell.next_id()
 
     def __repr__(self):
-        return str(self)
-
-    def __str__(self):
         return "{} -> {}".format(self.address, self.formula or self.value)
+
+    __str__ = __repr__
 
     @property
     def needed_addresses(self):
@@ -559,10 +559,6 @@ class Cell(object):
     @property
     def python_code(self):
         return self.formula and self.formula.python_code
-
-    @property
-    def compiled_python(self):
-        return self.formula and self.formula.compiled_python or self.value
 
 
 class CompiledImporter:

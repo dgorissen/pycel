@@ -221,8 +221,9 @@ def test_compile_error_message_line_number(excel):
     formula = excel_compiler.cell_map[output_addrs[0]].formula
     formula._python_code = '(x)'
     formula.lineno = 3000
+    formula.filename = 'a_file'
     with pytest.raises(
-            FormulaEvalError, match='File "trim-range!B2", line 3000'):
+            FormulaEvalError, match='File "a_file", line 3000'):
         excel_compiler.evaluate(output_addrs[0])
 
 

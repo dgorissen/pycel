@@ -404,10 +404,14 @@ class ExcelFormula(object):
 
         self.cell = cell
         self.lineno = 1
+        self.filename = str(self.cell.address) if self.cell else (
+            self._python_code or '<unknown>')
+
         self._rpn = None
         self._ast = None
         self._needed_addresses = None
         self._compiled_python = None
+        self.compiled_lambda = None
 
     def __str__(self):
         return self.base_formula or self.python_code
@@ -415,7 +419,8 @@ class ExcelFormula(object):
     def __getstate__(self):
         # code objects are not serializable
         state = dict(self.__dict__)
-        for to_remove in '_compiled_python _ast _rpn _dep_graph'.split():
+        remove_names = 'compiled_lambda _compiled_python _ast _rpn _dep_graph'
+        for to_remove in remove_names.split():
             if to_remove in state:
                 state[to_remove] = None
         return state
@@ -703,87 +708,90 @@ class ExcelFormula(object):
                 raise exc(error_msg)
             return error_msg
 
-        def eval_func(excel_formula):
+        def load_function(excel_formula, name_space):
+            """exec the code into our address space"""
 
             # the compiled expressions can call these functions if
             # referencing other cells or a range of cells
+            name_space['_C_'] = evaluate
+            name_space['_R_'] = evaluate_range
 
-            def _C_(address):
-                return evaluate(address)
-
-            def _R_(rng):
-                return evaluate_range(rng)
-
-            def load_func(func_name):
-                # if a function is not already loaded, load it
-                funcs = (getattr(module, func_name, None) for module in modules)
-                return next((f for f in funcs if f is not None), None)
-
-            locals()['excel_operator_operand_fixup'] = \
+            # function to fixup the operands
+            name_space['excel_operator_operand_fixup'] = \
                 build_operator_operand_fixup(capture_error_state)
 
-            while True:
-                try:
-                    ret_val = eval(excel_formula.compiled_python)
-                    break
-                except NameError as exc:
-                    name = str(exc).split("'")[1]
-                    func = load_func(name)
-                    if func is None:
-                        error_logger('error', excel_formula.python_code,
-                                     exc=FormulaEvalError)
-                    locals()[name] = func
+            # hook for the execed code to save the resulting lambda
+            name_space['lambdas'] = lambdas = []
 
-                except Exception:
-                    error_logger('error', excel_formula.python_code,
-                                 exc=FormulaEvalError)
+            # get the compiled code and needed names
+            compiled, names = excel_formula.compiled_python
+
+            # load the needed names
+            for name in names:
+                if name not in name_space:
+                    funcs = (getattr(module, name, None) for module in
+                             modules)
+                    func = next((f for f in funcs if f is not None), None)
+                    if func is not None:
+                        name_space[name] = func
+
+            # exec the code to define the lambda
+            exec(compiled, name_space, name_space)
+            excel_formula.compiled_lambda = lambdas[0]
+            del name_space['lambdas']
+
+        def eval_func(excel_formula):
+
+            if excel_formula.compiled_lambda is None:
+                load_function(excel_formula, locals())
+
+            try:
+                ret_val = excel_formula.compiled_lambda()
+
+            except Exception:
+                error_logger('error', excel_formula.python_code,
+                             exc=FormulaEvalError)
 
             if error_messages:
                 error_logger('warning', excel_formula.python_code)
 
             return ret_val
 
-
         return eval_func
 
     def _compile_python_ast(self):
-        kwargs = dict(
-            mode='eval',
-            filename=str(self.cell.address) if self.cell else self.python_code,
-        )
-        tree = ast.parse(self.python_code, **kwargs)
+        source_code = "lambdas.append(lambda: {})".format(self.python_code)
+        kwargs = dict(mode='exec', filename=self.filename)
+        tree = ast.parse(source_code, **kwargs)
         ast.increment_lineno(tree, self.lineno - 1)
+
+        names = set()
 
         # edit the ast with a few changes to be more excel like
 
         class OperatorWrapper(ast.NodeTransformer):
-            """Apply excel consistent type conversions"""
+            """Apply excel consistent type conversions, fetch dependant names"""
+
+            def visit_Name(self, node):
+                """ Gather up all names needed """
+                node = ast.NodeTransformer.generic_visit(self, node)
+                names.add(node.id)
+                return node
 
             def visit_Compare(self, node):
                 """ change the compare node to a function node """
-                node = ast.NodeTransformer.generic_visit(self, node)
-
-                left = node.left
-                op = ast.Str(s=type(node.ops[0]).__name__)
-                right = node.comparators[0]
-
-                return ast.Call(
-                    func=ast.Name(id='excel_operator_operand_fixup',
-                                  ctx=ast.Load()),
-                    args=[left, op, right],
-                    keywords=[],
-                    lineno=node.lineno,
-                    col_offset=node.col_offset,
-                )
+                return self.replace_op(node, node.ops[0], node.comparators[0])
 
             def visit_BinOp(self, node):
+                """ change the compare node to a function node """
+                return self.replace_op(node, node.op, node.right)
+
+            def replace_op(self, node, node_op, right):
                 """ change the compare node to a function node """
                 node = ast.NodeTransformer.generic_visit(self, node)
 
                 left = node.left
-                op = ast.Str(s=type(node.op).__name__)
-                right = node.right
-
+                op = ast.Str(s=type(node_op).__name__)
                 return ast.Call(
                     func=ast.Name(id='excel_operator_operand_fixup',
                                   ctx=ast.Load()),
@@ -797,4 +805,4 @@ class ExcelFormula(object):
         tree = ast.fix_missing_locations(OperatorWrapper().visit(tree))
 
         # compile the tree
-        self._compiled_python = compile(tree, **kwargs)
+        self._compiled_python = compile(tree, **kwargs), names
