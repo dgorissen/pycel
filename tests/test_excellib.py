@@ -46,6 +46,12 @@ def test_average():
     with pytest.raises(ZeroDivisionError):
         average('x')
 
+    assert VALUE_ERROR == average(VALUE_ERROR)
+    assert VALUE_ERROR == average((2, VALUE_ERROR))
+
+    assert DIV0 == average(DIV0)
+    assert DIV0 == average((2, DIV0))
+
 
 class TestCount:
 
@@ -542,10 +548,22 @@ def test_xmax():
     assert 0 == xmax('abcd')
     assert 3 == xmax((2, None, 'x', 3))
 
+    assert VALUE_ERROR == xmax(VALUE_ERROR)
+    assert VALUE_ERROR == xmax((2, VALUE_ERROR))
+
+    assert DIV0 == xmax(DIV0)
+    assert DIV0 == xmax((2, DIV0))
+
 
 def test_xmin():
     assert 0 == xmin('abcd')
     assert 2 == xmin((2, None, 'x', 3))
+
+    assert VALUE_ERROR == xmin(VALUE_ERROR)
+    assert VALUE_ERROR == xmin((2, VALUE_ERROR))
+
+    assert DIV0 == xmin(DIV0)
+    assert DIV0 == xmin((2, DIV0))
 
 
 @pytest.mark.parametrize(
@@ -601,6 +619,12 @@ class TestXRound:
 def test_xsum():
     assert 0 == xsum('abcd')
     assert 5 == xsum((2, None, 'x', 3))
+
+    assert VALUE_ERROR == xsum(VALUE_ERROR)
+    assert VALUE_ERROR == xsum((2, VALUE_ERROR))
+
+    assert DIV0 == xsum(DIV0)
+    assert DIV0 == xsum((2, DIV0))
 
 
 class TestYearfrac:

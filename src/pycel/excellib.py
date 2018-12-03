@@ -34,6 +34,8 @@ def _numerics(args):
 
 def average(*args):
     data = _numerics(args)
+
+    # A returned string is an error code
     if isinstance(data, str):
         return data
     else:
@@ -438,6 +440,8 @@ def xlog(a):
 
 def xmax(*args):
     data = _numerics(args)
+
+    # A returned string is an error code
     if isinstance(data, str):
         return data
 
@@ -450,6 +454,8 @@ def xmax(*args):
 
 def xmin(*args):
     data = _numerics(args)
+
+    # A returned string is an error code
     if isinstance(data, str):
         return data
 
