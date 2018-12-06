@@ -51,6 +51,21 @@ class Tokenizer(tokenizer.Tokenizer):
             ):
                 # this whitespace is an intersect operator
                 tokens.append(Token(token.value, Token.OP_IN, Token.INTERSECT))
+
+        # ::TODO:: remove after openpyxl updated
+        # ::HACK:: to workaround openpyxl issue fixed in PR #301
+        token_stream = iter(tokens)
+        tokens = []
+        for token in token_stream:
+            if token.type == Token.OPERAND and (
+                token.value.count('[') != token.value.count(']')
+            ):
+                new_value = (token.value +
+                             next(token_stream).value +
+                             next(token_stream).value)
+                token = Token(new_value, token.type, token.subtype)
+            tokens.append(token)
+
         return tokens
 
 

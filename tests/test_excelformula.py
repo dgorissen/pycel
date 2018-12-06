@@ -128,6 +128,9 @@ fancy_reference_inputs = [
 
     ('=IF(configurations!$G$22=3,sizing!$C$303,M14)',
      'configurations!$G$22|3|=|sizing!$C$303|M14|IF'),
+
+    ('=TableX[[#This Row],[COL1]]&"-"&TableX[[#This Row],[COL2]]',
+     'TableX[[#This Row],[COL1]]|"-"|&|TableX[[#This Row],[COL2]]|&'),
 ]
 
 math_inputs = [
