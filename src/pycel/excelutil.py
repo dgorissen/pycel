@@ -788,9 +788,17 @@ def criteria_parser(criteria):
 def find_corresponding_index(rng, criteria):
     """This does not parse all of the patterns available to countif, etc"""
     # parse criteria
+    if not isinstance(rng, list):
+        raise TypeError('%s must be a list' % str(rng))
+
+    if isinstance(criteria, list):
+        # ugly...
+        return ()
+
+    # build a criteria check
     check = criteria_parser(criteria)
 
-    return [index for index, item in enumerate(rng) if check(item)]
+    return tuple(index for index, item in enumerate(rng) if check(item))
 
 
 def build_operator_operand_fixup(capture_error_state):

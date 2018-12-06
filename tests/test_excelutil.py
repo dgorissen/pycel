@@ -560,22 +560,21 @@ def test_date_from_int():
 
 
 def test_find_corresponding_index():
-
-    assert [0] == find_corresponding_index([1, 2, 3], '<2')
-    assert [2] == find_corresponding_index([1, 2, 3], '>2')
-    assert [0, 2] == find_corresponding_index([1, 2, 3], '<>2')
-    assert [0, 1] == find_corresponding_index([1, 2, 3], '<=2')
-    assert [1, 2] == find_corresponding_index([1, 2, 3], '>=2')
-    assert [1] == find_corresponding_index([1, 2, 3], '2')
-    assert [1] == find_corresponding_index('ABC', 'B')
-    assert [1, 2] == find_corresponding_index('ABB', 'B')
-    assert [] == find_corresponding_index('ABB', 'D')
+    assert (0,) == find_corresponding_index([1, 2, 3], '<2')
+    assert (2,) == find_corresponding_index([1, 2, 3], '>2')
+    assert (0, 2) == find_corresponding_index([1, 2, 3], '<>2')
+    assert (0, 1) == find_corresponding_index([1, 2, 3], '<=2')
+    assert (1, 2) == find_corresponding_index([1, 2, 3], '>=2')
+    assert (1,) == find_corresponding_index([1, 2, 3], '2')
+    assert (1,) == find_corresponding_index(list('ABC'), 'B')
+    assert (1, 2) == find_corresponding_index(list('ABB'), 'B')
+    assert () == find_corresponding_index(list('ABB'), 'D')
 
     with pytest.raises(TypeError):
         find_corresponding_index('ABB', '<B')
 
     with pytest.raises(ValueError):
-        find_corresponding_index('ABB', None)
+        find_corresponding_index(list('ABB'), None)
 
 
 @pytest.mark.parametrize(

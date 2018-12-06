@@ -1,9 +1,10 @@
 """
 Python equivalents of various excel functions
 """
-
+from collections import Counter
 from datetime import datetime
 from decimal import Decimal, ROUND_HALF_UP, ROUND_UP
+import itertools as it
 
 from math import log
 
@@ -360,7 +361,7 @@ def right(text, n):
 
 
 def roundup(number, num_digits):
-    # Excel refeence: https://support.office.com/en-us/article/
+    # Excel reference: https://support.office.com/en-us/article/
     #   ROUNDUP-function-F8BC9B23-E795-47DB-8703-DB171D0C42A7
     if not is_number(number):
         raise TypeError("%s is not a number" % str(number))
@@ -371,33 +372,44 @@ def roundup(number, num_digits):
     return float(Decimal(repr(number)).quantize(quant, rounding=ROUND_UP))
 
 
-def sumif(range, criteria, sum_range=[]):
+def sumif(rng, criteria, sum_range=None):
     # Excel reference: https://support.office.com/en-us/article/
     #   SUMIF-function-169b8c99-c05c-4483-a712-1697a653039b
 
+    if sum_range is None:
+        sum_range = rng
+    return sumifs(sum_range, rng, criteria)
+
+
+def sumifs(sum_range, *args):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   SUMIFS-function-C9E748F5-7EA7-455D-9406-611CEBCE642B
+
     # WARNING:
     # - wildcards not supported
-    # - doesn't really follow 2nd remark about sum_range length
+    # - The following is not currently implemented:
+    #  The sum_range argument does not have to be the same size and shape as
+    #  the range argument. The actual cells that are added are determined by
+    #  using the upper leftmost cell in the sum_range argument as the
+    #  beginning cell, and then including cells that correspond in size and
+    #  shape to the range argument.
 
-    if type(range) != list:
-        raise TypeError('%s must be a list' % str(range))
-
-    if type(sum_range) != list:
+    if not isinstance(sum_range, list):
         raise TypeError('%s must be a list' % str(sum_range))
 
-    if isinstance(criteria, list) and not isinstance(criteria, (str, bool)):
-        # ugly...
-        return 0
+    assert len(args) and len(args) % 2 == 0, \
+        'Must have paired criteria and ranges'
 
-    indexes = find_corresponding_index(range, criteria)
+    # count the number of times a particular cell matches the criteria
+    index_counts = Counter(it.chain.from_iterable(
+        find_corresponding_index(rng, criteria)
+        for rng, criteria in zip(args[0::2], args[1::2])))
 
-    def f(x):
-        return sum_range[x] if x < len(sum_range) else 0
-
-    if len(sum_range) == 0:
-        return sum(range[x] for x in indexes)
-    else:
-        return sum(map(f, indexes))
+    ifs_count = len(args) // 2
+    max_idx = len(sum_range)
+    indices = tuple(idx for idx, cnt in index_counts.items()
+                    if cnt == ifs_count and idx < max_idx)
+    return sum(sum_range[idx] for idx in indices)
 
 
 def value(text):

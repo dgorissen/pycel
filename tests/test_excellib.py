@@ -25,6 +25,7 @@ from pycel.excellib import (
     right,
     roundup,
     sumif,
+    sumifs,
     value,
     vlookup,
     xlog,
@@ -503,7 +504,45 @@ class TestSumIf:
 
     def test_sum_range_not_list(self):
         with pytest.raises(TypeError):
-            sumif([], [], None)
+            sumif([], [], 'JUNK')
+
+
+class TestSumIfs:
+
+    def test_range_is_a_list(self):
+        with pytest.raises(TypeError):
+            sumifs(12, 12)
+
+    def test_sum_range_is_a_list(self):
+        with pytest.raises(TypeError):
+            sumifs(12, 12, 12)
+
+    def test_criteria_is_number_string_boolean(self):
+        assert 0 == sumifs([1, 2, 3], [1, 2, 3], [1, 2])
+
+    def test_regular_with_number_criteria(self):
+        assert 6 == sumifs([1, 1, 2, 2, 2], [1, 1, 2, 2, 2], 2)
+
+    def test_regular_with_string_criteria(self):
+        assert 12 == sumifs([1, 2, 3, 4, 5], [1, 2, 3, 4, 5], ">=3")
+
+    def test_sum_range(self):
+        assert 668 == sumifs([100, 123, 12, 23, 633], [1, 2, 3, 4, 5], ">=3")
+
+    def test_sum_range_with_more_indexes(self):
+        assert 668 == sumifs([100, 123, 12, 23, 633, 1], [1, 2, 3, 4, 5], ">=3")
+
+    def test_sum_range_with_less_indexes(self):
+        assert 35 == sumifs([100, 123, 12, 23], [1, 2, 3, 4, 5], ">=3")
+
+    def test_sum_range_not_list(self):
+        with pytest.raises(TypeError):
+            sumifs('JUNK', [], [], )
+
+    def test_multiple_criteria(self):
+        assert 7 == sumifs([1, 2, 3, 4, 5],
+                           [1, 2, 3, 4, 5], ">=3",
+                           [1, 2, 3, 4, 5], "<=4")
 
 
 def test_value():
