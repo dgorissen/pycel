@@ -1,3 +1,4 @@
+from collections import namedtuple
 import os
 import pickle
 import pytest
@@ -17,8 +18,10 @@ from pycel.excelutil import (
     is_leap_year,
     is_number,
     normalize_year,
+    PyCelException,
     resolve_range,
     split_sheetname,
+    structured_reference_boundaries,
     uniqueify,
     unquote_sheetname,
     VALUE_ERROR,
@@ -255,6 +258,91 @@ def test_resolve_range():
 
     with pytest.raises(TypeError):
         resolve_range(a('sh!B1'), sheet='shx')
+
+
+@pytest.mark.parametrize(
+    'ref, expected', (
+        # valid addresses
+        ('a_table[[#This Row], [col5]]', 'E5'),
+        ('a_table[[#All],[col3]]', 'C1:C8'),
+        ('a_table[[#All],[col3]:[col4]]', 'C1:D8'),
+        ('a_table[[#Headers],[col4]]', 'D1'),
+        ('a_table[[#Headers],[col2]:[col5]]', 'B1:E1'),
+        ('a_table[[#Headers],[#Data],[col4]]', PyCelException('D1:D7')), # Not Supported
+        ('a_table[[#Data],[col4]:[col4]]', 'D2:D7'),
+        ('a_table[[#Data],[col4]:[col5]]', 'D2:E7'),
+        ('a_table[[#Totals],[col2]]', 'B8'),
+        ('a_table[[#Totals],[col3]:[col5]]', 'C8:E8'),
+        ('a_table[[#This Row], [col5]]', 'E5'),
+        ('a_table[[col4]:[col4]]', 'D2:D7'),
+        ('a_table[@col5]', 'E5'),
+        ('a_table[@[col2]]', 'B5'),
+        ('a_table[#This Row]', 'A5:E5'),
+        ('a_table[@]', 'A5:E5'),
+        ('a_table[]', 'A2:E7'),
+
+        # bad table / cell
+        ('JUNK[]', PyCelException()),
+        ('a_table[]', None),
+
+        # unknown rows or columns
+        ('a_table[[#JUNK]]', PyCelException()),
+        ('a_table[[#Data],[JUNK]]', PyCelException()),
+        ('a_table[[#Data],[JUNK]:[col4]]', PyCelException()),
+
+        # misordered columns
+        ('a_table[[#Data],[col5]:[col4]]', PyCelException()),
+
+        # malformed
+        ('a_table[[]', PyCelException()),
+        ('a_table[[[col4]:[col4]]', PyCelException()),
+    )
+)
+def test_structured_table_reference_boundaries(ref, expected):
+
+    Column = namedtuple('Column', 'name id')
+
+    class Table:
+        def __init__(self, ref, header_rows, totals_rows):
+            self.ref = ref
+            self.headerRowCount = header_rows
+            self.totalsRowCount = totals_rows
+            self.tableColumns = tuple(
+                Column(name, idx) for idx, name in enumerate(
+                    'col1 col2 col3 col4 col5'.split(), start=1))
+
+    class Excel:
+        def __init__(self, table):
+            self.a_table = table
+
+        def table(self, name, sheet=None):
+            if name == 'a_table':
+                return self.a_table, sheet
+            else:
+                return None, None
+
+    class Cell:
+        def __init__(self, table, address):
+            self.excel = Excel(table)
+            self.address = AddressCell(address)
+
+    cell = Cell(Table('A1:E8', 1, 1), 'E5')
+
+    if isinstance(expected, PyCelException):
+        with pytest.raises(PyCelException):
+            structured_reference_boundaries(ref, cell=cell)
+
+    elif expected is None:
+        with pytest.raises(PyCelException):
+            structured_reference_boundaries(ref, cell=None)
+
+    else:
+        ref_bound = structured_reference_boundaries(ref, cell=cell)
+        expected_bound = range_boundaries(expected, cell=cell)
+        assert ref_bound == expected_bound
+
+        expected_ref = range_boundaries(ref, cell=cell)
+        assert ref_bound == expected_ref
 
 
 def test_extended_range_boundaries():

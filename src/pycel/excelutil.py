@@ -31,6 +31,16 @@ R1C1_RANGE_EXPR = """
 
 R1C1_RANGE_RE = re.compile('^' + R1C1_RANGE_EXPR + '$', re.VERBOSE)
 
+TABLE_REF_RE = re.compile(r"^(?P<table_name>[^[]+)\[(?P<table_selector>.*)\]$")
+
+TABLE_SELECTOR_RE = re.compile(
+    r"^(?P<row_or_column>[^[]+)$|"
+    r"^@\[(?P<this_row_column>[^[]*)\]$|"
+    r"^ *(?P<rows>(\[([^\]]+)\] *, *)*)"
+    r"(\[(?P<start_col>[^\]]+)\] *: *)?"
+    r"(\[(?P<end_col>.+)\] *)?$")
+
+
 MAX_COL = 16384
 MAX_ROW = 1048576
 
@@ -298,6 +308,147 @@ def split_sheetname(address, sheet=''):
     return sheet or sh, address
 
 
+def structured_reference_boundaries(address, cell=None, sheet=None):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   Using-structured-references-with-Excel-tables-
+    #   F5ED2452-2337-4F71-BED3-C8AE6D2B276E
+
+    match = TABLE_REF_RE.match(address)
+    if not match:
+        return None
+
+    if cell is None:
+        raise PyCelException(
+            "Must pass cell for Structured Reference {}".format(address))
+
+    name = match.group('table_name')
+    table, sheet = cell.excel.table(name, sheet)
+    table, sheet = cell.excel.table(name, sheet)
+
+    if table is None:
+        x = cell.excel.table(name, sheet)
+        raise PyCelException(
+            "Table {} not found for Structured Reference: {}".format(
+                name, address))
+
+    boundaries = openpyxl_range_boundaries(table.ref)
+    assert None not in boundaries
+
+    selector = match.group('table_selector')
+
+    if not selector:
+        # all columns and the data rows
+        rows, start_col, end_col = None, None, None
+
+    else:
+        selector_match = TABLE_SELECTOR_RE.match(selector)
+        if selector_match is None:
+            raise PyCelException(
+                "Unknown Structured Reference Selector: {}".format(selector))
+
+        row_or_column = selector_match.group('row_or_column')
+        this_row_column = selector_match.group('this_row_column')
+
+        if row_or_column:
+            rows = start_col = None
+            end_col = row_or_column
+
+        elif this_row_column:
+            rows = '#This Row'
+            start_col = None
+            end_col = this_row_column
+
+        else:
+            rows = selector_match.group('rows')
+            start_col = selector_match.group('start_col')
+            end_col = selector_match.group('end_col')
+
+            if rows is not None:
+                if not rows:
+                    rows = None
+
+                elif '[' in rows:
+                    rows = [r.split(']')[0] for r in rows.split('[')[1:]]
+                    if len(rows) != 1:
+                        # not currently supporting multiple row selects
+                        raise PyCelException(
+                            "Unknown Structured Reference Rows: {}".format(address))
+
+                    rows = rows[0]
+
+        if end_col.startswith('#'):
+            # end_col collects the single field case
+            if rows is None and start_col is None:
+                rows = end_col
+                end_col = None
+
+        elif end_col.startswith('@'):
+            rows = '#This Row'
+            end_col = end_col[1:]
+            if len(end_col) == 0:
+                end_col = start_col
+
+    if rows is None:
+        # skip the headers and footers
+        min_row = boundaries[1] + (table.headerRowCount if table.headerRowCount else 0)
+        max_row = boundaries[3] - (table.totalsRowCount if table.totalsRowCount else 0)
+
+    else:
+        if rows == '#All':
+            min_row, max_row = boundaries[1], boundaries[3]
+
+        elif rows == '#Data':
+            min_row = boundaries[1] + (table.headerRowCount if table.headerRowCount else 0)
+            max_row = boundaries[3] - (table.totalsRowCount if table.totalsRowCount else 0)
+
+        elif rows == '#Headers':
+            min_row = boundaries[1]
+            max_row = boundaries[1] + (table.headerRowCount if table.headerRowCount else 0) - 1
+
+        elif rows == '#Totals':
+            min_row = boundaries[3] - (table.totalsRowCount if table.totalsRowCount else 0) + 1
+            max_row = boundaries[3]
+
+        elif rows == '#This Row':
+            # ::TODO:: If not in a data row, return #VALUE! How to do this?
+            min_row = max_row = cell.address.row
+
+        else:
+            raise PyCelException(
+                "Unknown Structured Reference Rows: {}".format(rows))
+
+    if end_col is None:
+        # all columns
+        min_col_idx, max_col_idx = boundaries[0], boundaries[2]
+
+    else:
+        # a specific column
+        column = next(
+            (c for c in table.tableColumns if c.name == end_col), None)
+        if column is None:
+            raise PyCelException(
+                "Column {} not found for Structured Reference: {}".format(
+                    end_col, address))
+        max_col_idx = boundaries[0] + column.id - 1
+
+        if start_col is None:
+            min_col_idx = max_col_idx
+
+        else:
+            column = next(
+                (c for c in table.tableColumns if c.name == start_col), None)
+            if column is None:
+                raise PyCelException(
+                    "Column {} not found for Structured Reference: {}".format(
+                        start_col, address))
+            min_col_idx = boundaries[0] + column.id - 1
+
+    if min_row > max_row or min_col_idx > max_col_idx:
+        raise PyCelException("Columns out of order : {}".format(address))
+
+    return (min_col_idx, min_row, max_col_idx, max_row), sheet
+
+
 def range_boundaries(address, cell=None, sheet=None):
     """
     R1C1 reference style
@@ -334,6 +485,13 @@ def range_boundaries(address, cell=None, sheet=None):
 
     m = R1C1_RANGE_RE.match(address)
     if not m:
+        # Try to see if the is a structured table reference
+        table_select_boundaries = structured_reference_boundaries(
+            address, cell=cell, sheet=sheet)
+        if table_select_boundaries:
+            return table_select_boundaries
+
+        # Try to see if this is a defined name
         name_addr = (cell and cell.excel and
                      cell.excel.defined_names.get(address))
         if name_addr:
