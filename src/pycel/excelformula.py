@@ -7,16 +7,12 @@ from networkx.classes.digraph import DiGraph
 from pycel.excelutil import (
     AddressRange,
     build_operator_operand_fixup,
-    DIV0,
     get_linest_degree,
+    PyCelException,
     uniqueify,
 )
 
 EVAL_REGEX = re.compile(r'(_C_|_R_)(\([^)]*\))')
-
-
-class PyCelException(Exception):
-    """Base class for Parser errors"""
 
 
 class FormulaParserError(PyCelException):

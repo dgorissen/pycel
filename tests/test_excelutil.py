@@ -53,7 +53,7 @@ def test_address_range():
     assert AddressRange('sh!a1:b2') == AddressRange(a, sheet='sh')
     assert AddressCell('C13') == AddressCell('R13C3')
 
-    with pytest.raises(Exception):
+    with pytest.raises(ValueError):
         AddressRange(AddressRange('sh!a1:b2'), sheet='sheet')
         
     a = AddressRange('A:A')
@@ -253,7 +253,7 @@ def test_resolve_range():
     assert [[a('sh!B1'), a('sh!C1')],[a('sh!B2'), a('sh!C2')]] == \
         resolve_range(a('sh!B1:C2', sheet='sh'))
 
-    with pytest.raises(Exception):
+    with pytest.raises(TypeError):
         resolve_range(a('sh!B1'), sheet='shx')
 
 
@@ -313,7 +313,7 @@ def test_extended_range_boundaries_defined_names():
 def test_extended_range_boundaries_errors(address_string):
     cell = ATestCell('A', 1)
 
-    with pytest.raises(Exception, match='not a valid coordinate or range'):
+    with pytest.raises(ValueError, match='not a valid coordinate or range'):
         range_boundaries(address_string, cell)
 
 

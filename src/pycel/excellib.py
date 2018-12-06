@@ -18,6 +18,7 @@ from pycel.excelutil import (
     is_leap_year,
     is_number,
     normalize_year,
+    PyCelException,
 )
 
 
@@ -77,8 +78,8 @@ def countifs(*args):
     #   COUNTIFS-function-dda3dc6e-f74e-4aee-88bc-aa8c2a866842
 
     if len(args) % 2 != 0:
-        raise Exception('excellib.countifs() must have a '
-                        'pair number of arguments, here %d' % len(args))
+        raise PyCelException('excellib.countifs() must have a '
+                             'pair number of arguments, here %d' % len(args))
 
     if len(args):
         # find indexes that match first layer of countif
@@ -230,7 +231,7 @@ def lookup(arg, lookup_range, result_range):
     """
     # TODO
     if not isinstance(arg, (int, float)):
-        raise Exception("Non numeric lookups (%s) not supported" % arg)
+        raise PyCelException("Non numeric lookups (%s) not supported" % arg)
 
     # TODO: note, may return the last equal value
 
@@ -244,10 +245,10 @@ def lookup(arg, lookup_range, result_range):
                 lastnum = i
 
     if lastnum < 0:
-        raise Exception("No numeric data found in the lookup range")
+        raise PyCelException("No numeric data found in the lookup range")
     else:
         if i == 0:
-            raise Exception(
+            raise PyCelException(
                 "All values in the lookup range are bigger than %s" % arg)
         else:
             if i >= len(lookup_range) - 1:
@@ -278,12 +279,12 @@ def match(lookup_value, lookup_array, match_type=1):
 
             if i is not len(lookup_array) - 1 and current > type_convert(
                     lookup_array[i + 1]):
-                raise Exception(
+                raise PyCelException(
                     'for match_type 0, lookup_array must be sorted ascending')
             if current <= lookup_value:
                 pos_max = i
         if pos_max == -1:
-            raise Exception('no result in lookup_array for match_type 0')
+            raise PyCelException('no result in lookup_array for match_type 0')
         return pos_max + 1  # Excel starts at 1
 
     elif match_type == 0:
@@ -298,12 +299,12 @@ def match(lookup_value, lookup_array, match_type=1):
 
             if i is not len(lookup_array) - 1 and current < type_convert(
                     lookup_array[i + 1]):
-                raise (
+                raise PyCelException(
                     'for match_type 0, lookup_array must be sorted descending')
             if current >= lookup_value:
                 pos_min = i
         if pos_min == -1:
-            raise Exception('no result in lookup_array for match_type 0')
+            raise PyCelException('no result in lookup_array for match_type 0')
         return pos_min + 1  # Excel starts at 1
 
 

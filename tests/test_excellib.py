@@ -3,7 +3,7 @@ import math
 import numpy as np
 import pytest
 
-from pycel.excelutil import DIV0, ERROR_CODES, VALUE_ERROR
+from pycel.excelutil import DIV0, ERROR_CODES, PyCelException, VALUE_ERROR
 from pycel.excellib import (
     # ::TODO:: finish test cases for remainder of functions
     _numerics,
@@ -103,7 +103,7 @@ class TestCountIfs:
         assert 1 == countifs([7, 25, 13, 25], 25, [100, 102, 201, 20], ">100")
 
     def test_countifs_odd_args_len(self):
-        with pytest.raises(Exception):
+        with pytest.raises(PyCelException):
             countifs([7, 25, 13, 25], 25, [100, 102, 201, 20])
 
 
@@ -286,12 +286,12 @@ class TestMatch:
 
     def test_numeric_in_ascending_mode_with_descending_array(self):
         # Not ascending arrays raise exception
-        with pytest.raises(Exception):
+        with pytest.raises(PyCelException):
             match(3, [10, 9.1, 6.23, 1])
 
     def test_numeric_in_ascending_mode_with_any_array(self):
         # Not ascending arrays raise exception
-        with pytest.raises(Exception):
+        with pytest.raises(PyCelException):
             match(3, [10, 3.3, 5, 2])
 
     def test_numeric_in_exact_mode(self):
@@ -309,12 +309,12 @@ class TestMatch:
 
     def test_numeric_in_descending_mode_with_ascending_array(self):
         # Non descending arrays raise exception
-        with pytest.raises(Exception):
+        with pytest.raises(PyCelException):
             match(3, [1, 3.3, 5, 6], -1)
 
     def test_numeric_in_descending_mode_with_any_array(self):
         # Non descending arrays raise exception
-        with pytest.raises(Exception):
+        with pytest.raises(PyCelException):
             match(3, [10, 3.3, 5, 2], -1)
 
     def test_string_in_ascending_mode(self):
@@ -323,11 +323,11 @@ class TestMatch:
 
     def test_string_in_ascending_mode_with_descending_array(self):
         # Not ascending arrays raise exception
-        with pytest.raises(Exception):
+        with pytest.raises(PyCelException):
             match(3, ['rars', 'aab', 'a'])
 
     def test_string_in_ascending_mode_with_any_array(self):
-        with pytest.raises(Exception):
+        with pytest.raises(PyCelException):
             match(3, ['aab', 'a', 'rars'])
 
     def test_string_in_exact_mode(self):
@@ -345,12 +345,12 @@ class TestMatch:
 
     def test_string_in_descending_mode_with_ascending_array(self):
         # Non descending arrays raise exception
-        with pytest.raises(Exception):
+        with pytest.raises(PyCelException):
             match('a', ['a', 'aab', 'rars'], -1)
 
     def test_string_in_descending_mode_with_any_array(self):
         # Non descending arrays raise exception
-        with pytest.raises(Exception):
+        with pytest.raises(PyCelException):
             match('a', ['aab', 'a', 'rars'], -1)
 
     def test_boolean_in_ascending_mode(self):
@@ -359,12 +359,12 @@ class TestMatch:
 
     def test_boolean_in_ascending_mode_with_descending_array(self):
         # Not ascending arrays raise exception
-        with pytest.raises(Exception):
+        with pytest.raises(PyCelException):
             match(False, [True, False, False])
 
     def test_boolean_in_ascending_mode_with_any_array(self):
         # Not ascending arrays raise exception
-        with pytest.raises(Exception):
+        with pytest.raises(PyCelException):
             match(True, [False, True, False])
 
     def test_boolean_in_exact_mode(self):
@@ -382,11 +382,11 @@ class TestMatch:
 
     def test_boolean_in_descending_mode_with_ascending_array(self):
         # Non descending arrays raise exception
-        with pytest.raises(Exception):
+        with pytest.raises(PyCelException):
             match(False, [False, False, True], -1)
 
     def test_boolean_in_descending_mode_with_any_array(self):
-        with pytest.raises(Exception):
+        with pytest.raises(PyCelException):
             match(True, [False, True, False], -1)
 
 

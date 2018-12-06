@@ -72,6 +72,10 @@ PYTHON_AST_OPERATORS = {
 }
 
 
+class PyCelException(Exception):
+    """Base class for PyCel errors"""
+
+
 class AddressRange(collections.namedtuple(
         'Address', 'address sheet start end coordinate')):
 
