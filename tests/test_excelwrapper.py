@@ -115,3 +115,14 @@ def test_get_ranged_names(excel):
 def test_get_defined_names(excel):
     expected = {'SINUS': ('$C$1:$C$18', 'Sheet1')}
     assert expected == excel.defined_names
+
+
+def test_get_tables(excel):
+    for sheet in (None, 'sref'):
+        table, sheet_name = excel.table('Table1', sheet)
+        assert 'sref' == sheet_name
+        assert 'D1:F4' == table.ref
+        assert 'Table1' == table.name
+
+    assert (None, None) == excel.table('Table1', 'Sheet1')
+    assert (None, None) == excel.table('junk')

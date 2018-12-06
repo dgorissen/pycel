@@ -203,6 +203,23 @@ class ExcelOpxWrapper(ExcelWrapper):
                     pass
         return self._defined_names
 
+    def table(self, table_name, sheet=None):
+        """ Return the table and the sheet it was found on
+
+        :param table_name: name of table to retrieve
+        :param sheet: specific sheet to look on, or if None then look at all
+        :return: table, sheet_name
+        """
+        # table names are case insensitive
+        table_name = table_name.lower()
+
+        if sheet is None:
+            sheets = self.workbook.sheetnames
+        else:
+            sheets = (sheet, )
+        return next(((t, sh) for sh in sheets for t in self.workbook[sh]._tables
+                     if t.name.lower() == table_name), (None, None))
+
     @property
     def rangednames(self):
         if self.workbook is not None and self._rangednames is None:
