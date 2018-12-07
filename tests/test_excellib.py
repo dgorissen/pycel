@@ -535,6 +535,9 @@ class TestSumIfs:
     def test_sum_range_with_less_indexes(self):
         assert 35 == sumifs([100, 123, 12, 23], [1, 2, 3, 4, 5], ">=3")
 
+    def test_sum_range_with_empty(self):
+        assert 35 == sumifs([100, 123, 12, 23, None], [1, 2, 3, 4, 5], ">=3")
+
     def test_sum_range_not_list(self):
         with pytest.raises(TypeError):
             sumifs('JUNK', [], [], )

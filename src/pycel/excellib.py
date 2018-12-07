@@ -409,7 +409,7 @@ def sumifs(sum_range, *args):
     max_idx = len(sum_range)
     indices = tuple(idx for idx, cnt in index_counts.items()
                     if cnt == ifs_count and idx < max_idx)
-    return sum(sum_range[idx] for idx in indices)
+    return sum(_numerics(sum_range[idx] for idx in indices))
 
 
 def value(text):
