@@ -5,6 +5,7 @@
 """
 
 import abc
+import collections
 import os
 
 from openpyxl import load_workbook
@@ -183,6 +184,7 @@ class ExcelOpxWrapper(ExcelWrapper):
         self.filename = os.path.abspath(filename)
         self._defined_names = None
         self._rangednames = None
+        self._tables = None
         self.workbook = None
         self.workbook_dataonly = None
 
@@ -203,22 +205,21 @@ class ExcelOpxWrapper(ExcelWrapper):
                     pass
         return self._defined_names
 
-    def table(self, table_name, sheet=None):
+    def table(self, table_name):
         """ Return the table and the sheet it was found on
 
         :param table_name: name of table to retrieve
-        :param sheet: specific sheet to look on, or if None then look at all
         :return: table, sheet_name
         """
         # table names are case insensitive
-        table_name = table_name.lower()
-
-        if sheet is None:
-            sheets = self.workbook.sheetnames
-        else:
-            sheets = (sheet, )
-        return next(((t, sh) for sh in sheets for t in self.workbook[sh]._tables
-                     if t.name.lower() == table_name), (None, None))
+        if self._tables is None:
+            TableAndSheet = collections.namedtuple(
+                'TableAndSheet', 'table, sheet_name')
+            self._tables = {
+                t.name.lower(): TableAndSheet(t, ws.title)
+                for ws in self.workbook for t in ws._tables}
+            self._tables[None] = TableAndSheet(None, None)
+        return self._tables.get(table_name.lower(), self._tables[None])
 
     @property
     def rangednames(self):

@@ -118,11 +118,10 @@ def test_get_defined_names(excel):
 
 
 def test_get_tables(excel):
-    for sheet in (None, 'sref'):
-        table, sheet_name = excel.table('Table1', sheet)
+    for table_name in ('Table1', 'tAbLe1'):
+        table, sheet_name = excel.table(table_name)
         assert 'sref' == sheet_name
         assert 'D1:F4' == table.ref
         assert 'Table1' == table.name
 
-    assert (None, None) == excel.table('Table1', 'Sheet1')
-    assert (None, None) == excel.table('junk')
+    assert (None, None) == excel.table('JUNK')

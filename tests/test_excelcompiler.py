@@ -277,3 +277,17 @@ def test_plot_graph(excel, tmpdir):
 
     with mock.patch('pycel.excelcompiler.nx'):
         excel_compiler.plot_graph()
+
+
+def test_structured_ref(excel):
+    excel_compiler = ExcelCompiler(excel=excel)
+    input_addrs = ['sref!F3']
+    output_addrs = ['sref!B3']
+
+    assert 15 == excel_compiler.evaluate(output_addrs[0])
+    excel_compiler.trim_graph(input_addrs, output_addrs)
+
+    assert 15 == excel_compiler.evaluate(output_addrs[0])
+
+    excel_compiler.set_value(input_addrs[0], 11)
+    assert 20 == excel_compiler.evaluate(output_addrs[0])

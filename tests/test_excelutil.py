@@ -315,9 +315,9 @@ def test_structured_table_reference_boundaries(ref, expected):
         def __init__(self, table):
             self.a_table = table
 
-        def table(self, name, sheet=None):
+        def table(self, name):
             if name == 'a_table':
-                return self.a_table, sheet
+                return self.a_table, None
             else:
                 return None, None
 

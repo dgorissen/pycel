@@ -325,11 +325,9 @@ def structured_reference_boundaries(address, cell=None, sheet=None):
             "Must pass cell for Structured Reference {}".format(address))
 
     name = match.group('table_name')
-    table, sheet = cell.excel.table(name, sheet)
-    table, sheet = cell.excel.table(name, sheet)
+    table, sheet = cell.excel.table(name)
 
     if table is None:
-        x = cell.excel.table(name, sheet)
         raise PyCelException(
             "Table {} not found for Structured Reference: {}".format(
                 name, address))
