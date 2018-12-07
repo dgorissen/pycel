@@ -423,25 +423,25 @@ def structured_reference_boundaries(address, cell=None, sheet=None):
 
     else:
         # a specific column
-        column = next(
-            (c for c in table.tableColumns if c.name == end_col), None)
-        if column is None:
+        column_idx = next((idx for idx, c in enumerate(table.tableColumns)
+                           if c.name == end_col), None)
+        if column_idx is None:
             raise PyCelException(
                 "Column {} not found for Structured Reference: {}".format(
                     end_col, address))
-        max_col_idx = boundaries[0] + column.id - 1
+        max_col_idx = boundaries[0] + column_idx
 
         if start_col is None:
             min_col_idx = max_col_idx
 
         else:
-            column = next(
-                (c for c in table.tableColumns if c.name == start_col), None)
-            if column is None:
+            column_idx = next((idx for idx, c in enumerate(table.tableColumns)
+                               if c.name == start_col), None)
+            if column_idx is None:
                 raise PyCelException(
                     "Column {} not found for Structured Reference: {}".format(
                         start_col, address))
-            min_col_idx = boundaries[0] + column.id - 1
+            min_col_idx = boundaries[0] + column_idx
 
     if min_row > max_row or min_col_idx > max_col_idx:
         raise PyCelException("Columns out of order : {}".format(address))

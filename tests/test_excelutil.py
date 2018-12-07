@@ -300,7 +300,7 @@ def test_resolve_range():
 )
 def test_structured_table_reference_boundaries(ref, expected):
 
-    Column = namedtuple('Column', 'name id')
+    Column = namedtuple('Column', 'name')
 
     class Table:
         def __init__(self, ref, header_rows, totals_rows):
@@ -308,8 +308,7 @@ def test_structured_table_reference_boundaries(ref, expected):
             self.headerRowCount = header_rows
             self.totalsRowCount = totals_rows
             self.tableColumns = tuple(
-                Column(name, idx) for idx, name in enumerate(
-                    'col1 col2 col3 col4 col5'.split(), start=1))
+                Column(name) for name in 'col1 col2 col3 col4 col5'.split())
 
     class Excel:
         def __init__(self, table):
