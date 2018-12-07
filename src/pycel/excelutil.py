@@ -52,12 +52,15 @@ VALID_R1C1_RANGE_ITEM_COMBOS = {
 
 OPERATORS = {
     '': operator.eq,
+    '=': operator.eq,
     '<': operator.lt,
     '>': operator.gt,
     '<=': operator.le,
     '>=': operator.ge,
     '<>': operator.ne,
 }
+
+OPERATORS_RE = re.compile('^(?P<oper>(=|<>|<=?|>=?))?(?P<value>.*)$')
 
 PYTHON_AST_OPERATORS = {
     'Eq': operator.eq,
@@ -671,6 +674,8 @@ def is_number(s):
 
 def coerce_to_number(value):
     if not isinstance(value, str):
+        if isinstance(value, int):
+            return value
         if is_number(value) and int(value) == float(value):
             return int(value)
         return value
@@ -746,38 +751,58 @@ def date_from_int(datestamp):
 
 
 def criteria_parser(criteria):
+    """
+
+    General rules:
+
+        Criteria will be coerced to numbers,
+        For equality comparisions, values will be coerced to numbers
+        < and > will always be False when comparing strings to numbers
+        <> will always be True when comparing strings to numbers
+
+    NOT Implemented:
+     You can use the wildcard characters—the question mark (?) and
+     asterisk (*)—as the criteria argument. A question mark matches
+     any single character; an asterisk matches any sequence of
+     characters. If you want to find an actual question mark or
+     asterisk, type a tilde (~) preceding the character.
+    """
+
     if is_number(criteria):
         # numeric equals comparision
+        criteria = coerce_to_number(criteria)
+
         def check(x):
-            return is_number(x) and x == float(criteria)
+            return is_number(x) and coerce_to_number(x) == criteria
 
-    elif type(criteria) == str:
-
-        search = re.search(r'(\W*)(.*)', criteria).group
-        criteria_operator = search(1)
+    elif isinstance(criteria, str):
+        match = OPERATORS_RE.match(criteria)
+        criteria_operator = match.group('oper') or ''
+        value = match.group('value')
         op = OPERATORS[criteria_operator]
-        value = search(2)
 
-        # all operators except == (blank) are numeric
-        numeric_compare = bool(criteria_operator) or is_number(value)
+        if op == operator.eq and is_number(value):
+            return criteria_parser(value)
 
-        def validate_number(x):
-            if is_number(x):
-                return True
-            else:
-                if numeric_compare:
-                    raise TypeError(
-                        'excellib.countif() doesnt\'t work for checking'
-                        ' non number items against non equality')
-                return False
+        if is_number(value):
+            value = coerce_to_number(value)
 
-        value = float(value) if validate_number(value) else str(value).lower()
+            def check(x):
+                if isinstance(x, str):
+                    # string always compare False unless '!='
+                    return op == operator.ne
+                else:
+                    return op(x, value)
+        else:
+            value = value.lower()
 
-        def check(x):
-            if is_number(x):
-                return op(x, value)
-            else:
-                return x.lower() == value
+            def check(x):
+                """Compare with a string"""
+                if not isinstance(x, str):
+                    # non string always compare False unless '!='
+                    return op == operator.ne
+                else:
+                    return op(x.lower(), value)
 
     else:
         raise ValueError("Couldn't parse criteria: {}".format(criteria))

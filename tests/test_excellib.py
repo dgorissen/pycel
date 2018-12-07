@@ -71,10 +71,6 @@ class TestCount:
 
 class TestCountIf:
 
-    def test_argument_validity(self):
-        with pytest.raises(TypeError):
-            countif(['e', 1], '>=d')
-
     def test_countif_strictly_superior(self):
         assert 3 == countif([7, 25, 13, 25], '>10')
 
@@ -92,6 +88,9 @@ class TestCountIf:
 
     def test_countif_with_string_equality(self):
         assert 2 == countif([7, 'e', 13, 'e'], 'e')
+
+    def test_countif_with_string_inequality(self):
+        assert 1 == countif([7, 'e', 13, 'f'], '>e')
 
     def test_countif_regular(self):
         assert 2 == countif([7, 25, 13, 25], 25)

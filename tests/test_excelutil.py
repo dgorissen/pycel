@@ -9,6 +9,7 @@ from pycel.excelutil import (
     AddressRange,
     build_operator_operand_fixup,
     coerce_to_number,
+    criteria_parser,
     date_from_int,
     range_boundaries,
     find_corresponding_index,
@@ -567,6 +568,7 @@ def test_find_corresponding_index():
     assert (1,) == find_corresponding_index([1, 2, 3], '2')
     assert (1,) == find_corresponding_index(list('ABC'), 'B')
     assert (1, 2) == find_corresponding_index(list('ABB'), 'B')
+    assert (1, 2) == find_corresponding_index(list('ABB'), '<>A')
     assert () == find_corresponding_index(list('ABB'), 'D')
 
     with pytest.raises(TypeError):
@@ -574,6 +576,96 @@ def test_find_corresponding_index():
 
     with pytest.raises(ValueError):
         find_corresponding_index(list('ABB'), None)
+
+
+@pytest.mark.parametrize(
+    'value, criteria, expected', (
+        (0, 1, False),
+        (1, 1, True),
+        (2, 1, False),
+        ('0', 1, False),
+        ('1', 1, True),
+        ('2', 1, False),
+
+        (0, '1', False),
+        (1, '1', True),
+        (2, '1', False),
+        ('0', '1', False),
+        ('1', '1', True),
+        ('2', '1', False),
+
+        (0, '=1', False),
+        (1, '=1', True),
+        (2, '=1', False),
+        ('0', '=1', False),
+        ('1', '=1', True),
+        ('2', '=1', False),
+
+        (0, '<>1', True),
+        (1, '<>1', False),
+        (2, '<>1', True),
+        ('0', '<>1', True),
+        ('1', '<>1', True),
+        ('2', '<>1', True),
+
+        (0, '>1', False),
+        (1, '>1', False),
+        (2, '>1', True),
+        ('0', '>1', False),
+        ('1', '>1', False),
+        ('2', '>1', False),
+
+        (0, '>1x', False),
+        (1, '>1x', False),
+        (2, '>1x', False),
+        ('0', '>1x', False),
+        ('1', '>1x', False),
+        ('2', '>1x', True),
+
+        ('a', 'b', False),
+        ('b', 'b', True),
+        ('c', 'b', False),
+        ('a', '=b', False),
+        ('b', '=b', True),
+        ('c', '=b', False),
+
+        ('a', '<>b', True),
+        ('b', '<>b', False),
+        ('c', '<>b', True),
+
+        ('a', '<b', True),
+        ('b', '<b', False),
+        ('c', '<b', False),
+        ('a', '<=b', True),
+        ('b', '<=b', True),
+        ('c', '<=b', False),
+
+        ('a', '<0', False),
+        ('b', '<1', False),
+        ('c', '>=1', False),
+
+        ('a', '<0x', False),
+        ('b', '<1x', False),
+        ('c', '>=1x', True),
+
+        ('a', '<=B', True),
+        ('b', '<=B', True),
+        ('c', '<=B', False),
+        ('a', 'B', False),
+        ('b', 'B', True),
+        ('c', 'B', False),
+
+        ('1x', '1x', True),
+        ('1x', '=1x', True),
+        ('1x', '>1x', False),
+        ('1x', '>=1x', True),
+        ('1x', '<1x', False),
+        ('1x', '<=1x', True),
+        ('1x', '<>1x', False),
+    )
+)
+def test_criteria_parser(value, criteria, expected):
+    assert expected == criteria_parser(criteria)(value)
 
 
 @pytest.mark.parametrize(

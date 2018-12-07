@@ -695,7 +695,7 @@ def test_eval_exception():
         eval_ctx(ExcelFormula('=a1'))
 
 
-def test_lineno_on_error_reporting(capsys):
+def test_lineno_on_error_reporting():
     eval_ctx = ExcelFormula.build_eval_context(None, None)
 
     excel_formula = ExcelFormula('')
