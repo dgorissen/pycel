@@ -298,6 +298,41 @@ class ExcelCompiler(object):
         for addr in cells_to_remove:
             del self.cell_map[addr]
 
+    def validate_calcs(self, output_addrs):
+        """for each address, calc the value, and verify that it matches
+
+        This is a debugging tool which will show which cells evaluate
+        differently than they do for excel.
+
+        :param output_addrs: The cells to evaluate from
+        :return: list of addresses that failed to verify
+        """
+        to_verify = list(AddressCell(addr) for addr in output_addrs)
+        verified = set()
+        failed = []
+        while to_verify:
+            addr = to_verify.pop()
+            cell = self.cell_map[addr]
+            if isinstance(cell, Cell) and cell.python_code:
+                original_value = cell.value
+                cell.value = None
+                self.evaluate(cell)
+                if original_value != cell.value:
+                    failed.append(addr)
+                    print('{} mismatch  {} -> {}'.format(
+                        addr, original_value, cell.value))
+
+                    # do it again to allow easy breakpointing
+                    cell.value = None
+                    self.evaluate(cell)
+
+            verified.add(addr)
+            for addr in cell.needed_addresses:
+                if addr not in verified:
+                    to_verify.append(addr)
+
+        return failed
+
     def make_cells(self, address):
         """Given an AddressRange or AddressCell generate compiler Cells"""
 
@@ -466,7 +501,7 @@ class ExcelCompiler(object):
 
         # calc the values for ranges
         for range_todo in reversed(self.range_todos):
-            self.evaluate_range(range_todo)
+            self.evaluate_range(str(range_todo))
 
         self.log.info(
             "Graph construction done, %s nodes, "

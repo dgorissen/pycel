@@ -183,6 +183,20 @@ def test_trim_cells(excel):
     assert old_value == new_value
 
 
+def test_validate_calcs(excel, capsys):
+    excel_compiler = ExcelCompiler(excel=excel)
+    input_addrs = ['trim-range!D5']
+    output_addrs = ['trim-range!B2']
+
+    excel_compiler.trim_graph(input_addrs, output_addrs)
+    excel_compiler.cell_map[AddressRange(output_addrs[0])].value = 'JUNK'
+    excel_compiler.validate_calcs(output_addrs)
+
+    out, err = capsys.readouterr()
+    assert '' == err
+    assert 'JUNK' in out
+
+
 def test_trim_cells_warn_address_not_found(excel):
     excel_compiler = ExcelCompiler(excel=excel)
     input_addrs = ['trim-range!D5', 'trim-range!H1']
