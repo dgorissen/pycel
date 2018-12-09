@@ -6,8 +6,8 @@ import os
 from pyxll import (
     get_active_object,
     get_config,
-    xl_func,
-    xl_macro,
+    # xl_func,
+    # xl_macro,
     xl_menu
 )
 import win32api
@@ -40,18 +40,18 @@ def compile_selection_menu():
     newfile = curfile + ".pickle"
     selection = xl_app().Selection
     seed = selection.Address
-    
+
     if not selection or seed.find(',') > 0:
         win32api.MessageBox(
             0, "You must select a cell or rectangular range of cells", "Pycel")
         return
-    
+
     res = win32api.MessageBox(
         0, "Going to compile %s to %s starting from %s" % (
             curfile, newfile, seed), "Pycel", 1)
     if res == 2:
         return
-    
+
     sp = do_compilation(curfile, seed)
     win32api.MessageBox(
         0, "Compilation done, graph has %s nodes and %s edges" % (

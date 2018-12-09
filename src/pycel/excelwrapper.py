@@ -229,13 +229,14 @@ class ExcelOpxWrapper(ExcelWrapper):
             for named_range in self.workbook.defined_names.definedName:
                 try:
                     for worksheet, range_alias in named_range.destinations:
-                        tuple_name = (
-                            len(rangednames) + 1,
-                            str(named_range.name),
-                            str(self.workbook[worksheet].title + '!' +
-                                range_alias)
-                        )
-                        rangednames.append([tuple_name])
+                        if worksheet in self.workbook:
+                            tuple_name = (
+                                len(rangednames) + 1,
+                                str(named_range.name),
+                                str(self.workbook[worksheet].title + '!' +
+                                    range_alias)
+                            )
+                            rangednames.append([tuple_name])
                 except TokenizerError:
                     # ::TODO:: this is a workaround for openpyxl throwing
                     # this exception when given a range of sheet!#REF!

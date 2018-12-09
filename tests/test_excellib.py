@@ -16,8 +16,8 @@ from pycel.excellib import (
     index,
     istext,
     isNa,
-    linest,
-    lookup,
+    # linest,
+    # lookup,
     match,
     mid,
     mod,
@@ -65,8 +65,8 @@ class TestCount:
     def test_with_text_representations(self):
         assert 4 == count([1, '2.2', 'e'], True, '20')
 
-    #def test_with_date_representations(self):
-    #    assert 5 == count([1, '2.2', dt.datetime.now()], True, '20')
+    def test_with_date_representations(self):
+        assert 4 == count([1, '2.2', dt.datetime.now()], True, '20')
 
 
 class TestCountIf:

@@ -1,2 +1,2 @@
-from .excelcompiler import ExcelCompiler  # flake8: noqa
-from .excelutil import AddressCell, AddressRange  # flake8: noqa
+from .excelcompiler import ExcelCompiler  # noqa: F401
+from .excelutil import AddressCell, AddressRange  # noqa: F401

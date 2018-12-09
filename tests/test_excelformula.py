@@ -94,24 +94,32 @@ whitespace_inputs = [
 ]
 
 if_inputs = [
-    (
-    '=IF("a"={"a","b";"c",#N/A;-1,TRUE}, "yes", "no") &   "  more ""test"" text"',
-    '"a"|"a"|"b"|ARRAYROW|"c"|#N/A|ARRAYROW|1|-|TRUE|ARRAYROW|ARRAY|=|"yes"|"no"|IF|"  more ""test"" text"|&'),
+    ('=IF("a"={"a","b";"c",#N/A;-1,TRUE}, "yes", "no") &'
+     '   "  more ""test"" text"',
+     '"a"|"a"|"b"|ARRAYROW|"c"|#N/A|ARRAYROW|1|-|TRUE|ARRAYROW|ARRAY|=|'
+     '"yes"|"no"|IF|"  more ""test"" text"|&'),
 
-    (
-    '=IF(R13C3>DATE(2002,1,6),0,IF(ISERROR(R[41]C[2]),0,IF(R13C3>=R[41]C[2],0, IF(AND(R[23]C[11]>=55,R[24]C[11]>=20),R53C3,0))))',
-    'R13C3|2002|1|6|DATE|>|0|R[41]C[2]|ISERROR|0|R13C3|R[41]C[2]|>=|0|R[23]C[11]|55|>=|R[24]C[11]|20|>=|AND|R53C3|0|IF|IF|IF|IF'),
+    ('=IF(R13C3>DATE(2002,1,6),0,IF(ISERROR(R[41]C[2]),0,IF(R13C3>=R[41]C[2],0,'
+     ' IF(AND(R[23]C[11]>=55,R[24]C[11]>=20),R53C3,0))))',
+     'R13C3|2002|1|6|DATE|>|0|R[41]C[2]|ISERROR|0|R13C3|R[41]C[2]|>=|0|'
+     'R[23]C[11]|55|>=|R[24]C[11]|20|>=|AND|R53C3|0|IF|IF|IF|IF'),
 
-    (
-    '=IF(R[39]C[11]>65,R[25]C[42],ROUND((R[11]C[11]*IF(OR(AND(R[39]C[11]>=55, R[40]C[11]>=20),AND(R[40]C[11]>=20,R11C3="YES")),R[44]C[11],R[43]C[11]))+(R[14]C[11] *IF(OR(AND(R[39]C[11]>=55,R[40]C[11]>=20),AND(R[40]C[11]>=20,R11C3="YES")), R[45]C[11],R[43]C[11])),0))',
-    'R[39]C[11]|65|>|R[25]C[42]|R[11]C[11]|R[39]C[11]|55|>=|R[40]C[11]|20|>=|AND|R[40]C[11]|20|>=|R11C3|"YES"|=|AND|OR|R[44]C[11]|R[43]C[11]|IF|*|R[14]C[11]|R[39]C[11]|55|>=|R[40]C[11]|20|>=|AND|R[40]C[11]|20|>=|R11C3|"YES"|=|AND|OR|R[45]C[11]|R[43]C[11]|IF|*|+|0|ROUND|IF'),
+    ('=IF(R[39]C[11]>65,R[25]C[42],ROUND((R[11]C[11]*IF(OR(AND(R[39]C[11]>=55,'
+     ' R[40]C[11]>=20),AND(R[40]C[11]>=20,R11C3="YES")),R[44]C[11],R[43]C[11]))'
+     '+(R[14]C[11] *IF(OR(AND(R[39]C[11]>=55,R[40]C[11]>=20),AND(R[40]C[11]'
+     '>=20,R11C3="YES")), R[45]C[11],R[43]C[11])),0))',
+     'R[39]C[11]|65|>|R[25]C[42]|R[11]C[11]|R[39]C[11]|55|>=|R[40]C[11]|20|>=|'
+     'AND|R[40]C[11]|20|>=|R11C3|"YES"|=|AND|OR|R[44]C[11]|R[43]C[11]|IF|*|'
+     'R[14]C[11]|R[39]C[11]|55|>=|R[40]C[11]|20|>=|AND|R[40]C[11]|20|>=|R11C3|'
+     '"YES"|=|AND|OR|R[45]C[11]|R[43]C[11]|IF|*|+|0|ROUND|IF'),
 
     ('=IF(AI119="","",E119)',
      'AI119|""|=|""|E119|IF'),
 
-    (
-    '=IF(P5=1.0,"NA",IF(P5=2.0,"A",IF(P5=3.0,"B",IF(P5=4.0,"C",IF(P5=5.0,"D",IF(P5=6.0,"E",IF(P5=7.0,"F",IF(P5=8.0,"G"))))))))',
-    'P5|1.0|=|"NA"|P5|2.0|=|"A"|P5|3.0|=|"B"|P5|4.0|=|"C"|P5|5.0|=|"D"|P5|6.0|=|"E"|P5|7.0|=|"F"|P5|8.0|=|"G"|IF|IF|IF|IF|IF|IF|IF|IF'),
+    ('=IF(P5=1.0,"NA",IF(P5=2.0,"A",IF(P5=3.0,"B",IF(P5=4.0,"C",IF(P5=5.0,"D",'
+     'IF(P5=6.0,"E",IF(P5=7.0,"F",IF(P5=8.0,"G"))))))))',
+     'P5|1.0|=|"NA"|P5|2.0|=|"A"|P5|3.0|=|"B"|P5|4.0|=|"C"|P5|5.0|=|"D"|P5|6.0|'
+     '=|"E"|P5|7.0|=|"F"|P5|8.0|=|"G"|IF|IF|IF|IF|IF|IF|IF|IF'),
 
 ]
 
@@ -122,9 +130,16 @@ fancy_reference_inputs = [
     ('=[data.xls]sheet1!$A$1',
      '[data.xls]sheet1!$A$1'),
 
-    (
-    '=(propellor_charts!B22*(propellor_charts!E21+propellor_charts!D21*(engine_data!O16*D70+engine_data!P16)+propellor_charts!C21*(engine_data!O16*D70+engine_data!P16)^2+propellor_charts!B21*(engine_data!O16*D70+engine_data!P16)^3)^2)^(1/3)*(1*D70/5.33E-18)^(2/3)*0.0000000001*28.3495231*9.81/1000',
-    'propellor_charts!B22|propellor_charts!E21|propellor_charts!D21|engine_data!O16|D70|*|engine_data!P16|+|*|+|propellor_charts!C21|engine_data!O16|D70|*|engine_data!P16|+|2|^|*|+|propellor_charts!B21|engine_data!O16|D70|*|engine_data!P16|+|3|^|*|+|2|^|*|1|3|/|^|1|D70|*|5.33E-18|/|2|3|/|^|*|0.0000000001|*|28.3495231|*|9.81|*|1000|/'),
+    ('=(propellor_charts!B22*(propellor_charts!E21+propellor_charts!D21*'
+     '(engine_data!O16*D70+engine_data!P16)+propellor_charts!C21*'
+     '(engine_data!O16*D70+engine_data!P16)^2+propellor_charts!B21*'
+     '(engine_data!O16*D70+engine_data!P16)^3)^2)^(1/3)*(1*D70/5.33E-18)^(2/3)'
+     '*0.0000000001*28.3495231*9.81/1000',
+     'propellor_charts!B22|propellor_charts!E21|propellor_charts!D21|'
+     'engine_data!O16|D70|*|engine_data!P16|+|*|+|propellor_charts!C21|'
+     'engine_data!O16|D70|*|engine_data!P16|+|2|^|*|+|propellor_charts!B21|'
+     'engine_data!O16|D70|*|engine_data!P16|+|3|^|*|+|2|^|*|1|3|/|^|1|D70|*|'
+     '5.33E-18|/|2|3|/|^|*|0.0000000001|*|28.3495231|*|9.81|*|1000|/'),
 
     ('=IF(configurations!$G$22=3,sizing!$C$303,M14)',
      'configurations!$G$22|3|=|sizing!$C$303|M14|IF'),
@@ -138,7 +153,8 @@ math_inputs = [
      '3600|1000|/|E40|*|E8|E39|/|*|E15|E19|/|*|E54|E54|E48|-|/|LN|*'),
 
     ('=0.000001042*E226^3-0.00004777*E226^2+0.0007646*E226-0.00075',
-     '0.000001042|E226|3|^|*|0.00004777|E226|2|^|*|-|0.0007646|E226|*|+|0.00075|-'),
+     '0.000001042|E226|3|^|*|0.00004777|E226|2|^|*|-|0.0007646|E226|*|+|'
+     '0.00075|-'),
 ]
 
 linest_inputs = [
@@ -147,9 +163,11 @@ linest_inputs = [
 
     ('=LINEST(G2:G17,E2:E17,FALSE)',
      'G2:G17|E2:E17|FALSE|LINEST'),
-    (
-    '=LINEST(B32:(INDEX(B32:B119,MATCH(0,B32:B119,-1),1)),(F32:(INDEX(B32:F119,MATCH(0,B32:B119,-1),5)))^{1,2,3,4})',
-    'B32:B119|0|B32:B119|1|-|MATCH|1|INDEX|B32:|B32:F119|0|B32:B119|1|-|MATCH|5|INDEX|F32:|1|2|3|4|ARRAYROW|ARRAY|^|LINEST'),
+
+    ('=LINEST(B32:(INDEX(B32:B119,MATCH(0,B32:B119,-1),1)),(F32:('
+     'INDEX(B32:F119,MATCH(0,B32:B119,-1),5)))^{1,2,3,4})',
+     'B32:B119|0|B32:B119|1|-|MATCH|1|INDEX|B32:|B32:F119|0|B32:B119|1|-|'
+     'MATCH|5|INDEX|F32:|1|2|3|4|ARRAYROW|ARRAY|^|LINEST'),
 ]
 
 
@@ -159,7 +177,7 @@ test_names = (
 test_data = []
 for test_name in test_names:
     for i, test in enumerate(globals()[test_name]):
-        test_data.append(('{}_{}'.format(test_name, i + 1), *test))
+        test_data.append(('{}_{}'.format(test_name, i + 1), test[0], test[1]))
 
 
 @pytest.mark.parametrize('test_number, formula, rpn', test_data)
@@ -299,9 +317,15 @@ test_data = [
         python_code='xsum(_R_("D9:D11"), (_R_("E9:E11"), _R_("F9:F11")))',
     ),
     dict(
-        formula='=IF(P5=1.0,"NA",IF(P5=2.0,"A",IF(P5=3.0,"B",IF(P5=4.0,"C",IF(P5=5.0,"D",IF(P5=6.0,"E",IF(P5=7.0,"F",IF(P5=8.0,"G"))))))))',
-        rpn='P5|1.0|=|"NA"|P5|2.0|=|"A"|P5|3.0|=|"B"|P5|4.0|=|"C"|P5|5.0|=|"D"|P5|6.0|=|"E"|P5|7.0|=|"F"|P5|8.0|=|"G"|IF|IF|IF|IF|IF|IF|IF|IF',
-        python_code='("NA" if _C_("P5") == 1.0 else ("A" if _C_("P5") == 2.0 else ("B" if _C_("P5") == 3.0 else ("C" if _C_("P5") == 4.0 else ("D" if _C_("P5") == 5.0 else ("E" if _C_("P5") == 6.0 else ("F" if _C_("P5") == 7.0 else ("G" if _C_("P5") == 8.0 else 0))))))))',
+        formula='=IF(P5=1.0,"NA",IF(P5=2.0,"A",IF(P5=3.0,"B",IF(P5=4.0,"C",IF('
+                'P5=5.0,"D",IF(P5=6.0,"E",IF(P5=7.0,"F",IF(P5=8.0,"G"))))))))',
+        rpn='P5|1.0|=|"NA"|P5|2.0|=|"A"|P5|3.0|=|"B"|P5|4.0|=|"C"|P5|5.0|=|"D"|'
+            'P5|6.0|=|"E"|P5|7.0|=|"F"|P5|8.0|=|"G"|IF|IF|IF|IF|IF|IF|IF|IF',
+        python_code='("NA" if _C_("P5") == 1.0 else ("A" if _C_("P5") == 2.0'
+                    ' else ("B" if _C_("P5") == 3.0 else ("C" if _C_("P5") =='
+                    ' 4.0 else ("D" if _C_("P5") == 5.0 else ("E" if _C_("P5")'
+                    ' == 6.0 else ("F" if _C_("P5") == 7.0 else ("G" if '
+                    '_C_("P5") == 8.0 else 0))))))))',
     ),
     dict(
         formula='={SUM(B2:D2*B3:D3)}',
@@ -321,33 +345,82 @@ test_data = [
 
     # E. W. Bachtal's test formulae
     dict(
-        formula='=IF("a"={"a","b";"c",#N/A;-1,TRUE}, "yes", "no") &   "  more ""test"" text"',
-        rpn='"a"|"a"|"b"|ARRAYROW|"c"|#N/A|ARRAYROW|1|-|TRUE|ARRAYROW|ARRAY|=|"yes"|"no"|IF|"  more ""test"" text"|&',
-        python_code='("yes" if "a" == [["a", "b"], ["c", "#N/A"], [-1, True]] else "no") & "  more \\"test\\" text"',
+        formula='=IF("a"={"a","b";"c",#N/A;-1,TRUE}, "yes", "no") &'
+                '   "  more ""test"" text"',
+        rpn='"a"|"a"|"b"|ARRAYROW|"c"|#N/A|ARRAYROW|1|-|TRUE|ARRAYROW|ARRAY|=|'
+            '"yes"|"no"|IF|"  more ""test"" text"|&',
+        python_code='("yes" if "a" == [["a", "b"], ["c", "#N/A"], [-1, True]]'
+                    ' else "no") & "  more \\"test\\" text"',
     ),
     dict(
-        formula='=IF(R13C3>DATE(2002,1,6),0,IF(ISERROR(R[41]C[2]),0,IF(R13C3>=R[41]C[2],0, IF(AND(R[23]C[11]>=55,R[24]C[11]>=20),R53C3,0))))',
-        rpn='R13C3|2002|1|6|DATE|>|0|R[41]C[2]|ISERROR|0|R13C3|R[41]C[2]|>=|0|R[23]C[11]|55|>=|R[24]C[11]|20|>=|AND|R53C3|0|IF|IF|IF|IF',
-        python_code='(0 if _C_("C13") > date(2002, 1, 6) else (0 if iserror(_C_("C42")) else (0 if _C_("C13") >= _C_("C42") else (_C_("C53") if all((_C_("L24") >= 55, _C_("L25") >= 20,)) else 0))))',    ),
-    dict(
-        formula='=IF(R[39]C[11]>65,R[25]C[42],ROUND((R[11]C[11]*IF(OR(AND(R[39]C[11]>=55, R[40]C[11]>=20),AND(R[40]C[11]>=20,R11C3="YES")),R[44]C[11],R[43]C[11]))+(R[14]C[11] *IF(OR(AND(R[39]C[11]>=55,R[40]C[11]>=20),AND(R[40]C[11]>=20,R11C3="YES")), R[45]C[11],R[43]C[11])),0))',
-        rpn='R[39]C[11]|65|>|R[25]C[42]|R[11]C[11]|R[39]C[11]|55|>=|R[40]C[11]|20|>=|AND|R[40]C[11]|20|>=|R11C3|"YES"|=|AND|OR|R[44]C[11]|R[43]C[11]|IF|*|R[14]C[11]|R[39]C[11]|55|>=|R[40]C[11]|20|>=|AND|R[40]C[11]|20|>=|R11C3|"YES"|=|AND|OR|R[45]C[11]|R[43]C[11]|IF|*|+|0|ROUND|IF',
-        python_code='(_C_("AQ26") if _C_("L40") > 65 else xround((_C_("L12") * (_C_("L45") if any((all((_C_("L40") >= 55, _C_("L41") >= 20,)), all((_C_("L41") >= 20, _C_("C11") == "YES",)),)) else _C_("L44"))) + (_C_("L15") * (_C_("L46") if any((all((_C_("L40") >= 55, _C_("L41") >= 20,)), all((_C_("L41") >= 20, _C_("C11") == "YES",)),)) else _C_("L44"))), 0))',
+        formula='=IF(R13C3>DATE(2002,1,6),0,IF(ISERROR(R[41]C[2]),0,IF(R13C3>=R'
+                '[41]C[2],0, IF(AND(R[23]C[11]>=55,R[24]C[11]>=20),R53C3,0))))',
+        rpn='R13C3|2002|1|6|DATE|>|0|R[41]C[2]|ISERROR|0|R13C3|R[41]C[2]|>=|0|'
+            'R[23]C[11]|55|>=|R[24]C[11]|20|>=|AND|R53C3|0|IF|IF|IF|IF',
+        python_code='(0 if _C_("C13") > date(2002, 1, 6) else (0 if iserror('
+                    '_C_("C42")) else (0 if _C_("C13") >= _C_("C42") else ('
+                    '_C_("C53") if all((_C_("L24") >= 55, _C_("L25") >= 20,))'
+                    ' else 0))))',
     ),
     dict(
-        formula='=(propellor_charts!B22*(propellor_charts!E21+propellor_charts!D21*(engine_data!O16*D70+engine_data!P16)+propellor_charts!C21*(engine_data!O16*D70+engine_data!P16)^2+propellor_charts!B21*(engine_data!O16*D70+engine_data!P16)^3)^2)^(1/3)*(1*D70/5.33E-18)^(2/3)*0.0000000001*28.3495231*9.81/1000',
-        rpn='propellor_charts!B22|propellor_charts!E21|propellor_charts!D21|engine_data!O16|D70|*|engine_data!P16|+|*|+|propellor_charts!C21|engine_data!O16|D70|*|engine_data!P16|+|2|^|*|+|propellor_charts!B21|engine_data!O16|D70|*|engine_data!P16|+|3|^|*|+|2|^|*|1|3|/|^|1|D70|*|5.33E-18|/|2|3|/|^|*|0.0000000001|*|28.3495231|*|9.81|*|1000|/',
-        python_code='((((((_C_("propellor_charts!B22") * ((((_C_("propellor_charts!E21") + (_C_("propellor_charts!D21") * ((_C_("engine_data!O16") * _C_("D70")) + _C_("engine_data!P16")))) + (_C_("propellor_charts!C21") * (((_C_("engine_data!O16") * _C_("D70")) + _C_("engine_data!P16")) ** 2))) + (_C_("propellor_charts!B21") * (((_C_("engine_data!O16") * _C_("D70")) + _C_("engine_data!P16")) ** 3))) ** 2)) ** (1 / 3)) * (((1 * _C_("D70")) / 5.33E-18) ** (2 / 3))) * 0.0000000001) * 28.3495231) * 9.81) / 1000',
+        formula='=IF(R[39]C[11]>65,R[25]C[42],ROUND((R[11]C[11]*IF(OR(AND(R[39]'
+                'C[11]>=55, R[40]C[11]>=20),AND(R[40]C[11]>=20,R11C3="YES")),'
+                'R[44]C[11],R[43]C[11]))+(R[14]C[11] *IF(OR(AND(R[39]C[11]>=55,'
+                'R[40]C[11]>=20),AND(R[40]C[11]>=20,R11C3="YES")),'
+                ' R[45]C[11],R[43]C[11])),0))',
+        rpn='R[39]C[11]|65|>|R[25]C[42]|R[11]C[11]|R[39]C[11]|55|>=|R[40]C[11]|'
+            '20|>=|AND|R[40]C[11]|20|>=|R11C3|"YES"|=|AND|OR|R[44]C[11]|'
+            'R[43]C[11]|IF|*|R[14]C[11]|R[39]C[11]|55|>=|R[40]C[11]|20|>=|AND|'
+            'R[40]C[11]|20|>=|R11C3|"YES"|=|AND|OR|R[45]C[11]|R[43]C[11]|'
+            'IF|*|+|0|ROUND|IF',
+        python_code='(_C_("AQ26") if _C_("L40") > 65 else xround((_C_("L12") *'
+                    ' (_C_("L45") if any((all((_C_("L40") >= 55, _C_("L41") >='
+                    ' 20,)), all((_C_("L41") >= 20, _C_("C11") == "YES",)),))'
+                    ' else _C_("L44"))) + (_C_("L15") * (_C_("L46") if any('
+                    '(all((_C_("L40") >= 55, _C_("L41") >= 20,)), all(('
+                    '_C_("L41") >= 20, _C_("C11") == "YES",)),)) else'
+                    ' _C_("L44"))), 0))',
+    ),
+    dict(
+        formula='=(propellor_charts!B22*(propellor_charts!E21+propellor_charts!'
+                'D21*(engine_data!O16*D70+engine_data!P16)+propellor_charts!'
+                'C21*(engine_data!O16*D70+engine_data!P16)^2+propellor_charts!'
+                'B21*(engine_data!O16*D70+engine_data!P16)^3)^2)^(1/3)*'
+                '(1*D70/5.33E-18)^(2/3)*0.0000000001*28.3495231*9.81/1000',
+        rpn='propellor_charts!B22|propellor_charts!E21|propellor_charts!D21|'
+            'engine_data!O16|D70|*|engine_data!P16|+|*|+|propellor_charts!C21|'
+            'engine_data!O16|D70|*|engine_data!P16|+|2|^|*|+|propellor_charts!'
+            'B21|engine_data!O16|D70|*|engine_data!P16|+|3|^|*|+|2|^|*|1|3|/|^|'
+            '1|D70|*|5.33E-18|/|2|3|/|^|*|0.0000000001|*|28.3495231|*|9.81|*|'
+            '1000|/',
+        python_code='((((((_C_("propellor_charts!B22") * ((((_C_('
+                    '"propellor_charts!E21") + (_C_("propellor_charts!D21") *'
+                    ' ((_C_("engine_data!O16") * _C_("D70")) + _C_('
+                    '"engine_data!P16")))) + (_C_("propellor_charts!C21") *'
+                    ' (((_C_("engine_data!O16") * _C_("D70")) + _C_('
+                    '"engine_data!P16")) ** 2))) + (_C_("propellor_charts!B21")'
+                    ' * (((_C_("engine_data!O16") * _C_("D70")) + _C_('
+                    '"engine_data!P16")) ** 3))) ** 2)) ** (1 / 3)) * (((1 *'
+                    ' _C_("D70")) / 5.33E-18) ** (2 / 3))) * 0.0000000001) *'
+                    ' 28.3495231) * 9.81) / 1000',
     ),
     dict(
         formula='=(3600/1000)*E40*(E8/E39)*(E15/E19)*LN(E54/(E54-E48))',
         rpn='3600|1000|/|E40|*|E8|E39|/|*|E15|E19|/|*|E54|E54|E48|-|/|LN|*',
-        python_code='((((3600 / 1000) * _C_("E40")) * (_C_("E8") / _C_("E39"))) * (_C_("E15") / _C_("E19"))) * xlog(_C_("E54") / (_C_("E54") - _C_("E48")))',
+        python_code='((((3600 / 1000) * _C_("E40")) * (_C_("E8") / _C_("E39")))'
+                    ' * (_C_("E15") / _C_("E19"))) * xlog(_C_("E54") /'
+                    ' (_C_("E54") - _C_("E48")))',
     ),
     dict(
-        formula='=IF(P5=1.0,"NA",IF(P5=2.0,"A",IF(P5=3.0,"B",IF(P5=4.0,"C",IF(P5=5.0,"D",IF(P5=6.0,"E",IF(P5=7.0,"F",IF(P5=8.0,"G"))))))))',
-        rpn='P5|1.0|=|"NA"|P5|2.0|=|"A"|P5|3.0|=|"B"|P5|4.0|=|"C"|P5|5.0|=|"D"|P5|6.0|=|"E"|P5|7.0|=|"F"|P5|8.0|=|"G"|IF|IF|IF|IF|IF|IF|IF|IF',
-        python_code='("NA" if _C_("P5") == 1.0 else ("A" if _C_("P5") == 2.0 else ("B" if _C_("P5") == 3.0 else ("C" if _C_("P5") == 4.0 else ("D" if _C_("P5") == 5.0 else ("E" if _C_("P5") == 6.0 else ("F" if _C_("P5") == 7.0 else ("G" if _C_("P5") == 8.0 else 0))))))))',
+        formula='=IF(P5=1.0,"NA",IF(P5=2.0,"A",IF(P5=3.0,"B",IF(P5=4.0,"C",IF('
+                'P5=5.0,"D",IF(P5=6.0,"E",IF(P5=7.0,"F",IF(P5=8.0,"G"))))))))',
+        rpn='P5|1.0|=|"NA"|P5|2.0|=|"A"|P5|3.0|=|"B"|P5|4.0|=|"C"|P5|5.0|=|"D"|'
+            'P5|6.0|=|"E"|P5|7.0|=|"F"|P5|8.0|=|"G"|IF|IF|IF|IF|IF|IF|IF|IF',
+        python_code='("NA" if _C_("P5") == 1.0 else ("A" if _C_("P5") == 2.0'
+                    ' else ("B" if _C_("P5") == 3.0 else ("C" if _C_("P5") =='
+                    ' 4.0 else ("D" if _C_("P5") == 5.0 else ("E" if _C_("P5")'
+                    ' == 6.0 else ("F" if _C_("P5") == 7.0 else ("G" if _C_('
+                    '"P5") == 8.0 else 0))))))))',
     ),
     dict(
         formula='=LINEST(X5:X32,W5:W32^{1,2,3})',
@@ -357,17 +430,21 @@ test_data = [
     dict(
         formula='=IF(configurations!$G$22=3,sizing!$C$303,M14)',
         rpn='configurations!$G$22|3|=|sizing!$C$303|M14|IF',
-        python_code='(_C_("sizing!C303") if _C_("configurations!G22") == 3 else _C_("M14"))',
+        python_code='(_C_("sizing!C303") if _C_("configurations!G22") == 3'
+                    ' else _C_("M14"))',
     ),
     dict(
         formula='=0.000001042*E226^3-0.00004777*E226^2+0.0007646*E226-0.00075',
-        rpn='0.000001042|E226|3|^|*|0.00004777|E226|2|^|*|-|0.0007646|E226|*|+|0.00075|-',
-        python_code='(((0.000001042 * (_C_("E226") ** 3)) - (0.00004777 * (_C_("E226") ** 2))) + (0.0007646 * _C_("E226"))) - 0.00075',
+        rpn='0.000001042|E226|3|^|*|0.00004777|E226|2|^|*|-|0.0007646|E226|'
+            '*|+|0.00075|-',
+        python_code='(((0.000001042 * (_C_("E226") ** 3)) - (0.00004777 * (_C_'
+                    '("E226") ** 2))) + (0.0007646 * _C_("E226"))) - 0.00075',
     ),
     dict(
         formula='=LINEST(G2:G17,E2:E17,FALSE)',
         rpn='G2:G17|E2:E17|FALSE|LINEST',
-        python_code='linest(_R_("G2:G17"), _R_("E2:E17"), False, degree=-1)[-2]',
+        python_code='linest(_R_("G2:G17"), _R_("E2:E17"), '
+                    'False, degree=-1)[-2]',
     ),
     dict(
         formula='=LINESTMARIO(G2:G17,E2:E17,FALSE)',
@@ -380,9 +457,13 @@ test_data = [
         python_code='("" if _C_("AI119") == "" else _C_("E119"))',
     ),
     dict(
-        formula='=LINEST(B32:(INDEX(B32:B119,MATCH(0,B32:B119<6,-1),1)),(F32:(INDEX(B32:F119,MATCH(0,B32:B119,-1),5)))^{1,2,3,4})',
-        rpn='B32:B119|0|B32:B119|6|<|1|-|MATCH|1|INDEX|B32:|B32:F119|0|B32:B119|1|-|MATCH|5|INDEX|F32:|1|2|3|4|ARRAYROW|ARRAY|^|LINEST',
-        python_code='linest(b32:(index(_R_("B32:B119"), match(0, _R_("B32:B119") < 6, -1), 1)), f32:(index(_R_("B32:F119"), match(0, _R_("B32:B119"), -1), 5)), degree=-1)[-2]',
+        formula='=LINEST(B32:(INDEX(B32:B119,MATCH(0,B32:B119<6,-1),1)),(F32:'
+                '(INDEX(B32:F119,MATCH(0,B32:B119,-1),5)))^{1,2,3,4})',
+        rpn='B32:B119|0|B32:B119|6|<|1|-|MATCH|1|INDEX|B32:|B32:F119|0|B32:B119'
+            '|1|-|MATCH|5|INDEX|F32:|1|2|3|4|ARRAYROW|ARRAY|^|LINEST',
+        python_code='linest(b32:(index(_R_("B32:B119"), match(0, _R_('
+                    '"B32:B119") < 6, -1), 1)), f32:(index(_R_("B32:F119"),'
+                    ' match(0, _R_("B32:B119"), -1), 5)), degree=-1)[-2]',
     ),
 ]
 
@@ -564,7 +645,7 @@ def test_init_from_python_code():
     python_code = '=_R_("B32:B119") + _C_("P5")'
     excel_formula2 = ExcelFormula(python_code, formula_is_python_code=True)
     assert excel_formula1.needed_addresses == excel_formula2.needed_addresses
-    
+
 
 def test_string_number_compare():
     eval_ctx = ExcelFormula.build_eval_context(None, None)

@@ -228,7 +228,7 @@ def lookup(arg, lookup_range, result_range):
     )
     HLOOKUP(lookup_value, table_array, row_index_num, [range_lookup])
     LOOKUP(lookup_value, lookup_vector, [result_vector])
-    LOOKUP(lookup_value, array)  # should not use array form, use vlookup instead
+    LOOKUP(lookup_value, array) # should not use array form, use vlookup instead
     """
     # TODO
     if not isinstance(arg, (int, float)):

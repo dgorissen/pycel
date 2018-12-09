@@ -33,11 +33,11 @@ def unconnected_excel(example_xls_path):
     def new_warn(msg, *args, **kwargs):
         if 'Unknown' not in msg:
             old_warn(msg, *args, **kwargs)
-            
+
     with mock.patch('openpyxl.reader.worksheet.warn', new_warn):
         yield ExcelWrapperImpl(example_xls_path)
-        
-        
+
+
 @pytest.fixture()
 def excel(unconnected_excel):
     unconnected_excel.connect()

@@ -1,11 +1,10 @@
-import os
 
 
 def test_connect(unconnected_excel):
     try:
         unconnected_excel.connect()
         connected = True
-    except:
+    except:  # noqa: E722
         connected = False
     assert connected
 

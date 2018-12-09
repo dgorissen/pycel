@@ -258,7 +258,7 @@ def test_cell_repr(excel):
 
 def test_gen_gexf(excel, tmpdir):
     excel_compiler = ExcelCompiler(excel=excel)
-    filename = os.path.join(tmpdir, 'test.gexf')
+    filename = os.path.join(str(tmpdir), 'test.gexf')
     assert not os.path.exists(filename)
     excel_compiler.export_to_gexf(filename)
     assert os.path.exists(filename)
@@ -266,7 +266,7 @@ def test_gen_gexf(excel, tmpdir):
 
 def test_gen_dot(excel, tmpdir):
     excel_compiler = ExcelCompiler(excel=excel)
-    filename = os.path.join(tmpdir, 'test.dot')
+    filename = os.path.join(str(tmpdir), 'test.dot')
     assert not os.path.exists(filename)
     excel_compiler.export_to_dot(filename)
     assert os.path.exists(filename)

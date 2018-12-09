@@ -59,7 +59,7 @@ def test_address_range():
 
     with pytest.raises(ValueError):
         AddressRange(AddressRange('sh!a1:b2'), sheet='sheet')
-        
+
     a = AddressRange('A:A')
     assert 'A' == a.start.column
     assert 'A' == a.end.column
@@ -175,7 +175,7 @@ def test_address_pickle(tmpdir):
         AddressCell('sh!F6'),
     ]
 
-    filename = os.path.join(tmpdir, 'test_addrs.pkl')
+    filename = os.path.join(str(tmpdir), 'test_addrs.pkl')
     with open(filename, 'wb') as f:
         pickle.dump(addrs, f)
 
@@ -183,7 +183,7 @@ def test_address_pickle(tmpdir):
         new_addrs = pickle.load(f)
 
     assert addrs == new_addrs
-    
+
 
 @pytest.mark.parametrize(
     'sheet_name',
@@ -212,7 +212,7 @@ def test_split_sheetname():
 
     with pytest.raises(ValueError):
         split_sheetname('sh!B1', sheet='shx')
-    
+
 
 def test_address_cell_enum():
     assert ('B1', '', 2, 1, 'B1') == AddressCell('B1')
@@ -229,7 +229,7 @@ def test_address_cell_enum():
 
     with pytest.raises(ValueError):
         AddressCell('B1:C2')
-        
+
     with pytest.raises(ValueError):
         AddressCell('sheet!B1:C2')
 
@@ -254,7 +254,7 @@ def test_resolve_range():
     assert [a('sh!B1')] == resolve_range(a('sh!B1', sheet='sh'))
     assert [a('sh!B1'), a('sh!C1')] == resolve_range(a('sh!B1:C1', sheet='sh'))
     assert [a('sh!B1'), a('sh!B2')] == resolve_range(a('sh!B1:B2', sheet='sh'))
-    assert [[a('sh!B1'), a('sh!C1')],[a('sh!B2'), a('sh!C2')]] == \
+    assert [[a('sh!B1'), a('sh!C1')], [a('sh!B2'), a('sh!C2')]] == \
         resolve_range(a('sh!B1:C2', sheet='sh'))
 
     with pytest.raises(TypeError):
@@ -269,7 +269,10 @@ def test_resolve_range():
         ('a_table[[#All],[col3]:[col4]]', 'C1:D8'),
         ('a_table[[#Headers],[col4]]', 'D1'),
         ('a_table[[#Headers],[col2]:[col5]]', 'B1:E1'),
-        ('a_table[[#Headers],[#Data],[col4]]', PyCelException('D1:D7')), # Not Supported
+
+        # Not Supported
+        ('a_table[[#Headers],[#Data],[col4]]', PyCelException('D1:D7')),
+
         ('a_table[[#Data],[col4]:[col4]]', 'D2:D7'),
         ('a_table[[#Data],[col4]:[col5]]', 'D2:E7'),
         ('a_table[[#Totals],[col2]]', 'B8'),

@@ -81,7 +81,7 @@ PYTHON_AST_OPERATORS = {
     'BitOr': operator.or_,
     'BitXor': operator.xor,
     'BitAnd': operator.and_,
-    'MatMult': operator.matmul,
+    # 'MatMult': operator.matmul,  # not supported on py34
 }
 
 
@@ -373,7 +373,8 @@ def structured_reference_boundaries(address, cell=None, sheet=None):
                     if len(rows) != 1:
                         # not currently supporting multiple row selects
                         raise PyCelException(
-                            "Unknown Structured Reference Rows: {}".format(address))
+                            "Unknown Structured Reference Rows: {}".format(
+                                address))
 
                     rows = rows[0]
 
@@ -391,23 +392,29 @@ def structured_reference_boundaries(address, cell=None, sheet=None):
 
     if rows is None:
         # skip the headers and footers
-        min_row = boundaries[1] + (table.headerRowCount if table.headerRowCount else 0)
-        max_row = boundaries[3] - (table.totalsRowCount if table.totalsRowCount else 0)
+        min_row = boundaries[1] + (
+            table.headerRowCount if table.headerRowCount else 0)
+        max_row = boundaries[3] - (
+            table.totalsRowCount if table.totalsRowCount else 0)
 
     else:
         if rows == '#All':
             min_row, max_row = boundaries[1], boundaries[3]
 
         elif rows == '#Data':
-            min_row = boundaries[1] + (table.headerRowCount if table.headerRowCount else 0)
-            max_row = boundaries[3] - (table.totalsRowCount if table.totalsRowCount else 0)
+            min_row = boundaries[1] + (
+                table.headerRowCount if table.headerRowCount else 0)
+            max_row = boundaries[3] - (
+                table.totalsRowCount if table.totalsRowCount else 0)
 
         elif rows == '#Headers':
             min_row = boundaries[1]
-            max_row = boundaries[1] + (table.headerRowCount if table.headerRowCount else 0) - 1
+            max_row = boundaries[1] + (
+                table.headerRowCount if table.headerRowCount else 0) - 1
 
         elif rows == '#Totals':
-            min_row = boundaries[3] - (table.totalsRowCount if table.totalsRowCount else 0) + 1
+            min_row = boundaries[3] - (
+                table.totalsRowCount if table.totalsRowCount else 0) + 1
             max_row = boundaries[3]
 
         elif rows == '#This Row':
