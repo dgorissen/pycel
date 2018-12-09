@@ -10,3 +10,5 @@
 *.accdb binary
 *.zip binary
 *.xlsx binary
+
+notebooks/* linguist-documentation

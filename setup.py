@@ -14,7 +14,7 @@ setup(
     tests_require=['pytest'],
     test_suite='pytest',
     install_requires=[
-        'networkx',
+        'networkx>=2.0',
         'openpyxl>=2.5.12',
         'numpy',
         'ruamel.yaml',
