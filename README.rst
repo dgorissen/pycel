@@ -95,10 +95,10 @@ The code currently uses a tokenizer (parser) of similar origin from the
 
 .. Image links
 
-.. |build-state| image:: https://travis-ci.org/stephenrauch/pycel.svg?branch=test-travis
+.. |build-state| image:: https://travis-ci.org/stephenrauch/pycel.svg?branch=master
   :target: https://travis-ci.org/stephenrauch/pycel
 
-.. |coverage| image:: https://codecov.io/gh/stephenrauch/pycel/branch/test-travis/graph/badge.svg
+.. |coverage| image:: https://codecov.io/gh/stephenrauch/pycel/branch/master/graph/badge.svg
   :target: https://codecov.io/gh/stephenrauch/pycel
 
 .. |repo-size| image:: https://img.shields.io/github/repo-size/stephenrauch/pycel.svg
@@ -108,4 +108,4 @@ The code currently uses a tokenizer (parser) of similar origin from the
   :target: https://github.com/stephenrauch/pycel
 
 .. |notebook| image:: https://mybinder.org/badge.svg
-  :target: https://mybinder.org/v2/gh/stephenrauch/pycel/test-travis?filepath=notebooks%2Fexample.ipynb
+  :target: https://mybinder.org/v2/gh/stephenrauch/pycel/master?filepath=notebooks%2Fexample.ipynb

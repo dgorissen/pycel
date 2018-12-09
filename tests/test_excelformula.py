@@ -604,6 +604,11 @@ def test_build_eval_context():
         eval_context(ExcelFormula('=unknown_function(0)'))
 
 
+def test_compiled_python_cache():
+    formula = ExcelFormula('=1 + 2')
+    assert formula.compiled_python == formula.compiled_python
+
+
 def test_compiled_python_error():
     formula = ExcelFormula('=1 + 2')
     formula._python_code = 'this will be a syntax error'

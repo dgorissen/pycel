@@ -68,7 +68,7 @@ class ExcelCompiler(object):
         # code objects are not serializable
         state = dict(self.__dict__)
         for to_remove in 'eval excel log'.split():
-            if to_remove in state:
+            if to_remove in state:    # pragma: no branch
                 state[to_remove] = None
         return state
 
@@ -138,7 +138,7 @@ class ExcelCompiler(object):
             if not filename.split('.')[-1].startswith('y'):
                 filename += '.yml'
         else:
-            if not filename.endswith('.json'):
+            if not filename.endswith('.json'):  # pragma: no branch
                 filename += '.json'
 
         with open(filename, 'r') as f:
@@ -184,7 +184,7 @@ class ExcelCompiler(object):
 
     @classmethod
     def from_file(cls, filename):
-        if not filename.split('.')[-1].startswith('p'):
+        if not filename.split('.')[-1].startswith('p'):  # pragma: no branch
             filename += '.pkl'
 
         with open(filename, 'rb') as f:
@@ -207,11 +207,11 @@ class ExcelCompiler(object):
         plt.show()
 
     def set_value(self, cell, value, is_addr=True):
-        if is_addr:
+        if is_addr:  # pragma: no branch
             address = AddressRange(cell)
             cell = self.cell_map[address]
 
-        if cell.value != value:
+        if cell.value != value:  # pragma: no branch
             # reset the node + its dependencies
             self.reset(cell)
             # set the value
@@ -256,7 +256,7 @@ class ExcelCompiler(object):
 
         def walk_dependents(cell):
             for child_cell in self.dep_graph.successors(cell):
-                if child_cell.address not in needed_cells:
+                if child_cell.address not in needed_cells:  # pragma: no branch
                     needed_cells.add(child_cell.address)
                     walk_dependents(child_cell)
 
@@ -279,7 +279,7 @@ class ExcelCompiler(object):
 
         def walk_precedents(cell):
             for child_address in cell.needed_addresses:
-                if child_address not in processed_cells:
+                if child_address not in processed_cells:  # pragma: no branch
                     processed_cells.add(child_address)
                     child_cell = self.cell_map[child_address]
                     if child_address in needed_cells or child_address.is_range:
@@ -317,7 +317,7 @@ class ExcelCompiler(object):
                 original_value = cell.value
                 cell.value = None
                 self.evaluate(cell)
-                if original_value != cell.value:
+                if original_value != cell.value:  # pragma: no branch
                     failed.append(addr)
                     print('{} mismatch  {} -> {}'.format(
                         addr, original_value, cell.value))
@@ -328,7 +328,7 @@ class ExcelCompiler(object):
 
             verified.add(addr)
             for addr in cell.needed_addresses:
-                if addr not in verified:
+                if addr not in verified:  # pragma: no branch
                     to_verify.append(addr)
 
         return failed
@@ -613,7 +613,7 @@ class CompiledImporter:
             height, width = address.size
             if height == 1:
                 addrs = [addrs]
-            elif width == 1:
+            elif width == 1:  # pragma: no branch
                 addrs = [[x] for x in addrs]
 
             cells = [[cell_map[addr] for addr in row] for row in addrs]

@@ -483,9 +483,6 @@ class TestSumIf:
         with pytest.raises(TypeError):
             sumif(12, 12, 12)
 
-    def test_criteria_is_number_string_boolean(self):
-        assert 0 == sumif([1, 2, 3], [1, 2])
-
     def test_regular_with_number_criteria(self):
         assert 6 == sumif([1, 1, 2, 2, 2], 2)
 
@@ -515,9 +512,6 @@ class TestSumIfs:
     def test_sum_range_is_a_list(self):
         with pytest.raises(TypeError):
             sumifs(12, 12, 12)
-
-    def test_criteria_is_number_string_boolean(self):
-        assert 0 == sumifs([1, 2, 3], [1, 2, 3], [1, 2])
 
     def test_regular_with_number_criteria(self):
         assert 6 == sumifs([1, 1, 2, 2, 2], [1, 1, 2, 2, 2], 2)

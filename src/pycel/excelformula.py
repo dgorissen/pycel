@@ -388,7 +388,7 @@ class FunctionNode(ASTNode):
         else:
             code += ")"
 
-        if not (degree == 1 and self.parent):
+        if not (degree == 1 and self.parent):  # pragma: no branch
             code += "[%s]" % (coef - 1)
 
         return code

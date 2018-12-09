@@ -11,6 +11,7 @@ from math import log
 import numpy as np
 
 from pycel.excelutil import (
+    assert_list_like,
     coerce_to_number,
     date_from_int,
     ERROR_CODES,
@@ -18,6 +19,7 @@ from pycel.excelutil import (
     flatten,
     is_leap_year,
     is_number,
+    list_like,
     normalize_year,
     PyCelException,
 )
@@ -394,8 +396,7 @@ def sumifs(sum_range, *args):
     #  beginning cell, and then including cells that correspond in size and
     #  shape to the range argument.
 
-    if not isinstance(sum_range, list):
-        raise TypeError('%s must be a list' % str(sum_range))
+    assert_list_like(sum_range)
 
     assert len(args) and len(args) % 2 == 0, \
         'Must have paired criteria and ranges'
@@ -445,7 +446,7 @@ def vlookup(lookup_value, table_array, col_index_num, range_lookup=False):
 
 
 def xlog(a):
-    if isinstance(a, (list, tuple, np.ndarray)):
+    if list_like(a):
         return [log(x) for x in flatten(a)]
     else:
         return log(a)

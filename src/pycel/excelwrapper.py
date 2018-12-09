@@ -11,7 +11,6 @@ import os
 from openpyxl import load_workbook
 from openpyxl.cell import Cell
 from openpyxl.cell.read_only import EMPTY_CELL
-from openpyxl.formula.tokenizer import TokenizerError
 
 from pycel.excelutil import AddressCell, AddressRange
 
@@ -194,15 +193,10 @@ class ExcelOpxWrapper(ExcelWrapper):
             self._defined_names = {}
 
             for defined_name in self.workbook.defined_names.definedName:
-                try:
-                    for worksheet, range_alias in defined_name.destinations:
-                        if worksheet in self.workbook:
-                            self._defined_names[str(defined_name.name)] = (
-                                range_alias, worksheet)
-                except TokenizerError:
-                    # ::TODO:: this is a workaround for openpyxl throwing
-                    # this exception when given a range of sheet!#REF!
-                    pass
+                for worksheet, range_alias in defined_name.destinations:
+                    if worksheet in self.workbook:
+                        self._defined_names[str(defined_name.name)] = (
+                            range_alias, worksheet)
         return self._defined_names
 
     def table(self, table_name):
@@ -227,20 +221,15 @@ class ExcelOpxWrapper(ExcelWrapper):
             rangednames = []
 
             for named_range in self.workbook.defined_names.definedName:
-                try:
-                    for worksheet, range_alias in named_range.destinations:
-                        if worksheet in self.workbook:
-                            tuple_name = (
-                                len(rangednames) + 1,
-                                str(named_range.name),
-                                str(self.workbook[worksheet].title + '!' +
-                                    range_alias)
-                            )
-                            rangednames.append([tuple_name])
-                except TokenizerError:
-                    # ::TODO:: this is a workaround for openpyxl throwing
-                    # this exception when given a range of sheet!#REF!
-                    pass
+                for worksheet, range_alias in named_range.destinations:
+                    if worksheet in self.workbook:
+                        tuple_name = (
+                            len(rangednames) + 1,
+                            str(named_range.name),
+                            str(self.workbook[worksheet].title + '!' +
+                                range_alias)
+                        )
+                        rangednames.append([tuple_name])
 
             self._rangednames = rangednames
         return self._rangednames

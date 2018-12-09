@@ -110,10 +110,14 @@ def test_get_ranged_names(excel):
     assert sum(map(len, excel.rangednames)) == sum(
         map(len, [[(1, 'SINUS', 'Sheet1!$C$1:$C$18')]]))
 
+    assert excel.rangednames == excel.rangednames
+
 
 def test_get_defined_names(excel):
     expected = {'SINUS': ('$C$1:$C$18', 'Sheet1')}
     assert expected == excel.defined_names
+
+    assert excel.defined_names == excel.defined_names
 
 
 def test_get_tables(excel):

@@ -4,6 +4,7 @@ import datetime as dt
 import operator
 import re
 
+import numpy as np
 from openpyxl.formula.tokenizer import Tokenizer
 from openpyxl.utils import (
     get_column_letter,
@@ -816,19 +817,20 @@ def criteria_parser(criteria):
 
 
 def find_corresponding_index(rng, criteria):
-    """This does not parse all of the patterns available to countif, etc"""
-    # parse criteria
-    if not isinstance(rng, list):
-        raise TypeError('%s must be a list' % str(rng))
-
-    if isinstance(criteria, list):
-        # ugly...
-        return ()
-
-    # build a criteria check
+    # parse criteria, build a criteria check
     check = criteria_parser(criteria)
 
+    assert_list_like(rng)
     return tuple(index for index, item in enumerate(rng) if check(item))
+
+
+def list_like(data):
+    return isinstance(data, (list, tuple, np.ndarray))
+
+
+def assert_list_like(data):
+    if not list_like(data):
+        raise TypeError('Must be a list like: {}'.format(data))
 
 
 def build_operator_operand_fixup(capture_error_state):
