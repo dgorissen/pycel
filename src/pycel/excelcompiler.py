@@ -19,12 +19,6 @@ from pycel.excelwrapper import ExcelOpxWrapper
 from ruamel.yaml import YAML
 
 
-__version__ = list(filter(str.isdigit, "$Revision: 2524 $"))
-__date__ = list(filter(str.isdigit,
-                       "$Date: 2011-09-06 17:05:00 +0100 (Tue, 06 Sep 2011) $"))
-__author__ = list(filter(str.isdigit, "$Author: dg2d09 $"))
-
-
 class ExcelCompiler(object):
     """Class responsible for taking an Excel spreadsheet and compiling it
     to a Spreadsheet instance that can be serialized to disk, and executed
