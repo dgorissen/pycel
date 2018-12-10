@@ -282,7 +282,7 @@ class TestMatch:
 
     def test_numeric_in_ascending_mode(self):
         # Closest inferior value is found
-        assert 3 == match(5, [1, 3.3, 5])
+        assert 2 == match(4, [1, 3.3, 5], 1)
 
     def test_numeric_in_ascending_mode_with_descending_array(self):
         # Not ascending arrays raise exception
@@ -321,6 +321,11 @@ class TestMatch:
         # Closest inferior value is found
         assert 3 == match('rars', ['a', 'AAB', 'rars'])
 
+    def test_string_in_asscending_mode_not_found(self):
+        # Closest superior value is found
+        with pytest.raises(PyCelException):
+            match('a', [], 1)
+
     def test_string_in_ascending_mode_with_descending_array(self):
         # Not ascending arrays raise exception
         with pytest.raises(PyCelException):
@@ -342,6 +347,11 @@ class TestMatch:
     def test_string_in_descending_mode(self):
         # Closest superior value is found
         assert 3 == match('a', ['c', 'b', 'a'], -1)
+
+    def test_string_in_descending_mode_not_found(self):
+        # Closest superior value is found
+        with pytest.raises(PyCelException):
+            match('a', [], -1)
 
     def test_string_in_descending_mode_with_ascending_array(self):
         # Non descending arrays raise exception

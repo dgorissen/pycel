@@ -202,7 +202,7 @@ def isNa(arg):
         return True
 
 
-def linest(Y, X, const=True, degree=1):
+def linest(Y, X, const=True, degree=1):  # pragma: no cover  ::TODO::
     if isinstance(const, str):
         const = (const.lower() == "true")
 
@@ -219,7 +219,7 @@ def linest(Y, X, const=True, degree=1):
     return coefs
 
 
-def lookup(arg, lookup_range, result_range):
+def lookup(arg, lookup_range, result_range):  # pragma: no cover  ::TODO::
     """
     MATCH(lookup_value, lookup_array, [match_type])
     VLOOKUP(
@@ -287,14 +287,16 @@ def match(lookup_value, lookup_array, match_type=1):
             if current <= lookup_value:
                 pos_max = i
         if pos_max == -1:
-            raise PyCelException('no result in lookup_array for match_type 0')
+            raise PyCelException('no result in lookup_array for match_type 1')
         return pos_max + 1  # Excel starts at 1
 
     elif match_type == 0:
         # No string wildcard
         return [type_convert(x) for x in lookup_array].index(lookup_value) + 1
 
-    elif match_type == -1:
+    else:
+        assert match_type == -1
+
         # Verify descending sort
         pos_min = -1
         for i in range((len(lookup_array))):
@@ -307,7 +309,7 @@ def match(lookup_value, lookup_array, match_type=1):
             if current >= lookup_value:
                 pos_min = i
         if pos_min == -1:
-            raise PyCelException('no result in lookup_array for match_type 0')
+            raise PyCelException('no result in lookup_array for match_type -1')
         return pos_min + 1  # Excel starts at 1
 
 
