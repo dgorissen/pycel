@@ -312,7 +312,7 @@ def split_sheetname(address, sheet=''):
     return sheet or sh, address
 
 
-def structured_reference_boundaries(address, cell=None, sheet=None):
+def structured_reference_boundaries(address, cell=None):
     # Excel reference: https://support.office.com/en-us/article/
     #   Using-structured-references-with-Excel-tables-
     #   F5ED2452-2337-4F71-BED3-C8AE6D2B276E
@@ -365,25 +365,25 @@ def structured_reference_boundaries(address, cell=None, sheet=None):
             start_col = selector_match.group('start_col')
             end_col = selector_match.group('end_col')
 
-            if rows is not None:
-                if not rows:
-                    rows = None
+            if not rows:
+                rows = None
 
-                elif '[' in rows:
-                    rows = [r.split(']')[0] for r in rows.split('[')[1:]]
-                    if len(rows) != 1:
-                        # not currently supporting multiple row selects
-                        raise PyCelException(
-                            "Unknown Structured Reference Rows: {}".format(
-                                address))
+            else:
+                assert '[' in rows
+                rows = [r.split(']')[0] for r in rows.split('[')[1:]]
+                if len(rows) != 1:
+                    # not currently supporting multiple row selects
+                    raise PyCelException(
+                        "Unknown Structured Reference Rows: {}".format(
+                            address))
 
-                    rows = rows[0]
+                rows = rows[0]
 
         if end_col.startswith('#'):
             # end_col collects the single field case
-            if rows is None and start_col is None:
-                rows = end_col
-                end_col = None
+            assert rows is None and start_col is None
+            rows = end_col
+            end_col = None
 
         elif end_col.startswith('@'):
             rows = '#This Row'
@@ -459,6 +459,34 @@ def structured_reference_boundaries(address, cell=None, sheet=None):
 
 
 def range_boundaries(address, cell=None, sheet=None):
+    try:
+        # if this is normal reference then just use the openpyxl converter
+        boundaries = openpyxl_range_boundaries(address)
+        if None not in boundaries or ':' in address:
+            return boundaries, sheet
+    except ValueError:
+        pass
+
+    # test for R1C1 style address
+    boundaries = r1c1_boundaries(address, cell=cell, sheet=sheet)
+    if boundaries:
+        return boundaries
+
+    # Try to see if the is a structured table reference
+    boundaries = structured_reference_boundaries(address, cell=cell)
+    if boundaries:
+        return boundaries
+
+    # Try to see if this is a defined name
+    name_addr = cell and cell.excel and cell.excel.defined_names.get(address)
+    if name_addr:
+        return openpyxl_range_boundaries(name_addr[0]), name_addr[1]
+
+    raise ValueError(
+        "{0} is not a valid coordinate or range".format(address))
+
+
+def r1c1_boundaries(address, cell=None, sheet=None):
     """
     R1C1 reference style
 
@@ -484,30 +512,12 @@ def range_boundaries(address, cell=None, sheet=None):
     R           An absolute reference to the current row as part of a range
 
     """
-    try:
-        # if this is normal reference then just use the openpyxl converter
-        boundaries = openpyxl_range_boundaries(address)
-        if None not in boundaries or ':' in address:
-            return boundaries, sheet
-    except ValueError:
-        pass
 
+    # test for R1C1 style address
     m = R1C1_RANGE_RE.match(address)
+
     if not m:
-        # Try to see if the is a structured table reference
-        table_select_boundaries = structured_reference_boundaries(
-            address, cell=cell, sheet=sheet)
-        if table_select_boundaries:
-            return table_select_boundaries
-
-        # Try to see if this is a defined name
-        name_addr = (cell and cell.excel and
-                     cell.excel.defined_names.get(address))
-        if name_addr:
-            return openpyxl_range_boundaries(name_addr[0]), name_addr[1]
-
-        raise ValueError(
-            "{0} is not a valid coordinate or range".format(address))
+        return None
 
     def from_relative_to_absolute(r1_or_c1):
         def require_cell():

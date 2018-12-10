@@ -5,4 +5,4 @@
 # See StackOverflow/458550 for more details
 
 # uses semantic versioning, http://semver.org
-__version__ = '0.0.1'
+__version__ = '1.0a.0'

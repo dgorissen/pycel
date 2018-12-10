@@ -34,12 +34,12 @@ from pycel.excelutil import DIV0
 
 class ATestCell:
 
-    def __init__(self, col, row, sheet=''):
+    def __init__(self, col, row, sheet='', excel=None):
         self.row = row
         self.col = col
         self.col_idx = column_index_from_string(col)
         self.sheet = sheet
-        self.excel = None
+        self.excel = excel
         self.address = 'A1'
 
 
@@ -375,8 +375,10 @@ def test_extended_range_boundaries():
     assert (2, None, 4, None) == range_boundaries('C2:C[3]', cell)[0]
 
 
-def test_extended_range_boundaries_defined_names():
-    """  """
+def test_range_boundaries_defined_names(excel):
+    cell = ATestCell('A', 1, excel=excel)
+
+    assert ((3, 1, 3, 18), 'Sheet1') == range_boundaries('SINUS', cell)
 
 
 @pytest.mark.parametrize(
