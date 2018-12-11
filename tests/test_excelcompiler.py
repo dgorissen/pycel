@@ -1,8 +1,7 @@
 import os
-import pytest
-
 from unittest import mock
 
+import pytest
 from pycel.excelcompiler import Cell, CellRange, ExcelCompiler
 from pycel.excelformula import FormulaEvalError
 from pycel.excelutil import AddressRange, EMPTY

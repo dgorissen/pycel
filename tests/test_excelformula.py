@@ -735,9 +735,10 @@ def test_div_zero(caplog):
     assert DIV0 == eval_ctx(ExcelFormula('=a1=1'))
     assert DIV0 == eval_ctx(ExcelFormula('=a1+"l"'))
 
+    caplog.set_level(logging.INFO)
     assert 3 == eval_ctx(ExcelFormula('=iferror(1/0,3)'))
     assert 1 == len(caplog.records)
-    assert "WARNING" == caplog.records[0].levelname
+    assert "INFO" == caplog.records[0].levelname
     assert "1 Div 0" in caplog.records[0].message
 
     assert DIV0 == eval_ctx(ExcelFormula('=1/0'))
@@ -750,6 +751,12 @@ Eval: 1 / 0
 Values: 1 Div 0"""
     assert message in caplog.records[1].message
 
+    eval_ctx = ExcelFormula.build_eval_context(
+        lambda x: 0, lambda x: [0],
+        logging.getLogger('pycel_x'))
+
+    assert DIV0 == eval_ctx(ExcelFormula('=1 - (1 / 0)'))
+
 
 def test_value_error(caplog):
     eval_ctx = ExcelFormula.build_eval_context(
@@ -761,9 +768,10 @@ def test_value_error(caplog):
     assert VALUE_ERROR == eval_ctx(ExcelFormula('=a1=1'))
     assert VALUE_ERROR == eval_ctx(ExcelFormula('=a1+"l"'))
 
+    caplog.set_level(logging.INFO)
     assert 3 == eval_ctx(ExcelFormula('=iferror(1+"A",3)'))
     assert 1 == len(caplog.records)
-    assert "WARNING" == caplog.records[0].levelname
+    assert "INFO" == caplog.records[0].levelname
     assert "unsupported operand type(s)" in caplog.records[0].message
 
     assert VALUE_ERROR == eval_ctx(ExcelFormula('=1+"A"'))
@@ -782,9 +790,10 @@ def test_string_number_mult(caplog):
         lambda x: VALUE_ERROR, lambda x: [[1, 1], [1, VALUE_ERROR]],
         logging.getLogger('pycel_x'))
 
+    caplog.set_level(logging.INFO)
     assert 3 == eval_ctx(ExcelFormula('=iferror(2*"A",3)'))
     assert 1 == len(caplog.records)
-    assert "WARNING" == caplog.records[0].levelname
+    assert "INFO" == caplog.records[0].levelname
     assert "Cannot multiple type:" in caplog.records[0].message
 
     assert VALUE_ERROR == eval_ctx(ExcelFormula('="a"*2'))

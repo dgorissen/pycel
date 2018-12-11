@@ -1,12 +1,14 @@
 import ast
 import logging
 import re
+import sys
 
 import openpyxl.formula.tokenizer as tokenizer
 from networkx.classes.digraph import DiGraph
 from pycel.excelutil import (
     AddressRange,
     build_operator_operand_fixup,
+    ERROR_CODES,
     get_linest_degree,
     PyCelException,
     uniqueify,
@@ -415,8 +417,7 @@ class ExcelFormula(object):
 
         self.cell = cell
         self.lineno = 1
-        self.filename = str(self.cell.address) if self.cell else (
-            self._python_code or '<unknown>')
+        self.filename = ''
 
         self._rpn = None
         self._ast = None
@@ -752,6 +753,7 @@ class ExcelFormula(object):
             del name_space['lambdas']
 
         def eval_func(excel_formula):
+            """ Call the compiled lambda to evaluate the cell """
 
             if excel_formula.compiled_lambda is None:
                 load_function(excel_formula, locals())
@@ -764,17 +766,27 @@ class ExcelFormula(object):
                              exc=FormulaEvalError)
 
             if error_messages:
-                error_logger('warning', excel_formula.python_code)
+                level = 'warning' if ret_val in ERROR_CODES else 'info'
+                error_logger(level, excel_formula.python_code)
 
             return ret_val
 
         return eval_func
 
     def _compile_python_ast(self):
+        """ Compile the python code into a lambda for execution
+
+        ### Traceback will show this line if not loaded from a text file
+
+        If the compiler has been loaded from (json, yaml, etc) then python
+        expression will be shown in any tracebacks instead of the above
+        """
+        local_line = sys._getframe().f_lineno - 6
+
         source_code = "lambdas.append(lambda: {})".format(self.python_code)
-        kwargs = dict(mode='exec', filename=self.filename)
+        kwargs = dict(mode='exec', filename=self.filename or __file__)
         tree = ast.parse(source_code, **kwargs)
-        ast.increment_lineno(tree, self.lineno - 1)
+        ast.increment_lineno(tree, (self.lineno - 1) or local_line)
 
         names = set()
 
@@ -791,15 +803,16 @@ class ExcelFormula(object):
 
             def visit_Compare(self, node):
                 """ change the compare node to a function node """
+                node = ast.NodeTransformer.generic_visit(self, node)
                 return self.replace_op(node, node.ops[0], node.comparators[0])
 
             def visit_BinOp(self, node):
                 """ change the compare node to a function node """
+                node = ast.NodeTransformer.generic_visit(self, node)
                 return self.replace_op(node, node.op, node.right)
 
             def replace_op(self, node, node_op, right):
                 """ change the compare node to a function node """
-                node = ast.NodeTransformer.generic_visit(self, node)
 
                 left = node.left
                 op = ast.Str(s=type(node_op).__name__)
