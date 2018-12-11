@@ -666,6 +666,32 @@ def test_empty_cell_logic_op():
     assert 3 == eval_ctx(ExcelFormula('=sum(A1<0, A1<=0, A1=0, A1>=0, A1>0)'))
 
 
+@pytest.mark.parametrize(
+    'expected, formula', (
+        (-1, '=-1'),
+        (1, '=+1'),
+        (1, '=-1+2'),
+        (3, '=+1+2'),
+        (-3, '=-1-2'),
+        (-1, '=+1-2'),
+        (-3, '=-(1+2)'),
+        (3, '=+(1+2)'),
+        (1, '=-(1-2)'),
+        (-1, '=+(1-2)'),
+
+        (3, '=+sum(+1, 2)'),
+        (-3, '=-sum(1, +2)'),
+        (1, '=+sum(-1, 2)'),
+        (1, '=-sum(1, -2)'),
+        (-1, '=+sum(+1, "-2")'),
+        (-3, '=-sum(1, "+2")'),
+    )
+)
+def test_unary_ops(expected, formula):
+    eval_ctx = ExcelFormula.build_eval_context(None, None)
+    assert expected == eval_ctx(ExcelFormula(formula))
+
+
 def test_numerics_type_coercion():
     eval_ctx = ExcelFormula.build_eval_context(lambda x: 3.0, None)
     assert 7 == eval_ctx(ExcelFormula('=1+2+"4"'))

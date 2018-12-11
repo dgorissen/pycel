@@ -239,7 +239,7 @@ class OperatorNode(ASTNode):
         op = self.op_map.get(xop, xop)
 
         if self.type == Token.OP_PRE:
-            return "-" + args[0].emit()
+            return self.value + args[0].emit()
 
         parent = self.parent
         # don't render the ^{1,2,..} part in a linest formula
