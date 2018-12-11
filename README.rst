@@ -99,7 +99,7 @@ The code currently uses a tokenizer (parser) of similar origin from the
   :target: https://travis-ci.org/stephenrauch/pycel
 
 .. |coverage| image:: https://codecov.io/gh/stephenrauch/pycel/branch/master/graph/badge.svg
-  :target: https://codecov.io/gh/stephenrauch/pycel/list/master/
+  :target: https://codecov.io/gh/stephenrauch/pycel/list/master
 
 .. |repo-size| image:: https://img.shields.io/github/repo-size/stephenrauch/pycel.svg
   :target: https://github.com/stephenrauch/pycel

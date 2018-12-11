@@ -392,7 +392,6 @@ def sumifs(sum_range, *args):
     #   SUMIFS-function-C9E748F5-7EA7-455D-9406-611CEBCE642B
 
     # WARNING:
-    # - wildcards not supported
     # - The following is not currently implemented:
     #  The sum_range argument does not have to be the same size and shape as
     #  the range argument. The actual cells that are added are determined by
