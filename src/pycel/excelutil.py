@@ -777,12 +777,11 @@ def criteria_parser(criteria):
         < and > will always be False when comparing strings to numbers
         <> will always be True when comparing strings to numbers
 
-    NOT Implemented:
-     You can use the wildcard characters—the question mark (?) and
-     asterisk (*)—as the criteria argument. A question mark matches
-     any single character; an asterisk matches any sequence of
-     characters. If you want to find an actual question mark or
-     asterisk, type a tilde (~) preceding the character.
+       You can use the wildcard characters—the question mark (?) and
+       asterisk (*)—as the criteria argument. A question mark matches
+       any single character; an asterisk matches any sequence of
+       characters. If you want to find an actual question mark or
+       asterisk, type a tilde (~) preceding the character.
     """
 
     if is_number(criteria):
@@ -798,8 +797,16 @@ def criteria_parser(criteria):
         value = match.group('value')
         op = OPERATORS[criteria_operator]
 
-        if op == operator.eq and is_number(value):
-            return criteria_parser(value)
+        if op == operator.eq:
+
+            if is_number(value):
+                return criteria_parser(value)
+
+            regex = re.sub(r'\?(?<!~)', '.', re.sub(r'\*(?<!~)', '.*', value))
+            if regex != value:
+                # this will be a regex match"""
+                compiled = re.compile('^{}$'.format(regex.lower()))
+                return lambda x: compiled.match(x.lower()) is not None
 
         if is_number(value):
             value = coerce_to_number(value)

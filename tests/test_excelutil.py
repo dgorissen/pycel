@@ -667,6 +667,12 @@ def test_find_corresponding_index():
         ('1x', '<1x', False),
         ('1x', '<=1x', True),
         ('1x', '<>1x', False),
+
+        ('That', 'Th?t', True),
+        ('That', 'T*t', True),
+        ('Tt', 'T*t', True),
+        ('Tht', 'Th?t', False),
+        ('Tat', 'Th*t', False),
     )
 )
 def test_criteria_parser(value, criteria, expected):
