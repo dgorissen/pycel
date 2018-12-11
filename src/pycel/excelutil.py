@@ -14,6 +14,7 @@ from openpyxl.utils import (
 
 ERROR_CODES = frozenset(Tokenizer.ERROR_CODES)
 DIV0 = '#DIV/0!'
+EMPTY = '#EMPTY!'
 VALUE_ERROR = '#VALUE!'
 
 R1C1_ROW_RE_STR = r"R(\[-?\d+\]|\d+)?"
@@ -863,13 +864,13 @@ def build_operator_operand_fixup(capture_error_state):
         if VALUE_ERROR in (left_op, right_op):
             return VALUE_ERROR
 
-        if left_op in (None, '#EMPTY!'):
+        if left_op in (None, EMPTY):
             left_op = 0 if (not isinstance(
-                right_op, str) or right_op == '#EMPTY!') else ''
+                right_op, str) or right_op == EMPTY) else ''
 
-        if right_op in (None, '#EMPTY!'):
+        if right_op in (None, EMPTY):
             right_op = 0 if (not isinstance(
-                left_op, str) or left_op == '#EMPTY!') else ''
+                left_op, str) or left_op == EMPTY) else ''
 
         if op in ('Eq', 'NotEq'):
             if isinstance(left_op, str) and isinstance(right_op, str):

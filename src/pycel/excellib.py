@@ -14,6 +14,7 @@ from pycel.excelutil import (
     assert_list_like,
     coerce_to_number,
     date_from_int,
+    EMPTY,
     ERROR_CODES,
     find_corresponding_index,
     flatten,
@@ -444,7 +445,8 @@ def vlookup(lookup_value, table_array, col_index_num, range_lookup=False):
     except ValueError:
         return '#N/A'
 
-    return table_array[result_idx - 1][col_index_num - 1]
+    ret_val = table_array[result_idx - 1][col_index_num - 1]
+    return ret_val if ret_val not in (None, EMPTY) else 0
 
 
 def xlog(a):

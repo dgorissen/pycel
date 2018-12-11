@@ -13,6 +13,7 @@ from pycel.excelformula import ExcelFormula
 from pycel.excelutil import (
     AddressCell,
     AddressRange,
+    EMPTY,
     resolve_range,
 )
 from pycel.excelwrapper import ExcelOpxWrapper
@@ -437,7 +438,7 @@ class ExcelCompiler(object):
                     self.evaluate, self.evaluate_range, self.log)
             value = self.eval(cell.formula)
             if value is None:
-                value = '#EMPTY!'
+                value = EMPTY
             self.log.info("Cell %s evaluated to '%s' (%s)" % (
                 cell.address, value, type(value).__name__))
             cell.value = value
