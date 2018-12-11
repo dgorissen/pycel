@@ -300,11 +300,11 @@ class ExcelCompiler(object):
         differently than they do for excel.
 
         :param output_addrs: The cells to evaluate from
-        :return: list of addresses that failed to verify
+        :return: dict of addresses with good/bad values that failed to verify
         """
         to_verify = list(AddressCell(addr) for addr in output_addrs)
         verified = set()
-        failed = []
+        failed = {}
         while to_verify:
             addr = to_verify.pop()
             cell = self.cell_map[addr]
@@ -313,7 +313,7 @@ class ExcelCompiler(object):
                 cell.value = None
                 self.evaluate(cell)
                 if original_value != cell.value:  # pragma: no branch
-                    failed.append(addr)
+                    failed[str(addr)] = original_value, cell.value
                     print('{} mismatch  {} -> {}'.format(
                         addr, original_value, cell.value))
 

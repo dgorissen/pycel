@@ -190,7 +190,9 @@ def test_validate_calcs(excel, capsys):
 
     excel_compiler.trim_graph(input_addrs, output_addrs)
     excel_compiler.cell_map[AddressRange(output_addrs[0])].value = 'JUNK'
-    excel_compiler.validate_calcs(output_addrs)
+    failed_cells = excel_compiler.validate_calcs(output_addrs)
+
+    assert {'trim-range!B2': ('JUNK', 136)} == failed_cells
 
     out, err = capsys.readouterr()
     assert '' == err
