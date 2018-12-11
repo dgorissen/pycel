@@ -44,8 +44,7 @@ def test_numerics():
 def test_average():
     assert 2.25 == average((1, '3', 2.0, pytest, 3, 'x'))
 
-    with pytest.raises(ZeroDivisionError):
-        average('x')
+    assert DIV0 == average(['x'])
 
     assert VALUE_ERROR == average(VALUE_ERROR)
     assert VALUE_ERROR == average((2, VALUE_ERROR))

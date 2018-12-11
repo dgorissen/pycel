@@ -14,6 +14,7 @@ from pycel.excelutil import (
     assert_list_like,
     coerce_to_number,
     date_from_int,
+    DIV0,
     EMPTY,
     ERROR_CODES,
     find_corresponding_index,
@@ -43,6 +44,8 @@ def average(*args):
     # A returned string is an error code
     if isinstance(data, str):
         return data
+    elif len(data) == 0:
+        return DIV0
     else:
         return sum(data) / len(data)
 
