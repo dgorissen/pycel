@@ -1,25 +1,27 @@
-from collections import namedtuple
 import os
 import pickle
+from collections import namedtuple
+
 import pytest
+from openpyxl.utils import column_index_from_string, quote_sheetname
 from pycel.excelutil import (
-    MAX_COL,
-    MAX_ROW,
     AddressCell,
     AddressRange,
     build_operator_operand_fixup,
     coerce_to_number,
     criteria_parser,
     date_from_int,
-    range_boundaries,
     find_corresponding_index,
     flatten,
     get_linest_degree,
     get_max_days_in_month,
     is_leap_year,
     is_number,
+    MAX_COL,
+    MAX_ROW,
     normalize_year,
     PyCelException,
+    range_boundaries,
     resolve_range,
     split_sheetname,
     structured_reference_boundaries,
@@ -27,8 +29,6 @@ from pycel.excelutil import (
     unquote_sheetname,
     VALUE_ERROR,
 )
-from openpyxl.utils import column_index_from_string, quote_sheetname
-
 from pycel.excelutil import DIV0
 
 

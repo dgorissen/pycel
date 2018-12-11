@@ -4,16 +4,14 @@ import pickle
 from unittest import mock
 
 import pytest
-
 from pycel.excelformula import (
     ASTNode,
-    FormulaEvalError,
     ExcelFormula,
+    FormulaEvalError,
     FormulaParserError,
     Token,
 )
 from pycel.excelutil import DIV0, VALUE_ERROR
-
 from test_excelutil import ATestCell
 
 

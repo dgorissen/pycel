@@ -1,4 +1,5 @@
 codecov
+flake8-import-order
 pytest
 pytest-cov
 pytest-flake8

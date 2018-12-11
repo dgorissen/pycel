@@ -1,9 +1,8 @@
 import datetime as dt
 import math
+
 import numpy as np
 import pytest
-
-from pycel.excelutil import DIV0, ERROR_CODES, PyCelException, VALUE_ERROR
 from pycel.excellib import (
     # ::TODO:: finish test cases for remainder of functions
     _numerics,
@@ -14,8 +13,8 @@ from pycel.excellib import (
     date,
     iferror,
     index,
-    istext,
     isNa,
+    istext,
     # linest,
     # lookup,
     match,
@@ -35,6 +34,7 @@ from pycel.excellib import (
     xsum,
     yearfrac,
 )
+from pycel.excelutil import DIV0, ERROR_CODES, PyCelException, VALUE_ERROR
 
 
 def test_numerics():

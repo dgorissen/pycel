@@ -1,15 +1,13 @@
 """
 Python equivalents of various excel functions
 """
+import itertools as it
 from collections import Counter
 from datetime import datetime
 from decimal import Decimal, ROUND_HALF_UP, ROUND_UP
-import itertools as it
-
 from math import log
 
 import numpy as np
-
 from pycel.excelutil import (
     assert_list_like,
     coerce_to_number,
