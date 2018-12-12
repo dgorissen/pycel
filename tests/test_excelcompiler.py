@@ -182,6 +182,48 @@ def test_trim_cells(excel):
     assert old_value == new_value
 
 
+def test_trim_cells_range(excel):
+    excel_compiler = ExcelCompiler(excel=excel)
+    input_addrs = ['trim-range!D4:E4']
+    output_addrs = ['trim-range!B2']
+
+    old_value = excel_compiler.evaluate(output_addrs[0])
+
+    excel_compiler.trim_graph(input_addrs, output_addrs)
+
+    excel_compiler.to_yaml()
+    excel_compiler = ExcelCompiler.from_yaml(excel_compiler.filename)
+    assert old_value == excel_compiler.evaluate(output_addrs[0])
+
+    excel_compiler.set_value(input_addrs[0], [5, 6])
+    assert old_value - 1 == excel_compiler.evaluate(output_addrs[0])
+
+    excel_compiler.set_value(input_addrs[0], [4, 6])
+    assert old_value - 2 == excel_compiler.evaluate(output_addrs[0])
+
+
+def test_evaluate_from_non_cells(excel):
+    excel_compiler = ExcelCompiler(excel=excel)
+
+    input_addrs = ['Sheet1!A11']
+    output_addrs = ['Sheet1!A11:A13', 'Sheet1!D1', 'Sheet1!B11', ]
+
+    old_values = excel_compiler.evaluate(output_addrs)
+
+    excel_compiler.trim_graph(input_addrs, output_addrs)
+
+    excel_compiler.to_yaml()
+    excel_compiler = ExcelCompiler.from_yaml(excel_compiler.filename)
+    for expected, result in zip(old_values,
+                                excel_compiler.evaluate(output_addrs)):
+        assert expected == pytest.approx(result)
+
+    range_cell = excel_compiler.cell_map[AddressRange(output_addrs[0])]
+    excel_compiler.reset(range_cell)
+    range_value = excel_compiler.evaluate(range_cell)
+    assert old_values[0] == range_value
+
+
 def test_validate_calcs(excel, capsys):
     excel_compiler = ExcelCompiler(excel=excel)
     input_addrs = ['trim-range!D5']

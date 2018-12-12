@@ -201,16 +201,17 @@ class ExcelCompiler(object):
         nx.draw_networkx_labels(self.dep_graph, pos)
         plt.show()
 
-    def set_value(self, cell, value, is_addr=True):
+    def set_value(self, cell_or_range, value, is_addr=True):
         if is_addr:  # pragma: no branch
-            address = AddressRange(cell)
-            cell = self.cell_map[address]
+            address = AddressRange(cell_or_range)
+            cell_or_range = self.cell_map[address]
 
-        if cell.value != value:  # pragma: no branch
+        if cell_or_range.value != value:  # pragma: no branch
             # reset the node + its dependencies
-            self.reset(cell)
+            self.reset(cell_or_range)
+
             # set the value
-            cell.value = value
+            cell_or_range.value = value
 
     def reset(self, cell):
         if cell.value is None:
@@ -420,28 +421,35 @@ class ExcelCompiler(object):
 
     def evaluate(self, cell):
 
-        if isinstance(cell, Cell):
+        if isinstance(cell, (Cell, CellRange)):
             assert cell.address in self.cell_map
+        elif (not isinstance(cell, (AddressRange, AddressCell)) and
+                isinstance(cell, (tuple, list))):
+            return type(cell)([self.evaluate(c) for c in cell])
         else:
             address = AddressRange.create(cell)
             if address not in self.cell_map:
                 self.gen_graph(address)
             cell = self.cell_map[address]
 
-        # calculate the cell value for formulas
-        if cell.python_code and cell.value is None:
+        # calculate the cell value for formulas and ranges
+        if cell.value is None:
+            if isinstance(cell, CellRange):
+                self.log.debug("Evaluating: {}".format(cell.address))
+                self.evaluate_range(cell)
 
-            self.log.debug(
-                "Evaluating: %s, %s" % (cell.address, cell.python_code))
-            if self.eval is None:
-                self.eval = ExcelFormula.build_eval_context(
-                    self.evaluate, self.evaluate_range, self.log)
-            value = self.eval(cell.formula)
-            if value is None:
-                value = EMPTY
-            self.log.info("Cell %s evaluated to '%s' (%s)" % (
-                cell.address, value, type(value).__name__))
-            cell.value = value
+            elif cell.python_code:
+                self.log.debug(
+                    "Evaluating: %s, %s".format(cell.address, cell.python_code))
+                if self.eval is None:
+                    self.eval = ExcelFormula.build_eval_context(
+                        self.evaluate, self.evaluate_range, self.log)
+                value = self.eval(cell.formula)
+                if value is None:
+                    value = EMPTY
+                self.log.info("Cell %s evaluated to '%s' (%s)" % (
+                    cell.address, value, type(value).__name__))
+                cell.value = value
 
         return cell.value
 
