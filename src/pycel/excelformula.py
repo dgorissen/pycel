@@ -8,6 +8,7 @@ from networkx.classes.digraph import DiGraph
 from pycel.excelutil import (
     AddressRange,
     build_operator_operand_fixup,
+    EMPTY,
     ERROR_CODES,
     get_linest_degree,
     PyCelException,
@@ -769,7 +770,7 @@ class ExcelFormula(object):
                 level = 'warning' if ret_val in ERROR_CODES else 'info'
                 error_logger(level, excel_formula.python_code)
 
-            return ret_val
+            return ret_val if ret_val not in (None, EMPTY) else 0
 
         return eval_func
 

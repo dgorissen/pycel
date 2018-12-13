@@ -4,7 +4,7 @@ from unittest import mock
 import pytest
 from pycel.excelcompiler import Cell, CellRange, ExcelCompiler
 from pycel.excelformula import FormulaEvalError
-from pycel.excelutil import AddressRange, EMPTY
+from pycel.excelutil import AddressRange
 
 
 # ::TODO:: need some rectangular ranges for testing
@@ -130,8 +130,9 @@ def test_evaluate_range(excel):
 def test_evaluate_empty(excel):
     excel_compiler = ExcelCompiler(excel=excel)
     assert 0 == excel_compiler.evaluate('Empty!B1')
+
     excel_compiler.recalculate()
-    assert EMPTY == excel_compiler.evaluate('Empty!B1')
+    assert 0 == excel_compiler.evaluate('Empty!B1')
 
 
 def test_gen_graph(excel):
