@@ -15,13 +15,15 @@ setup(
     test_suite='pytest',
     install_requires=[
         'networkx>=2.0',
-        'openpyxl>=2.5.12',
         'numpy',
+        'openpyxl>=2.5.12',
         'ruamel.yaml',
-        'pydot',
     ],
+    python_requires='>=3.4',
     author='Dirk Gorissen',
     author_email='dgorissen@gmail.com',
+    maintainer='Stephen Rauch',
+    maintainer_email='stephen.rauch+pycel@gmail.com',
     long_description="Pycel is a small python library that can translate an "
                      "Excel spreadsheet into executable python code which "
                      "can be run independently of Excel. The python code is "
@@ -33,5 +35,12 @@ setup(
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
         'License ::  OSI Approved ',
-    ]
+        'Operating System :: OS Independent',
+        'Programming Language :: Python',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.4',
+        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
+    ],
 )

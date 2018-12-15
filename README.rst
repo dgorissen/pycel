@@ -12,10 +12,11 @@ using tools like `Gephi <http://www.gephi.org>`_. See the contained example
 for an illustration.
 
 Required python libraries:
-    `networkx <http://networkx.lanl.gov/>`_,
-    `numpy <http://numpy.scipy.org/>`_,
-    `matplotlib <http://matplotlib.sourceforge.net/>`_ (optional),
+    `networkx <https://networkx.github.io/>`_,
+    `numpy <https://www.numpy.org/>`_,
+    `openpyxl <https://openpyxl.readthedocs.io/en/stable/>`_,
     `ruamel.yaml <https://yaml.readthedocs.io/en/latest/>`_,
+    `matplotlib <https://matplotlib.org/>`_ (optional),
     `pydot <https://github.com/pydot/pydot>`_ (optional)
 
 The full motivation behind pycel including some examples & screenshots is

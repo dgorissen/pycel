@@ -1,5 +1,7 @@
 codecov
 flake8-import-order
+matplotlib
+pydot
 pytest
 pytest-cov
 pytest-flake8
