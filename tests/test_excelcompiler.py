@@ -31,17 +31,17 @@ def test_end_2_end(excel, example_xls_path):
     # sp.export_to_gexf(fname + ".gexf")
 
 
-def test_round_trip_through_json_and_pickle(excel, example_xls_path):
+def test_round_trip_through_json_yaml_and_pickle(excel, example_xls_path):
     excel_compiler = ExcelCompiler(excel=excel)
     excel_compiler.evaluate('Sheet1!D1')
     excel_compiler.extra_data = {1: 3}
-    excel_compiler.to_file()
-    excel_compiler.to_yaml()
-    excel_compiler.to_json()
+    excel_compiler.to_file(file_types=('pickle', ))
+    excel_compiler.to_file(file_types=('yml', ))
+    excel_compiler.to_file(file_types=('json', ))
 
-    # read the spreadsheet from json
-    excel_compiler_json = ExcelCompiler.from_json(excel.filename)
-    excel_compiler_yaml = ExcelCompiler.from_yaml(excel.filename)
+    # read the spreadsheet from json, yaml and pickle
+    excel_compiler_json = ExcelCompiler.from_file(excel.filename + '.json')
+    excel_compiler_yaml = ExcelCompiler.from_file(excel.filename + '.yml')
     excel_compiler = ExcelCompiler.from_file(excel.filename)
 
     # test evaluation
@@ -64,7 +64,7 @@ def test_filename_ext(excel, example_xls_path):
     excel_compiler.evaluate('Sheet1!D1')
     excel_compiler.extra_data = {1: 3}
     pickle_name = excel_compiler.filename + '.pkl'
-    yaml_name = excel_compiler.filename + '.yaml'
+    yaml_name = excel_compiler.filename + '.yml'
     json_name = excel_compiler.filename + '.json'
 
     for name in (pickle_name, yaml_name, json_name):
@@ -73,13 +73,28 @@ def test_filename_ext(excel, example_xls_path):
         except FileNotFoundError:
             pass
 
-    excel_compiler.to_file(pickle_name)
-    excel_compiler.to_yaml(yaml_name)
-    excel_compiler.to_json(json_name)
+    excel_compiler.to_file(excel_compiler.filename)
+    excel_compiler.to_file(json_name, file_types=('json', ))
 
     assert os.path.exists(pickle_name)
     assert os.path.exists(yaml_name)
     assert os.path.exists(json_name)
+
+
+def test_filename_extension_errors(excel, example_xls_path):
+    with pytest.raises(ValueError, match='Unrecognized file type'):
+        ExcelCompiler.from_file(excel.filename + '.xyzzy')
+
+    excel_compiler = ExcelCompiler(excel=excel)
+
+    with pytest.raises(ValueError, match='Only allowed one extension'):
+        excel_compiler.to_file(file_types=('pkl', 'pickle'))
+
+    with pytest.raises(ValueError, match='Only allowed one '):
+        excel_compiler.to_file(file_types=('pkl', 'yml', 'json'))
+
+    with pytest.raises(ValueError, match='Unknown file types: pkly'):
+        excel_compiler.to_file(file_types=('pkly',))
 
 
 def test_hash_matches(excel):
@@ -175,10 +190,10 @@ def test_trim_cells(excel):
     old_value = excel_compiler.evaluate(output_addrs[0])
 
     excel_compiler.trim_graph(input_addrs, output_addrs)
-    excel_compiler.to_json()
+    excel_compiler._to_text(is_json=True)
 
-    new_value = ExcelCompiler.from_json(
-        excel_compiler.filename).evaluate(output_addrs[0])
+    new_value = ExcelCompiler._from_text(
+        excel_compiler.filename, is_json=True).evaluate(output_addrs[0])
 
     assert old_value == new_value
 
@@ -192,8 +207,8 @@ def test_trim_cells_range(excel):
 
     excel_compiler.trim_graph(input_addrs, output_addrs)
 
-    excel_compiler.to_yaml()
-    excel_compiler = ExcelCompiler.from_yaml(excel_compiler.filename)
+    excel_compiler._to_text()
+    excel_compiler = ExcelCompiler._from_text(excel_compiler.filename)
     assert old_value == excel_compiler.evaluate(output_addrs[0])
 
     excel_compiler.set_value(input_addrs[0], [5, 6])
@@ -213,8 +228,8 @@ def test_evaluate_from_non_cells(excel):
 
     excel_compiler.trim_graph(input_addrs, output_addrs)
 
-    excel_compiler.to_yaml()
-    excel_compiler = ExcelCompiler.from_yaml(excel_compiler.filename)
+    excel_compiler._to_text()
+    excel_compiler = ExcelCompiler._from_text(excel_compiler.filename)
     for expected, result in zip(old_values,
                                 excel_compiler.evaluate(output_addrs)):
         assert expected == pytest.approx(result)
@@ -273,9 +288,11 @@ def test_compile_error_message_line_number(excel):
     output_addrs = [AddressRange('trim-range!B2')]
 
     excel_compiler.trim_graph(input_addrs, output_addrs)
-    excel_compiler.to_file()
 
-    excel_compiler = ExcelCompiler.from_file(excel_compiler.filename)
+    filename = excel_compiler.filename + '.pickle'
+    excel_compiler.to_file(filename)
+
+    excel_compiler = ExcelCompiler.from_file(filename)
     formula = excel_compiler.cell_map[output_addrs[0]].formula
     formula._python_code = '(x)'
     formula.lineno = 3000

@@ -48,6 +48,6 @@ if __name__ == '__main__':
     excel.export_to_gexf(fname + ".gexf")
 
     print("Serializing to disk...")
-    excel.to_json(fname)
+    excel.to_file(fname)
 
     print("Done")

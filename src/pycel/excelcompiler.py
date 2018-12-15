@@ -23,6 +23,8 @@ class ExcelCompiler:
     independently of excel.
     """
 
+    save_file_extensions = ('pkl', 'pickle', 'yml', 'yaml', 'json')
+
     def __init__(self, filename=None, excel=None):
 
         self.eval = None
@@ -81,11 +83,13 @@ class ExcelCompiler:
         current_hash = self._compute_excel_file_md5_digest
         return self._excel_file_md5_digest == current_hash
 
-    def to_json(self, filename=None):
-        self.to_yaml(filename=filename, is_json=True)
+    @classmethod
+    def _filename_has_extension(cls, filename):
+        return next((extension for extension in cls.save_file_extensions
+                     if filename.endswith(extension)), None)
 
-    def to_yaml(self, filename=None, is_json=False):
-        """Serialize to a json file"""
+    def _to_text(self, filename=None, is_json=False):
+        """Serialize to a json/yaml file"""
         extra_data = {} if self.extra_data is None else self.extra_data
 
         def cell_value(a_cell):
@@ -101,30 +105,23 @@ class ExcelCompiler:
                 for addr, cell in self.cell_map.items() if not addr.is_range
             ),
         ))
-        filename = filename or self.filename
+        if not filename:
+            filename = self.filename + ('.json' if is_json else '.yml')
 
         if not is_json:
-            if not filename.split('.')[-1].startswith('y'):
-                filename += '.yml'
-
             with open(filename, 'w') as f:
                 ymlo = YAML()
                 ymlo.width = 120
                 ymlo.dump(extra_data, f)
         else:
-            if not filename.endswith('.json'):
-                filename += '.json'
             with open(filename, 'w') as f:
                 json.dump(extra_data, f, indent=4)
 
         del extra_data['cell_map']
 
     @classmethod
-    def from_json(cls, filename):
-        return cls.from_yaml(filename, is_json=True)
-
-    @classmethod
-    def from_yaml(cls, filename, is_json=False):
+    def _from_text(cls, filename, is_json=False):
+        """deserialize from a json/yaml file"""
 
         if not is_json:
             if not filename.split('.')[-1].startswith('y'):
@@ -159,28 +156,93 @@ class ExcelCompiler:
         excel_compiler.extra_data = data
         return excel_compiler
 
-    def to_file(self, filename=None):
-        """"""
+    def to_file(self, filename=None, file_types=('pkl', 'yml')):
+        """ Save the spreadsheet to a file so it can be loaded later w/o excel
+
+        :param filename: filename to save as, defaults to xlsx_name + file_type
+        :param file_types: one or more of: pkl, pickle, yml, yaml, json
+
+          If the filename has one of the expected extensions, then this
+          parameter is ignored.
+
+          The text file formats (yaml and json) provide the benefits of:
+            1. Can `diff` subsequent version of xlsx to monitor changes
+            2. Can "debug" the generated code as the compiled code is marked
+                 with the line number in the text file and will be shown by
+                 debuggers and stack traces
+            3. The file size on disk is somewhat smaller than pickle files
+
+          The pickle file format provides the benefits of:
+            1. Much faster to load (5x to 10x)
+            2. ...  (no #2, speed is the thing)
+        """
+
         filename = filename or self.filename
+        extension = self._filename_has_extension(filename)
+        if extension:
+            file_types = (extension, )
 
-        # round trip through yaml to strip out junk
-        yaml_name = self.filename + '.yml'
-        self.to_yaml(yaml_name)
-        excel_compiler = self.from_yaml(yaml_name)
-        os.unlink(yaml_name)
+        unknown_types = tuple(ft for ft in file_types
+                              if ft not in self.save_file_extensions)
+        if unknown_types:
+            raise ValueError('Unknown file types: {}'.format(
+                ' '.join(unknown_types)))
 
-        if not filename.split('.')[-1].startswith('p'):
-            filename += '.pkl'
-        with open(filename, 'wb') as f:
-            pickle.dump(excel_compiler, f)
+        if len(set(e[0] for e in file_types)) != len(file_types):
+            raise ValueError('Only allowed one extension for each type: '
+                             '{}'.format(file_types))
+
+        pickle_extension = next((ft for ft in file_types
+                                 if ft.startswith('p')), None)
+        non_pickle_extension = next((ft for ft in file_types
+                                     if not ft.startswith('p')), None)
+        extra_extensions = tuple(ft for ft in file_types if ft not in (
+            pickle_extension, non_pickle_extension))
+
+        if extra_extensions:
+            raise ValueError(
+                'Only allowed one pickle extension and one text extension. '
+                'Extras: {}'.format(extra_extensions))
+
+        is_json = non_pickle_extension and non_pickle_extension[0] == 'j'
+
+        # round trip through yaml/json to strip out junk
+        text_name = filename
+        if not text_name.endswith(non_pickle_extension or '.yml'):
+            text_name += '.' + (non_pickle_extension or 'yml')
+        self._to_text(text_name, is_json=is_json)
+
+        # save pickle file if requested
+        if pickle_extension:
+            excel_compiler = self._from_text(text_name, is_json=is_json)
+            if non_pickle_extension not in file_types:
+                os.unlink(text_name)
+
+            if not filename.endswith(pickle_extension):
+                filename += '.' + pickle_extension
+            with open(filename, 'wb') as f:
+                pickle.dump(excel_compiler, f)
 
     @classmethod
     def from_file(cls, filename):
-        if not filename.split('.')[-1].startswith('p'):  # pragma: no branch
-            filename += '.pkl'
+        extension = cls._filename_has_extension(filename) or next(
+            (ext for ext in cls.save_file_extensions
+             if os.path.exists(filename + '.' + ext)), None)
 
-        with open(filename, 'rb') as f:
-            excel_compiler = pickle.load(f)
+        if not extension:
+            raise ValueError("Unrecognized file type or compiled file not found"
+                             ": '{}'".format(filename))
+
+        if not filename.endswith(extension):
+            filename += '.' + extension
+
+        if extension[0] == 'p':
+            with open(filename, 'rb') as f:
+                excel_compiler = pickle.load(f)
+        else:
+            excel_compiler = cls._from_text(
+                filename, is_json=extension == 'json')
+
         return excel_compiler
 
     def export_to_dot(self, fname):
