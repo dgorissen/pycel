@@ -1,5 +1,6 @@
 import ast
 import logging
+import marshal
 import re
 import sys
 
@@ -424,6 +425,7 @@ class ExcelFormula:
         self._ast = None
         self._needed_addresses = None
         self._compiled_python = None
+        self._marshalled_python = None
         self.compiled_lambda = None
 
     def __str__(self):
@@ -483,12 +485,20 @@ class ExcelFormula:
     def compiled_python(self):
         """ Using the Python code, generate compiled python code"""
         if self._compiled_python is None and self.python_code:
-            try:
-                self._compile_python_ast()
-            except Exception as exc:
-                raise FormulaParserError(
-                    "Failed to compile expression {}: {}".format(
-                        self.python_code, exc))
+            if self._marshalled_python is not None:
+                try:
+                    marshalled, names = self._marshalled_python
+                    self._compiled_python = marshal.loads(marshalled), names
+                except Exception:
+                    self._marshalled_python = None
+                    return self.compiled_python
+            else:
+                try:
+                    self._compile_python_ast()
+                except Exception as exc:
+                    raise FormulaParserError(
+                        "Failed to compile expression {}: {}".format(
+                            self.python_code, exc))
 
         return self._compiled_python
 
@@ -835,3 +845,4 @@ class ExcelFormula:
 
         # compile the tree
         self._compiled_python = compile(tree, **kwargs), names
+        self._marshalled_python = marshal.dumps(self._compiled_python[0]), names

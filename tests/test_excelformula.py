@@ -604,7 +604,18 @@ def test_build_eval_context():
 
 def test_compiled_python_cache():
     formula = ExcelFormula('=1 + 2')
-    assert formula.compiled_python == formula.compiled_python
+    # first call does the calc, the second uses cached
+    compiled_python = formula.compiled_python
+    assert compiled_python == formula.compiled_python
+
+    # rebuild from marshalled
+    formula._compiled_python = None
+    assert compiled_python == formula.compiled_python
+
+    # invalidate the marshalled code, rebuild from source
+    formula._compiled_python = None
+    formula._marshalled_python = 'junk'
+    assert compiled_python == formula.compiled_python
 
 
 def test_compiled_python_error():
@@ -827,6 +838,7 @@ def test_lineno_on_error_reporting():
 
     excel_formula._python_code = '(x)'
     excel_formula._compiled_python = None
+    excel_formula._marshalled_python = None
     excel_formula.compiled_lambda = None
     excel_formula.lineno = 60
 
