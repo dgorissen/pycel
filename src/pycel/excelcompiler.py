@@ -246,6 +246,12 @@ class ExcelCompiler:
         return excel_compiler
 
     def export_to_dot(self, fname):
+        try:
+            # test pydot is importable  (optionally installed)
+            import pydot  # noqa: F401
+        except ImportError:
+            raise ImportError("Package 'pydot' is not installed")
+
         from networkx.drawing.nx_pydot import write_dot
         write_dot(self.dep_graph, fname)
 
@@ -254,7 +260,11 @@ class ExcelCompiler:
         write_gexf(self.dep_graph, fname)
 
     def plot_graph(self, layout_type='spring_layout'):
-        import matplotlib.pyplot as plt
+        try:
+            # test matplotlib is importable  (optionally installed)
+            import matplotlib.pyplot as plt
+        except ImportError:
+            raise ImportError("Package 'matplotlib' is not installed")
 
         pos = getattr(nx, layout_type)(self.dep_graph, iterations=2000)
         nx.draw_networkx_nodes(self.dep_graph, pos)

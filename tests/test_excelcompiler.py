@@ -21,15 +21,6 @@ def test_end_2_end(excel, example_xls_path):
         excel_compiler.set_value('Sheet1!A1', 200)
         assert -0.00331 == round(excel_compiler.evaluate('Sheet1!D1'), 5)
 
-    # ::TODO: it would good to test these by geenrating product and
-    #  comparing to an fixture/artifact
-
-    # show the graph usisng matplotlib
-    # sp.plot_graph()
-
-    # export the graph, can be loaded by a viewer like gephi
-    # sp.export_to_gexf(fname + ".gexf")
-
 
 def test_round_trip_through_json_yaml_and_pickle(excel, example_xls_path):
     excel_compiler = ExcelCompiler(excel=excel)
@@ -322,19 +313,37 @@ def test_gen_gexf(excel, tmpdir):
     filename = os.path.join(str(tmpdir), 'test.gexf')
     assert not os.path.exists(filename)
     excel_compiler.export_to_gexf(filename)
+
+    # ::TODO: it would good to test this by comparing to an fixture/artifact
     assert os.path.exists(filename)
 
 
 def test_gen_dot(excel, tmpdir):
+    from unittest import mock
+
     excel_compiler = ExcelCompiler(excel=excel)
-    filename = os.path.join(str(tmpdir), 'test.dot')
-    assert not os.path.exists(filename)
-    excel_compiler.export_to_dot(filename)
-    assert os.path.exists(filename)
+    with pytest.raises(ImportError, match="Package 'pydot' is not installed"):
+        excel_compiler.export_to_dot('test.dot')
+
+    import sys
+    mock_imports = (
+        'pydot',
+    )
+    for mock_import in mock_imports:
+        sys.modules[mock_import] = mock.MagicMock()
+
+    with mock.patch('networkx.drawing.nx_pydot.write_dot'):
+        excel_compiler.export_to_dot('test.dot')
 
 
 def test_plot_graph(excel, tmpdir):
     from unittest import mock
+
+    excel_compiler = ExcelCompiler(excel=excel)
+    with pytest.raises(ImportError,
+                       match="Package 'matplotlib' is not installed"):
+        excel_compiler.plot_graph()
+
     import sys
     mock_imports = (
         'matplotlib',
@@ -347,7 +356,6 @@ def test_plot_graph(excel, tmpdir):
     for mock_import in mock_imports:
         sys.modules[mock_import] = mock.MagicMock()
     out_address = AddressRange('trim-range!B2')
-    excel_compiler = ExcelCompiler(excel=excel)
     excel_compiler.evaluate(out_address)
 
     with mock.patch('pycel.excelcompiler.nx'):
