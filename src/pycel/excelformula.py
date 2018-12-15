@@ -142,7 +142,7 @@ class Token(tokenizer.Token):
             'u' if self.type == Token.OP_PRE else self.value]
 
 
-class ASTNode(object):
+class ASTNode:
     """A generic node in the AST used to compile a cell's formula"""
 
     def __init__(self, token, cell=None):
@@ -405,7 +405,7 @@ class FunctionNode(ASTNode):
         return "any(({},))".format(self.comma_join_emit())
 
 
-class ExcelFormula(object):
+class ExcelFormula:
     """Take an Excel formula and compile it to Python code."""
 
     def __init__(self, formula, cell=None, formula_is_python_code=False):
@@ -430,11 +430,15 @@ class ExcelFormula(object):
         return self.base_formula or self.python_code
 
     def __getstate__(self):
-        # code objects are not serializable
+        # build the python code
+        self.python_code
+
+        # Throw everything away except the python code
         state = dict(self.__dict__)
-        remove_names = 'compiled_lambda _compiled_python _ast _rpn _dep_graph'
+        remove_names = 'compiled_lambda _compiled_python _ast _rpn ' \
+                       'base_formula _needed_addresses'
         for to_remove in remove_names.split():
-            if to_remove in state:
+            if to_remove in state:  # pragma: no branch
                 state[to_remove] = None
         return state
 

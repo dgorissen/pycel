@@ -1,4 +1,4 @@
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 # see StackOverflow/458550
 exec(open('src/pycel/version.py').read())

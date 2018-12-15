@@ -11,11 +11,10 @@ import os
 from openpyxl import load_workbook
 from openpyxl.cell import Cell
 from openpyxl.cell.read_only import EMPTY_CELL
-
 from pycel.excelutil import AddressCell, AddressRange
 
 
-class ExcelWrapper(object):
+class ExcelWrapper:
     __metaclass__ = abc.ABCMeta
 
     @abc.abstractproperty

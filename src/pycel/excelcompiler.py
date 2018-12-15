@@ -7,8 +7,6 @@ import os
 import pickle
 
 import networkx as nx
-from networkx.drawing.nx_pydot import write_dot
-from networkx.readwrite.gexf import write_gexf
 from pycel.excelformula import ExcelFormula
 from pycel.excelutil import (
     AddressCell,
@@ -19,7 +17,7 @@ from pycel.excelwrapper import ExcelOpxWrapper
 from ruamel.yaml import YAML
 
 
-class ExcelCompiler(object):
+class ExcelCompiler:
     """Class responsible for taking an Excel spreadsheet and compiling it
     to a Spreadsheet instance that can be serialized to disk, and executed
     independently of excel.
@@ -61,7 +59,7 @@ class ExcelCompiler(object):
     def __getstate__(self):
         # code objects are not serializable
         state = dict(self.__dict__)
-        for to_remove in 'eval excel log'.split():
+        for to_remove in 'eval excel log graph_todos range_todos'.split():
             if to_remove in state:    # pragma: no branch
                 state[to_remove] = None
         return state
@@ -146,13 +144,13 @@ class ExcelCompiler(object):
             lineno = data['cell_map'].lc.data[address][0] + 1
             address = AddressRange(address)
             excel.value = python_code
-            excel_compiler.make_cells(address)
+            excel_compiler._make_cells(address)
             formula = excel_compiler.cell_map[address].formula
             if formula is not None:
                 formula.lineno = lineno
                 formula.filename = filename
 
-        excel_compiler.process_gen_graph()
+        excel_compiler._process_gen_graph()
         del data['cell_map']
 
         excel_compiler._excel_file_md5_digest = data['excel_hash']
@@ -186,9 +184,11 @@ class ExcelCompiler(object):
         return excel_compiler
 
     def export_to_dot(self, fname):
+        from networkx.drawing.nx_pydot import write_dot
         write_dot(self.dep_graph, fname)
 
     def export_to_gexf(self, fname):
+        from networkx.readwrite.gexf import write_gexf
         write_gexf(self.dep_graph, fname)
 
     def plot_graph(self, layout_type='spring_layout'):
@@ -328,7 +328,7 @@ class ExcelCompiler(object):
 
         return failed
 
-    def make_cells(self, address):
+    def _make_cells(self, address):
         """Given an AddressRange or AddressCell generate compiler Cells"""
 
         # from here don't build cells that are already in the cellmap
@@ -406,6 +406,7 @@ class ExcelCompiler(object):
             cell_range = self.cell_map[cell_range]
 
         if cell_range.value is None:
+            self.log.debug("Evaluating: {}".format(cell_range.address))
             cells = cell_range.cells
 
             if 1 == min(cell_range.address.size):
@@ -434,7 +435,6 @@ class ExcelCompiler(object):
         # calculate the cell value for formulas and ranges
         if cell.value is None:
             if isinstance(cell, CellRange):
-                self.log.debug("Evaluating: {}".format(cell.address))
                 self.evaluate_range(cell)
 
             elif cell.python_code:
@@ -461,7 +461,7 @@ class ExcelCompiler(object):
             elif isinstance(seed, collections.Iterable):
                 for s in seed:
                     self.gen_graph(s, recursed=True, sheet=sheet)
-                self.process_gen_graph()
+                self._process_gen_graph()
                 return
             else:
                 raise ValueError('Unknown seed: {}'.format(seed))
@@ -478,13 +478,13 @@ class ExcelCompiler(object):
             return
 
         # process the seed
-        self.make_cells(seed)
+        self._make_cells(seed)
 
         if not recursed:
             # if not entered to process one cell / cellrange process other work
-            self.process_gen_graph()
+            self._process_gen_graph()
 
-    def process_gen_graph(self):
+    def _process_gen_graph(self):
 
         while self.graph_todos:
             # connect the dependant cells in the graph
@@ -512,7 +512,7 @@ class ExcelCompiler(object):
         )
 
 
-class CellRange(object):
+class CellRange:
     # TODO: only supports rectangular ranges
 
     def __init__(self, address, excel):
@@ -525,6 +525,11 @@ class CellRange(object):
         self._cells = None
         self.size = self.address.size
         self.value = None
+
+    def __getstate__(self):
+        state = dict(self.__dict__)
+        state['excel'] = None
+        return state
 
     def __repr__(self):
         return str(self.address)
@@ -557,7 +562,7 @@ class CellRange(object):
         return self.address.sheet
 
 
-class Cell(object):
+class Cell:
     ctr = 0
 
     @classmethod
@@ -577,6 +582,11 @@ class Cell(object):
 
         # every cell has a unique id
         self.id = Cell.next_id()
+
+    def __getstate__(self):
+        state = dict(self.__dict__)
+        state['excel'] = None
+        return state
 
     def __repr__(self):
         return "{} -> {}".format(self.address, self.formula or self.value)

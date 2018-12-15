@@ -21,14 +21,14 @@ def test_end_2_end(excel, example_xls_path):
         excel_compiler.set_value('Sheet1!A1', 200)
         assert -0.00331 == round(excel_compiler.evaluate('Sheet1!D1'), 5)
 
+    # ::TODO: it would good to test these by geenrating product and
+    #  comparing to an fixture/artifact
+
     # show the graph usisng matplotlib
     # sp.plot_graph()
 
     # export the graph, can be loaded by a viewer like gephi
     # sp.export_to_gexf(fname + ".gexf")
-
-    # Serializing to disk...
-    # excel_compiler.save_to_file(example_xls_path + ".pickle")
 
 
 def test_round_trip_through_json_and_pickle(excel, example_xls_path):
