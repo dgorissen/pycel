@@ -2,20 +2,17 @@
 Simple Excel addin, requires www.pyxll.com
 """
 import os
+import webbrowser
 
+import win32api
+import win32com.client
+from pycel import ExcelCompiler
+from pycel.excelwrapper import ExcelComWrapper
 from pyxll import (
     get_active_object,
     get_config,
-    # xl_func,
-    # xl_macro,
     xl_menu
 )
-import win32api
-import webbrowser
-import win32com.client
-
-from pycel.excelwrapper import ExcelComWrapper
-from pycel import ExcelCompiler
 
 
 @xl_menu("Open log file", menu="PyXLL")
@@ -61,7 +58,7 @@ def compile_selection_menu():
 def do_compilation(fname, seed, sheet=None):
     excel = ExcelComWrapper(fname, app=xl_app())
     c = ExcelCompiler(filename=fname, excel=excel)
-    sp = c.gen_graph(seed, sheet=sheet)
+    sp = c._gen_graph(seed, sheet=sheet)
     sp.save_to_file(fname + ".pickle")
     sp.export_to_gexf(fname + ".gexf")
     return sp

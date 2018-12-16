@@ -101,8 +101,8 @@ class ExcelCompiler:
         extra_data.update(dict(
             excel_hash=self._excel_file_md5_digest,
             cell_map=dict(
-                (addr.address, cell_value(cell))
-                for addr, cell in self.cell_map.items() if not addr.is_range
+                (addr, cell_value(cell))
+                for addr, cell in self.cell_map.items() if ':' not in addr
             ),
         ))
         if not filename:
@@ -133,7 +133,7 @@ class ExcelCompiler:
         with open(filename, 'r') as f:
             data = YAML().load(f)
 
-        excel = CompiledImporter(filename)
+        excel = _CompiledImporter(filename)
         excel_compiler = cls(excel=excel)
         excel.compiler = excel_compiler
 
@@ -142,7 +142,7 @@ class ExcelCompiler:
             address = AddressRange(address)
             excel.value = python_code
             excel_compiler._make_cells(address)
-            formula = excel_compiler.cell_map[address].formula
+            formula = excel_compiler.cell_map[address.address].formula
             if formula is not None:
                 formula.lineno = lineno
                 formula.filename = filename
@@ -181,6 +181,8 @@ class ExcelCompiler:
         extension = self._filename_has_extension(filename)
         if extension:
             file_types = (extension, )
+        elif isinstance(file_types, str):
+            file_types = (file_types, )
 
         unknown_types = tuple(ft for ft in file_types
                               if ft not in self.save_file_extensions)
@@ -272,10 +274,8 @@ class ExcelCompiler:
         nx.draw_networkx_labels(self.dep_graph, pos)
         plt.show()
 
-    def set_value(self, cell_or_range, value, is_addr=True):
-        if is_addr:  # pragma: no branch
-            address = AddressRange(cell_or_range)
-            cell_or_range = self.cell_map[address]
+    def set_value(self, address, value):
+        cell_or_range = self.cell_map[address]
 
         if cell_or_range.value != value:  # pragma: no branch
             # reset the node + its dependencies
@@ -294,41 +294,41 @@ class ExcelCompiler:
                 self.reset(child_cell)
 
     def value_tree_str(self, address, indent=0):
-        cell = self.cell_map[AddressRange(address)]
+        cell = self.cell_map[address]
         yield "{}{} = {}".format(" " * indent, address, cell.value)
         for children in sorted(self.dep_graph.predecessors(cell),
                                key=lambda a: a.address.address):
-            yield from self.value_tree_str(children.address, indent + 1)
+            yield from self.value_tree_str(children.address.address, indent + 1)
 
     def recalculate(self):
         for cell in self.cell_map.values():
-            if isinstance(cell, CellRange) or cell.formula:
+            if isinstance(cell, _CellRange) or cell.formula:
                 cell.value = None
 
         for cell in self.cell_map.values():
-            if isinstance(cell, CellRange):
-                self.evaluate_range(cell)
+            if isinstance(cell, _CellRange):
+                self._evaluate_range(cell.address.address)
             else:
-                self.evaluate(cell)
+                self._evaluate(cell.address.address)
 
     def trim_graph(self, input_addrs, output_addrs):
         """Remove unneeded cells from the graph"""
         output_addrs = tuple(AddressRange(addr) for addr in output_addrs)
 
         # build network for all needed outputs
-        self.gen_graph(output_addrs)
+        self._gen_graph(output_addrs)
 
         # walk the dependant tree and find needed nodes
         needed_cells = set()
 
         def walk_dependents(cell):
             for child_cell in self.dep_graph.successors(cell):
-                if child_cell.address not in needed_cells:  # pragma: no branch
-                    needed_cells.add(child_cell.address)
+                if child_cell.address.address not in needed_cells:
+                    needed_cells.add(child_cell.address.address)
                     walk_dependents(child_cell)
 
         try:
-            for addr in (AddressRange(a) for a in input_addrs):
+            for addr in input_addrs:
                 if addr in self.cell_map:
                     walk_dependents(self.cell_map[addr])
                 else:
@@ -339,17 +339,17 @@ class ExcelCompiler:
                              'on it.'.format(exc))
 
         for addr in output_addrs:
-            needed_cells.add(addr)
+            needed_cells.add(addr.address)
 
         # now walk the precedent tree and prune unneeded cells
         processed_cells = set()
 
         def walk_precedents(cell):
-            for child_address in cell.needed_addresses:
+            for child_address in (a.address for a in cell.needed_addresses):
                 if child_address not in processed_cells:  # pragma: no branch
                     processed_cells.add(child_address)
                     child_cell = self.cell_map[child_address]
-                    if child_address in needed_cells or child_address.is_range:
+                    if child_address in needed_cells or ':' in child_address:
                         walk_precedents(child_cell)
                     else:
                         # trim this cell, now we will need only its value
@@ -358,7 +358,7 @@ class ExcelCompiler:
                         self.log.debug('Trimming {}'.format(child_address))
 
         for addr in output_addrs:
-            walk_precedents(self.cell_map[addr])
+            walk_precedents(self.cell_map[addr.address])
 
         cells_to_remove = tuple(addr for addr in self.cell_map
                                 if addr not in needed_cells)
@@ -379,11 +379,11 @@ class ExcelCompiler:
         failed = {}
         while to_verify:
             addr = to_verify.pop()
-            cell = self.cell_map[addr]
-            if isinstance(cell, Cell) and cell.python_code:
+            cell = self.cell_map[addr.address]
+            if isinstance(cell, _Cell) and cell.python_code:
                 original_value = cell.value
                 cell.value = None
-                self.evaluate(cell)
+                self._evaluate(cell.address.address)
                 if original_value != cell.value:  # pragma: no branch
                     failed[str(addr)] = original_value, cell.value
                     print('{} mismatch  {} -> {}'.format(
@@ -391,7 +391,7 @@ class ExcelCompiler:
 
                     # do it again to allow easy breakpointing
                     cell.value = None
-                    self.evaluate(cell)
+                    self._evaluate(cell.address.address)
 
             verified.add(addr)
             for addr in cell.needed_addresses:
@@ -403,8 +403,8 @@ class ExcelCompiler:
     def _make_cells(self, address):
         """Given an AddressRange or AddressCell generate compiler Cells"""
 
-        # from here don't build cells that are already in the cellmap
-        assert address not in self.cell_map
+        # from here don't build cells that are already in the cell_map
+        assert address.address not in self.cell_map
 
         def add_node_to_graph(node):
             self.dep_graph.add_node(node)
@@ -420,9 +420,10 @@ class ExcelCompiler:
             if excel_range.Formula.startswith('='):
                 formula = excel_range.Formula
 
-            self.cell_map[addr] = Cell(addr, value=excel_range.Value,
-                                       formula=formula, excel=self.excel)
-            return self.cell_map[addr]
+            self.cell_map[addr.address] = _Cell(
+                addr, value=excel_range.Value,
+                formula=formula, excel=self.excel)
+            return self.cell_map[addr.address]
 
         def build_range(rng):
 
@@ -441,19 +442,19 @@ class ExcelCompiler:
             cells = []
             for row in (zip(*x) for x in excel_cells):
                 for cell_address, f, value in row:
-                    if cell_address not in self.cell_map:
+                    if cell_address.address not in self.cell_map:
                         formula = f if f and f.startswith('=') else None
                         if None not in (f, value):
-                            cell = Cell(cell_address, value=value,
-                                        formula=formula, excel=self.excel)
-                            self.cell_map[cell_address] = cell
+                            cell = _Cell(cell_address, value=value,
+                                         formula=formula, excel=self.excel)
+                            self.cell_map[cell_address.address] = cell
                             cells.append(cell)
             return cells
 
         if address.is_range:
-            cell_range = CellRange(address, self)
-            self.range_todos.append(cell_range)
-            self.cell_map[address] = cell_range
+            cell_range = _CellRange(address, self)
+            self.range_todos.append(address.address)
+            self.cell_map[address.address] = cell_range
             add_node_to_graph(cell_range)
 
             new_cells = build_range(address)
@@ -465,56 +466,43 @@ class ExcelCompiler:
                 # cells to analyze: only formulas have precedents
                 add_node_to_graph(cell)
 
-    def evaluate_range(self, cell_range):
+    def _evaluate_range(self, address):
 
-        if isinstance(cell_range, CellRange):
-            assert cell_range.address in self.cell_map
-        else:
-            cell_range = AddressRange(cell_range)
-            assert AddressRange.has_sheet, \
-                "{} missing sheetname".format(cell_range)
-            if cell_range not in self.cell_map:
-                self.gen_graph(cell_range)
-            cell_range = self.cell_map[cell_range]
+        assert '!' in address, "{} missing sheetname".format(address)
+        if address not in self.cell_map:
+            self._gen_graph(address)
+        cell_range = self.cell_map[address]
 
         if cell_range.value is None:
             self.log.debug("Evaluating: {}".format(cell_range.address))
             cells = cell_range.cells
 
             if 1 == min(cell_range.address.size):
-                data = [self.evaluate(cell) for cell in cells]
+                data = [self._evaluate(cell.address.address) for cell in cells]
             else:
-                data = [[self.evaluate(cell) for cell in cells[i]] for i in
-                        range(len(cells))]
+                data = [
+                    [self._evaluate(cell.address.address) for cell in cells[i]]
+                    for i in range(len(cells))
+                ]
 
             cell_range.value = data
 
         return cell_range.value
 
-    def evaluate(self, cell):
-
-        if isinstance(cell, (Cell, CellRange)):
-            assert cell.address in self.cell_map
-        elif (not isinstance(cell, (AddressRange, AddressCell)) and
-                isinstance(cell, (tuple, list))):
-            return type(cell)([self.evaluate(c) for c in cell])
-        else:
-            address = AddressRange.create(cell)
-            if address not in self.cell_map:
-                self.gen_graph(address)
-            cell = self.cell_map[address]
+    def _evaluate(self, address):
+        cell = self.cell_map[address]
 
         # calculate the cell value for formulas and ranges
         if cell.value is None:
-            if isinstance(cell, CellRange):
-                self.evaluate_range(cell)
+            if isinstance(cell, _CellRange):
+                self._evaluate_range(cell.address.address)
 
             elif cell.python_code:
                 self.log.debug(
                     "Evaluating: %s, %s".format(cell.address, cell.python_code))
                 if self.eval is None:
                     self.eval = ExcelFormula.build_eval_context(
-                        self.evaluate, self.evaluate_range, self.log)
+                        self._evaluate, self._evaluate_range, self.log)
                 value = self.eval(cell.formula)
                 self.log.info("Cell %s evaluated to '%s' (%s)" % (
                     cell.address, value, type(value).__name__))
@@ -522,17 +510,30 @@ class ExcelCompiler:
 
         return cell.value
 
-    def gen_graph(self, seed, recursed=False, sheet=None):
+    def evaluate(self, address):
+
+        if (not isinstance(address, (AddressRange, AddressCell)) and
+                isinstance(address, (tuple, list))):
+            return type(address)([self.evaluate(c) for c in address])
+
+        elif address not in self.cell_map:
+            address = AddressRange.create(address).address
+            if address not in self.cell_map:
+                self._gen_graph(address)
+
+        return self._evaluate(self.cell_map[address].address.address)
+
+    def _gen_graph(self, seed, recursed=False):
         """Given a starting point (e.g., A6, or A3:B7) on a particular sheet,
         generate a Spreadsheet instance that captures the logic and control
         flow of the equations.
         """
         if not isinstance(seed, (AddressCell, AddressRange)):
             if isinstance(seed, str):
-                seed = AddressRange(seed, sheet=sheet)
+                seed = AddressRange(seed)
             elif isinstance(seed, collections.Iterable):
                 for s in seed:
-                    self.gen_graph(s, recursed=True, sheet=sheet)
+                    self._gen_graph(s, recursed=True)
                 self._process_gen_graph()
                 return
             else:
@@ -541,11 +542,8 @@ class ExcelCompiler:
         # get/set the current sheet
         if not seed.has_sheet:
             seed = AddressRange(seed, sheet=self.excel.get_active_sheet_name())
-        else:
-            # ::TODO:: Is this needed?!?
-            self.excel.set_sheet(seed.sheet)
 
-        if seed in self.cell_map:
+        if seed.address in self.cell_map:
             # already did this cell/range
             return
 
@@ -565,26 +563,27 @@ class ExcelCompiler:
             self.log.debug("Handling {}".format(dependant.address))
 
             for precedent_address in dependant.needed_addresses:
+                precedent_address = precedent_address.address
                 if precedent_address not in self.cell_map:
-                    self.gen_graph(precedent_address, recursed=True)
+                    self._gen_graph(precedent_address, recursed=True)
 
                 self.dep_graph.add_edge(
                     self.cell_map[precedent_address], dependant)
 
         # calc the values for ranges
         for range_todo in reversed(self.range_todos):
-            self.evaluate_range(str(range_todo))
+            self._evaluate_range(range_todo)
 
         self.log.info(
             "Graph construction done, %s nodes, "
-            "%s edges, %s self.cellmap entries" % (
+            "%s edges, %s self.cell_map entries" % (
                 len(self.dep_graph.nodes()),
                 len(self.dep_graph.edges()),
                 len(self.cell_map))
         )
 
 
-class CellRange:
+class _CellRange:
     # TODO: only supports rectangular ranges
 
     def __init__(self, address, excel):
@@ -619,9 +618,10 @@ class CellRange:
         if self._cells is None:
             cell_map = self.excel.cell_map
             if 1 == min(self.size):
-                self._cells = [cell_map[addr] for addr in self.addresses]
+                self._cells = [cell_map[addr.address]
+                               for addr in self.addresses]
             else:
-                self._cells = [[cell_map[addr] for addr in row]
+                self._cells = [[cell_map[addr.address] for addr in row]
                                for row in self.addresses]
         return self._cells
 
@@ -634,7 +634,7 @@ class CellRange:
         return self.address.sheet
 
 
-class Cell:
+class _Cell:
     ctr = 0
 
     @classmethod
@@ -644,7 +644,7 @@ class Cell:
 
     def __init__(self, address, value=None, formula=None, excel=None):
         self.address = address
-        if isinstance(excel, CompiledImporter):
+        if isinstance(excel, _CompiledImporter):
             excel = None
 
         self.excel = excel
@@ -653,7 +653,7 @@ class Cell:
         self.value = value
 
         # every cell has a unique id
-        self.id = Cell.next_id()
+        self.id = _Cell.next_id()
 
     def __getstate__(self):
         state = dict(self.__dict__)
@@ -678,7 +678,7 @@ class Cell:
         return self.formula and self.formula.python_code
 
 
-class CompiledImporter:
+class _CompiledImporter:
     def __init__(self, filename):
         self.filename = filename.rsplit('.', maxsplit=1)[0]
         self.value = None
@@ -687,9 +687,9 @@ class CompiledImporter:
     CellValue = collections.namedtuple('CellValue', 'Formula Value')
 
     def get_range(self, address):
-        if address in self.compiler.cell_map:
+        if address.address in self.compiler.cell_map:
             cell_map = self.compiler.cell_map
-            cell = cell_map[address]
+            cell = cell_map[address.address]
             addrs = cell.addresses
 
             height, width = address.size
@@ -698,7 +698,7 @@ class CompiledImporter:
             elif width == 1:  # pragma: no branch
                 addrs = [[x] for x in addrs]
 
-            cells = [[cell_map[addr] for addr in row] for row in addrs]
+            cells = [[cell_map[addr.address] for addr in row] for row in addrs]
             formulas = [[c.formula for c in row] for row in cells]
             values = [[c.value for c in row] for row in cells]
 
@@ -708,6 +708,3 @@ class CompiledImporter:
             return self.CellValue(self.value, None)
         else:
             return self.CellValue('', self.value)
-
-    def set_sheet(self, *args):
-        return

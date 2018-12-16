@@ -2,9 +2,8 @@ import os
 from unittest import mock
 
 import pytest
-from pycel.excelcompiler import Cell, CellRange, ExcelCompiler
+from pycel.excelcompiler import _Cell, _CellRange, ExcelCompiler
 from pycel.excelformula import FormulaEvalError
-from pycel.excelutil import AddressRange
 
 
 # ::TODO:: need some rectangular ranges for testing
@@ -98,8 +97,8 @@ def test_hash_matches(excel):
 
 def test_reset(excel):
     excel_compiler = ExcelCompiler(excel=excel)
-    in_address = AddressRange('Sheet1!A1')
-    out_address = AddressRange('Sheet1!D1')
+    in_address = 'Sheet1!A1'
+    out_address = 'Sheet1!D1'
 
     assert -0.02286 == round(excel_compiler.evaluate(out_address), 5)
 
@@ -118,7 +117,7 @@ def test_reset(excel):
 
 def test_recalculate(excel):
     excel_compiler = ExcelCompiler(excel=excel)
-    out_address = AddressRange('Sheet1!D1')
+    out_address = 'Sheet1!D1'
 
     assert -0.02286 == round(excel_compiler.evaluate(out_address), 5)
     excel_compiler.cell_map[out_address].value = None
@@ -129,7 +128,7 @@ def test_recalculate(excel):
 
 def test_evaluate_range(excel):
     excel_compiler = ExcelCompiler(excel=excel)
-    result = excel_compiler.evaluate_range('trim-range!B2')
+    result = excel_compiler._evaluate_range('trim-range!B2')
     assert 136 == result
 
 
@@ -144,14 +143,14 @@ def test_evaluate_empty(excel):
 def test_gen_graph(excel):
     excel_compiler = ExcelCompiler(excel=excel)
     excel.set_sheet('trim-range')
-    excel_compiler.gen_graph('B2')
+    excel_compiler._gen_graph('B2')
 
     with pytest.raises(ValueError, match='Unknown seed'):
-        excel_compiler.gen_graph(None)
+        excel_compiler._gen_graph(None)
 
 
 def test_value_tree_str(excel):
-    out_address = AddressRange('trim-range!B2')
+    out_address = 'trim-range!B2'
     excel_compiler = ExcelCompiler(excel=excel)
     excel_compiler.evaluate(out_address)
 
@@ -219,15 +218,15 @@ def test_evaluate_from_non_cells(excel):
 
     excel_compiler.trim_graph(input_addrs, output_addrs)
 
-    excel_compiler._to_text()
-    excel_compiler = ExcelCompiler._from_text(excel_compiler.filename)
-    for expected, result in zip(old_values,
-                                excel_compiler.evaluate(output_addrs)):
+    excel_compiler.to_file(file_types='yml')
+    excel_compiler = ExcelCompiler.from_file(excel_compiler.filename)
+    for expected, result in zip(
+            old_values, excel_compiler.evaluate(output_addrs)):
         assert expected == pytest.approx(result)
 
-    range_cell = excel_compiler.cell_map[AddressRange(output_addrs[0])]
+    range_cell = excel_compiler.cell_map[output_addrs[0]]
     excel_compiler.reset(range_cell)
-    range_value = excel_compiler.evaluate(range_cell)
+    range_value = excel_compiler.evaluate(range_cell.address)
     assert old_values[0] == range_value
 
 
@@ -237,7 +236,7 @@ def test_validate_calcs(excel, capsys):
     output_addrs = ['trim-range!B2']
 
     excel_compiler.trim_graph(input_addrs, output_addrs)
-    excel_compiler.cell_map[AddressRange(output_addrs[0])].value = 'JUNK'
+    excel_compiler.cell_map[output_addrs[0]].value = 'JUNK'
     failed_cells = excel_compiler.validate_calcs(output_addrs)
 
     assert {'trim-range!B2': ('JUNK', 136)} == failed_cells
@@ -275,8 +274,8 @@ def test_trim_cells_exception_input_unused(excel):
 def test_compile_error_message_line_number(excel):
     excel_compiler = ExcelCompiler(excel=excel)
 
-    input_addrs = [AddressRange('trim-range!D5')]
-    output_addrs = [AddressRange('trim-range!B2')]
+    input_addrs = ['trim-range!D5']
+    output_addrs = ['trim-range!B2']
 
     excel_compiler.trim_graph(input_addrs, output_addrs)
 
@@ -295,16 +294,16 @@ def test_compile_error_message_line_number(excel):
 
 def test_init_cell_address_error(excel):
     with pytest.raises(ValueError):
-        CellRange('A1', excel)
+        _CellRange('A1', excel)
 
 
 def test_cell_range_repr(excel):
-    cell_range = CellRange('sheet!A1', excel)
+    cell_range = _CellRange('sheet!A1', excel)
     assert 'sheet!A1' == repr(cell_range)
 
 
 def test_cell_repr(excel):
-    cell_range = Cell('sheet!A1', value=0)
+    cell_range = _Cell('sheet!A1', value=0)
     assert 'sheet!A1 -> 0' == repr(cell_range)
 
 
@@ -355,7 +354,7 @@ def test_plot_graph(excel, tmpdir):
     )
     for mock_import in mock_imports:
         sys.modules[mock_import] = mock.MagicMock()
-    out_address = AddressRange('trim-range!B2')
+    out_address = 'trim-range!B2'
     excel_compiler.evaluate(out_address)
 
     with mock.patch('pycel.excelcompiler.nx'):
