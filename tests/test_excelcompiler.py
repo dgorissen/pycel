@@ -261,6 +261,18 @@ def test_trim_cells_warn_address_not_found(excel):
     assert 1 == excel_compiler.log.warning.call_count
 
 
+def test_trim_cells_info_buried_input(excel):
+    excel_compiler = ExcelCompiler(excel=excel)
+    input_addrs = ['trim-range!B1', 'trim-range!D1']
+    output_addrs = ['trim-range!B2']
+
+    excel_compiler.evaluate(output_addrs[0])
+    excel_compiler.log.info = mock.Mock()
+    excel_compiler.trim_graph(input_addrs, output_addrs)
+    assert 2 == excel_compiler.log.info.call_count
+    assert 'not a leaf node' in excel_compiler.log.info.mock_calls[1][1][0]
+
+
 def test_trim_cells_exception_input_unused(excel):
 
     excel_compiler = ExcelCompiler(excel=excel)

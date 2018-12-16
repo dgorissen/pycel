@@ -338,17 +338,18 @@ class ExcelCompiler:
         input_addrs = tuple(AddressRange(addr).address for addr in input_addrs)
         output_addrs = tuple(AddressRange(addr) for addr in output_addrs)
 
-        # build network for all needed outputs
+        # 1) build graph for all needed outputs
         self._gen_graph(output_addrs)
 
-        # walk the dependant tree and find needed nodes
+        # 2) walk the dependant tree (from the inputs) and find needed cells
         needed_cells = set()
 
         def walk_dependents(cell):
             """passed in a _Cell or _CellRange"""
             for child_cell in self.dep_graph.successors(cell):
-                if child_cell.address.address not in needed_cells:
-                    needed_cells.add(child_cell.address.address)
+                child_addr = child_cell.address.address
+                if child_addr not in needed_cells:
+                    needed_cells.add(child_addr)
                     walk_dependents(child_cell)
 
         try:
@@ -362,10 +363,7 @@ class ExcelCompiler:
             raise ValueError('{}: which usually means no outputs are dependant '
                              'on it.'.format(exc))
 
-        for addr in output_addrs:
-            needed_cells.add(addr.address)
-
-        # now walk the precedent tree and prune unneeded cells
+        # 3) walk the precedent tree (from the output) and trim unneeded cells
         processed_cells = set()
 
         def walk_precedents(cell):
@@ -384,6 +382,13 @@ class ExcelCompiler:
         for addr in output_addrs:
             walk_precedents(self.cell_map[addr.address])
 
+        # 4) check for any buried (not leaf node) inputs
+        for addr in input_addrs:
+            cell = self.cell_map.get(addr)
+            if cell and getattr(cell, 'formula', None):
+                self.log.info("{} is not a leaf node".format(addr))
+
+        # 5) remove unneeded cells
         cells_to_remove = tuple(addr for addr in self.cell_map
                                 if addr not in needed_cells)
         for addr in cells_to_remove:
