@@ -4,6 +4,7 @@ from unittest import mock
 import pytest
 from pycel.excelcompiler import _Cell, _CellRange, ExcelCompiler
 from pycel.excelformula import FormulaEvalError
+from pycel.excelutil import AddressRange
 
 
 # ::TODO:: need some rectangular ranges for testing
@@ -104,10 +105,10 @@ def test_reset(excel):
 
     in_value = excel_compiler.cell_map[in_address].value
 
-    excel_compiler.reset(excel_compiler.cell_map[in_address])
+    excel_compiler._reset(excel_compiler.cell_map[in_address])
     assert excel_compiler.cell_map[out_address].value is None
 
-    excel_compiler.reset(excel_compiler.cell_map[in_address])
+    excel_compiler._reset(excel_compiler.cell_map[in_address])
     assert excel_compiler.cell_map[out_address].value is None
 
     excel_compiler.cell_map[in_address].value = in_value
@@ -128,7 +129,7 @@ def test_recalculate(excel):
 
 def test_evaluate_range(excel):
     excel_compiler = ExcelCompiler(excel=excel)
-    result = excel_compiler._evaluate_range('trim-range!B2')
+    result = excel_compiler.evaluate('trim-range!B2')
     assert 136 == result
 
 
@@ -190,7 +191,7 @@ def test_trim_cells(excel):
 
 def test_trim_cells_range(excel):
     excel_compiler = ExcelCompiler(excel=excel)
-    input_addrs = ['trim-range!D4:E4']
+    input_addrs = [AddressRange('trim-range!D4:E4')]
     output_addrs = ['trim-range!B2']
 
     old_value = excel_compiler.evaluate(output_addrs[0])
@@ -206,6 +207,9 @@ def test_trim_cells_range(excel):
 
     excel_compiler.set_value(input_addrs[0], [4, 6])
     assert old_value - 2 == excel_compiler.evaluate(output_addrs[0])
+
+    excel_compiler.set_value(tuple(next(input_addrs[0].rows)), [5, 6])
+    assert old_value - 1 == excel_compiler.evaluate(output_addrs[0])
 
 
 def test_evaluate_from_non_cells(excel):
@@ -225,7 +229,7 @@ def test_evaluate_from_non_cells(excel):
         assert expected == pytest.approx(result)
 
     range_cell = excel_compiler.cell_map[output_addrs[0]]
-    excel_compiler.reset(range_cell)
+    excel_compiler._reset(range_cell)
     range_value = excel_compiler.evaluate(range_cell.address)
     assert old_values[0] == range_value
 

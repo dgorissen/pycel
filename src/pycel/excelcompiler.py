@@ -275,25 +275,46 @@ class ExcelCompiler:
         plt.show()
 
     def set_value(self, address, value):
+        """ Set the value of one or more cells or ranges
+
+        :param address: str, AddressRange, AddressCell or a tuple or list
+            of these three
+        :param value: value to set.  This can be a value or a tuple/list
+            which matches the shapes needed for the given address/addresses
+        """
+
+        if (not isinstance(address, (AddressRange, AddressCell)) and
+                isinstance(address, (tuple, list))):
+            assert isinstance(value, (tuple, list))
+            assert len(address) == len(value)
+            for addr, val in zip(address, value):
+                self.set_value(addr, val)
+            return
+
+        elif address not in self.cell_map:
+            address = AddressRange.create(address).address
+            assert address in self.cell_map
+
         cell_or_range = self.cell_map[address]
 
         if cell_or_range.value != value:  # pragma: no branch
             # reset the node + its dependencies
-            self.reset(cell_or_range)
+            self._reset(cell_or_range)
 
             # set the value
             cell_or_range.value = value
 
-    def reset(self, cell):
+    def _reset(self, cell):
         if cell.value is None:
             return
         self.log.info("Resetting {}".format(cell.address))
         cell.value = None
         for child_cell in self.dep_graph.successors(cell):
             if child_cell.value is not None:
-                self.reset(child_cell)
+                self._reset(child_cell)
 
     def value_tree_str(self, address, indent=0):
+        """Generator which returns a formatted dependency graph"""
         cell = self.cell_map[address]
         yield "{}{} = {}".format(" " * indent, address, cell.value)
         for children in sorted(self.dep_graph.predecessors(cell),
@@ -301,6 +322,7 @@ class ExcelCompiler:
             yield from self.value_tree_str(children.address.address, indent + 1)
 
     def recalculate(self):
+        """Recalculate all of the known cells"""
         for cell in self.cell_map.values():
             if isinstance(cell, _CellRange) or cell.formula:
                 cell.value = None
@@ -313,6 +335,7 @@ class ExcelCompiler:
 
     def trim_graph(self, input_addrs, output_addrs):
         """Remove unneeded cells from the graph"""
+        input_addrs = tuple(AddressRange(addr).address for addr in input_addrs)
         output_addrs = tuple(AddressRange(addr) for addr in output_addrs)
 
         # build network for all needed outputs
@@ -322,6 +345,7 @@ class ExcelCompiler:
         needed_cells = set()
 
         def walk_dependents(cell):
+            """passed in a _Cell or _CellRange"""
             for child_cell in self.dep_graph.successors(cell):
                 if child_cell.address.address not in needed_cells:
                     needed_cells.add(child_cell.address.address)
@@ -468,10 +492,12 @@ class ExcelCompiler:
 
     def _evaluate_range(self, address):
 
-        assert '!' in address, "{} missing sheetname".format(address)
-        if address not in self.cell_map:
+        cell_range = self.cell_map.get(address)
+        if cell_range is None:
+            # we don't save the _CellRange values in the text format files
+            assert '!' in address, "{} missing sheetname".format(address)
             self._gen_graph(address)
-        cell_range = self.cell_map[address]
+            cell_range = self.cell_map[address]
 
         if cell_range.value is None:
             self.log.debug("Evaluating: {}".format(cell_range.address))
@@ -514,6 +540,7 @@ class ExcelCompiler:
 
         if (not isinstance(address, (AddressRange, AddressCell)) and
                 isinstance(address, (tuple, list))):
+            # process a tuple or list of addresses
             return type(address)([self.evaluate(c) for c in address])
 
         elif address not in self.cell_map:
@@ -521,7 +548,7 @@ class ExcelCompiler:
             if address not in self.cell_map:
                 self._gen_graph(address)
 
-        return self._evaluate(self.cell_map[address].address.address)
+        return self._evaluate(address)
 
     def _gen_graph(self, seed, recursed=False):
         """Given a starting point (e.g., A6, or A3:B7) on a particular sheet,
@@ -563,12 +590,11 @@ class ExcelCompiler:
             self.log.debug("Handling {}".format(dependant.address))
 
             for precedent_address in dependant.needed_addresses:
-                precedent_address = precedent_address.address
-                if precedent_address not in self.cell_map:
+                if precedent_address.address not in self.cell_map:
                     self._gen_graph(precedent_address, recursed=True)
 
                 self.dep_graph.add_edge(
-                    self.cell_map[precedent_address], dependant)
+                    self.cell_map[precedent_address.address], dependant)
 
         # calc the values for ranges
         for range_todo in reversed(self.range_todos):

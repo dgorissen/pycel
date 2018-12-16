@@ -447,13 +447,13 @@ class ExcelFormula:
     @property
     def rpn(self):
         if self._rpn is None:
-            self._rpn = self.parse_to_rpn(self.base_formula)
+            self._rpn = self._parse_to_rpn(self.base_formula)
         return self._rpn
 
     @property
     def ast(self):
         if self._ast is None and self.rpn:
-            self._ast = self.build_ast(self.rpn)
+            self._ast = self._build_ast(self.rpn)
         return self._ast
 
     @property
@@ -502,10 +502,10 @@ class ExcelFormula:
 
         return self._compiled_python
 
-    def ast_node(self, token):
+    def _ast_node(self, token):
         return ASTNode.create(token, self.cell)
 
-    def parse_to_rpn(self, expression):
+    def _parse_to_rpn(self, expression):
         """
         Parse an excel formula expression into reverse polish notation
 
@@ -559,7 +559,7 @@ class ExcelFormula:
         for token in tokens:
             if token.type == token.OPERAND:
 
-                output.append(self.ast_node(token))
+                output.append(self._ast_node(token))
                 if were_values:
                     were_values[-1] = True
 
@@ -577,7 +577,7 @@ class ExcelFormula:
             elif token.type == token.SEP:
 
                 while stack and (stack[-1].subtype != token.OPEN):
-                    output.append(self.ast_node(stack.pop()))
+                    output.append(self._ast_node(stack.pop()))
 
                 if not len(were_values):
                     raise FormulaParserError(
@@ -591,7 +591,7 @@ class ExcelFormula:
 
                 while stack and stack[-1].is_operator:
                     if token.precedence < stack[-1].precedence:
-                        output.append(self.ast_node(stack.pop()))
+                        output.append(self._ast_node(stack.pop()))
                     else:
                         break
 
@@ -605,7 +605,7 @@ class ExcelFormula:
                 assert token.subtype == token.CLOSE
 
                 while stack and stack[-1].subtype != Token.OPEN:
-                    output.append(self.ast_node(stack.pop()))
+                    output.append(self._ast_node(stack.pop()))
 
                 if not stack:
                     raise FormulaParserError(
@@ -614,7 +614,7 @@ class ExcelFormula:
                 stack.pop()
 
                 if stack and stack[-1].is_funcopen:
-                    f = self.ast_node(stack.pop())
+                    f = self._ast_node(stack.pop())
                     f.num_args = arg_count.pop() + int(were_values.pop())
                     output.append(f)
 
@@ -622,12 +622,12 @@ class ExcelFormula:
             if stack[-1].subtype in (Token.OPEN, Token.CLOSE):
                 raise FormulaParserError("Mismatched or misplaced parentheses")
 
-            output.append(self.ast_node(stack.pop()))
+            output.append(self._ast_node(stack.pop()))
 
         return output
 
     @classmethod
-    def build_ast(cls, rpn_expression):
+    def _build_ast(cls, rpn_expression):
         """build an AST from an Excel formula
 
         :param rpn_expression: a string formula or the result of parse_to_rpn()
