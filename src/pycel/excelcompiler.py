@@ -543,13 +543,28 @@ class ExcelCompiler:
         return cell.value
 
     def evaluate(self, address):
+        """ evaluate a cell or cells in the spreadsheet
 
-        if (not isinstance(address, (AddressRange, AddressCell)) and
-                isinstance(address, (tuple, list))):
-            # process a tuple or list of addresses
-            return type(address)([self.evaluate(c) for c in address])
+        :param address: str, AddressRange, AddressCell or a tuple or list
+            or iterable of these three
+        :return: evaluted value/values
+        """
 
-        elif address not in self.cell_map:
+        try:
+            not_in_cell_map = address not in self.cell_map
+        except TypeError:
+            not_in_cell_map = True
+
+        if not_in_cell_map:
+            if (not isinstance(address, (str, AddressRange, AddressCell)) and
+                    isinstance(address, collections.Iterable)):
+
+                if not isinstance(address, (tuple, list)):
+                    address = tuple(address)
+
+                # process a tuple or list of addresses
+                return type(address)(self.evaluate(c) for c in address)
+
             address = AddressRange.create(address).address
             if address not in self.cell_map:
                 self._gen_graph(address)

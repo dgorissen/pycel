@@ -127,10 +127,11 @@ def test_recalculate(excel):
     assert -0.02286 == round(excel_compiler.cell_map[out_address].value, 5)
 
 
-def test_evaluate_range(excel):
+def test_evaluate_from_generator(excel):
     excel_compiler = ExcelCompiler(excel=excel)
-    result = excel_compiler.evaluate('trim-range!B2')
-    assert 136 == result
+    result = excel_compiler.evaluate(
+        a for a in ('trim-range!B1', 'trim-range!B2'))
+    assert (24, 136) == result
 
 
 def test_evaluate_empty(excel):
