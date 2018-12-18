@@ -141,6 +141,21 @@ def test_evaluate_empty(excel):
     excel_compiler.recalculate()
     assert 0 == excel_compiler.evaluate('Empty!B1')
 
+    input_addrs = ['Empty!C1', 'Empty!B2']
+    output_addrs = ['Empty!B1', 'Empty!B2']
+
+    excel_compiler.trim_graph(input_addrs, output_addrs)
+    excel_compiler._to_text(is_json=True)
+    text_excel_compiler = ExcelCompiler._from_text(
+        excel_compiler.filename, is_json=True)
+
+    assert [0, None] == text_excel_compiler.evaluate(output_addrs)
+    text_excel_compiler.set_value(input_addrs[0], 10)
+    assert [10, None] == text_excel_compiler.evaluate(output_addrs)
+
+    text_excel_compiler.set_value(input_addrs[1], 20)
+    assert [10, 20] == text_excel_compiler.evaluate(output_addrs)
+
 
 def test_gen_graph(excel):
     excel_compiler = ExcelCompiler(excel=excel)

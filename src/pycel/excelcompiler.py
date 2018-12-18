@@ -155,6 +155,7 @@ class ExcelCompiler:
         del data['excel_hash']
 
         excel_compiler.extra_data = data
+        excel_compiler.excel = None
         return excel_compiler
 
     def to_file(self, filename=None, file_types=('pkl', 'yml')):
@@ -299,6 +300,10 @@ class ExcelCompiler:
         cell_or_range = self.cell_map[address]
 
         if cell_or_range.value != value:  # pragma: no branch
+            # need to be able to 'set' an empty cell
+            if cell_or_range.value is None:
+                cell_or_range.value = value
+
             # reset the node + its dependencies
             self._reset(cell_or_range)
 
@@ -310,9 +315,11 @@ class ExcelCompiler:
             return
         self.log.info("Resetting {}".format(cell.address))
         cell.value = None
-        for child_cell in self.dep_graph.successors(cell):
-            if child_cell.value is not None:
-                self._reset(child_cell)
+
+        if cell in self.dep_graph:
+            for child_cell in self.dep_graph.successors(cell):
+                if child_cell.value is not None:
+                    self._reset(child_cell)
 
     def value_tree_str(self, address, indent=0):
         """Generator which returns a formatted dependency graph"""
@@ -361,8 +368,13 @@ class ExcelCompiler:
                     self.log.warning(
                         'Address {} not found in cell_map'.format(addr))
         except nx.exception.NetworkXError as exc:
-            raise ValueError('{}: which usually means no outputs are dependant '
-                             'on it.'.format(exc))
+            if AddressRange(addr) not in output_addrs:
+                raise ValueError('{}: which usually means no outputs '
+                                 'are dependant on it.'.format(exc))
+
+        # even unconnected output addresses are needed
+        for addr in output_addrs:
+            needed_cells.add(addr.address)
 
         # 3) walk the precedent tree (from the output) and trim unneeded cells
         processed_cells = set()
