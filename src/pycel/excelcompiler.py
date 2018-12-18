@@ -100,10 +100,11 @@ class ExcelCompiler:
 
         extra_data.update(dict(
             excel_hash=self._excel_file_md5_digest,
-            cell_map=dict(
-                (addr, cell_value(cell))
-                for addr, cell in self.cell_map.items() if ':' not in addr
-            ),
+            cell_map=dict(sorted(
+                ((addr, cell_value(cell))
+                 for addr, cell in self.cell_map.items() if ':' not in addr),
+                key=lambda x: AddressCell(x[0]).sort_key
+            )),
         ))
         if not filename:
             filename = self.filename + ('.json' if is_json else '.yml')
@@ -278,7 +279,7 @@ class ExcelCompiler:
         """ Set the value of one or more cells or ranges
 
         :param address: str, AddressRange, AddressCell or a tuple or list
-            of these three
+            or an iterable of these three
         :param value: value to set.  This can be a value or a tuple/list
             which matches the shapes needed for the given address/addresses
         """
