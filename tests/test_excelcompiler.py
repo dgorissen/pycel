@@ -1,4 +1,5 @@
 import os
+import shutil
 from unittest import mock
 
 import pytest
@@ -94,6 +95,34 @@ def test_hash_matches(excel):
 
     excel_compiler._excel_file_md5_digest = 0
     assert not excel_compiler.hash_matches
+
+
+def test_pickle_file_rebuilding(excel):
+
+    input_addrs = ['Sheet1!A11']
+    output_addrs = ['Sheet1!D1']
+
+    excel_compiler = ExcelCompiler(excel=excel)
+    excel_compiler.trim_graph(input_addrs, output_addrs)
+    excel_compiler.to_file()
+
+    pickle_name = excel_compiler.filename + '.pkl'
+    yaml_name = excel_compiler.filename + '.yml'
+
+    assert os.path.exists(pickle_name)
+    old_hash = excel_compiler._compute_file_md5_digest(pickle_name)
+
+    excel_compiler.to_file()
+    assert old_hash == excel_compiler._compute_file_md5_digest(pickle_name)
+
+    os.unlink(yaml_name)
+    excel_compiler.to_file()
+    new_hash = excel_compiler._compute_file_md5_digest(pickle_name)
+    assert old_hash != new_hash
+
+    shutil.copyfile(pickle_name, yaml_name)
+    excel_compiler.to_file()
+    assert new_hash != excel_compiler._compute_file_md5_digest(pickle_name)
 
 
 def test_reset(excel):

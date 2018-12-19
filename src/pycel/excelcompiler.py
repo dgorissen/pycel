@@ -70,13 +70,17 @@ class ExcelCompiler:
         self.__dict__.update(d)
         self.log = logging.getLogger('pycel')
 
-    @property
-    def _compute_excel_file_md5_digest(self):
+    @staticmethod
+    def _compute_file_md5_digest(filename):
         hash_md5 = hashlib.md5()
-        with open(self.filename, "rb") as f:
+        with open(filename, "rb") as f:
             for chunk in iter(lambda: f.read(4096), b""):
                 hash_md5.update(chunk)
         return hash_md5.hexdigest()
+
+    @property
+    def _compute_excel_file_md5_digest(self):
+        return self._compute_file_md5_digest(self.filename)
 
     @property
     def hash_matches(self):
@@ -109,6 +113,10 @@ class ExcelCompiler:
         if not filename:
             filename = self.filename + ('.json' if is_json else '.yml')
 
+        # hash the current file to see if this function makes any changes
+        existing_hash = (self._compute_file_md5_digest(filename)
+                         if os.path.exists(filename) else None)
+
         if not is_json:
             with open(filename, 'w') as f:
                 ymlo = YAML()
@@ -119,6 +127,11 @@ class ExcelCompiler:
                 json.dump(extra_data, f, indent=4)
 
         del extra_data['cell_map']
+
+        # hash the newfile, return True if it changed, this is only reliable
+        # on pythons which have ordered dict (CPython 3.6 & python 3.7+)
+        return (existing_hash is None or
+                existing_hash != self._compute_file_md5_digest(filename))
 
     @classmethod
     def _from_text(cls, filename, is_json=False):
@@ -214,18 +227,20 @@ class ExcelCompiler:
         text_name = filename
         if not text_name.endswith(non_pickle_extension or '.yml'):
             text_name += '.' + (non_pickle_extension or 'yml')
-        self._to_text(text_name, is_json=is_json)
+        text_changed = self._to_text(text_name, is_json=is_json)
 
-        # save pickle file if requested
+        # save pickle file if requested and has changed
         if pickle_extension:
-            excel_compiler = self._from_text(text_name, is_json=is_json)
-            if non_pickle_extension not in file_types:
-                os.unlink(text_name)
-
             if not filename.endswith(pickle_extension):
                 filename += '.' + pickle_extension
-            with open(filename, 'wb') as f:
-                pickle.dump(excel_compiler, f)
+
+            if text_changed or not os.path.exists(filename):
+                excel_compiler = self._from_text(text_name, is_json=is_json)
+                if non_pickle_extension not in file_types:
+                    os.unlink(text_name)
+
+                with open(filename, 'wb') as f:
+                    pickle.dump(excel_compiler, f)
 
     @classmethod
     def from_file(cls, filename):
@@ -632,6 +647,7 @@ class ExcelCompiler:
         # calc the values for ranges
         for range_todo in reversed(self.range_todos):
             self._evaluate_range(range_todo)
+        self.range_todos = []
 
         self.log.info(
             "Graph construction done, %s nodes, "
