@@ -205,10 +205,6 @@ class ExcelCompiler:
             raise ValueError('Unknown file types: {}'.format(
                 ' '.join(unknown_types)))
 
-        if len(set(e[0] for e in file_types)) != len(file_types):
-            raise ValueError('Only allowed one extension for each type: '
-                             '{}'.format(file_types))
-
         pickle_extension = next((ft for ft in file_types
                                  if ft.startswith('p')), None)
         non_pickle_extension = next((ft for ft in file_types

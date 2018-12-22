@@ -79,7 +79,7 @@ def test_filename_extension_errors(excel, example_xls_path):
 
     excel_compiler = ExcelCompiler(excel=excel)
 
-    with pytest.raises(ValueError, match='Only allowed one extension'):
+    with pytest.raises(ValueError, match='Only allowed one '):
         excel_compiler.to_file(file_types=('pkl', 'pickle'))
 
     with pytest.raises(ValueError, match='Only allowed one '):
