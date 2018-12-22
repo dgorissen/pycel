@@ -6,7 +6,7 @@ import logging
 import os
 import sys
 
-from pycel.excelcompiler import ExcelCompiler
+from pycel import ExcelCompiler
 
 
 def pycel_logging_to_console(enable=True):
@@ -27,7 +27,7 @@ if __name__ == '__main__':
 
     print("Loading %s..." % fname)
 
-    # load  & compile the file to a graph, starting from D1
+    # load & compile the file to a graph, starting from D1
     excel = ExcelCompiler(filename=fname)
 
     # test evaluation
@@ -39,15 +39,40 @@ if __name__ == '__main__':
     print("D1 is now %s (the same should happen in Excel)" % excel.evaluate(
         'Sheet1!D1'))
 
-    # show the graph usisng matplotlib
+    # show the graph using matplotlib if installed
     print("Plotting using matplotlib...")
-    excel.plot_graph()
+    try:
+        excel.plot_graph()
+    except ImportError:
+        pass
 
     # export the graph, can be loaded by a viewer like gephi
     print("Exporting to gexf...")
     excel.export_to_gexf(fname + ".gexf")
 
+    # As an alternative to using evaluate to put cells in the graph and
+    # as a way to trim down the size of the file to just that needed.
+    excel.trim_graph(input_addrs=['Sheet1!A1'], output_addrs=['Sheet1!D1'])
+
+    # As a sanity check, validate that the compiled code can produce
+    # the current cell values.
+    assert {} == excel.validate_calcs(output_addrs=['Sheet1!D1'])
+
     print("Serializing to disk...")
     excel.to_file(fname)
+
+    # To reload the file later...
+
+    print("Loading from compiled file...")
+    excel = ExcelCompiler.from_file(fname)
+
+    # test evaluation
+    print("D1 is %s" % excel.evaluate('Sheet1!D1'))
+
+    print("Setting A1 to 1")
+    excel.set_value('Sheet1!A1', 1)
+
+    print("D1 is now %s (the same should happen in Excel)" % excel.evaluate(
+        'Sheet1!D1'))
 
     print("Done")
