@@ -15,19 +15,18 @@ Required python libraries:
     `networkx <https://networkx.github.io/>`_,
     `numpy <https://www.numpy.org/>`_,
     `openpyxl <https://openpyxl.readthedocs.io/en/stable/>`_,
-    `ruamel.yaml <https://yaml.readthedocs.io/en/latest/>`_,
-    `matplotlib <https://matplotlib.org/>`_ (optional),
-    `pydot <https://github.com/pydot/pydot>`_ (optional)
+    `ruamel.yaml <https://yaml.readthedocs.io/en/latest/>`_, and optionally:
+    `matplotlib <https://matplotlib.org/>`_,
+    `pydot <https://github.com/pydot/pydot>`_
 
 The full motivation behind pycel including some examples & screenshots is
-described in this `blog post <http://www.dirkgorissen.com/2011/10/19/pycel-compiling-excel-spreadsheets-to-python-and-making-pretty-pictures/>`_.
+described in this `blog post <http://www.dirkgorissen.com/2011/10/19/
+pycel-compiling-excel-spreadsheets-to-python-and-making-pretty-pictures/>`_.
 
 Usage
 ======
 
-Download the library and run the example file, the initial compilation uses
-COM so an instance of Excel must be available (i.e., the compilation needs to
-be run on Windows).
+Download the library and run the example file.
 
 **Quick start:**
 You can use binder to see and explore the tool quickly and interactively in the
@@ -64,20 +63,10 @@ The resulting graph-based code is fast enough for my purposes but to make it
 truly fast you would probably replace the graph with a dependency tracker
 based on sparse matrices or something similar.
 
-Communicating with Excel over COM for the initial compilation is very slow.
-I looked at various python libraries for parsing the xlsx files directly but
-none deal with formulas correctly in all cases.  If that changes I will
-definitely add a file based compilation backend.
-
-Using `OpenOpt <http://openopt.org/>`_ I also coded a python replacement for
-the Excel `solver plugin <http://www.solver.com/suppstdsolver.htm>`_.
-However, since its quite closely linked with our spreadsheet structure it is
-not generic enough to be released (yet).
-
 Excel Addin
 ===========
 
-Its possible to run pycel as an excel addin using
+It's possible to run pycel as an excel addin using
 `PyXLL <http://www.pyxll.com/>`_. Simply place pyxll.xll and pyxll.py in the
 lib directory and add the xll file to the Excel Addins list as explained in
 the pyxll documentation.
