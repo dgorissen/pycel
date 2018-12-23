@@ -106,13 +106,6 @@ def test_get_range_value(excel):
     assert result is None
 
 
-def test_get_ranged_names(excel):
-    assert sum(map(len, excel.rangednames)) == sum(
-        map(len, [[(1, 'SINUS', 'Sheet1!$C$1:$C$18')]]))
-
-    assert excel.rangednames == excel.rangednames
-
-
 def test_get_defined_names(excel):
     expected = {'SINUS': ('$C$1:$C$18', 'Sheet1')}
     assert expected == excel.defined_names

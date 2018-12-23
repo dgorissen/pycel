@@ -17,10 +17,6 @@ from pycel.excelutil import AddressCell, AddressRange
 class ExcelWrapper:
     __metaclass__ = abc.ABCMeta
 
-    @abc.abstractproperty
-    def rangednames(self):
-        """"""
-
     @abc.abstractmethod
     def connect(self):
         """"""
@@ -96,7 +92,6 @@ class ExcelOpxWrapper(ExcelWrapper):
 
         self.filename = os.path.abspath(filename)
         self._defined_names = None
-        self._rangednames = None
         self._tables = None
         self.workbook = None
         self.workbook_dataonly = None
@@ -128,25 +123,6 @@ class ExcelOpxWrapper(ExcelWrapper):
                 for ws in self.workbook for t in ws._tables}
             self._tables[None] = TableAndSheet(None, None)
         return self._tables.get(table_name.lower(), self._tables[None])
-
-    @property
-    def rangednames(self):
-        if self.workbook is not None and self._rangednames is None:
-            rangednames = []
-
-            for named_range in self.workbook.defined_names.definedName:
-                for worksheet, range_alias in named_range.destinations:
-                    if worksheet in self.workbook:
-                        tuple_name = (
-                            len(rangednames) + 1,
-                            str(named_range.name),
-                            str(self.workbook[worksheet].title + '!' +
-                                range_alias)
-                        )
-                        rangednames.append([tuple_name])
-
-            self._rangednames = rangednames
-        return self._rangednames
 
     def connect(self):
         self.workbook = load_workbook(self.filename)
