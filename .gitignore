@@ -45,3 +45,5 @@ Thumbs.db
 venv/
 .tox/
 *.egg-info/
+
+docs/build/

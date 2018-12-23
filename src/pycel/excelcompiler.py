@@ -19,7 +19,7 @@ from ruamel.yaml import YAML
 
 class ExcelCompiler:
     """Class responsible for taking an Excel spreadsheet and compiling it
-    to a Spreadsheet instance that can be serialized to disk, and executed
+    to an instance that can be serialized to disk, and executed
     independently of excel.
     """
 
@@ -177,17 +177,17 @@ class ExcelCompiler:
         :param filename: filename to save as, defaults to xlsx_name + file_type
         :param file_types: one or more of: pkl, pickle, yml, yaml, json
 
-          If the filename has one of the expected extensions, then this
-          parameter is ignored.
+        If the filename has one of the expected extensions, then this
+        parameter is ignored.
 
-          The text file formats (yaml and json) provide the benefits of:
-            1. Can `diff` subsequent version of xlsx to monitor changes
-            2. Can "debug" the generated code as the compiled code is marked
-                 with the line number in the text file and will be shown by
-                 debuggers and stack traces
+        The text file formats (yaml and json) provide the benefits of:
+            1. Can `diff` subsequent version of xlsx to monitor changes.
+            2. Can "debug" the generated code.
+                Since the compiled code is marked with the line number in
+                the text file and will be shown by debuggers and stack traces.
             3. The file size on disk is somewhat smaller than pickle files
 
-          The pickle file format provides the benefits of:
+        The pickle file format provides the benefits of:
             1. Much faster to load (5x to 10x)
             2. ...  (no #2, speed is the thing)
         """
@@ -240,6 +240,11 @@ class ExcelCompiler:
 
     @classmethod
     def from_file(cls, filename):
+        """ Load the spreadsheet saved by `to_file`
+
+        :param filename: filename to load from, can be xlsx_name
+        """
+
         extension = cls._filename_has_extension(filename) or next(
             (ext for ext in cls.save_file_extensions
              if os.path.exists(filename + '.' + ext)), None)
@@ -290,7 +295,7 @@ class ExcelCompiler:
     def set_value(self, address, value):
         """ Set the value of one or more cells or ranges
 
-        :param address: str, AddressRange, AddressCell or a tuple or list
+        :param address: `str`, `AddressRange`, `AddressCell` or a tuple, list
             or an iterable of these three
         :param value: value to set.  This can be a value or a tuple/list
             which matches the shapes needed for the given address/addresses
@@ -419,7 +424,7 @@ class ExcelCompiler:
             del self.cell_map[addr]
 
     def validate_calcs(self, output_addrs):
-        """for each address, calc the value, and verify that it matches
+        """For each address, calc the value, and verify that it matches
 
         This is a debugging tool which will show which cells evaluate
         differently than they do for excel.

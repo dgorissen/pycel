@@ -93,6 +93,33 @@ class PyCelException(Exception):
 
 class AddressRange(collections.namedtuple(
         'Address', 'address sheet start end coordinate')):
+    """ Helper class for constructing, validating and accessing Range Addresses
+
+    **Tuple Attributes:**
+
+    .. py:attribute:: address
+
+        `AddressRange` as a string
+
+    .. py:attribute:: sheet
+
+        Sheet name
+
+    .. py:attribute:: start
+
+        `AddressCell` for upper left corner of `AddressRange`
+
+    .. py:attribute:: end
+
+        `AddressCell` for lower right corner of `AddressRange`
+
+    .. py:attribute:: coordinate
+
+        Address without the sheetname
+
+    **Non-tuple Attributes:**
+
+    """
 
     def __new__(cls, address, *args, sheet=''):
         if args:
@@ -140,10 +167,12 @@ class AddressRange(collections.namedtuple(
 
     @property
     def is_range(self):
+        """Is this address a range?"""
         return True
 
     @property
     def size(self):
+        """Range dimensions"""
         if 0 in (self.end.row, self.start.row):
             height = MAX_ROW
         else:
@@ -158,6 +187,7 @@ class AddressRange(collections.namedtuple(
 
     @property
     def has_sheet(self):
+        """Does the address have a sheet?"""
         return bool(self.sheet)
 
     @property
@@ -166,7 +196,7 @@ class AddressRange(collections.namedtuple(
 
     @property
     def rows(self):
-        """Get each addresses for every cell, yields one row at a time."""
+        """Get each address for every cell, yields one row at a time."""
         col_range = self.start.col_idx, self.end.col_idx + 1
         for row in range(self.start.row, self.end.row + 1):
             yield (AddressCell((col, row, col, row), sheet=self.sheet)
@@ -174,7 +204,7 @@ class AddressRange(collections.namedtuple(
 
     @property
     def cols(self):
-        """Get each addresses for every cell, yields one column at a time."""
+        """Get each address for every cell, yields one column at a time."""
         col_range = self.start.col_idx, self.end.col_idx + 1
         for col in range(*col_range):
             yield (AddressCell((col, row, col, row), sheet=self.sheet)
@@ -182,6 +212,17 @@ class AddressRange(collections.namedtuple(
 
     @classmethod
     def create(cls, address, sheet='', cell=None):
+        """ Factory method.
+
+        Able to construct R1C1, defined names, and structured references
+        style addresses, if passed a `excelcomppiler._Cell`.
+
+        :param address: str, AddressRange, AddressCell
+        :param sheet: sheet for address, if not included
+        :param cell: `excelcompiler._Cell` reference
+        :return: `AddressRange or AddressCell`
+        """
+
         if isinstance(address, AddressRange):
             return AddressRange(address, sheet=sheet)
 
@@ -200,6 +241,33 @@ class AddressRange(collections.namedtuple(
 
 class AddressCell(collections.namedtuple(
         'AddressCell', 'address sheet col_idx row coordinate')):
+    """ Helper class for constructing, validating and accessing Cell Addresses
+
+    **Tuple Attributes:**
+
+    .. py:attribute:: address
+
+        `AddressRange` as a string
+
+    .. py:attribute:: sheet
+
+        Sheet name
+
+    .. py:attribute:: col_idx
+
+        Column number as a 1 based index
+
+    .. py:attribute:: row
+
+        Row number as a 1 based index
+
+    .. py:attribute:: coordinate
+
+        Address without the sheetname
+
+    **Non-tuple Attributes:**
+
+    """
 
     def __new__(cls, address, *args, sheet=''):
         if args:
@@ -243,14 +311,17 @@ class AddressCell(collections.namedtuple(
 
     @property
     def is_range(self):
+        """Is this address a range?"""
         return False
 
     @property
     def size(self):
+        """Range dimensions"""
         return AddressSize(1, 1)
 
     @property
     def has_sheet(self):
+        """Does the address have a sheet?"""
         return bool(self.sheet)
 
     @property
@@ -259,15 +330,30 @@ class AddressCell(collections.namedtuple(
 
     @property
     def column(self):
+        """column letter"""
         return (self.col_idx or '') and get_column_letter(self.col_idx)
 
     def inc_col(self, inc):
+        """ Generate an address offset by `inc` columns.
+
+        :param inc: integer number of columns to offset by
+        """
         return (self.col_idx + inc - 1) % MAX_COL + 1
 
     def inc_row(self, inc):
+        """ Generate an address offset by `inc` rows.
+
+        :param inc: integer number of rows to offset by
+        """
         return (self.row + inc - 1) % MAX_ROW + 1
 
     def address_at_offset(self, row_inc=0, col_inc=0):
+        """ Construct an `AddressCell` offset from the address
+
+        :param row_inc: Number of rows to offset.
+        :param col_inc: Number of columns to offset
+        :return: `AddressCell`
+        """
         new_col = self.inc_col(col_inc)
         new_row = self.inc_row(row_inc)
         return AddressCell((new_col, new_row, new_col, new_row),
@@ -275,6 +361,16 @@ class AddressCell(collections.namedtuple(
 
     @classmethod
     def create(cls, address, sheet='', cell=None):
+        """ Factory method.
+
+        Able to construct R1C1, defined names, and structured references
+        style addresses, if passed a `excelcomppiler._Cell`.
+
+        :param address: str, AddressRange, AddressCell
+        :param sheet: sheet for address, if not included
+        :param cell: `excelcompiler._Cell` reference
+        :return: `AddressCell`
+        """
         addr = AddressRange.create(address, sheet=sheet, cell=cell)
         if not isinstance(addr, AddressCell):
             raise ValueError(
