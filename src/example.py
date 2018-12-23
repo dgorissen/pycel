@@ -27,7 +27,7 @@ if __name__ == '__main__':
 
     print("Loading %s..." % fname)
 
-    # load & compile the file to a graph, starting from D1
+    # load & compile the file to a graph
     excel = ExcelCompiler(filename=fname)
 
     # test evaluation
