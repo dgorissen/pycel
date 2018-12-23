@@ -383,7 +383,7 @@ def test_gen_dot(excel, tmpdir):
 
     excel_compiler = ExcelCompiler(excel=excel)
     with pytest.raises(ImportError, match="Package 'pydot' is not installed"):
-        excel_compiler.export_to_dot('test.dot')
+        excel_compiler.export_to_dot()
 
     import sys
     mock_imports = (
@@ -393,7 +393,7 @@ def test_gen_dot(excel, tmpdir):
         sys.modules[mock_import] = mock.MagicMock()
 
     with mock.patch('networkx.drawing.nx_pydot.write_dot'):
-        excel_compiler.export_to_dot('test.dot')
+        excel_compiler.export_to_dot()
 
 
 def test_plot_graph(excel, tmpdir):

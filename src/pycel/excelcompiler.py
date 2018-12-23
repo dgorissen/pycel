@@ -265,7 +265,7 @@ class ExcelCompiler:
 
         return excel_compiler
 
-    def export_to_dot(self, fname):
+    def export_to_dot(self, filename=None):
         try:
             # test pydot is importable  (optionally installed)
             import pydot  # noqa: F401
@@ -273,11 +273,13 @@ class ExcelCompiler:
             raise ImportError("Package 'pydot' is not installed")
 
         from networkx.drawing.nx_pydot import write_dot
-        write_dot(self.dep_graph, fname)
+        filename = filename or (self.filename + '.dot')
+        write_dot(self.dep_graph, filename)
 
-    def export_to_gexf(self, fname):
+    def export_to_gexf(self, filename=None):
         from networkx.readwrite.gexf import write_gexf
-        write_gexf(self.dep_graph, fname)
+        filename = filename or (self.filename + '.gexf')
+        write_gexf(self.dep_graph, filename)
 
     def plot_graph(self, layout_type='spring_layout'):
         try:
