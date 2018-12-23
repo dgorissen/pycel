@@ -6,8 +6,7 @@ import webbrowser
 
 import win32api
 import win32com.client
-from pycel import ExcelCompiler
-from pycel.excelwrapper import ExcelComWrapper
+from pycel import AddressRange, ExcelCompiler
 from pyxll import (
     get_active_object,
     get_config,
@@ -52,13 +51,12 @@ def compile_selection_menu():
     sp = do_compilation(curfile, seed)
     win32api.MessageBox(
         0, "Compilation done, graph has %s nodes and %s edges" % (
-            len(sp.G.nodes()), len(sp.G.edges())), "Pycel")
+            len(sp.dep_graph.nodes()), len(sp.dep_graph.edges())), "Pycel")
 
 
 def do_compilation(fname, seed, sheet=None):
-    excel = ExcelComWrapper(fname, app=xl_app())
-    c = ExcelCompiler(filename=fname, excel=excel)
-    sp = c._gen_graph(seed, sheet=sheet)
-    sp.save_to_file(fname + ".pickle")
-    sp.export_to_gexf(fname + ".gexf")
+    sp = ExcelCompiler(filename=fname)
+    sp.evaluate(AddressRange(seed, sheet=sheet))
+    sp.to_file()
+    sp.export_to_gexf()
     return sp
