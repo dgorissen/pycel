@@ -10,10 +10,10 @@ include =
     src/pycel/excellib.py
     src/pycel/excelutil.py
     src/pycel/excelwrapper.py
+    src/pycel/version.py
 
 omit =
     */pycel/addin.py
-    */pycel/version.py
 
 [report]
 
