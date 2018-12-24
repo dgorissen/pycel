@@ -23,7 +23,7 @@ if __name__ == '__main__':
     pycel_logging_to_console()
 
     path = os.path.dirname(__file__)
-    fname = os.path.join(path, "../example/example.xlsx")
+    fname = os.path.join(path, "example.xlsx")
 
     print("Loading %s..." % fname)
 
