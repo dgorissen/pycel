@@ -1,4 +1,4 @@
-1.0b0 (unreleased)
+1.0b0 (2018-12-25)
 ===================
 
 Major changes
@@ -52,4 +52,7 @@ Bugfixes
 0.0.1 (unreleased)
 ===================
 
-* Original version from https://github.com/dgorissen/pycel
+* Original version available from `Dirk Ggorissen's Pycel Github Page`_.
+* Supports Python 2
+
+.. _Dirk Ggorissen's Pycel Github Page: https://github.com/dgorissen/pycel/tree/33c1370d499c629476c5506c7da308713b5842dc

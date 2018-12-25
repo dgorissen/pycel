@@ -47,3 +47,5 @@ venv/
 *.egg-info/
 
 docs/build/
+build/
+dist/

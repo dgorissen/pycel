@@ -79,7 +79,7 @@ Eric Bachtal's `Excel formula parsing code
 <http://ewbi.blogs.com/develops/popular/excelformulaparsing.html>`_
 by Robin Macharg.
 
-The code currently uses a tokenizer (parser) of similar origin from the
+The code currently uses a tokenizer of similar origin from the
 `openpyxl library.
 <https://bitbucket.org/openpyxl/openpyxl/src/default/openpyxl/formula/>`_
 

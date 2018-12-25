@@ -1,0 +1,2 @@
+include *.txt
+include docs/source/CHANGES.rst
