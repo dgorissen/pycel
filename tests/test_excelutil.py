@@ -476,6 +476,10 @@ def test_flatten():
     assert ['ddd', 1, 2, 3] == list(flatten(['ddd', (1, (2, 3))]))
     assert ['ddd', 1, 2, 3] == list(flatten(['ddd', (1, 2), 3]))
 
+    assert [None] == list(flatten(None))
+    assert [True] == list(flatten(True))
+    assert [1.0] == list(flatten(1.0))
+
 
 def test_uniqueify():
     assert (1, 2, 3, 4) == uniqueify((1, 2, 3, 4, 3))

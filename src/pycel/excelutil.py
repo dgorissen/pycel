@@ -764,12 +764,12 @@ def get_linest_degree(cell):
     return max(degree, 1), coef
 
 
-def flatten(items):
-    for item in items:
-        if isinstance(item, collections.Iterable) and not isinstance(item, str):
+def flatten(data):
+    if isinstance(data, collections.Iterable) and not isinstance(data, str):
+        for item in data:
             yield from flatten(item)
-        else:
-            yield item
+    else:
+        yield data
 
 
 def uniqueify(seq):
