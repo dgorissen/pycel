@@ -452,9 +452,11 @@ class ExcelCompiler:
                     self._evaluate(cell.address.address)
 
                     if original_value != cell.value:  # pragma: no branch
-                        failed[str(addr)] = original_value, cell.value
-                        print('{} mismatch  {} -> {}'.format(
-                            addr, original_value, cell.value))
+                        failed[str(addr)] = (original_value, cell.value,
+                                             cell.formula.base_formula)
+                        print('{} mismatch  {} -> {}  {}'.format(
+                            addr, original_value, cell.value,
+                            cell.formula.base_formula))
 
                         # do it again to allow easy breakpointing
                         cell.value = None

@@ -288,7 +288,7 @@ def test_validate_calcs(excel, capsys):
     excel_compiler.cell_map[output_addrs[0]].value = 'JUNK'
     failed_cells = excel_compiler.validate_calcs(output_addrs)
 
-    assert {'trim-range!B2': ('JUNK', 136)} == failed_cells
+    assert {'trim-range!B2': ('JUNK', 136, '=B1+SUM(D4:E4)+D5')} == failed_cells
 
     out, err = capsys.readouterr()
     assert '' == err
