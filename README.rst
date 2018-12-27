@@ -1,7 +1,7 @@
 Pycel
 =====
 
-|build-state| |coverage| |repo-size| |code-size|
+|build-state| |coverage| |requirements| |repo-size| |code-size|
 
 Pycel is a small python library that can translate an Excel spreadsheet into
 executable python code which can be run independently of Excel.
@@ -87,15 +87,24 @@ The code currently uses a tokenizer of similar origin from the
 
 .. |build-state| image:: https://travis-ci.org/stephenrauch/pycel.svg?branch=master
   :target: https://travis-ci.org/stephenrauch/pycel
+  :alt: Build Status
 
 .. |coverage| image:: https://codecov.io/gh/stephenrauch/pycel/branch/master/graph/badge.svg
   :target: https://codecov.io/gh/stephenrauch/pycel/list/master
+  :alt: Code Coverage
+
+.. |requirements| image:: https://requires.io/github/stephenrauch/pycel/requirements.svg?branch=master
+  :target: https://requires.io/github/stephenrauch/pycel/requirements/?branch=master
+  :alt: Requirements Status
 
 .. |repo-size| image:: https://img.shields.io/github/repo-size/stephenrauch/pycel.svg
   :target: https://github.com/stephenrauch/pycel
+  :alt: Repo Size
 
 .. |code-size| image:: https://img.shields.io/github/languages/code-size/stephenrauch/pycel.svg
   :target: https://github.com/stephenrauch/pycel
+  :alt: Code Size
 
 .. |notebook| image:: https://mybinder.org/badge.svg
   :target: https://mybinder.org/v2/gh/stephenrauch/pycel/master?filepath=notebooks%2Fexample.ipynb
+  :alt: Open Notebook
