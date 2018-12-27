@@ -5,16 +5,16 @@ from unittest import mock
 import pytest
 from pycel.excelcompiler import _Cell, _CellRange, ExcelCompiler
 from pycel.excelformula import FormulaEvalError
-from pycel.excelutil import AddressRange
+from pycel.excelutil import AddressCell, AddressRange
 
 
 # ::TODO:: need some rectangular ranges for testing
 
 
-def test_end_2_end(excel, example_xls_path):
+def test_end_2_end(excel, fixture_xls_path):
     # load & compile the file to a graph, starting from D1
     for excel_compiler in (ExcelCompiler(excel=excel),
-                           ExcelCompiler(example_xls_path)):
+                           ExcelCompiler(fixture_xls_path)):
 
         # test evaluation
         assert -0.02286 == round(excel_compiler.evaluate('Sheet1!D1'), 5)
@@ -23,7 +23,7 @@ def test_end_2_end(excel, example_xls_path):
         assert -0.00331 == round(excel_compiler.evaluate('Sheet1!D1'), 5)
 
 
-def test_round_trip_through_json_yaml_and_pickle(excel, example_xls_path):
+def test_round_trip_through_json_yaml_and_pickle(excel, fixture_xls_path):
     excel_compiler = ExcelCompiler(excel=excel)
     excel_compiler.evaluate('Sheet1!D1')
     excel_compiler.extra_data = {1: 3}
@@ -51,7 +51,7 @@ def test_round_trip_through_json_yaml_and_pickle(excel, example_xls_path):
     assert -0.00331 == round(excel_compiler.evaluate('Sheet1!D1'), 5)
 
 
-def test_filename_ext(excel, example_xls_path):
+def test_filename_ext(excel, fixture_xls_path):
     excel_compiler = ExcelCompiler(excel=excel)
     excel_compiler.evaluate('Sheet1!D1')
     excel_compiler.extra_data = {1: 3}
@@ -73,7 +73,7 @@ def test_filename_ext(excel, example_xls_path):
     assert os.path.exists(json_name)
 
 
-def test_filename_extension_errors(excel, example_xls_path):
+def test_filename_extension_errors(excel, fixture_xls_path):
     with pytest.raises(ValueError, match='Unrecognized file type'):
         ExcelCompiler.from_file(excel.filename + '.xyzzy')
 
@@ -293,6 +293,20 @@ def test_validate_calcs(excel, capsys):
     out, err = capsys.readouterr()
     assert '' == err
     assert 'JUNK' in out
+
+
+def test_validate_calcs_all_cells(basic_ws):
+    formula_cells = basic_ws._formula_cells
+    expected = {
+        AddressCell('Sheet1!B2'),
+        AddressCell('Sheet1!C2'),
+        AddressCell('Sheet1!B3'),
+        AddressCell('Sheet1!C3'),
+        AddressCell('Sheet1!B4'),
+        AddressCell('Sheet1!C4')
+    }
+    assert expected == set(formula_cells)
+    assert {} == basic_ws.validate_calcs()
 
 
 def test_trim_cells_warn_address_not_found(excel):

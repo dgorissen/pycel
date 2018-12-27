@@ -57,6 +57,7 @@ class ExcelCompiler:
         self.range_todos = []
 
         self.extra_data = None
+        self._formula_cells_list = None
 
     def __getstate__(self):
         # code objects are not serializable
@@ -425,40 +426,69 @@ class ExcelCompiler:
         for addr in cells_to_remove:
             del self.cell_map[addr]
 
-    def validate_calcs(self, output_addrs):
+    def validate_calcs(self, output_addrs=None):
         """For each address, calc the value, and verify that it matches
 
         This is a debugging tool which will show which cells evaluate
         differently than they do for excel.
 
-        :param output_addrs: The cells to evaluate from
+        :param output_addrs: The cells to evaluate from (defaults to all)
         :return: dict of addresses with good/bad values that failed to verify
         """
-        to_verify = list(AddressCell(addr) for addr in output_addrs)
+        if output_addrs is None:
+            to_verify = self._formula_cells
+        else:
+            to_verify = list(AddressCell(addr) for addr in output_addrs)
         verified = set()
         failed = {}
         while to_verify:
             addr = to_verify.pop()
-            cell = self.cell_map[addr.address]
-            if isinstance(cell, _Cell) and cell.python_code:
-                original_value = cell.value
-                cell.value = None
-                self._evaluate(cell.address.address)
-                if original_value != cell.value:  # pragma: no branch
-                    failed[str(addr)] = original_value, cell.value
-                    print('{} mismatch  {} -> {}'.format(
-                        addr, original_value, cell.value))
-
-                    # do it again to allow easy breakpointing
+            try:
+                self._gen_graph(addr)
+                cell = self.cell_map[addr.address]
+                if isinstance(cell, _Cell) and cell.python_code:
+                    original_value = cell.value
                     cell.value = None
                     self._evaluate(cell.address.address)
 
-            verified.add(addr)
-            for addr in cell.needed_addresses:
-                if addr not in verified:  # pragma: no branch
-                    to_verify.append(addr)
+                    if original_value != cell.value:  # pragma: no branch
+                        failed[str(addr)] = original_value, cell.value
+                        print('{} mismatch  {} -> {}'.format(
+                            addr, original_value, cell.value))
+
+                        # do it again to allow easy breakpointing
+                        cell.value = None
+                        self._evaluate(cell.address.address)
+
+                verified.add(addr)
+                for addr in cell.needed_addresses:
+                    if addr not in verified:  # pragma: no branch
+                        to_verify.append(addr)
+            except Exception as exc:   # pragma: no cover
+                cell = self.cell_map.get(addr.address, None)
+                formula = cell and cell.formula.base_formula
+                exc_str = str(exc)
+                exc_str_split = exc_str.split('\n')
+                exc_str_key = (
+                    exc_str_split[-2] if len(exc_str_split) > 1 else exc_str)
+                failed.setdefault('exceptions', {}).setdefault(
+                    exc_str_key, []).append((str(addr), formula, exc_str))
 
         return failed
+
+    @property
+    def _formula_cells(self):
+        """Iterate all cells and find cells with formulas"""
+
+        if self._formula_cells_list is None:
+            self._formula_cells_list = [
+                AddressCell.create(cell.coordinate, ws.title)
+                for ws in self.excel.workbook
+                for row in ws.iter_rows()
+                for cell in row
+                if isinstance(cell.value, str) and cell.value.startswith('=')
+            ]
+        return self._formula_cells_list
 
     def _make_cells(self, address):
         """Given an AddressRange or AddressCell generate compiler Cells"""
