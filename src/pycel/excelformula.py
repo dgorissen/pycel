@@ -701,6 +701,7 @@ class ExcelFormula:
 
         modules = (
             importlib.import_module('pycel.excellib'),
+            importlib.import_module('pycel.lib.binary'),
             importlib.import_module('math'),
         )
 

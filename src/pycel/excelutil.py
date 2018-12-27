@@ -16,6 +16,7 @@ ERROR_CODES = frozenset(Tokenizer.ERROR_CODES)
 DIV0 = '#DIV/0!'
 EMPTY = '#EMPTY!'
 VALUE_ERROR = '#VALUE!'
+NUM_ERROR = '#NUM!'
 
 R1C1_ROW_RE_STR = r"R(\[-?\d+\]|\d+)?"
 R1C1_COL_RE_STR = r"C(\[-?\d+\]|\d+)?"
@@ -785,7 +786,7 @@ def is_number(s):
         return False
 
 
-def coerce_to_number(value):
+def coerce_to_number(value, raise_div0=True):
     if not isinstance(value, str):
         if isinstance(value, int):
             return value
@@ -794,7 +795,7 @@ def coerce_to_number(value):
         return value
 
     try:
-        if value == DIV0:
+        if value == DIV0 and raise_div0:
             return 1 / 0
         elif '.' not in value:
             return int(value)
