@@ -34,7 +34,13 @@ from pycel.excellib import (
     xsum,
     yearfrac,
 )
-from pycel.excelutil import DIV0, ERROR_CODES, PyCelException, VALUE_ERROR
+from pycel.excelutil import (
+    DIV0,
+    ERROR_CODES,
+    NA_ERROR,
+    PyCelException,
+    VALUE_ERROR,
+)
 
 
 def test_numerics():
@@ -283,120 +289,71 @@ class TestMatch:
         # Closest inferior value is found
         assert 2 == match(4, [1, 3.3, 5], 1)
 
-    def test_numeric_in_ascending_mode_with_descending_array(self):
-        # Not ascending arrays raise exception
-        with pytest.raises(PyCelException):
-            match(3, [10, 9.1, 6.23, 1])
-
-    def test_numeric_in_ascending_mode_with_any_array(self):
-        # Not ascending arrays raise exception
-        with pytest.raises(PyCelException):
-            match(3, [10, 3.3, 5, 2])
-
     def test_numeric_in_exact_mode(self):
         # Value is found
         assert 3 == match(5, [10, 3.3, 5.0], 0)
 
     def test_numeric_in_exact_mode_not_found(self):
-        # Value not found raises Exception
-        with pytest.raises(ValueError):
-            match(3, [10, 3.3, 5, 2], 0)
+        # Value not found error
+        assert NA_ERROR == match(3, [10, 3.3, 5, 2], 0)
 
     def test_numeric_in_descending_mode(self):
         # Closest superior value is found
-        assert 2 == match(8, [10, 9.1, 6.2], -1)
-
-    def test_numeric_in_descending_mode_with_ascending_array(self):
-        # Non descending arrays raise exception
-        with pytest.raises(PyCelException):
-            match(3, [1, 3.3, 5, 6], -1)
-
-    def test_numeric_in_descending_mode_with_any_array(self):
-        # Non descending arrays raise exception
-        with pytest.raises(PyCelException):
-            match(3, [10, 3.3, 5, 2], -1)
+        assert 3 == match(8, [10, 9.1, 6.2], -1)
 
     def test_string_in_ascending_mode(self):
         # Closest inferior value is found
         assert 3 == match('rars', ['a', 'AAB', 'rars'])
 
     def test_string_in_asscending_mode_not_found(self):
-        # Closest superior value is found
-        with pytest.raises(PyCelException):
-            match('a', [], 1)
+        assert NA_ERROR == match('a', [], 1)
 
     def test_string_in_ascending_mode_with_descending_array(self):
-        # Not ascending arrays raise exception
-        with pytest.raises(PyCelException):
-            match(3, ['rars', 'aab', 'a'])
+        assert NA_ERROR == match(3, ['rars', 'aab', 'a'])
 
     def test_string_in_ascending_mode_with_any_array(self):
-        with pytest.raises(PyCelException):
-            match(3, ['aab', 'a', 'rars'])
+        assert NA_ERROR == match(3, ['aab', 'a', 'rars'])
 
     def test_string_in_exact_mode(self):
-        # Value is found
         assert 2 == match('a', ['aab', 'a', 'rars'], 0)
 
     def test_string_in_exact_mode_not_found(self):
-        # Value not found raises Exception
-        with pytest.raises(ValueError):
-            match('b', ['aab', 'a', 'rars'], 0)
+        assert NA_ERROR == match('b', ['aab', 'a', 'rars'], 0)
 
     def test_string_in_descending_mode(self):
         # Closest superior value is found
         assert 3 == match('a', ['c', 'b', 'a'], -1)
 
     def test_string_in_descending_mode_not_found(self):
-        # Closest superior value is found
-        with pytest.raises(PyCelException):
-            match('a', [], -1)
-
-    def test_string_in_descending_mode_with_ascending_array(self):
-        # Non descending arrays raise exception
-        with pytest.raises(PyCelException):
-            match('a', ['a', 'aab', 'rars'], -1)
-
-    def test_string_in_descending_mode_with_any_array(self):
-        # Non descending arrays raise exception
-        with pytest.raises(PyCelException):
-            match('a', ['aab', 'a', 'rars'], -1)
+        assert NA_ERROR == match('a', [], -1)
 
     def test_boolean_in_ascending_mode(self):
         # Closest inferior value is found
         assert 3 == match(True, [False, False, True])
 
     def test_boolean_in_ascending_mode_with_descending_array(self):
-        # Not ascending arrays raise exception
-        with pytest.raises(PyCelException):
-            match(False, [True, False, False])
+        assert NA_ERROR == match(False, [True, False, False])
 
     def test_boolean_in_ascending_mode_with_any_array(self):
-        # Not ascending arrays raise exception
-        with pytest.raises(PyCelException):
-            match(True, [False, True, False])
+        assert 2 == match(True, [False, True, False])
 
     def test_boolean_in_exact_mode(self):
-        # Value is found
         assert 2 == match(False, [True, False, False], 0)
 
     def test_boolean_in_exact_mode_not_found(self):
         # Value not found raises Exception
-        with pytest.raises(ValueError):
-            match(False, [True, True, True], 0)
+        assert NA_ERROR == match(False, [True, True, True], 0)
 
     def test_boolean_in_descending_mode(self):
         # Closest superior value is found
-        assert 3 == match(False, [True, False, False], -1)
+        assert 2 == match(False, [True, False, True], -1)
 
-    def test_boolean_in_descending_mode_with_ascending_array(self):
-        # Non descending arrays raise exception
-        with pytest.raises(PyCelException):
-            match(False, [False, False, True], -1)
+    def test_match_error(self):
+        # GIGO
+        assert NA_ERROR == match(NA_ERROR, [True, False, True], -1)
 
-    def test_boolean_in_descending_mode_with_any_array(self):
-        with pytest.raises(PyCelException):
-            match(True, [False, True, False], -1)
+    def test_match_none(self):
+        assert NA_ERROR == match(None, [1, 2, 3])
 
 
 class TestMid:
@@ -558,18 +515,18 @@ def test_value():
 
 @pytest.mark.parametrize(
     'lookup, col_idx, result', (
-            ('A', 0, '#VALUE!'),
-            ('A', 1, 'A'),
-            ('A', 2, 1),
-            ('A', 3, 'Z'),
-            ('A', 4, '#REF!'),
-            ('B', 1, 'B'),
-            ('C', 1, 'C'),
-            ('B', 2, 2),
-            ('C', 2, 3),
-            ('B', 3, 'Y'),
-            ('C', 3, 'X'),
-            ('D', 3, '#N/A'),
+        ('A', 0, '#VALUE!'),
+        ('A', 1, 'A'),
+        ('A', 2, 1),
+        ('A', 3, 'Z'),
+        ('A', 4, '#REF!'),
+        ('B', 1, 'B'),
+        ('C', 1, 'C'),
+        ('B', 2, 2),
+        ('C', 2, 3),
+        ('B', 3, 'Y'),
+        ('C', 3, 'X'),
+        ('D', 3, '#N/A'),
     )
 )
 def test_vlookup(lookup, col_idx, result):

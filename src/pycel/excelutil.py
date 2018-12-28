@@ -17,6 +17,7 @@ DIV0 = '#DIV/0!'
 EMPTY = '#EMPTY!'
 VALUE_ERROR = '#VALUE!'
 NUM_ERROR = '#NUM!'
+NA_ERROR = '#N/A'
 
 R1C1_ROW_RE_STR = r"R(\[-?\d+\]|\d+)?"
 R1C1_COL_RE_STR = r"C(\[-?\d+\]|\d+)?"
@@ -866,7 +867,6 @@ def date_from_int(datestamp):
 
 def criteria_parser(criteria):
     """
-
     General rules:
 
         Criteria will be coerced to numbers,
@@ -932,11 +932,15 @@ def criteria_parser(criteria):
 
 
 def find_corresponding_index(rng, criteria):
+    return tuple(find_corresponding_index_generator(rng, criteria))
+
+
+def find_corresponding_index_generator(rng, criteria):
     # parse criteria, build a criteria check
     check = criteria_parser(criteria)
 
     assert_list_like(rng)
-    return tuple(index for index, item in enumerate(rng) if check(item))
+    return (index for index, item in enumerate(rng) if check(item))
 
 
 def list_like(data):

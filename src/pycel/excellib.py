@@ -15,10 +15,12 @@ from pycel.excelutil import (
     DIV0,
     ERROR_CODES,
     find_corresponding_index,
+    find_corresponding_index_generator,
     flatten,
     is_leap_year,
     is_number,
     list_like,
+    NA_ERROR,
     normalize_year,
     PyCelException,
 )
@@ -265,10 +267,37 @@ def lookup(arg, lookup_range, result_range):  # pragma: no cover  ::TODO::
 def match(lookup_value, lookup_array, match_type=1):
     # Excel reference: https://support.office.com/en-us/article/
     #   MATCH-function-E8DFFD45-C762-47D6-BF89-533F4A37673A
+
+    """ The relative position of a specified item in a range of cells.
+
+    Match_type Behavior
+
+    1: return the largest value that is less than or equal to
+    `lookup_value`. `lookup_array` must be in ascending order.
+
+    0: return the first value that is exactly equal to lookup_value.
+    `lookup_array` can be in any order.
+
+    -1 return the smallest value that is greater than or equal to
+    `lookup_value`. `lookup_array` must be in descending order.
+
+    If `match_type` is 0 and lookup_value is a text string, you can use the
+    wildcard characters — the question mark (?) and asterisk (*).
+
+    :param lookup_value: value to match (value or cell reference)
+    :param lookup_array: range of cells being searched.
+    :param match_type: The number -1, 0, or 1.
+    :return: #N/A if not found, or relative position in `lookup_array`
+    """
+    if lookup_value in ERROR_CODES:
+        return lookup_value
+
     def type_convert(arg):
-        if type(arg) == str:
+        if arg is None:
+            arg = 0.0
+        elif isinstance(arg, str):
             arg = arg.lower()
-        elif type(arg) == int:
+        else:
             arg = float(arg)
 
         return arg
@@ -276,42 +305,20 @@ def match(lookup_value, lookup_array, match_type=1):
     lookup_value = type_convert(lookup_value)
 
     if match_type == 1:
-        # Verify ascending sort
-        pos_max = -1
-        for i in range((len(lookup_array))):
-            current = type_convert(lookup_array[i])
-
-            if i is not len(lookup_array) - 1 and current > type_convert(
-                    lookup_array[i + 1]):
-                raise PyCelException(
-                    'for match_type 0, lookup_array must be sorted ascending')
-            if current <= lookup_value:
-                pos_max = i
-        if pos_max == -1:
-            raise PyCelException('no result in lookup_array for match_type 1')
-        return pos_max + 1  # Excel starts at 1
-
-    elif match_type == 0:
-        # No string wildcard
-        return [type_convert(x) for x in lookup_array].index(lookup_value) + 1
-
+        criteria = '>={}'.format(lookup_value)
+    elif match_type == -1:
+        criteria = '<={}'.format(lookup_value)
     else:
-        assert match_type == -1
+        criteria = lookup_value
 
-        # Verify descending sort
-        pos_min = -1
-        for i in range((len(lookup_array))):
-            current = type_convert(lookup_array[i])
+    a_match = next(find_corresponding_index_generator(lookup_array, criteria),
+                   NA_ERROR)
 
-            if i is not len(lookup_array) - 1 and current < type_convert(
-                    lookup_array[i + 1]):
-                raise PyCelException(
-                    'for match_type 0, lookup_array must be sorted descending')
-            if current >= lookup_value:
-                pos_min = i
-        if pos_min == -1:
-            raise PyCelException('no result in lookup_array for match_type -1')
-        return pos_min + 1  # Excel starts at 1
+    if isinstance(a_match, int) and (
+            match_type != 1 or lookup_value == lookup_array[a_match]):
+        a_match += 1
+
+    return a_match or NA_ERROR
 
 
 def mid(text, start_num, num_chars):
@@ -435,16 +442,16 @@ def vlookup(lookup_value, table_array, col_index_num, range_lookup=False):
     if col_index_num > len(table_array[0]):
         return '#REF!'
 
-    try:
-        result_idx = match(
-            lookup_value,
-            [row[0] for row in table_array],
-            match_type=0
-        )
-    except ValueError:
-        return '#N/A'
+    result_idx = match(
+        lookup_value,
+        [row[0] for row in table_array],
+        match_type=0
+    )
 
-    return table_array[result_idx - 1][col_index_num - 1]
+    if result_idx == NA_ERROR:
+        return NA_ERROR
+    else:
+        return table_array[result_idx - 1][col_index_num - 1]
 
 
 def xlog(a):
