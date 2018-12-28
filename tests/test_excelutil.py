@@ -755,6 +755,12 @@ def test_criteria_parser(value, criteria, expected):
         ('2', 'Pow', 2, 4),
         ('2', 'Pow', '2', 4),
 
+        ('', 'UAdd', 2, 2),
+        ('', 'UAdd', '2', 2),
+
+        ('', 'USub', 2, -2),
+        ('', 'USub', '2', -2),
+
         # value errors
         (VALUE_ERROR, 'Add', 0, VALUE_ERROR),
         (0, 'Add', VALUE_ERROR, VALUE_ERROR),

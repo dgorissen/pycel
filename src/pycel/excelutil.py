@@ -75,6 +75,8 @@ PYTHON_AST_OPERATORS = {
     'NotEq': operator.ne,
     'Add': operator.add,
     'Sub': operator.sub,
+    'UAdd': operator.pos,
+    'USub': operator.neg,
     'Mult': operator.mul,
     'Div': operator.truediv,
     'FloorDiv': operator.floordiv,
@@ -1008,7 +1010,10 @@ def build_operator_operand_fixup(capture_error_state):
                 return VALUE_ERROR
 
         try:
-            return PYTHON_AST_OPERATORS[op](left_op, right_op)
+            if op in ('USub', 'UAdd'):
+                return PYTHON_AST_OPERATORS[op](right_op)
+            else:
+                return PYTHON_AST_OPERATORS[op](left_op, right_op)
         except ZeroDivisionError:
             capture_error_state(
                 True, 'Values: {} {} {}'.format(left_op, op, right_op))

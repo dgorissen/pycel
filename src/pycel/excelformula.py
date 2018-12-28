@@ -820,17 +820,23 @@ class ExcelFormula:
             def visit_Compare(self, node):
                 """ change the compare node to a function node """
                 node = ast.NodeTransformer.generic_visit(self, node)
-                return self.replace_op(node, node.ops[0], node.comparators[0])
+                return self.replace_op(
+                    node, node.left, node.ops[0], node.comparators[0])
 
             def visit_BinOp(self, node):
-                """ change the compare node to a function node """
+                """ change the BinOP node to a function node """
                 node = ast.NodeTransformer.generic_visit(self, node)
-                return self.replace_op(node, node.op, node.right)
+                return self.replace_op(node, node.left, node.op, node.right)
 
-            def replace_op(self, node, node_op, right):
+            def visit_UnaryOp(self, node):
+                """ change the UnaryOp node to a function node """
+                node = ast.NodeTransformer.generic_visit(self, node)
+                left = ast.Str(EMPTY)
+                return self.replace_op(node, left, node.op, node.operand)
+
+            def replace_op(self, node, left, node_op, right):
                 """ change the compare node to a function node """
 
-                left = node.left
                 op = ast.Str(s=type(node_op).__name__)
                 return ast.Call(
                     func=ast.Name(id='excel_operator_operand_fixup',
