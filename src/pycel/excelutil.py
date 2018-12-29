@@ -768,12 +768,18 @@ def get_linest_degree(cell):
     return max(degree, 1), coef
 
 
-def flatten(data):
+def flatten(data, coerce=lambda x: x):
+    """ flatten items, converting top level items as needed
+
+    :param data: data to flatten
+    :param coerce: apply coercion to top level, but not to sub ranges
+    :return: flattened (coerced) items
+    """
     if isinstance(data, collections.Iterable) and not isinstance(data, str):
         for item in data:
-            yield from flatten(item)
+            yield from flatten(coerce(item))
     else:
-        yield data
+        yield coerce(data)
 
 
 def uniqueify(seq):

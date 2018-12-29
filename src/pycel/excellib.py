@@ -26,19 +26,19 @@ from pycel.excelutil import (
 )
 
 
-def _numerics(args):
+def _numerics(*args):
     # ignore non numeric cells
-    args = tuple(flatten(args))
-    errors = [x for x in args if x in ERROR_CODES]
-    if errors:
-        return errors[0]
+    args = tuple(flatten(args, lambda x: coerce_to_number(x, raise_div0=False)))
+    error = next((x for x in args if x in ERROR_CODES), None)
+    if error is not None:
+        # return the first error in the list
+        return error
     else:
-        return [x for x in (coerce_to_number(y) for y in args)
-                if isinstance(x, (int, float))]
+        return tuple(x for x in args if isinstance(x, (int, float)))
 
 
 def average(*args):
-    data = _numerics(args)
+    data = _numerics(*args)
 
     # A returned string is an error code
     if isinstance(data, str):
@@ -462,7 +462,7 @@ def xlog(a):
 
 
 def xmax(*args):
-    data = _numerics(args)
+    data = _numerics(*args)
 
     # A returned string is an error code
     if isinstance(data, str):
@@ -476,7 +476,7 @@ def xmax(*args):
 
 
 def xmin(*args):
-    data = _numerics(args)
+    data = _numerics(*args)
 
     # A returned string is an error code
     if isinstance(data, str):
@@ -511,7 +511,7 @@ def xround(number, num_digits=0):
 
 
 def xsum(*args):
-    data = _numerics(args)
+    data = _numerics(*args)
     if isinstance(data, str):
         return data
 

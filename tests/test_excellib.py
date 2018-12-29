@@ -44,11 +44,13 @@ from pycel.excelutil import (
 
 
 def test_numerics():
-    assert [1, 3, 2, 3.1] == _numerics((1, '3', 2.0, pytest, 3.1, 'x'))
+    assert (1, 3, 2, 3.1) == _numerics(1, '3', 2.0, pytest, 3.1, 'x')
+    assert (1, 2, 3.1) == _numerics((1, '3', 2.0, pytest, 3.1, 'x'))
 
 
 def test_average():
-    assert 2.25 == average((1, '3', 2.0, pytest, 3, 'x'))
+    assert 2.25 == average(1, '3', 2.0, pytest, 3, 'x')
+    assert 2 == average((1, '3', 2.0, pytest, 3, 'x'))
 
     assert DIV0 == average(['x'])
 
