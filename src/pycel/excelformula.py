@@ -405,6 +405,16 @@ class FunctionNode(ASTNode):
     def func_or(self):
         return "any(({},))".format(self.comma_join_emit())
 
+    def func_row(self):
+        assert 1 == len(self.children)
+        emitted = 'row({})'.format(self.children[0].emit())
+        return emitted.replace('_R_', '_REF_').replace('_C_', '_REF_')
+
+    def func_column(self):
+        assert 1 == len(self.children)
+        emitted = 'column({})'.format(self.children[0].emit())
+        return emitted.replace('_R_', '_REF_').replace('_C_', '_REF_')
+
 
 class ExcelFormula:
     """Take an Excel formula and compile it to Python code."""
@@ -743,6 +753,7 @@ class ExcelFormula:
             # referencing other cells or a range of cells
             name_space['_C_'] = evaluate
             name_space['_R_'] = evaluate_range
+            name_space['_REF_'] = AddressRange.create
 
             # function to fixup the operands
             name_space['excel_operator_operand_fixup'] = \

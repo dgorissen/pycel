@@ -463,6 +463,37 @@ test_data = [
                     '"B32:B119") < 6, -1), 1)), f32:(index(_R_("B32:F119"),'
                     ' match(0, _R_("B32:B119"), -1), 5)), degree=-1)[-2]',
     ),
+
+    dict(
+        formula='=ROW(4:7)',
+        rpn='4:7|ROW',
+        python_code='row(_REF_("4:7"))'
+    ),
+    dict(
+        formula='=ROW(D1:E1)',
+        rpn='D1:E1|ROW',
+        python_code='row(_REF_("D1:E1"))'
+    ),
+    dict(
+        formula='=COLUMN(D1:D2)',
+        rpn='D1:D2|COLUMN',
+        python_code='column(_REF_("D1:D2"))'
+    ),
+    dict(
+        formula='=ROW(D1:E2)',
+        rpn='D1:E2|ROW',
+        python_code='row(_REF_("D1:E2"))'
+    ),
+    dict(
+        formula='=ROW(B53:D54 C54:E54)',
+        rpn='B53:D54|C54:E54| |ROW',
+        python_code='row(_REF_("B53:D54") + _REF_("C54:E54"))'
+    ),
+    dict(
+        formula='=COLUMN(L45)',
+        rpn='L45|COLUMN',
+        python_code='column(_REF_("L45"))'
+    ),
 ]
 
 
@@ -734,6 +765,28 @@ def test_string_concat():
     assert '11' == eval_ctx(ExcelFormula('=1&1'))
     assert 'Aa' == eval_ctx(ExcelFormula('="A"&"a"'))
     assert 'aA' == eval_ctx(ExcelFormula('="a"&"A"'))
+
+
+def test_column():
+    eval_ctx = ExcelFormula.build_eval_context(None, None)
+
+    assert 12 == eval_ctx(ExcelFormula('=COLUMN(L45)'))
+    assert 2 == eval_ctx(ExcelFormula('=COLUMN(B:E)'))
+    assert 1 == eval_ctx(ExcelFormula('=COLUMN(4:7)'))
+    assert 4 == eval_ctx(ExcelFormula('=COLUMN(D1:E1)'))
+    assert 4 == eval_ctx(ExcelFormula('=COLUMN(D1:D2)'))
+    assert 4 == eval_ctx(ExcelFormula('=COLUMN(D1:E2)'))
+
+
+def test_row():
+    eval_ctx = ExcelFormula.build_eval_context(None, None)
+
+    assert 45 == eval_ctx(ExcelFormula('=ROW(L45)'))
+    assert 1 == eval_ctx(ExcelFormula('=ROW(B:E)'))
+    assert 4 == eval_ctx(ExcelFormula('=ROW(4:7)'))
+    assert 1 == eval_ctx(ExcelFormula('=ROW(D1:E1)'))
+    assert 1 == eval_ctx(ExcelFormula('=ROW(D1:D2)'))
+    assert 1 == eval_ctx(ExcelFormula('=ROW(D1:E2)'))
 
 
 def test_div_zero(caplog):

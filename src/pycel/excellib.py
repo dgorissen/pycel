@@ -49,6 +49,12 @@ def average(*args):
         return sum(data) / len(data)
 
 
+def column(ref):
+    if ref.is_range:
+        ref = ref.start
+    return max(ref.col_idx, 1)
+
+
 def count(*args):
     # Excel reference: https://support.office.com/en-us/article/
     #   COUNT-function-a59cd7fc-b623-4d93-87a4-d23bf411294c
@@ -382,6 +388,12 @@ def roundup(number, num_digits):
 
     quant = Decimal('1E{}{}'.format('+-'[num_digits >= 0], abs(num_digits)))
     return float(Decimal(repr(number)).quantize(quant, rounding=ROUND_UP))
+
+
+def row(ref):
+    if ref.is_range:
+        ref = ref.start
+    return max(ref.row, 1)
 
 
 def sumif(rng, criteria, sum_range=None):

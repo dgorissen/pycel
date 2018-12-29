@@ -7,6 +7,7 @@ from pycel.excellib import (
     # ::TODO:: finish test cases for remainder of functions
     _numerics,
     average,
+    column,
     count,
     countif,
     countifs,
@@ -23,6 +24,7 @@ from pycel.excellib import (
     npv,
     right,
     roundup,
+    row,
     sumif,
     sumifs,
     value,
@@ -35,6 +37,7 @@ from pycel.excellib import (
     yearfrac,
 )
 from pycel.excelutil import (
+    AddressRange,
     DIV0,
     ERROR_CODES,
     NA_ERROR,
@@ -59,6 +62,20 @@ def test_average():
 
     assert DIV0 == average(DIV0)
     assert DIV0 == average((2, DIV0))
+
+
+@pytest.mark.parametrize(
+    'address, result', (
+        ('L45', 12),
+        ('B:E', 2),
+        ('4:7', 1),
+        ('D1:E1', 4),
+        ('D1:D2', 4),
+        ('D1:E2', 4),
+    )
+)
+def test_column(address, result):
+    assert result == column(AddressRange.create(address))
 
 
 class TestCount:
@@ -439,6 +456,20 @@ def test_roundup(number, digits, result):
 def test_roundup_errors(number, digits):
     with pytest.raises(TypeError):
         roundup(number, digits)
+
+
+@pytest.mark.parametrize(
+    'address, result', (
+        ('L45', 45),
+        ('B:E', 1),
+        ('4:7', 4),
+        ('D1:E1', 1),
+        ('D1:D2', 1),
+        ('D1:E2', 1),
+    )
+)
+def test_row(address, result):
+    assert result == row(AddressRange.create(address))
 
 
 class TestSumIf:
