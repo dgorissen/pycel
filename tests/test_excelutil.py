@@ -692,12 +692,16 @@ def test_criteria_parser(value, criteria, expected):
         (None, 'Eq', '0', False),
         (None, 'Eq', 0, True),
         (None, 'Eq', 1, False),
+        (None, 'Eq', False, True),
+        (None, 'Eq', True, False),
 
         # right None
         ('', 'Eq', None, True),
         ('0', 'Eq', None, False),
         (0, 'Eq', None, True),
         (1, 'Eq', None, False),
+        (False, 'Eq', None, True),
+        (True, 'Eq', None, False),
 
         # case in-sensitive
         ('a', 'Eq', 'A', True),

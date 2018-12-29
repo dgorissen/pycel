@@ -789,9 +789,9 @@ def uniqueify(seq):
     return tuple(x for x in seq if x not in seen and not seen.add(x))
 
 
-def is_number(s):
+def is_number(value):
     try:
-        float(s)
+        float(value)
         return True
     except (ValueError, TypeError):
         return False
@@ -968,24 +968,24 @@ def type_cmp_value(value):
     https://stackoverflow.com/a/35051992/7311767
 
     :param value: Operand
-    :return: return 2 for bool, 1 for str, 0 for the rest (numbers)
+    :return: tuple of type precedence and the default to use
     """
     assert value not in ERROR_CODES
 
     if isinstance(value, bool):
-        return 2
-    elif isinstance(value, str):
-        return 1
+        return 2, False
+    elif isinstance(value, str) or value is None:
+        return 1, ''
     else:
-        return 0
+        return 0, 0.0
 
 
 def excel_cmp(left_operand, ast_op, right_operand):
 
     assert ast_op in COMPARISION_OPS
 
-    left_type_cmp_value = type_cmp_value(left_operand)
-    right_type_cmp_value = type_cmp_value(right_operand)
+    left_type_cmp_value = type_cmp_value(left_operand)[0]
+    right_type_cmp_value = type_cmp_value(right_operand)[0]
 
     if left_type_cmp_value != right_type_cmp_value:
         left_operand = left_type_cmp_value
@@ -1018,12 +1018,10 @@ def build_operator_operand_fixup(capture_error_state):
             return right_op
 
         if left_op in (None, EMPTY):
-            left_op = 0 if (not isinstance(
-                right_op, str) or right_op == EMPTY) else ''
+            left_op = type_cmp_value(right_op)[1]
 
         if right_op in (None, EMPTY):
-            right_op = 0 if (not isinstance(
-                left_op, str) or left_op == EMPTY) else ''
+            right_op = type_cmp_value(left_op)[1]
 
         if op == 'BitAnd':
             # use bitwise-and '&' as string concat not '+'
