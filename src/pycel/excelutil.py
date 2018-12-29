@@ -90,6 +90,8 @@ PYTHON_AST_OPERATORS = {
     # 'MatMult': operator.matmul,  # not supported on py34
 }
 
+COMPARISION_OPS = frozenset(('Eq', 'Lt', 'Gt', 'LtE', 'GtE', 'NotEq'))
+
 
 class PyCelException(Exception):
     """Base class for PyCel errors"""
@@ -960,6 +962,42 @@ def assert_list_like(data):
         raise TypeError('Must be a list like: {}'.format(data))
 
 
+def type_cmp_value(value):
+    """ Excel compares bools above strings which are above numbers
+
+    https://stackoverflow.com/a/35051992/7311767
+
+    :param value: Operand
+    :return: return 2 for bool, 1 for str, 0 for the rest (numbers)
+    """
+    assert value not in ERROR_CODES
+
+    if isinstance(value, bool):
+        return 2
+    elif isinstance(value, str):
+        return 1
+    else:
+        return 0
+
+
+def excel_cmp(left_operand, ast_op, right_operand):
+
+    assert ast_op in COMPARISION_OPS
+
+    left_type_cmp_value = type_cmp_value(left_operand)
+    right_type_cmp_value = type_cmp_value(right_operand)
+
+    if left_type_cmp_value != right_type_cmp_value:
+        left_operand = left_type_cmp_value
+        right_operand = right_type_cmp_value
+
+    elif left_type_cmp_value == 1:
+        left_operand = left_operand.lower()
+        right_operand = right_operand.lower()
+
+    return PYTHON_AST_OPERATORS[ast_op](left_operand, right_operand)
+
+
 def build_operator_operand_fixup(capture_error_state):
 
     def fixup(left_op, op, right_op):
@@ -988,18 +1026,13 @@ def build_operator_operand_fixup(capture_error_state):
             right_op = 0 if (not isinstance(
                 left_op, str) or left_op == EMPTY) else ''
 
-        if op in ('Eq', 'NotEq'):
-            if isinstance(left_op, str) and isinstance(right_op, str):
-                left_op = left_op.lower()
-                right_op = right_op.lower()
-
-        elif op == 'BitAnd':
+        if op == 'BitAnd':
             # use bitwise-and '&' as string concat not '+'
             left_op = str(coerce_to_number(left_op))
             right_op = str(coerce_to_number(right_op))
             op = 'Add'
 
-        else:
+        elif op not in COMPARISION_OPS:
             left_op = coerce_to_number(left_op)
             right_op = coerce_to_number(right_op)
 
@@ -1018,6 +1051,8 @@ def build_operator_operand_fixup(capture_error_state):
         try:
             if op in ('USub', 'UAdd'):
                 return PYTHON_AST_OPERATORS[op](right_op)
+            elif op in COMPARISION_OPS:
+                return excel_cmp(left_op, op, right_op)
             else:
                 return PYTHON_AST_OPERATORS[op](left_op, right_op)
         except ZeroDivisionError:

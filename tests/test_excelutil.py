@@ -761,6 +761,28 @@ def test_criteria_parser(value, criteria, expected):
         ('', 'USub', 2, -2),
         ('', 'USub', '2', -2),
 
+        (5, 'Eq', 5, True),
+        (5, 'Eq', 2, False),
+        (5, 'Eq', True, False),
+        (5, 'Eq', '5', False),
+        ('5', 'Eq', '5', True),
+        ('5', 'Eq', '2', False),
+        ('5', 'Eq', True, False),
+        (True, 'Eq', True, True),
+        (True, 'Eq', False, False),
+        (False, 'Eq', False, True),
+
+        (5, 'Lt', 5, False),
+        (5, 'Lt', 2, False),
+        (5, 'Lt', True, True),
+        (5, 'Lt', '5', True),
+        ('5', 'Lt', '5', False),
+        ('5', 'Lt', '2', False),
+        ('5', 'Lt', True, True),
+        (True, 'Lt', True, False),
+        (True, 'Lt', False, False),
+        (False, 'Lt', False, False),
+
         # value errors
         (VALUE_ERROR, 'Add', 0, VALUE_ERROR),
         (0, 'Add', VALUE_ERROR, VALUE_ERROR),
