@@ -1003,8 +1003,7 @@ def build_operator_operand_fixup(capture_error_state):
     def fixup(left_op, op, right_op):
         """Fix up python operations to be more excel like in these cases:
 
-            divide by zero
-            value errors
+            Operand error
 
             Empty cells
             Case-insensitive string compare
@@ -1012,11 +1011,11 @@ def build_operator_operand_fixup(capture_error_state):
             String / Number multiplication
         """
 
-        if DIV0 in (left_op, right_op):
-            return DIV0
+        if left_op in ERROR_CODES:
+            return left_op
 
-        if VALUE_ERROR in (left_op, right_op):
-            return VALUE_ERROR
+        if right_op in ERROR_CODES:
+            return right_op
 
         if left_op in (None, EMPTY):
             left_op = 0 if (not isinstance(

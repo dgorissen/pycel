@@ -19,6 +19,7 @@ from pycel.excelutil import (
     is_number,
     MAX_COL,
     MAX_ROW,
+    NUM_ERROR,
     normalize_year,
     PyCelException,
     range_boundaries,
@@ -798,6 +799,19 @@ def test_criteria_parser(value, criteria, expected):
         (0, 'Mod', 'X', VALUE_ERROR),
         ('X', 'Pow', 0, VALUE_ERROR),
         (0, 'Pow', 'X', VALUE_ERROR),
+
+        # mixed errors
+        (VALUE_ERROR, 'Add', DIV0, VALUE_ERROR),
+        (DIV0, 'Add', VALUE_ERROR, DIV0),
+        (NUM_ERROR, 'Add', DIV0, NUM_ERROR),
+        (DIV0, 'Add', NUM_ERROR, DIV0),
+        (NUM_ERROR, 'Add', VALUE_ERROR, NUM_ERROR),
+        (VALUE_ERROR, 'Add', NUM_ERROR, VALUE_ERROR),
+
+        # right op errors
+        (0, 'Add', DIV0, DIV0),
+        (0, 'Sub', VALUE_ERROR, VALUE_ERROR),
+        (0, 'Div', NUM_ERROR, NUM_ERROR),
     ]
 )
 def test_excel_operator_operand_fixup(left_op, op, right_op, expected):
