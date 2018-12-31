@@ -230,46 +230,49 @@ def linest(Y, X, const=True, degree=1):  # pragma: no cover  ::TODO::
     return coefs
 
 
-def lookup(arg, lookup_range, result_range):  # pragma: no cover  ::TODO::
+def lookup(lookup_value, lookup_array, result_range=None):
     """
-    MATCH(lookup_value, lookup_array, [match_type])
-    VLOOKUP(
-        Value you want to look up,
-        range where you want to lookup the value,
-        the column number in the range containing the return value,
-        Exact Match or Approximate Match indicated as 0/FALSE or 1/TRUE
-    )
-    HLOOKUP(lookup_value, table_array, row_index_num, [range_lookup])
-    LOOKUP(lookup_value, lookup_vector, [result_vector])
-    LOOKUP(lookup_value, array) # should not use array form, use vlookup instead
+    There are two ways to use LOOKUP: Vector form and Array form
+
+    Vector form: lookup_array is list like (ie: n x 1)
+
+    Array form: lookup_array is rectangular (ie: n x m)
+
+        First row or column is the lookup vector.
+        Last row or column is the result vector
+        The longer dimension is the search dimension
+
+    :param lookup_value: value to match (value or cell reference)
+    :param lookup_array: range of cells being searched.
+    :param result_range: (optional vector form) values are returned from here
+    :return: #N/A if not found else value
     """
-    # TODO
-    if not isinstance(arg, (int, float)):
-        raise PyCelException("Non numeric lookups (%s) not supported" % arg)
+    if not list_like(lookup_array):
+        return NA_ERROR
 
-    # TODO: note, may return the last equal value
+    height = len(lookup_array)
 
-    # index of the last numeric value
-    lastnum = -1
-    for i, v in enumerate(lookup_range):
-        if isinstance(v, (int, float)):
-            if v > arg:
-                break
-            else:
-                lastnum = i
+    if list_like(lookup_array[0]):
+        # rectangular array
+        assert result_range is None
+        width = len(lookup_array[0])
 
-    if lastnum < 0:
-        raise PyCelException("No numeric data found in the lookup range")
-    else:
-        if i == 0:
-            raise PyCelException(
-                "All values in the lookup range are bigger than %s" % arg)
+        # match across the largest dimension
+        if width <= height:
+            match_idx = match(lookup_value, tuple(i[0] for i in lookup_array))
+            result_range = tuple(i[-1] for i in lookup_array)
         else:
-            if i >= len(lookup_range) - 1:
-                # return the biggest number smaller than value
-                return result_range[lastnum]
-            else:
-                return result_range[i - 1]
+            match_idx = match(lookup_value, lookup_array[0])
+            result_range = lookup_array[-1]
+    else:
+        match_idx = match(lookup_value, lookup_array)
+        result_range = result_range or lookup_array
+
+    if isinstance(match_idx, int):
+        return result_range[match_idx - 1]
+    else:
+        # error string
+        return match_idx
 
 
 def match(lookup_value, lookup_array, match_type=1):

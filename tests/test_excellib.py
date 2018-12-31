@@ -17,7 +17,7 @@ from pycel.excellib import (
     isNa,
     istext,
     # linest,
-    # lookup,
+    lookup,
     match,
     mid,
     mod,
@@ -301,6 +301,35 @@ class TestIsNa:
 
     def test_isNa_true(self):
         assert isNa('x + 1')
+
+
+lookup_vector = 'b', 'c', 'd'
+lookup_result = 1, 2, 3
+lookup_rows = lookup_vector, lookup_result
+lookup_columns = tuple(zip(*lookup_rows))
+
+
+@pytest.mark.parametrize(
+    'lookup_value, result1, result2', (
+        ('A', NA_ERROR, NA_ERROR),
+        ('B', 'b', 1),
+        ('C', 'c', 2),
+        ('D', 'd', 3),
+        ('E', 'd', 3),
+        ('1', NA_ERROR, NA_ERROR),
+        (1, NA_ERROR, NA_ERROR),
+    )
+)
+def test_lookup(lookup_value, result1, result2):
+
+    assert result1 == lookup(lookup_value, lookup_vector)
+    assert result2 == lookup(lookup_value, lookup_vector, lookup_result)
+    assert result2 == lookup(lookup_value, lookup_rows)
+    assert result2 == lookup(lookup_value, lookup_columns)
+
+
+def test_lookup_error():
+    assert NA_ERROR == lookup(1, 1)
 
 
 @pytest.mark.parametrize(
