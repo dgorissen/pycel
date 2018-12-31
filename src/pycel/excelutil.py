@@ -44,6 +44,8 @@ TABLE_SELECTOR_RE = re.compile(
     r"(\[(?P<start_col>[^\]]+)\] *: *)?"
     r"(\[(?P<end_col>.+)\] *)?$")
 
+QUESTION_MARK_RE = re.compile(r'\?(?<!~)')
+STAR_RE = re.compile(r'\*(?<!~)')
 
 MAX_COL = 16384
 MAX_ROW = 1048576
@@ -875,6 +877,16 @@ def date_from_int(datestamp):
     return date.year, date.month, date.day
 
 
+def build_wildcard_re(lookup_value):
+    regex = QUESTION_MARK_RE.sub('.', STAR_RE.sub('.*', lookup_value))
+    if regex != lookup_value:
+        # this will be a regex match"""
+        compiled = re.compile('^{}$'.format(regex.lower()))
+        return lambda x: compiled.match(x.lower()) is not None
+    else:
+        return None
+
+
 def criteria_parser(criteria):
     """
     General rules:
@@ -909,11 +921,9 @@ def criteria_parser(criteria):
             if is_number(value):
                 return criteria_parser(value)
 
-            regex = re.sub(r'\?(?<!~)', '.', re.sub(r'\*(?<!~)', '.*', value))
-            if regex != value:
-                # this will be a regex match"""
-                compiled = re.compile('^{}$'.format(regex.lower()))
-                return lambda x: compiled.match(x.lower()) is not None
+            check = build_wildcard_re(value)
+            if check is not None:
+                return check
 
         if is_number(value):
             value = coerce_to_number(value)

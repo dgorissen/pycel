@@ -11,6 +11,7 @@ from math import log
 import numpy as np
 from pycel.excelutil import (
     assert_list_like,
+    build_wildcard_re,
     coerce_to_number,
     date_from_int,
     DIV0,
@@ -321,17 +322,27 @@ def match(lookup_value, lookup_array, match_type=1):
             if val == lookup_value:
                 result[0] = idx
                 return True
+
+        if lookup_value.cmp_type == 1:
+            # string matches might be wildcards
+            re_compare = build_wildcard_re(lookup_value.value)
+            if re_compare is not None:
+                def compare(idx, val):  # noqa: F811
+                    if re_compare(val.value):
+                        result[0] = idx
+                        return True
     else:
         def compare(idx, val):
-            if val.cmp_type == lookup_value.cmp_type:
-                if val < lookup_value:
-                    return True
-                result[0] = idx
-                return val == lookup_value
+            if val < lookup_value:
+                return True
+            result[0] = idx
+            return val == lookup_value
 
     for i, value in enumerate(lookup_array, 1):
-        if value not in ERROR_CODES and compare(i, ExcelCmp(value)):
-            break
+        if value not in ERROR_CODES:
+            value = ExcelCmp(value)
+            if value.cmp_type == lookup_value.cmp_type and compare(i, value):
+                break
 
     return result[0]
 
