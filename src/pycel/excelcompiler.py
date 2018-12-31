@@ -473,8 +473,13 @@ class ExcelCompiler:
                 exc_str_split = exc_str.split('\n')
                 exc_str_key = (
                     exc_str_split[-2] if len(exc_str_split) > 1 else exc_str)
-                failed.setdefault('exceptions', {}).setdefault(
-                    exc_str_key, []).append((str(addr), formula, exc_str))
+
+                if 'NameError: name ' in exc_str:
+                    failed.setdefault('not-implemented', {}).setdefault(
+                        exc_str_key, []).append((str(addr), formula, exc_str))
+                else:
+                    failed.setdefault('exceptions', {}).setdefault(
+                        exc_str_key, []).append((str(addr), formula, exc_str))
 
         return failed
 
