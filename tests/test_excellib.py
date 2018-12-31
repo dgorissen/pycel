@@ -513,6 +513,7 @@ class TestMod:
     def test_second_argument_validity(self):
         assert mod(2, VALUE_ERROR) == VALUE_ERROR
         assert mod(2, 'x') == VALUE_ERROR
+        assert mod(2, 0) == DIV0
 
     def test_output_value(self):
         assert 2 == mod(10, 4)
@@ -665,7 +666,7 @@ def test_value():
 
 @pytest.mark.parametrize(
     'lookup, col_idx, result', (
-        ('A', 0, '#VALUE!'),
+        ('A', 0, VALUE_ERROR),
         ('A', 1, 'A'),
         ('A', 2, 1),
         ('A', 3, 'Z'),
@@ -676,7 +677,7 @@ def test_value():
         ('C', 2, 3),
         ('B', 3, 'Y'),
         ('C', 3, 'X'),
-        ('D', 3, '#N/A'),
+        ('D', 3, NA_ERROR),
     )
 )
 def test_vlookup(lookup, col_idx, result):
@@ -693,6 +694,12 @@ def test_xlog():
     assert [math.log(5), math.log(6)] == xlog([5, 6])
     assert [math.log(5), math.log(6)] == xlog((5, 6))
     assert [math.log(5), math.log(6)] == xlog(np.array([5, 6]))
+
+    assert VALUE_ERROR == xlog(VALUE_ERROR)
+    assert [math.log(2), VALUE_ERROR] == xlog((2, VALUE_ERROR))
+
+    assert DIV0 == xlog(DIV0)
+    assert [math.log(2), DIV0] == xlog((2, DIV0))
 
 
 def test_xmax():
@@ -744,6 +751,8 @@ def test_xround(result, digits):
             (626.3, -3, 1000),
             (1.98, -1, 0),
             (-50.55, -2, -100),
+            (DIV0, 1, DIV0),
+            (1, DIV0, DIV0),
     )
 )
 def test_xround2(number, digits, result):

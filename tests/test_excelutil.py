@@ -20,6 +20,7 @@ from pycel.excelutil import (
     is_number,
     MAX_COL,
     MAX_ROW,
+    math_wrap,
     NUM_ERROR,
     normalize_year,
     OPERATORS,
@@ -429,6 +430,15 @@ def test_coerce_to_number():
 
     with pytest.raises(ZeroDivisionError):
         coerce_to_number(DIV0)
+
+
+def test_math_wrap():
+    func = math_wrap(lambda x: x)
+
+    assert func(1) == 1
+    assert func(DIV0) == DIV0
+    assert func(None) == 0
+    assert func('1.1') == 1.1
 
 
 def test_get_linest_degree():

@@ -633,6 +633,17 @@ def test_build_eval_context():
         eval_context(ExcelFormula('=unknown_function(0)'))
 
 
+def test_math_wrap():
+    eval_context = ExcelFormula.build_eval_context(
+        lambda x: None, lambda x: DIV0)
+
+    assert 1 == eval_context(ExcelFormula('=1 + sin(A1)'))
+    assert DIV0 == eval_context(ExcelFormula('=1 + sin(A1:B1)'))
+
+    assert 1 == eval_context(ExcelFormula('=1 + abs(A1)'))
+    assert DIV0 == eval_context(ExcelFormula('=1 + abs(A1:B1)'))
+
+
 def test_compiled_python_cache():
     formula = ExcelFormula('=1 + 2')
     # first call does the calc, the second uses cached

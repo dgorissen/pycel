@@ -22,6 +22,7 @@ from pycel.excelutil import (
     is_leap_year,
     is_number,
     list_like,
+    math_wrap,
     NA_ERROR,
     normalize_year,
     PyCelException,
@@ -386,6 +387,9 @@ def mod(number, divisor):
 
     number, divisor = coerce_to_number(number), coerce_to_number(divisor)
 
+    if divisor == 0:
+        return DIV0
+
     if not is_number(number) or not is_number(divisor):
         return VALUE_ERROR
 
@@ -515,11 +519,11 @@ def vlookup(lookup_value, table_array, col_index_num, range_lookup=False):
         return table_array[result_idx - 1][col_index_num - 1]
 
 
-def xlog(a):
-    if list_like(a):
-        return [log(x) for x in flatten(a)]
+def xlog(value):
+    if list_like(value):
+        return [math_wrap(log)(x) for x in flatten(value)]
     else:
-        return log(a)
+        return math_wrap(log)(value)
 
 
 def xmax(*args):
@@ -553,6 +557,11 @@ def xmin(*args):
 def xround(number, num_digits=0):
     # Excel reference: https://support.office.com/en-us/article/
     #   ROUND-function-c018c5d8-40fb-4053-90b1-b3e7f61a213c
+
+    if number in ERROR_CODES:
+        return number
+    if num_digits in ERROR_CODES:
+        return num_digits
 
     number, num_digits = coerce_to_number(number), coerce_to_number(num_digits)
     if not is_number(number) or not is_number(num_digits):

@@ -12,6 +12,7 @@ from pycel.excelutil import (
     EMPTY,
     ERROR_CODES,
     get_linest_degree,
+    math_wrap,
     PyCelException,
     uniqueify,
 )
@@ -755,6 +756,10 @@ class ExcelFormula:
             name_space['_R_'] = evaluate_range
             name_space['_REF_'] = AddressRange.create
 
+            for name in ('int', 'abs'):
+                name_space[name] = math_wrap(
+                    globals()['__builtins__'][name])
+
             # function to fixup the operands
             name_space['excel_operator_operand_fixup'] = \
                 build_operator_operand_fixup(capture_error_state)
@@ -768,11 +773,15 @@ class ExcelFormula:
             # load the needed names
             for name in names:
                 if name not in name_space:
-                    funcs = (getattr(module, name, None) for module in
-                             modules)
-                    func = next((f for f in funcs if f is not None), None)
+                    funcs = ((getattr(module, name, None), module)
+                             for module in modules)
+                    func, module = next(
+                        (f for f in funcs if f[0] is not None), (None, None))
                     if func is not None:
-                        name_space[name] = func
+                        if module.__name__ == 'math':
+                            name_space[name] = math_wrap(func)
+                        else:
+                            name_space[name] = func
 
             # exec the code to define the lambda
             exec(compiled, name_space, name_space)

@@ -821,6 +821,18 @@ def coerce_to_number(value, raise_div0=True):
         return value
 
 
+def math_wrap(bare_func):
+    """wrapper for functions that take numbers to handle errors"""
+
+    def func(*args):
+        for arg in args:
+            if arg in ERROR_CODES:
+                return arg
+        return bare_func(*(0 if a in (None, EMPTY)
+                           else coerce_to_number(a) for a in args))
+    return func
+
+
 def is_leap_year(year):
     if not is_number(year):
         raise TypeError("%s must be a number" % str(year))
