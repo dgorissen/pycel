@@ -1,6 +1,7 @@
 """
 Python equivalents of various excel functions
 """
+from bisect import bisect_right
 import itertools as it
 from collections import Counter
 from datetime import datetime
@@ -14,8 +15,8 @@ from pycel.excelutil import (
     date_from_int,
     DIV0,
     ERROR_CODES,
+    ExcelCmp,
     find_corresponding_index,
-    find_corresponding_index_generator,
     flatten,
     is_leap_year,
     is_number,
@@ -284,7 +285,7 @@ def match(lookup_value, lookup_array, match_type=1):
     0: return the first value that is exactly equal to lookup_value.
     `lookup_array` can be in any order.
 
-    -1 return the smallest value that is greater than or equal to
+    -1: return the smallest value that is greater than or equal to
     `lookup_value`. `lookup_array` must be in descending order.
 
     If `match_type` is 0 and lookup_value is a text string, you can use the
@@ -298,33 +299,41 @@ def match(lookup_value, lookup_array, match_type=1):
     if lookup_value in ERROR_CODES:
         return lookup_value
 
-    def type_convert(arg):
-        if arg is None:
-            arg = 0.0
-        elif isinstance(arg, str):
-            arg = arg.lower()
-        else:
-            arg = float(arg)
-
-        return arg
-
-    lookup_value = type_convert(lookup_value)
+    lookup_value = ExcelCmp(lookup_value)
 
     if match_type == 1:
-        criteria = '>={}'.format(lookup_value)
-    elif match_type == -1:
-        criteria = '<={}'.format(lookup_value)
+        # Use a binary search to speed it up.  Excel seems to do this as it
+        # would explain the results seen when doing out of order searches.
+        lookup_value = ExcelCmp(lookup_value)
+
+        result = bisect_right(lookup_array, lookup_value)
+        while result and lookup_value.cmp_type != ExcelCmp(
+                lookup_array[result - 1]).cmp_type:
+            result -= 1
+        if result == 0:
+            result = NA_ERROR
+        return result
+
+    result = [NA_ERROR]
+
+    if match_type == 0:
+        def compare(idx, val):
+            if val == lookup_value:
+                result[0] = idx
+                return True
     else:
-        criteria = lookup_value
+        def compare(idx, val):
+            if val.cmp_type == lookup_value.cmp_type:
+                if val < lookup_value:
+                    return True
+                result[0] = idx
+                return val == lookup_value
 
-    a_match = next(find_corresponding_index_generator(lookup_array, criteria),
-                   NA_ERROR)
+    for i, value in enumerate(lookup_array, 1):
+        if value not in ERROR_CODES and compare(i, ExcelCmp(value)):
+            break
 
-    if isinstance(a_match, int) and (
-            match_type != 1 or lookup_value == lookup_array[a_match]):
-        a_match += 1
-
-    return a_match or NA_ERROR
+    return result[0]
 
 
 def mid(text, start_num, num_chars):

@@ -40,6 +40,7 @@ from pycel.excelutil import (
     AddressRange,
     DIV0,
     ERROR_CODES,
+    ExcelCmp,
     NA_ERROR,
     PyCelException,
     VALUE_ERROR,
@@ -302,77 +303,138 @@ class TestIsNa:
         assert isNa('x + 1')
 
 
-class TestMatch:
+@pytest.mark.parametrize(
+    'lookup_value, lookup_array, match_type, result', (
+        (0, [1, 3.3, 5], 1, NA_ERROR),
+        (1, [1, 3.3, 5], 1, 1),
+        (2, [1, 3.3, 5], 1, 1),
+        (4, [1, 3.3, 5], 1, 2),
+        (5, [1, 3.3, 5], 1, 3),
+        (6, [1, 3.3, 5], 1, 3),
 
-    def test_numeric_in_ascending_mode(self):
-        # Closest inferior value is found
-        assert 2 == match(4, [1, 3.3, 5], 1)
+        (6, [5, 3.3, 1], -1, NA_ERROR),
+        (5, [5, 3.3, 1], -1, 1),
+        (4, [5, 3.3, 1], -1, 1),
+        (2, [5, 3.3, 1], -1, 2),
+        (1, [5, 3.3, 1], -1, 3),
+        (0, [5, 3.3, 1], -1, 3),
 
-    def test_numeric_in_exact_mode(self):
-        # Value is found
-        assert 3 == match(5, [10, 3.3, 5.0], 0)
+        (5, [10, 3.3, 5.0], 0, 3),
+        (3, [10, 3.3, 5, 2], 0, NA_ERROR),
 
-    def test_numeric_in_exact_mode_not_found(self):
-        # Value not found error
-        assert NA_ERROR == match(3, [10, 3.3, 5, 2], 0)
+        ('b', ['c', DIV0, 'a'], 0, NA_ERROR),
+        ('b', ['c', DIV0, 'a'], -1, 1),
 
-    def test_numeric_in_descending_mode(self):
-        # Closest superior value is found
-        assert 3 == match(8, [10, 9.1, 6.2], -1)
+        (False, [True, True, True], 0, NA_ERROR),
+        (False, [True, False, True], -1, 2),
 
-    def test_string_in_ascending_mode(self):
-        # Closest inferior value is found
-        assert 3 == match('rars', ['a', 'AAB', 'rars'])
+        (NA_ERROR, [True, False, True], -1, NA_ERROR),
+        (DIV0, [1, 2, 3], -1, DIV0),
+    )
+)
+def test_match(lookup_value, lookup_array, match_type, result):
+    assert result == match(lookup_value, lookup_array, match_type)
 
-    def test_string_in_asscending_mode_not_found(self):
-        assert NA_ERROR == match('a', [], 1)
 
-    def test_string_in_ascending_mode_with_descending_array(self):
-        assert NA_ERROR == match(3, ['rars', 'aab', 'a'])
+@pytest.mark.parametrize(
+    'lookup_array, lookup_value, result1, result0, resultm1', (
+        (('a', 'b', 'c', 'd', 'e'), 'c', 3, 3, '#N/A'),  # 0
+        (('a', 'b', 'bb', 'd', 'e'), 'c', 3, '#N/A', '#N/A'),  # 1
+        (('a', 'b', True, 'd', 'e'), 'c', 2, '#N/A', '#N/A'),  # 2
+        (('a', 'b', 1, 'd', 'e'), 'c', 2, '#N/A', '#N/A'),  # 3
+        (('a', 'b', '#DIV/0!', 'd', 'e'), 'c', 2, '#N/A', '#N/A'),  # 4
+        (('e', 'd', 'c', 'b', 'a'), 'c', 3, 3, 3),  # 5
+        (('e', 'd', 'ca', 'b', 'a'), 'c', '#N/A', '#N/A', 3),  # 6
+        (('e', 'd', True, 'b', 'a'), 'c', 5, '#N/A', 2),  # 7
+        (('e', 'd', 1, 'b', 'a'), 'c', 5, '#N/A', 2),  # 8
+        (('e', 'd', '#DIV/0!', 'b', 'a'), 'c', 5, '#N/A', 2),  # 9
+        ((5, 4, 3, 2, 1), 3, 3, 3, 3),  # 10
+        ((5, 4, 3.5, 2, 1), 3, '#N/A', '#N/A', 3),  # 11
+        ((5, 4, True, 2, 1), 3, 5, '#N/A', 2),  # 12
+        ((5, 4, 'A', 2, 1), 3, 5, '#N/A', 2),  # 13
+        ((5, 4, '#DIV/0!', 2, 1), 3, 5, '#N/A', 2),  # 14
+        ((1, 2, 3, 2, 4), 0.5, '#N/A', '#N/A', 5),  # 15
+        ((1, 2, 3, 2, 4), 1, 1, 1, 1),  # 16
+        ((1, 2, 3, 2, 4), 1.5, 1, '#N/A', '#N/A'),  # 17
+        ((1, 2, 3, 2, 4), 2, 2, 2, '#N/A'),  # 18
+        ((1, 2, 3, 2, 4), 2.5, 2, '#N/A', '#N/A'),  # 19
+        ((1, 2, 3, 2, 4), 3, 3, 3, '#N/A'),  # 20
+        ((1, 2, 3, 2, 4), 3.5, 4, '#N/A', '#N/A'),  # 21
+        ((1, 2, 3, 2, 4), 4, 5, 5, '#N/A'),  # 22
+        ((1, 2, 3, 2, 4), 4.5, 5, '#N/A', '#N/A'),  # 23
+        ((4, 3, 2, 3, 1), 4.5, 5, '#N/A', '#N/A'),  # 24
+        ((4, 3, 2, 3, 1), 4, 5, 1, 1),  # 25
+        ((4, 3, 2, 3, 1), 3.5, 5, '#N/A', 1),  # 26
+        ((4, 3, 2, 3, 1), 3, 4, 2, 2),  # 27
+        ((4, 3, 2, 3, 1), 2.5, 3, '#N/A', 2),  # 28
+        ((4, 3, 2, 3, 1), 2, 3, 3, 3),  # 29
+        ((4, 3, 2, 3, 1), 1.5, '#N/A', '#N/A', 4),  # 30
+        ((4, 3, 2, 3, 1), 1, '#N/A', 5, 5),  # 31
+        ((4, 3, 2, 3, 1), 0.5, '#N/A', '#N/A', 5),  # 32
+        (('a', 'b', 'c', 'b', 'd'), '-', '#N/A', '#N/A', 5),  # 33
+        (('a', 'b', 'c', 'b', 'd'), 'a', 1, 1, 1),  # 34
+        (('a', 'b', 'c', 'b', 'd'), 'aa', 1, '#N/A', '#N/A'),  # 35
+        (('a', 'b', 'c', 'b', 'd'), 'b', 2, 2, '#N/A'),  # 36
+        (('a', 'b', 'c', 'b', 'd'), 'bb', 2, '#N/A', '#N/A'),  # 37
+        (('a', 'b', 'c', 'b', 'd'), 'c', 3, 3, '#N/A'),  # 38
+        (('a', 'b', 'c', 'b', 'd'), 'cc', 4, '#N/A', '#N/A'),  # 39
+        (('a', 'b', 'c', 'b', 'd'), 'd', 5, 5, '#N/A'),  # 40
+        (('a', 'b', 'c', 'b', 'd'), 'dd', 5, '#N/A', '#N/A'),  # 41
+        (('d', 'c', 'b', 'c', 'a'), 'dd', 5, '#N/A', '#N/A'),  # 42
+        (('d', 'c', 'b', 'c', 'a'), 'd', 5, 1, 1),  # 43
+        (('d', 'c', 'b', 'c', 'a'), 'cc', 5, '#N/A', 1),  # 44
+        (('d', 'c', 'b', 'c', 'a'), 'c', 4, 2, 2),  # 45
+        (('d', 'c', 'b', 'c', 'a'), 'bb', 3, '#N/A', 2),  # 46
+        (('d', 'c', 'b', 'c', 'a'), 'b', 3, 3, 3),  # 47
+        (('d', 'c', 'b', 'c', 'a'), 'aa', '#N/A', '#N/A', 4),  # 48
+        (('d', 'c', 'b', 'c', 'a'), 'a', '#N/A', 5, 5),  # 49
+        (('d', 'c', 'b', 'c', 'a'), '-', '#N/A', '#N/A', 5),  # 50
 
-    def test_string_in_ascending_mode_with_any_array(self):
-        assert NA_ERROR == match(3, ['aab', 'a', 'rars'])
+        ((False, False, True), True, 3, 3, NA_ERROR),  # 51
+        ((False, False, True), False, 2, 1, 1),  # 52
+        ((False, True, False), True, 2, 2, NA_ERROR),  # 53
+        ((False, True, False), False, 1, 1, 1),  # 54
+        ((True, False, False), True, 3, 1, 1),  # 55
+        ((True, False, False), False, 3, 2, 2),  # 56
 
-    def test_string_in_exact_mode(self):
-        assert 2 == match('a', ['aab', 'a', 'rars'], 0)
+        (('a', 'AAB', 'rars'), 'rars', 3, 3, NA_ERROR),  # 57
+        (('a', 'AAB', 'rars'), 'AAB', 2, 2, NA_ERROR),  # 58
+        (('a', 'AAB', 'rars'), 'a', 1, 1, 1),  # 59
 
-    def test_string_in_exact_mode_not_found(self):
-        assert NA_ERROR == match('b', ['aab', 'a', 'rars'], 0)
+        (('AAB', 'a', 'rars'), 'b', 2, NA_ERROR, NA_ERROR),  # 60
+        (('AAB', 'a', 'rars'), 3, NA_ERROR, NA_ERROR, NA_ERROR),  # 61
+        (('a', 'rars', 'AAB'), 'b', 1, NA_ERROR, NA_ERROR),  # 62
 
-    def test_string_in_descending_mode(self):
-        # Closest superior value is found
-        assert 3 == match('a', ['c', 'b', 'a'], -1)
+        ((), 'a', NA_ERROR, NA_ERROR, NA_ERROR),  # 63
 
-    def test_string_in_descending_mode_not_found(self):
-        assert NA_ERROR == match('a', [], -1)
+        (('c', 'b', 'a'), 'a', NA_ERROR, 3, 3),  # 64
+        ((1, 2, 3), None, NA_ERROR, NA_ERROR, 3),  # 65
 
-    def test_boolean_in_ascending_mode(self):
-        # Closest inferior value is found
-        assert 3 == match(True, [False, False, True])
+        ((2,), 1, NA_ERROR, NA_ERROR, 1),  # 66
+        ((2,), 2, 1, 1, 1),  # 67
+        ((2,), 3, 1, NA_ERROR, NA_ERROR),  # 68
 
-    def test_boolean_in_ascending_mode_with_descending_array(self):
-        assert NA_ERROR == match(False, [True, False, False])
+        ((3, 5, 4.5, 3, 1), 4, 1, NA_ERROR, NA_ERROR),  # 69
+        ((3, 5, 4, 3, 1), 4, 3, 3, NA_ERROR),  # 70
+        ((3, 5, 3.5, 3, 1), 4, 5, NA_ERROR, NA_ERROR),  # 71
 
-    def test_boolean_in_ascending_mode_with_any_array(self):
-        assert 2 == match(True, [False, True, False])
+        ((4, 5, 4.5, 3, 1), 4, 1, 1, 1),  # 72
+        ((4, 5, 4, 3, 1), 4, 3, 1, 1),  # 73
+        ((4, 5, 3.5, 3, 1), 4, 5, 1, 1),  # 74
 
-    def test_boolean_in_exact_mode(self):
-        assert 2 == match(False, [True, False, False], 0)
-
-    def test_boolean_in_exact_mode_not_found(self):
-        # Value not found raises Exception
-        assert NA_ERROR == match(False, [True, True, True], 0)
-
-    def test_boolean_in_descending_mode(self):
-        # Closest superior value is found
-        assert 2 == match(False, [True, False, True], -1)
-
-    def test_match_error(self):
-        # GIGO
-        assert NA_ERROR == match(NA_ERROR, [True, False, True], -1)
-
-    def test_match_none(self):
-        assert NA_ERROR == match(None, [1, 2, 3])
+        ((1, 3, 3, 3, 5), 3, 4, 2, NA_ERROR),  # 75
+        ((5, 3, 3, 3, 1), 3, 4, 2, 2),  # 76
+    )
+)
+def test_match_crazy_order(
+        lookup_array, lookup_value, result1, result0, resultm1):
+    assert result0 == match(lookup_value, lookup_array, 0)
+    assert resultm1 == match(lookup_value, lookup_array, -1)
+    if result1 != match(lookup_value, lookup_array, 1):
+        lookup_array = [ExcelCmp(x) for x in lookup_array]
+        if sorted(lookup_array) == lookup_array:
+            # only complain on failures for mode 0 when array is sorted
+            assert result1 == match(lookup_value, lookup_array, 1)
 
 
 class TestMid:
