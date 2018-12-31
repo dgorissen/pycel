@@ -970,32 +970,57 @@ def type_cmp_value(value):
     :param value: Operand
     :return: tuple of type precedence and the default to use
     """
-    assert value not in ERROR_CODES
-
-    if isinstance(value, bool):
+    if value in ERROR_CODES:
+        return 3, value
+    elif isinstance(value, bool):
         return 2, False
-    elif isinstance(value, str) or value is None:
+    elif isinstance(value, str):
         return 1, ''
     else:
         return 0, 0.0
 
 
-def excel_cmp(left_operand, ast_op, right_operand):
+class ExcelCmp(collections.namedtuple('ExcelCmp', 'cmp_type value empty')):
 
-    assert ast_op in COMPARISION_OPS
+    def __new__(cls, value, empty=None):
+        if isinstance(value, ExcelCmp):
+            return value
 
-    left_type_cmp_value = type_cmp_value(left_operand)[0]
-    right_type_cmp_value = type_cmp_value(right_operand)[0]
+        # empty as the searched for, becomes 0.0
+        if value is None:
+            cmp_type = 0 if empty is None else empty.cmp_type
+            default_empty = 0.0 if empty is None else empty.empty
+            value = default_empty
+        else:
+            cmp_type, default_empty = type_cmp_value(value)
 
-    if left_type_cmp_value != right_type_cmp_value:
-        left_operand = left_type_cmp_value
-        right_operand = right_type_cmp_value
+        if cmp_type == 1:
+            value = value.lower()
 
-    elif left_type_cmp_value == 1:
-        left_operand = left_operand.lower()
-        right_operand = right_operand.lower()
+        return super(ExcelCmp, cls).__new__(cls, cmp_type, value, default_empty)
 
-    return PYTHON_AST_OPERATORS[ast_op](left_operand, right_operand)
+    def __lt__(self, other):
+        other = ExcelCmp(other, empty=self)
+        return super().__lt__(other)
+
+    def __le__(self, other):
+        other = ExcelCmp(other, empty=self)
+        return super().__le__(other)
+
+    def __gt__(self, other):
+        other = ExcelCmp(other, empty=self)
+        return super().__gt__(other)
+
+    def __ge__(self, other):
+        other = ExcelCmp(other, empty=self)
+        return super().__ge__(other)
+
+    def __eq__(self, other):
+        other = ExcelCmp(other, empty=self)
+        return self[0] == other[0] and self[1] == other[1]
+
+    def __ne__(self, other):
+        return not self == other
 
 
 def build_operator_operand_fixup(capture_error_state):
@@ -1029,7 +1054,11 @@ def build_operator_operand_fixup(capture_error_state):
             right_op = str(coerce_to_number(right_op))
             op = 'Add'
 
-        elif op not in COMPARISION_OPS:
+        elif op in COMPARISION_OPS:
+            left_op = ExcelCmp(left_op)
+            right_op = ExcelCmp(right_op)
+
+        else:
             left_op = coerce_to_number(left_op)
             right_op = coerce_to_number(right_op)
 
@@ -1048,8 +1077,6 @@ def build_operator_operand_fixup(capture_error_state):
         try:
             if op in ('USub', 'UAdd'):
                 return PYTHON_AST_OPERATORS[op](right_op)
-            elif op in COMPARISION_OPS:
-                return excel_cmp(left_op, op, right_op)
             else:
                 return PYTHON_AST_OPERATORS[op](left_op, right_op)
         except ZeroDivisionError:

@@ -11,6 +11,7 @@ from pycel.excelutil import (
     coerce_to_number,
     criteria_parser,
     date_from_int,
+    ExcelCmp,
     find_corresponding_index,
     flatten,
     get_linest_degree,
@@ -21,6 +22,7 @@ from pycel.excelutil import (
     MAX_ROW,
     NUM_ERROR,
     normalize_year,
+    OPERATORS,
     PyCelException,
     range_boundaries,
     resolve_range,
@@ -682,6 +684,85 @@ def test_find_corresponding_index():
 )
 def test_criteria_parser(value, criteria, expected):
     assert expected == criteria_parser(criteria)(value)
+
+
+@pytest.mark.parametrize(
+    'lval, op, rval, result', (
+        (1, '>', 1, False),
+        (1, '>=', 1, True),
+        (1, '<', 1, False),
+        (1, '<=', 1, True),
+        (1, '=', 1, True),
+        (1, '<>', 1, False),
+
+        (1, '>', 2, False),
+        (1, '>=', 2, False),
+        (1, '<', 2, True),
+        (1, '<=', 2, True),
+        (1, '=', 2, False),
+        (1, '<>', 2, True),
+
+        (2, '>', 1, True),
+        (2, '>=', 1, True),
+        (2, '<', 1, False),
+        (2, '<=', 1, False),
+        (2, '=', 1, False),
+        (2, '<>', 1, True),
+
+        ('a', '>', 'a', False),
+        ('a', '>=', 'a', True),
+        ('a', '<', 'a', False),
+        ('a', '<=', 'a', True),
+        ('a', '=', 'A', True),
+        ('a', '<>', 'a', False),
+
+        ('a', '>', 'b', False),
+        ('a', '>=', 'b', False),
+        ('a', '<', 'b', True),
+        ('a', '<=', 'b', True),
+        ('a', '=', 'B', False),
+        ('a', '<>', 'b', True),
+
+        ('b', '>', 'a', True),
+        ('b', '>=', 'a', True),
+        ('b', '<', 'a', False),
+        ('b', '<=', 'a', False),
+        ('b', '=', 'A', False),
+        ('b', '<>', 'a', True),
+
+        (True, '<', DIV0, True),
+        (True, '=', DIV0, False),
+        (False, '<', True, True),
+        (False, '=', True, False),
+        ('z', '<', False, True),
+        ('z', '=', False, False),
+        ('a', '<', 'z', True),
+        ('a', '=', 'z', False),
+        (1E10, '<', 'a', True),
+        (1E10, '=', 'a', False),
+        (0, '<', 1E10, True),
+        (0, '=', 1E10, False),
+        (-1E10, '<', 0, True),
+        (-1E10, '=', 0, False),
+
+        (None, '=', 0, True),
+        (None, '<>', 0, False),
+        (0, '=', None, True),
+        (0, '<>', None, False),
+
+        (None, '=', 0.0, True),
+        (None, '<>', 0.0, False),
+        (0.0, '=', None, True),
+        (0.0, '<>', None, False),
+
+        (False, '=', None, True),
+        (False, '<>', None, False),
+        ('', '=', None, True),
+        ('', '<>', None, False),
+    )
+)
+def test_excel_cmp(lval, op, rval, result):
+    assert OPERATORS[op](ExcelCmp(lval), rval) == result
 
 
 @pytest.mark.parametrize(
