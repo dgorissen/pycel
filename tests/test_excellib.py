@@ -475,38 +475,49 @@ def test_match_crazy_order(
 
 class TestMid:
 
-    def test_start_num_must_be_integer(self):
-        with pytest.raises(TypeError):
-            mid('Romain', 1.1, 2)
+    def test_invalid_parameters(self):
+        assert mid(VALUE_ERROR, 2, 2) == VALUE_ERROR
+        assert mid('Romain', VALUE_ERROR, 2) == VALUE_ERROR
+        assert mid('Romain', 2, VALUE_ERROR) == VALUE_ERROR
+        assert mid(DIV0, 2, 2) == DIV0
+        assert mid('Romain', DIV0, 2) == DIV0
+        assert mid('Romain', 2, DIV0) == DIV0
+
+        assert mid('Romain', 'x', 2) == VALUE_ERROR
+        assert mid('Romain', 2, 'x') == VALUE_ERROR
 
     def test_num_chars_must_be_integer(self):
-        with pytest.raises(TypeError):
-            mid('Romain', 1, 2.1)
+        assert 'Ro' == mid('Romain', 1, 2.1)
 
     def test_start_num_must_be_superior_or_equal_to_1(self):
-        with pytest.raises(ValueError):
-            mid('Romain', 0, 3)
+        assert VALUE_ERROR == mid('Romain', 0, 3)
 
     def test_num_chars_must_be_positive(self):
-        with pytest.raises(ValueError):
-            mid('Romain', 1, -1)
+        assert VALUE_ERROR == mid('Romain', 1, -1)
+
+    def test_from_not_str(self):
+        assert '23' == mid(1234, 2, 2)
 
     def test_mid(self):
-        assert 'main' == mid('Romain', 2, 9)
+        assert 'omain' == mid('Romain', 2, 9)
+        assert 'om' == mid('Romain', 2.1, 2)
+        assert 'om' == mid('Romain', 2, 2.1)
 
 
 class TestMod:
 
     def test_first_argument_validity(self):
-        with pytest.raises(TypeError):
-            mod(2.2, 1)
+        assert mod(VALUE_ERROR, 1) == VALUE_ERROR
+        assert mod('x', 1) == VALUE_ERROR
 
     def test_second_argument_validity(self):
-        with pytest.raises(TypeError):
-            mod(2, 1.1)
+        assert mod(2, VALUE_ERROR) == VALUE_ERROR
+        assert mod(2, 'x') == VALUE_ERROR
 
     def test_output_value(self):
         assert 2 == mod(10, 4)
+        assert mod(2.2, 1) == pytest.approx(0.2)
+        assert mod(2, 1.1) == pytest.approx(0.9)
 
 
 def test_npv():
@@ -518,18 +529,25 @@ def test_npv():
         npv(0.08, 8000, 9200, 10000, 12000, 14500, -9000) - 40000, 2)
 
 
-def test_right():
-    assert 'abcd' == right('abcd', 5)
-    assert 'abcd' == right('abcd', 4)
-    assert 'bcd' == right('abcd', 3)
-    assert 'cd' == right('abcd', 2)
-    assert 'd' == right('abcd', 1)
-    assert '' == right('abcd', 0)
+@pytest.mark.parametrize(
+    'text, num_chars, expected', (
+        ('abcd', 5, 'abcd'),
+        ('abcd', 4, 'abcd'),
+        ('abcd', 3, 'bcd'),
+        ('abcd', 2, 'cd'),
+        ('abcd', 1, 'd'),
+        ('abcd', 0, ''),
 
-    assert '34' == right(1234.1, 2)
+        (1234.1, 2, '.1'),
 
-    with pytest.raises(ValueError):
-        right('abcd', -1)
+        ('abcd', -1, VALUE_ERROR),
+        ('abcd', 'x', VALUE_ERROR),
+        (VALUE_ERROR, 1, VALUE_ERROR),
+        ('abcd', VALUE_ERROR, VALUE_ERROR),
+    )
+)
+def test_right(text, num_chars, expected):
+    assert right(text, num_chars) == expected
 
 
 @pytest.mark.parametrize(
@@ -549,11 +567,12 @@ def test_roundup(number, digits, result):
     'number, digits', (
             (3.2, 'X'),
             ('X', 0),
+            (3.2, VALUE_ERROR),
+            (VALUE_ERROR, 0),
     )
 )
 def test_roundup_errors(number, digits):
-    with pytest.raises(TypeError):
-        roundup(number, digits)
+    assert VALUE_ERROR == roundup(number, digits)
 
 
 @pytest.mark.parametrize(
@@ -734,18 +753,19 @@ def test_xround2(number, digits, result):
 class TestXRound:
 
     def test_nb_must_be_number(self):
-        with pytest.raises(TypeError):
-            xround('er', 1)
+        assert VALUE_ERROR == xround('er', 1)
 
     def test_nb_digits_must_be_number(self):
-        with pytest.raises(TypeError):
-            xround(2.323, 'ze')
+        assert VALUE_ERROR == xround(2.323, 'ze')
 
     def test_positive_number_of_digits(self):
         assert 2.68 == xround(2.675, 2)
 
     def test_negative_number_of_digits(self):
         assert 2400 == xround(2352.67, -2)
+
+    def test_coerce_from_string(self):
+        assert 2400 == xround("2352.67", "-2")
 
 
 def test_xsum():

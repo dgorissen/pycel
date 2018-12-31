@@ -25,6 +25,7 @@ from pycel.excelutil import (
     NA_ERROR,
     normalize_year,
     PyCelException,
+    VALUE_ERROR,
 )
 
 
@@ -79,7 +80,7 @@ def countif(range, criteria):
     #   COUNTIF-function-e0de10c6-f885-4e71-abb4-1f464816df34
 
     # WARNING:
-    # - wildcards not supported
+    # - wildcards not supported  ::TODO:: test if this is no longer true
     # - support of strings with >, <, <=, =>, <> not provided
 
     valid = find_corresponding_index(range, criteria)
@@ -354,30 +355,41 @@ def mid(text, start_num, num_chars):
     # Excel reference: https://support.office.com/en-us/article/
     #   MID-MIDB-functions-d5f9e25c-d7d6-472e-b568-4ecb12433028
 
-    text = str(text)
+    if text in ERROR_CODES:
+        return text
+    if start_num in ERROR_CODES:
+        return start_num
+    if num_chars in ERROR_CODES:
+        return num_chars
 
-    if type(start_num) != int:
-        raise TypeError("%s is not an integer" % str(start_num))
-    if type(num_chars) != int:
-        raise TypeError("%s is not an integer" % str(num_chars))
+    start_num = coerce_to_number(start_num)
+    num_chars = coerce_to_number(num_chars)
 
-    if start_num < 1:
-        raise ValueError("%s is < 1" % str(start_num))
-    if num_chars < 0:
-        raise ValueError("%s is < 0" % str(num_chars))
+    if not is_number(start_num) or not is_number(num_chars):
+        return VALUE_ERROR
 
-    return text[start_num:num_chars]
+    if start_num < 1 or num_chars < 0:
+        return VALUE_ERROR
+
+    start_num = int(start_num) - 1
+
+    return str(text)[start_num:start_num + int(num_chars)]
 
 
-def mod(nb, q):
+def mod(number, divisor):
     # Excel reference: https://support.office.com/en-us/article/
     #   MOD-function-9b6cd169-b6ee-406a-a97b-edf2a9dc24f3
-    if not isinstance(nb, int):
-        raise TypeError("%s is not an integer" % str(nb))
-    elif not isinstance(q, int):
-        raise TypeError("%s is not an integer" % str(q))
-    else:
-        return nb % q
+    if number in ERROR_CODES:
+        return number
+    if divisor in ERROR_CODES:
+        return divisor
+
+    number, divisor = coerce_to_number(number), coerce_to_number(divisor)
+
+    if not is_number(number) or not is_number(divisor):
+        return VALUE_ERROR
+
+    return number % divisor
 
 
 def npv(*args):
@@ -389,25 +401,39 @@ def npv(*args):
     return sum([float(x) * rate ** -i for i, x in enumerate(cashflow, start=1)])
 
 
-def right(text, n):
-    if n < 0:
-        raise ValueError("Offset for right must not be negative")
-    if n == 0:
-        return ''
-    if not isinstance(text, str):
-        # TODO: hack to deal with naca section numbers
-        text = str(int(text))
+def right(text, num_chars=1):
+    # Excel reference:  https://support.office.com/en-us/article/
+    #   RIGHT-RIGHTB-functions-240267EE-9AFA-4639-A02B-F19E1786CF2F
 
-    return text[-n:]
+    if text in ERROR_CODES:
+        return text
+    if num_chars in ERROR_CODES:
+        return num_chars
+
+    num_chars = coerce_to_number(num_chars)
+
+    if not is_number(num_chars) or num_chars < 0:
+        return VALUE_ERROR
+
+    if num_chars == 0:
+        return ''
+    else:
+        return str(text)[-int(num_chars):]
 
 
 def roundup(number, num_digits):
     # Excel reference: https://support.office.com/en-us/article/
     #   ROUNDUP-function-F8BC9B23-E795-47DB-8703-DB171D0C42A7
-    if not is_number(number):
-        raise TypeError("%s is not a number" % str(number))
-    if not is_number(num_digits):
-        raise TypeError("%s is not a number" % str(num_digits))
+
+    if number in ERROR_CODES:
+        return number
+    if num_digits in ERROR_CODES:
+        return num_digits
+
+    number, num_digits = coerce_to_number(number), coerce_to_number(num_digits)
+
+    if not is_number(number) or not is_number(num_digits):
+        return VALUE_ERROR
 
     quant = Decimal('1E{}{}'.format('+-'[num_digits >= 0], abs(num_digits)))
     return float(Decimal(repr(number)).quantize(quant, rounding=ROUND_UP))
@@ -528,10 +554,9 @@ def xround(number, num_digits=0):
     # Excel reference: https://support.office.com/en-us/article/
     #   ROUND-function-c018c5d8-40fb-4053-90b1-b3e7f61a213c
 
-    if not is_number(number):
-        raise TypeError("%s is not a number" % str(number))
-    if not is_number(num_digits):
-        raise TypeError("%s is not a number" % str(num_digits))
+    number, num_digits = coerce_to_number(number), coerce_to_number(num_digits)
+    if not is_number(number) or not is_number(num_digits):
+        return VALUE_ERROR
 
     if num_digits >= 0:  # round to the right side of the point
         return float(Decimal(repr(number)).quantize(
