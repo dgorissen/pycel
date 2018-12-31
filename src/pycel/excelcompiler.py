@@ -435,6 +435,13 @@ class ExcelCompiler:
         :param output_addrs: The cells to evaluate from (defaults to all)
         :return: dict of addresses with good/bad values that failed to verify
         """
+        def close_enough(val1, val2):
+            import pytest
+            if isinstance(val1, (int, float)):
+                return val2 == pytest.approx(val1)
+            else:
+                return val1 == val2
+
         if output_addrs is None:
             to_verify = self._formula_cells
         else:
@@ -451,7 +458,8 @@ class ExcelCompiler:
                     cell.value = None
                     self._evaluate(cell.address.address)
 
-                    if original_value != cell.value:  # pragma: no branch
+                    # pragma: no branch
+                    if not close_enough(original_value, cell.value):
                         failed[str(addr)] = (original_value, cell.value,
                                              cell.formula.base_formula)
                         print('{} mismatch  {} -> {}  {}'.format(
