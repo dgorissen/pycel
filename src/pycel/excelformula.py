@@ -225,6 +225,7 @@ class ASTNode:
             self._parent = next(self.ast.successors(self), None)
         return self._parent
 
+    @property
     def emit(self):
         """Emit code"""
         return self.value
@@ -239,6 +240,7 @@ class OperatorNode(ASTNode):
         " ": "+"  # range intersection
     }
 
+    @property
     def emit(self):
         xop = self.value
 
@@ -248,19 +250,22 @@ class OperatorNode(ASTNode):
         op = self.op_map.get(xop, xop)
 
         if self.type == Token.OP_PRE:
-            return self.value + args[0].emit()
+            return self.value + args[0].emit
 
         parent = self.parent
         # don't render the ^{1,2,..} part in a linest formula
         # TODO: bit of a hack
         if op == "**":
             if parent and parent.value.lower() == "linest(":
-                return args[0].emit()
+                return args[0].emit
 
-        if op != ',':
-            op = ' ' + op
-        ss = '{}{} {}'.format(
-            args[0].emit(), op, args[1].emit())
+        if op == '%':
+            ss = '{} / 100'.format(args[0].emit)
+        else:
+            if op != ',':
+                op = ' ' + op
+
+            ss = '{}{} {}'.format(args[0].emit, op, args[1].emit)
 
         # avoid needless parentheses
         if parent and not isinstance(parent, FunctionNode):
@@ -271,6 +276,7 @@ class OperatorNode(ASTNode):
 
 class OperandNode(ASTNode):
 
+    @property
     def emit(self):
         if self.subtype == self.token.LOGICAL:
             return str(self.value.lower() == "true")
@@ -286,6 +292,7 @@ class OperandNode(ASTNode):
 class RangeNode(OperandNode):
     """Represents a spreadsheet cell or range, e.g., A5 or B3:C20"""
 
+    @property
     def emit(self):
         # resolve the range into cells
         sheet = self.cell and self.cell.sheet or ''
@@ -330,11 +337,12 @@ class FunctionNode(ASTNode):
 
     def comma_join_emit(self, fmt_str=None):
         if fmt_str is None:
-            return ", ".join(n.emit() for n in self.children)
+            return ", ".join(n.emit for n in self.children)
         else:
             return ", ".join(
-                fmt_str.format(n.emit()) for n in self.children)
+                fmt_str.format(n.emit) for n in self.children)
 
+    @property
     def emit(self):
         func = self.value.lower().strip('(')
 
@@ -354,7 +362,7 @@ class FunctionNode(ASTNode):
 
     def func_atan2(self):
         # swap arguments
-        a1, a2 = (a.emit() for a in self.children)
+        a1, a2 = (a.emit for a in self.children)
         return "atan2({}, {})".format(a2, a1)
 
     @staticmethod
@@ -364,7 +372,7 @@ class FunctionNode(ASTNode):
 
     def func_if(self):
         # inline the if
-        args = [c.emit() for c in self.children] + [0]
+        args = [c.emit for c in self.children] + [0]
         if len(args) in (3, 4):
             return "({} if {} else {})".format(args[1], args[0], args[2])
 
@@ -373,7 +381,7 @@ class FunctionNode(ASTNode):
 
     def func_array(self):
         if len(self.children) == 1:
-            return '[{}]'.format(self.children[0].emit())
+            return '[{}]'.format(self.children[0].emit)
         else:
             # multiple rows
             return '[{}]'.format(self.comma_join_emit('[{}]'))
@@ -419,7 +427,7 @@ class FunctionNode(ASTNode):
         if len(self.children) == 0:
             address = '_REF_("{}")'.format(self.cell.address)
         else:
-            address = self.children[0].emit()
+            address = self.children[0].emit
             address = address.replace('_R_', '_REF_').replace('_C_', '_REF_')
         return 'row({})'.format(address)
 
@@ -428,7 +436,7 @@ class FunctionNode(ASTNode):
         if len(self.children) == 0:
             address = '_REF_("{}")'.format(self.cell.address)
         else:
-            address = self.children[0].emit()
+            address = self.children[0].emit
             address = address.replace('_R_', '_REF_').replace('_C_', '_REF_')
         return 'column({})'.format(address)
 
@@ -505,7 +513,7 @@ class ExcelFormula:
             if self.ast is None:
                 self._python_code = ''
             else:
-                self._python_code = self.ast.emit()
+                self._python_code = self.ast.emit
         return self._python_code
 
     @property

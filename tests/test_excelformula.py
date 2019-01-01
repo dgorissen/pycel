@@ -504,6 +504,21 @@ test_data = [
         rpn='L45|FLOOR.MATH',
         python_code='floor_math(_C_("L45"))'
     ),
+    dict(
+        formula='=100%',
+        rpn='100|%',
+        python_code='100 / 100'
+    ),
+    dict(
+        formula='=100^100%',
+        rpn='100|100|%|^',
+        python_code='100 ** (100 / 100)'
+    ),
+    dict(
+        formula='=SUM(B5:B15,D5:D15)%',
+        rpn='B5:B15|D5:D15|SUM|%',
+        python_code='xsum(_R_("B5:B15"), _R_("D5:D15")) / 100',
+    ),
 ]
 
 
@@ -524,7 +539,7 @@ def dump_parse():
         parsed = excel_formula.rpn
         ast_root = excel_formula.ast
         result_rpn = "|".join(str(x) for x in parsed)
-        result_python_code = ast_root.emit()
+        result_python_code = ast_root.emit
         dump_test_case(test_case['formula'], result_python_code, result_rpn)
     print(']')
 
@@ -543,7 +558,7 @@ def test_parse(formula, python_code, rpn):
     parsed = excel_formula.rpn
     result_rpn = "|".join(str(x) for x in parsed)
     result_python_code = excel_formula.python_code
-    assert result_python_code == excel_formula.ast.emit()
+    assert result_python_code == excel_formula.ast.emit
 
     if (rpn, python_code) != (result_rpn, result_python_code):
         print("***Expected: ")
@@ -593,7 +608,7 @@ def test_ast_node():
     node = ASTNode(Token('a_value', None, None))
     assert 'ASTNode<a_value>' == repr(node)
     assert 'a_value' == str(node)
-    assert 'a_value' == node.emit()
+    assert 'a_value' == node.emit
 
 
 def test_if_args_error():
