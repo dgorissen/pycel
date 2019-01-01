@@ -12,6 +12,7 @@ from pycel.excellib import (
     countif,
     countifs,
     date,
+    hlookup,
     iferror,
     index,
     isNa,
@@ -181,6 +182,37 @@ class TestDate:
         assert (dt.datetime(1900, 1, 1) - zero).days == date(0, 1, 1)
         assert (dt.datetime(1900 + 1899, 1, 1) - zero).days == date(1899, 1, 1)
         assert (dt.datetime(1900 + 1899, 1, 1) - zero).days == date(1899, 1, 1)
+
+
+@pytest.mark.parametrize(
+    'lookup, col_idx, result, approx', (
+        ('A', 0, VALUE_ERROR, True),
+        ('A', 1, 'A', True),
+        ('A', 2, 1, True),
+        ('A', 3, 'Z', True),
+        ('A', 4, '#REF!', True),
+        ('B', 1, 'B', True),
+        ('C', 1, 'C', True),
+        ('B', 2, 2, True),
+        ('C', 2, 3, True),
+        ('B', 3, 'Y', True),
+        ('C', 3, 'X', True),
+        ('D', 3, 'X', True),
+        ('D', 3, NA_ERROR, False),
+    )
+)
+def test_hlookup(lookup, col_idx, result, approx):
+    table = (
+        ('A', 'B', 'C'),
+        (1, 2, 3),
+        ('Z', 'Y', 'X'),
+    )
+    assert result == hlookup(lookup, table, col_idx, approx)
+
+
+def test_hlookup_vlookup_error():
+    assert NA_ERROR == hlookup(1, 1, 1, 1)
+    assert NA_ERROR == vlookup(1, 1, 1, 1)
 
 
 def test_iferror():
@@ -665,28 +697,29 @@ def test_value():
 
 
 @pytest.mark.parametrize(
-    'lookup, col_idx, result', (
-        ('A', 0, VALUE_ERROR),
-        ('A', 1, 'A'),
-        ('A', 2, 1),
-        ('A', 3, 'Z'),
-        ('A', 4, '#REF!'),
-        ('B', 1, 'B'),
-        ('C', 1, 'C'),
-        ('B', 2, 2),
-        ('C', 2, 3),
-        ('B', 3, 'Y'),
-        ('C', 3, 'X'),
-        ('D', 3, NA_ERROR),
+    'lookup, col_idx, result, approx', (
+        ('A', 0, VALUE_ERROR, True),
+        ('A', 1, 'A', True),
+        ('A', 2, 1, True),
+        ('A', 3, 'Z', True),
+        ('A', 4, '#REF!', True),
+        ('B', 1, 'B', True),
+        ('C', 1, 'C', True),
+        ('B', 2, 2, True),
+        ('C', 2, 3, True),
+        ('B', 3, 'Y', True),
+        ('C', 3, 'X', True),
+        ('D', 3, 'X', True),
+        ('D', 3, NA_ERROR, False),
     )
 )
-def test_vlookup(lookup, col_idx, result):
+def test_vlookup(lookup, col_idx, result, approx):
     table = (
         ('A', 1, 'Z'),
         ('B', 2, 'Y'),
         ('C', 3, 'X'),
     )
-    assert result == vlookup(lookup, table, col_idx)
+    assert result == vlookup(lookup, table, col_idx, approx)
 
 
 def test_xlog():

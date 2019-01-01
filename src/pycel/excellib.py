@@ -165,6 +165,37 @@ def date(year, month, day):
     return result
 
 
+def hlookup(lookup_value, table_array, row_index_num, range_lookup=True):
+    """ Horizontal Lookup
+
+    :param lookup_value: value to match (value or cell reference)
+    :param table_array: range of cells being searched.
+    :param row_index_num: column number to return
+    :param range_lookup: True, assumes sorted, finds nearest. False: find exact
+    :return: #N/A if not found else value
+    """
+    # Excel reference: https://support.office.com/en-us/article/
+    #   hlookup-function-a3034eec-b719-4ba3-bb65-e1ad662ed95f
+
+    if not list_like(table_array):
+        return NA_ERROR
+
+    if row_index_num <= 0:
+        return '#VALUE!'
+
+    if row_index_num > len(table_array[0]):
+        return '#REF!'
+
+    result_idx = match(
+        lookup_value, table_array[0], match_type=int(range_lookup))
+
+    if isinstance(result_idx, int):
+        return table_array[row_index_num - 1][result_idx - 1]
+    else:
+        # error string
+        return result_idx
+
+
 def iferror(arg, value_if_error):
     # Excel reference: https://support.office.com/en-us/article/
     #   IFERROR-function-C526FD07-CAEB-47B8-8BB6-63F3E417F611
@@ -495,11 +526,20 @@ def value(text):
         return int(text)
 
 
-def vlookup(lookup_value, table_array, col_index_num, range_lookup=False):
+def vlookup(lookup_value, table_array, col_index_num, range_lookup=True):
+    """ Vertical Lookup
+
+    :param lookup_value: value to match (value or cell reference)
+    :param table_array: range of cells being searched.
+    :param col_index_num: column number to return
+    :param range_lookup: True, assumes sorted, finds nearest. False: find exact
+    :return: #N/A if not found else value
+    """
     # Excel reference: https://support.office.com/en-us/article/
     #   VLOOKUP-function-0BBC8083-26FE-4963-8AB8-93A18AD188A1
 
-    assert not range_lookup, "range_lookup not implemented in vlookup"
+    if not list_like(table_array):
+        return NA_ERROR
 
     if col_index_num <= 0:
         return '#VALUE!'
@@ -510,13 +550,14 @@ def vlookup(lookup_value, table_array, col_index_num, range_lookup=False):
     result_idx = match(
         lookup_value,
         [row[0] for row in table_array],
-        match_type=0
+        match_type=int(range_lookup)
     )
 
-    if result_idx == NA_ERROR:
-        return NA_ERROR
-    else:
+    if isinstance(result_idx, int):
         return table_array[result_idx - 1][col_index_num - 1]
+    else:
+        # error string
+        return result_idx
 
 
 def xlog(value):
