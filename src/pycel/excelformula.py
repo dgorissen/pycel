@@ -334,6 +334,10 @@ class FunctionNode(ASTNode):
     def emit(self):
         func = self.value.lower().strip('(')
 
+        if func.startswith('_xlfn.'):
+            func = func[6:]
+        func = func.replace('.', '_')
+
         # if a special handler is needed
         handler = getattr(self, 'func_{}'.format(func), None)
         if handler is not None:

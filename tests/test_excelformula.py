@@ -494,6 +494,16 @@ test_data = [
         rpn='L45|COLUMN',
         python_code='column(_REF_("L45"))'
     ),
+    dict(
+        formula='=_xlfn.FUNCTION(L45)',
+        rpn='L45|_xlfn.FUNCTION',
+        python_code='function(_C_("L45"))'
+    ),
+    dict(
+        formula='=FLOOR.MATH(L45)',
+        rpn='L45|FLOOR.MATH',
+        python_code='floor_math(_C_("L45"))'
+    ),
 ]
 
 

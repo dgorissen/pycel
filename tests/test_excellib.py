@@ -214,6 +214,18 @@ def test_hlookup_vlookup_error():
     assert NA_ERROR == hlookup(1, 1, 1, 1)
     assert NA_ERROR == vlookup(1, 1, 1, 1)
 
+    with pytest.raises(NotImplementedError, match='Array Formulas'):
+        hlookup((1, 2), ((1, 2), (3, 4)), 1, 1)
+
+    with pytest.raises(NotImplementedError, match='Array Formulas'):
+        hlookup(1, ((1, 2), (3, 4)), (1, 2), 1)
+
+    with pytest.raises(NotImplementedError, match='Array Formulas'):
+        vlookup((1, 2), ((1, 2), (3, 4)), 1, 1)
+
+    with pytest.raises(NotImplementedError, match='Array Formulas'):
+        vlookup(1, ((1, 2), (3, 4)), (1, 2), 1)
+
 
 def test_iferror():
     assert 'A' == iferror('A', 2)

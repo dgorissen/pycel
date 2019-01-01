@@ -442,6 +442,8 @@ class ExcelCompiler:
             else:
                 return val1 == val2
 
+        Mismatch = collections.namedtuple('Mismatch', 'original calced formula')
+
         if output_addrs is None:
             to_verify = self._formula_cells
         else:
@@ -460,8 +462,9 @@ class ExcelCompiler:
 
                     # pragma: no branch
                     if not close_enough(original_value, cell.value):
-                        failed[str(addr)] = (original_value, cell.value,
-                                             cell.formula.base_formula)
+                        failed.setdefault('mismatch', {})[str(addr)] = Mismatch(
+                            original_value, cell.value,
+                            cell.formula.base_formula)
                         print('{} mismatch  {} -> {}  {}'.format(
                             addr, original_value, cell.value,
                             cell.formula.base_formula))
@@ -479,10 +482,13 @@ class ExcelCompiler:
                 formula = cell and cell.formula.base_formula
                 exc_str = str(exc)
                 exc_str_split = exc_str.split('\n')
-                exc_str_key = (
-                    exc_str_split[-2] if len(exc_str_split) > 1 else exc_str)
+                if len(exc_str_split) == 1:
+                    exc_str_key = '{}: {}'.format(type(exc).__name__, exc_str)
+                else:
+                    exc_str_key = exc_str_split[-2]
 
-                if 'NameError: name ' in exc_str:
+                if ('NameError: name ' in exc_str
+                        or exc_str_key.startswith('NotImplementedError: ')):
                     failed.setdefault('not-implemented', {}).setdefault(
                         exc_str_key, []).append((str(addr), formula, exc_str))
                 else:

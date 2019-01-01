@@ -180,6 +180,9 @@ def hlookup(lookup_value, table_array, row_index_num, range_lookup=True):
     if not list_like(table_array):
         return NA_ERROR
 
+    if list_like(lookup_value) or list_like(row_index_num):
+        raise NotImplementedError('Array Formulas not implemented')
+
     if row_index_num <= 0:
         return '#VALUE!'
 
@@ -540,6 +543,9 @@ def vlookup(lookup_value, table_array, col_index_num, range_lookup=True):
 
     if not list_like(table_array):
         return NA_ERROR
+
+    if list_like(lookup_value) or list_like(col_index_num):
+        raise NotImplementedError('Array Formulas not implemented')
 
     if col_index_num <= 0:
         return '#VALUE!'

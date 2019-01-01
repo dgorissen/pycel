@@ -587,6 +587,9 @@ def range_boundaries(address, cell=None, sheet=None):
     if name_addr:
         return openpyxl_range_boundaries(name_addr[0]), name_addr[1]
 
+    if len(address.split(':')) > 2:
+        raise NotImplementedError("Multiple Colon Ranges not implemented")
+
     raise ValueError(
         "{0} is not a valid coordinate or range".format(address))
 
@@ -1058,7 +1061,7 @@ def build_operator_operand_fixup(capture_error_state):
             String / Number multiplication
         """
         if isinstance(left_op, list) or isinstance(right_op, list):
-            raise NotImplementedError('Range operators not implemented')
+            raise NotImplementedError('Array Formulas not implemented')
 
         if left_op in ERROR_CODES:
             return left_op
