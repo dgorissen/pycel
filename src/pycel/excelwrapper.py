@@ -6,6 +6,7 @@
 
 import abc
 import collections
+import itertools as it
 import os
 
 from openpyxl import load_workbook
@@ -128,6 +129,17 @@ class ExcelOpxWrapper(ExcelWrapper):
         self.workbook = load_workbook(self.filename)
         self.workbook_dataonly = load_workbook(
             self.filename, data_only=True, read_only=True)
+
+        for ws in self.workbook:  # pragma: no cover
+            # ::TODO:: this is simple hack so that we won't try to eval
+            # array formulas since they are not implemented
+            for address, props in ws.formula_attributes.items():
+                if props.get('t') == 'array':
+                    formula = '{%s}' % ws[address].value
+                    addrs = it.chain.from_iterable(
+                        AddressRange(props.get('ref')).rows)
+                    for addr in addrs:
+                        ws[addr.coordinate] = formula
 
     def set_sheet(self, s):
         self.workbook.active = self.workbook.index(self.workbook[s])

@@ -1057,6 +1057,8 @@ def build_operator_operand_fixup(capture_error_state):
             String to Number coercion
             String / Number multiplication
         """
+        if isinstance(left_op, list) or isinstance(right_op, list):
+            raise NotImplementedError('Range operators not implemented')
 
         if left_op in ERROR_CODES:
             return left_op
