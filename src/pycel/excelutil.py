@@ -173,6 +173,29 @@ class AddressRange(collections.namedtuple(
     def __str__(self):
         return self.address
 
+    def __add__(self, other):
+        """Assumes rectangular only"""
+        other = AddressRange.create(other)
+        min_col_idx = min(self.col_idx, other.col_idx)
+        min_row = min(self.row, other.row)
+
+        max_col_idx = max(self.col_idx + self.size.width,
+                          other.col_idx + other.size.width) - 1
+        max_row = max(self.row + self.size.height,
+                      other.row + other.size.height) - 1
+
+        return AddressRange((min_col_idx, min_row, max_col_idx, max_row))
+
+    @property
+    def col_idx(self):
+        """col_idx for left column"""
+        return self.start.col_idx
+
+    @property
+    def row(self):
+        """top row"""
+        return self.start.row
+
     @property
     def is_range(self):
         """Is this address a range?"""
@@ -696,7 +719,6 @@ def resolve_range(address):
         data = [address]
 
     else:
-
         start = address.start
         end = address.end
 

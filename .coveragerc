@@ -5,12 +5,7 @@
 branch = True
 
 include =
-    src/pycel/excelcompiler.py
-    src/pycel/excelformula.py
-    src/pycel/excellib.py
-    src/pycel/excelutil.py
-    src/pycel/excelwrapper.py
-    src/pycel/version.py
+    src/pycel/*
 
 omit =
     */pycel/addin.py
@@ -30,7 +25,6 @@ exclude_lines =
 
     # Don't complain if tests don't hit defensive assertion code:
     raise AssertionError
-    raise NotImplementedError
 
     # Don't complain if non-runnable code isn't run:
     if 0:

@@ -83,6 +83,22 @@ def test_address_range_errors():
         AddressRange('B32:B')
 
 
+@pytest.mark.parametrize(
+    'left, right, result', (
+        ('a1:b2', 'b1:c3', 'a1:c3'),
+        ('a1:b2', 'd5', 'a1:d5'),
+        ('a1:d5', 'b3', 'a1:d5'),
+        ('d4:e5', 'a1', 'a1:e5'),
+        ('c4:e5', 'd1', 'c1:e5'),
+        ('c4:e6', 'a5', 'a4:e6'),
+        ('c4:e5', 'd9', 'c4:e9'),
+        ('c4:e6', 'j5', 'c4:j6'),
+    )
+)
+def test_address_range_add(left, right, result):
+    assert AddressRange(left) + AddressRange(right) == AddressRange(result)
+
+
 def test_is_range():
 
     assert AddressRange('a1:b2').is_range
@@ -377,6 +393,9 @@ def test_extended_range_boundaries():
     assert (1, None, 4, None) == range_boundaries('C:C[3]', cell)[0]
     assert (1, None, 4, None) == range_boundaries('C1:C[3]', cell)[0]
     assert (2, None, 4, None) == range_boundaries('C2:C[3]', cell)[0]
+
+    with pytest.raises(NotImplementedError, match='Multiple Colon Ranges'):
+        range_boundaries('A1:B2:C3')
 
 
 def test_range_boundaries_defined_names(excel):
@@ -934,6 +953,8 @@ def test_excel_operator_operand_fixup(left_op, op, right_op, expected):
     'left_op, op, right_op, exc',
     [
         ('', 'BadOp', '', KeyError),
+        ([], 'Add', '', NotImplementedError),
+        ('', 'Add', [], NotImplementedError),
     ]
 )
 def test_excel_operator_operand_fixup_errors(left_op, op, right_op, exc):
