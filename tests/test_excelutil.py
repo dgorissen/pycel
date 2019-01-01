@@ -44,7 +44,7 @@ class ATestCell:
         self.col_idx = column_index_from_string(col)
         self.sheet = sheet
         self.excel = excel
-        self.address = 'A1'
+        self.address = AddressCell('{}{}'.format(col, row)).address
 
 
 def test_address_range():

@@ -798,6 +798,9 @@ def test_column():
     assert 4 == eval_ctx(ExcelFormula('=COLUMN(D1:D2)'))
     assert 4 == eval_ctx(ExcelFormula('=COLUMN(D1:E2)'))
 
+    cell = ATestCell('B', 3)
+    assert 2 == eval_ctx(ExcelFormula('=COLUMN()', cell=cell))
+
 
 def test_row():
     eval_ctx = ExcelFormula.build_eval_context(None, None)
@@ -808,6 +811,9 @@ def test_row():
     assert 1 == eval_ctx(ExcelFormula('=ROW(D1:E1)'))
     assert 1 == eval_ctx(ExcelFormula('=ROW(D1:D2)'))
     assert 1 == eval_ctx(ExcelFormula('=ROW(D1:E2)'))
+
+    cell = ATestCell('B', 3)
+    assert 3 == eval_ctx(ExcelFormula('=ROW()', cell=cell))
 
 
 def test_div_zero(caplog):

@@ -6,6 +6,7 @@ import sys
 
 import openpyxl.formula.tokenizer as tokenizer
 from networkx.classes.digraph import DiGraph
+from networkx.exception import NetworkXError
 from pycel.excelutil import (
     AddressRange,
     build_operator_operand_fixup,
@@ -203,7 +204,10 @@ class ASTNode:
     @property
     def children(self):
         if self._children is None:
-            args = self.ast.predecessors(self)
+            try:
+                args = self.ast.predecessors(self)
+            except NetworkXError:
+                args = []
             self._children = sorted(args, key=lambda x: self.ast.node[x]['pos'])
         # args.reverse()
         return self._children
@@ -411,14 +415,22 @@ class FunctionNode(ASTNode):
         return "any(({},))".format(self.comma_join_emit())
 
     def func_row(self):
-        assert 1 == len(self.children)
-        emitted = 'row({})'.format(self.children[0].emit())
-        return emitted.replace('_R_', '_REF_').replace('_C_', '_REF_')
+        assert len(self.children) <= 1
+        if len(self.children) == 0:
+            address = '_REF_("{}")'.format(self.cell.address)
+        else:
+            address = self.children[0].emit()
+            address = address.replace('_R_', '_REF_').replace('_C_', '_REF_')
+        return 'row({})'.format(address)
 
     def func_column(self):
-        assert 1 == len(self.children)
-        emitted = 'column({})'.format(self.children[0].emit())
-        return emitted.replace('_R_', '_REF_').replace('_C_', '_REF_')
+        assert len(self.children) <= 1
+        if len(self.children) == 0:
+            address = '_REF_("{}")'.format(self.cell.address)
+        else:
+            address = self.children[0].emit()
+            address = address.replace('_R_', '_REF_').replace('_C_', '_REF_')
+        return 'column({})'.format(address)
 
 
 class ExcelFormula:
