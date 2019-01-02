@@ -819,6 +819,7 @@ def test_xmin():
 )
 def test_xround(result, digits):
     assert result == xround(12345.6789, digits)
+    assert result == xround(12345.6789, digits + (-0.9 if digits < 0 else 0.9))
 
 
 @pytest.mark.parametrize(

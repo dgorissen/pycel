@@ -637,6 +637,7 @@ def xround(number, num_digits=0):
     if not is_number(number) or not is_number(num_digits):
         return VALUE_ERROR
 
+    num_digits = int(num_digits)
     if num_digits >= 0:  # round to the right side of the point
         return float(Decimal(repr(number)).quantize(
             Decimal(repr(pow(10, -num_digits))),
