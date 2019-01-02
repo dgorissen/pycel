@@ -323,6 +323,7 @@ class FunctionNode(ASTNode):
 
     # dict of excel equivalent functions
     func_map = {
+        "len": "xlen",
         "ln": "xlog",
         "min": "xmin",
         "max": "xmax",

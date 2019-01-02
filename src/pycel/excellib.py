@@ -566,6 +566,16 @@ def vlookup(lookup_value, table_array, col_index_num, range_lookup=True):
         return result_idx
 
 
+def xlen(value):
+    if value in ERROR_CODES:
+        return value
+
+    if value is None:
+        return 0
+    else:
+        return len(str(value))
+
+
 def xlog(value):
     if list_like(value):
         return [math_wrap(log)(x) for x in flatten(value)]

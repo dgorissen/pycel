@@ -31,6 +31,7 @@ from pycel.excellib import (
     value,
     vlookup,
     xlog,
+    xlen,
     xmax,
     xmin,
     xround,
@@ -732,6 +733,22 @@ def test_vlookup(lookup, col_idx, result, approx):
         ('C', 3, 'X'),
     )
     assert result == vlookup(lookup, table, col_idx, approx)
+
+
+@pytest.mark.parametrize(
+    'param, result', (
+            ('A', 1),
+            ('BB', 2),
+            (3.0, 3),
+            (True, 4),
+            (False, 5),
+            (None, 0),
+            (NA_ERROR, NA_ERROR),
+            (DIV0, DIV0),
+    )
+)
+def test_xlen(param, result):
+    assert xlen(param) == result
 
 
 def test_xlog():
