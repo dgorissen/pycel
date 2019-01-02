@@ -731,8 +731,8 @@ def test_init_from_python_code():
 def test_string_number_compare():
     eval_ctx = ExcelFormula.build_eval_context(None, None)
 
-    assert 1 == eval_ctx(ExcelFormula('=sum(1=1.0, "1"=1, 1="1")'))
-    assert 1 == eval_ctx(ExcelFormula('=sum("1"="1", "x"=1)'))
+    assert 1 == eval_ctx(ExcelFormula('=(1=1.0)+("1"=1)+(1="1")'))
+    assert 1 == eval_ctx(ExcelFormula('=("1"="1") + ("x"=1)'))
     assert 'b' == eval_ctx(ExcelFormula('=if("x"<>"x", "a", "b")'))
 
 
@@ -757,8 +757,8 @@ def test_bool_ops(formula, result):
 
 def test_empty_cell_logic_op():
     eval_ctx = ExcelFormula.build_eval_context(lambda x: None, None)
-    assert 1 == eval_ctx(ExcelFormula('=sum(A1=0, A1=1)'))
-    assert 3 == eval_ctx(ExcelFormula('=sum(A1<0, A1<=0, A1=0, A1>=0, A1>0)'))
+    assert 1 == eval_ctx(ExcelFormula('=(A1=0) + (A1=1)'))
+    assert 3 == eval_ctx(ExcelFormula('=(A1<0)+(A1<=0)+(A1=0)+(A1>=0)+(A1>0)'))
 
 
 @pytest.mark.parametrize(

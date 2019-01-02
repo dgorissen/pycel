@@ -59,6 +59,8 @@ def test_average():
     assert 2.25 == average(1, '3', 2.0, pytest, 3, 'x')
     assert 2 == average((1, '3', 2.0, pytest, 3, 'x'))
 
+    assert -0.1 == average((-0.1, None, 'x', True))
+
     assert DIV0 == average(['x'])
 
     assert VALUE_ERROR == average(VALUE_ERROR)
@@ -785,6 +787,8 @@ def test_xmax():
     assert 0 == xmax('abcd')
     assert 3 == xmax((2, None, 'x', 3))
 
+    assert -0.1 == xmax((-0.1, None, 'x', True))
+
     assert VALUE_ERROR == xmax(VALUE_ERROR)
     assert VALUE_ERROR == xmax((2, VALUE_ERROR))
 
@@ -795,6 +799,8 @@ def test_xmax():
 def test_xmin():
     assert 0 == xmin('abcd')
     assert 2 == xmin((2, None, 'x', 3))
+
+    assert -0.1 == xmin((-0.1, None, 'x', True))
 
     assert VALUE_ERROR == xmin(VALUE_ERROR)
     assert VALUE_ERROR == xmin((2, VALUE_ERROR))
@@ -860,6 +866,8 @@ class TestXRound:
 def test_xsum():
     assert 0 == xsum('abcd')
     assert 5 == xsum((2, None, 'x', 3))
+
+    assert -0.1 == xsum((-0.1, None, 'x', True))
 
     assert VALUE_ERROR == xsum(VALUE_ERROR)
     assert VALUE_ERROR == xsum((2, VALUE_ERROR))
