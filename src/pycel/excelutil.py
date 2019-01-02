@@ -1097,19 +1097,29 @@ def build_operator_operand_fixup(capture_error_state):
         if right_op in (None, EMPTY):
             right_op = type_cmp_value(left_op)[1]
 
-        if op == 'BitAnd':
-            # use bitwise-and '&' as string concat not '+'
-            left_op = str(coerce_to_number(left_op))
-            right_op = str(coerce_to_number(right_op))
-            op = 'Add'
-
-        elif op in COMPARISION_OPS:
+        if op in COMPARISION_OPS:
             left_op = ExcelCmp(left_op)
             right_op = ExcelCmp(right_op)
 
         else:
             left_op = coerce_to_number(left_op)
             right_op = coerce_to_number(right_op)
+
+            if isinstance(left_op, bool):
+                left_op = (str(left_op).upper()
+                           if not is_number(right_op) or op == 'BitAnd'
+                           else int(left_op))
+
+            if isinstance(right_op, bool):
+                right_op = (str(right_op).upper()
+                            if not is_number(left_op) or op == 'BitAnd'
+                            else int(right_op))
+
+            if op == 'BitAnd':
+                # use bitwise-and '&' as string concat not '+'
+                left_op = str(left_op)
+                right_op = str(right_op)
+                op = 'Add'
 
         if op == 'Mult':
             if isinstance(left_op, str) or isinstance(right_op, str):

@@ -893,10 +893,26 @@ def test_excel_cmp(lval, op, rval, result):
         (5, 'Lt', '5', True),
         ('5', 'Lt', '5', False),
         ('5', 'Lt', '2', False),
-        ('5', 'Lt', True, True),
         (True, 'Lt', True, False),
         (True, 'Lt', False, False),
         (False, 'Lt', False, False),
+
+        (True, 'Add', 5, 6),
+        (False, 'Add', 5, 5),
+        (True, 'Mult', 5, 5),
+        (False, 'Mult', 5, 0),
+        (5, 'Add', True, 6),
+        (5, 'Add', False, 5),
+
+        (True, 'Add', 'xyzzy', 'TRUExyzzy'),
+        (False, 'Add', 'xyzzy', 'FALSExyzzy'),
+        ('xyzzy', 'Add', True, 'xyzzyTRUE'),
+        (True, 'Add', True, 2),
+
+        (True, 'BitAnd', 5, 'TRUE5'),
+        (False, 'BitAnd', 5, 'FALSE5'),
+        (5, 'BitAnd', True, '5TRUE'),
+        (5, 'BitAnd', False, '5FALSE'),
 
         # value errors
         (VALUE_ERROR, 'Add', 0, VALUE_ERROR),

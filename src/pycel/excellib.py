@@ -421,7 +421,7 @@ def mod(number, divisor):
 
     number, divisor = coerce_to_number(number), coerce_to_number(divisor)
 
-    if divisor == 0:
+    if divisor in (0, None):
         return DIV0
 
     if not is_number(number) or not is_number(divisor):

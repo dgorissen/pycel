@@ -560,6 +560,7 @@ class TestMod:
         assert mod(2, VALUE_ERROR) == VALUE_ERROR
         assert mod(2, 'x') == VALUE_ERROR
         assert mod(2, 0) == DIV0
+        assert mod(2, None) == DIV0
 
     def test_output_value(self):
         assert 2 == mod(10, 4)
