@@ -317,19 +317,20 @@ class FunctionNode(ASTNode):
     function called foobar to this module.  You only need to add it to the
     function map, if you want to use a different name in the python code.
 
-    Note: some functions (if, pi, atan2, and, or, array, ...) are already taken
+    Note: some functions (if, pi, and, or, array, ...) are already taken
     care of in the FunctionNode code, so adding them here will have no effect.
     """
 
     # dict of excel equivalent functions
     func_map = {
+        "atan2": "xatan2",
+        "gammaln": "lgamma",
         "len": "xlen",
         "ln": "xlog",
-        "min": "xmin",
         "max": "xmax",
+        "min": "xmin",
+        "round": "xround",
         "sum": "xsum",
-        "gammaln": "lgamma",
-        "round": "xround"
     }
 
     def __init__(self, *args):
@@ -360,11 +361,6 @@ class FunctionNode(ASTNode):
             # map to the correct name
             return "{}({})".format(
                 self.func_map.get(func, func), self.comma_join_emit())
-
-    def func_atan2(self):
-        # swap arguments
-        a1, a2 = (a.emit for a in self.children)
-        return "atan2({}, {})".format(a2, a1)
 
     @staticmethod
     def func_pi():

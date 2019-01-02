@@ -6,7 +6,7 @@ import itertools as it
 from collections import Counter
 from datetime import datetime
 from decimal import Decimal, ROUND_HALF_UP, ROUND_UP
-from math import log
+from math import atan2, log
 
 import numpy as np
 from pycel.excelutil import (
@@ -564,6 +564,19 @@ def vlookup(lookup_value, table_array, col_index_num, range_lookup=True):
     else:
         # error string
         return result_idx
+
+
+def xatan2(value1, value2):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   ATAN2-function-C04592AB-B9E3-4908-B428-C96B3A565033
+    if value1 in ERROR_CODES:
+        return value1
+
+    if value2 in ERROR_CODES:
+        return value2
+
+    # swap arguments
+    return math_wrap(atan2)(value2, value1)
 
 
 def xlen(value):

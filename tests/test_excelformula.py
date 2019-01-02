@@ -207,7 +207,7 @@ test_data = [
     dict(
         formula='=atan2(A1,B1)',
         rpn='A1|B1|atan2',
-        python_code='atan2(_C_("B1"), _C_("A1"))',
+        python_code='xatan2(_C_("A1"), _C_("B1"))',
     ),
     dict(
         formula='=5*log(sin()+2)',

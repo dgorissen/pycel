@@ -28,8 +28,9 @@ from pycel.excellib import (
     row,
     sumif,
     sumifs,
-    value,
+    value as lib_value,
     vlookup,
+    xatan2,
     xlog,
     xlen,
     xmax,
@@ -186,7 +187,7 @@ class TestDate:
 
 
 @pytest.mark.parametrize(
-    'lookup, col_idx, result, approx', (
+    'lkup, col_idx, result, approx', (
         ('A', 0, VALUE_ERROR, True),
         ('A', 1, 'A', True),
         ('A', 2, 1, True),
@@ -202,13 +203,13 @@ class TestDate:
         ('D', 3, NA_ERROR, False),
     )
 )
-def test_hlookup(lookup, col_idx, result, approx):
+def test_hlookup(lkup, col_idx, result, approx):
     table = (
         ('A', 'B', 'C'),
         (1, 2, 3),
         ('Z', 'Y', 'X'),
     )
-    assert result == hlookup(lookup, table, col_idx, approx)
+    assert result == hlookup(lkup, table, col_idx, approx)
 
 
 def test_hlookup_vlookup_error():
@@ -704,13 +705,13 @@ class TestSumIfs:
 
 
 def test_value():
-    assert 0.123 == value('.123')
-    assert 123 == value('123')
-    assert isinstance(value('123'), int)
+    assert 0.123 == lib_value('.123')
+    assert 123 == lib_value('123')
+    assert isinstance(lib_value('123'), int)
 
 
 @pytest.mark.parametrize(
-    'lookup, col_idx, result, approx', (
+    'lkup, col_idx, result, approx', (
         ('A', 0, VALUE_ERROR, True),
         ('A', 1, 'A', True),
         ('A', 2, 1, True),
@@ -726,25 +727,40 @@ def test_value():
         ('D', 3, NA_ERROR, False),
     )
 )
-def test_vlookup(lookup, col_idx, result, approx):
+def test_vlookup(lkup, col_idx, result, approx):
     table = (
         ('A', 1, 'Z'),
         ('B', 2, 'Y'),
         ('C', 3, 'X'),
     )
-    assert result == vlookup(lookup, table, col_idx, approx)
+    assert result == vlookup(lkup, table, col_idx, approx)
+
+
+@pytest.mark.parametrize(
+    'param1, param2, result', (
+        (1, 1, math.pi / 4),
+        (1, 0, 0),
+        (0, 1, math.pi / 2),
+        (NA_ERROR, 1, NA_ERROR),
+        (1, NA_ERROR, NA_ERROR),
+        (DIV0, 1, DIV0),
+        (1, DIV0, DIV0),
+    )
+)
+def test_xatan2(param1, param2, result):
+    assert xatan2(param1, param2) == result
 
 
 @pytest.mark.parametrize(
     'param, result', (
-            ('A', 1),
-            ('BB', 2),
-            (3.0, 3),
-            (True, 4),
-            (False, 5),
-            (None, 0),
-            (NA_ERROR, NA_ERROR),
-            (DIV0, DIV0),
+        ('A', 1),
+        ('BB', 2),
+        (3.0, 3),
+        (True, 4),
+        (False, 5),
+        (None, 0),
+        (NA_ERROR, NA_ERROR),
+        (DIV0, DIV0),
     )
 )
 def test_xlen(param, result):
