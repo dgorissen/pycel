@@ -45,6 +45,7 @@ from pycel.excelutil import (
     ERROR_CODES,
     ExcelCmp,
     NA_ERROR,
+    NUM_ERROR,
     PyCelException,
     VALUE_ERROR,
 )
@@ -776,6 +777,7 @@ def test_xlog():
     assert [math.log(5), math.log(6)] == xlog((5, 6))
     assert [math.log(5), math.log(6)] == xlog(np.array([5, 6]))
 
+    assert NUM_ERROR == xlog(None)
     assert VALUE_ERROR == xlog(VALUE_ERROR)
     assert [math.log(2), VALUE_ERROR] == xlog((2, VALUE_ERROR))
 

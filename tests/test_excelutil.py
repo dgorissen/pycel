@@ -451,13 +451,17 @@ def test_coerce_to_number():
         coerce_to_number(DIV0)
 
 
-def test_math_wrap():
-    func = math_wrap(lambda x: x)
-
-    assert func(1) == 1
-    assert func(DIV0) == DIV0
-    assert func(None) == 0
-    assert func('1.1') == 1.1
+@pytest.mark.parametrize(
+    'value, result', (
+        (1, 1),
+        (DIV0, DIV0),
+        (None, 0),
+        ('1.1', 1.1),
+        ('xyzzy', VALUE_ERROR),
+    )
+)
+def test_math_wrap(value, result):
+    assert math_wrap(lambda x: x)(value) == result
 
 
 def test_get_linest_degree():

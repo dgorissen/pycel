@@ -850,11 +850,20 @@ def math_wrap(bare_func):
     """wrapper for functions that take numbers to handle errors"""
 
     def func(*args):
+        # this is a bit of a ::HACK:: to quickly address the most common cases
+        # for reasonable math function parameters
         for arg in args:
             if arg in ERROR_CODES:
                 return arg
-        return bare_func(*(0 if a in (None, EMPTY)
-                           else coerce_to_number(a) for a in args))
+        if not (is_number(args[0]) or args[0] in (None, EMPTY)):
+            return VALUE_ERROR
+        try:
+            return bare_func(*(0 if a in (None, EMPTY)
+                               else coerce_to_number(a) for a in args))
+        except ValueError as exc:
+            if "math domain error" in str(exc):
+                return NUM_ERROR
+            raise  # pragma: no cover
     return func
 
 
@@ -1092,10 +1101,10 @@ def build_operator_operand_fixup(capture_error_state):
             return right_op
 
         if left_op in (None, EMPTY):
-            left_op = type_cmp_value(right_op)[1]
+            left_op = type_cmp_value('' if op == 'BitAnd' else right_op)[1]
 
         if right_op in (None, EMPTY):
-            right_op = type_cmp_value(left_op)[1]
+            right_op = type_cmp_value('' if op == 'BitAnd' else left_op)[1]
 
         if op in COMPARISION_OPS:
             left_op = ExcelCmp(left_op)
