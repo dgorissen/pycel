@@ -1,3 +1,4 @@
+import math
 import os
 import pickle
 from collections import namedtuple
@@ -464,6 +465,10 @@ def test_math_wrap(value, result):
     assert math_wrap(lambda x: x)(value) == result
 
 
+def test_math_wrap_domain_error():
+    assert math_wrap(math.log)(-1) == NUM_ERROR
+
+
 def test_get_linest_degree():
     # build a spreadsheet with linest formulas horiz and vert
 
@@ -849,6 +854,11 @@ def test_excel_cmp(lval, op, rval, result):
         ('1', 'Add', 2, 3),
         ('1', 'Add', '2', 3),
 
+        (None, 'Add', 2, 2),
+        (2, 'Add', None, 2),
+        (None, 'Add', '2', 2),
+        ('2', 'Add', None, 2),
+
         (1, 'Sub', 2, -1),
         (1, 'Sub', '2', -1),
         ('1', 'Sub', 2, -1),
@@ -874,11 +884,10 @@ def test_excel_cmp(lval, op, rval, result):
         ('2', 'Pow', 2, 4),
         ('2', 'Pow', '2', 4),
 
-        ('', 'UAdd', 2, 2),
-        ('', 'UAdd', '2', 2),
-
         ('', 'USub', 2, -2),
         ('', 'USub', '2', -2),
+        ('', 'USub', 'X', VALUE_ERROR),
+        (None, 'USub', 'X', VALUE_ERROR),
 
         (5, 'Eq', 5, True),
         (5, 'Eq', 2, False),
@@ -908,10 +917,10 @@ def test_excel_cmp(lval, op, rval, result):
         (5, 'Add', True, 6),
         (5, 'Add', False, 5),
 
-        (True, 'Add', 'xyzzy', 'TRUExyzzy'),
-        (False, 'Add', 'xyzzy', 'FALSExyzzy'),
-        ('xyzzy', 'Add', True, 'xyzzyTRUE'),
-        (True, 'Add', True, 2),
+        (True, 'BitAnd', 'xyzzy', 'TRUExyzzy'),
+        (False, 'BitAnd', 'xyzzy', 'FALSExyzzy'),
+        ('xyzzy', 'BitAnd', True, 'xyzzyTRUE'),
+        (True, 'BitAnd', True, 'TRUETRUE'),
 
         (True, 'BitAnd', 5, 'TRUE5'),
         (False, 'BitAnd', 5, 'FALSE5'),
@@ -923,16 +932,34 @@ def test_excel_cmp(lval, op, rval, result):
         (0, 'Add', VALUE_ERROR, VALUE_ERROR),
         ('X', 'Add', 0, VALUE_ERROR),
         (0, 'Add', 'X', VALUE_ERROR),
+        ('X', 'Add', 'X', VALUE_ERROR),
+        (True, 'Add', 'X', VALUE_ERROR),
+        (None, 'Add', 'X', VALUE_ERROR),
         ('X', 'Sub', 0, VALUE_ERROR),
         (0, 'Sub', 'X', VALUE_ERROR),
+        ('X', 'Sub', 'X', VALUE_ERROR),
+        (True, 'Sub', 'X', VALUE_ERROR),
+        (None, 'Sub', 'X', VALUE_ERROR),
         ('X', 'Mult', 0, VALUE_ERROR),
         (0, 'Mult', 'X', VALUE_ERROR),
+        ('X', 'Mult', 'X', VALUE_ERROR),
+        (True, 'Mult', 'X', VALUE_ERROR),
+        (None, 'Mult', 'X', VALUE_ERROR),
         ('X', 'Div', 0, VALUE_ERROR),
         (0, 'Div', 'X', VALUE_ERROR),
+        ('X', 'Div', 'X', VALUE_ERROR),
+        (True, 'Div', 'X', VALUE_ERROR),
+        (None, 'Div', 'X', VALUE_ERROR),
         ('X', 'Mod', 0, VALUE_ERROR),
         (0, 'Mod', 'X', VALUE_ERROR),
+        ('X', 'Mod', 'X', VALUE_ERROR),
+        (True, 'Mod', 'X', VALUE_ERROR),
+        (None, 'Mod', 'X', VALUE_ERROR),
         ('X', 'Pow', 0, VALUE_ERROR),
         (0, 'Pow', 'X', VALUE_ERROR),
+        ('X', 'Pow', 'X', VALUE_ERROR),
+        (True, 'Pow', 'X', VALUE_ERROR),
+        (None, 'Pow', 'X', VALUE_ERROR),
 
         # mixed errors
         (VALUE_ERROR, 'Add', DIV0, VALUE_ERROR),
@@ -946,6 +973,8 @@ def test_excel_cmp(lval, op, rval, result):
         (0, 'Add', DIV0, DIV0),
         (0, 'Sub', VALUE_ERROR, VALUE_ERROR),
         (0, 'Div', NUM_ERROR, NUM_ERROR),
+
+        ('', 'BadOp', '', VALUE_ERROR),
     ]
 )
 def test_excel_operator_operand_fixup(left_op, op, right_op, expected):
@@ -958,9 +987,7 @@ def test_excel_operator_operand_fixup(left_op, op, right_op, expected):
         capture_error_state)(left_op, op, right_op)
 
     if expected == VALUE_ERROR:
-        if op == 'Mult':
-            assert 'Cannot multiple type: ' in error_messages[0][1]
-        elif expected == VALUE_ERROR and VALUE_ERROR not in (left_op, right_op):
+        if expected == VALUE_ERROR and VALUE_ERROR not in (left_op, right_op):
             assert [(True, 'Values: {} {} {}'.format(left_op, op, right_op))
                     ] == error_messages
 
@@ -972,7 +999,6 @@ def test_excel_operator_operand_fixup(left_op, op, right_op, expected):
 @pytest.mark.parametrize(
     'left_op, op, right_op, exc',
     [
-        ('', 'BadOp', '', KeyError),
         ([], 'Add', '', NotImplementedError),
         ('', 'Add', [], NotImplementedError),
     ]

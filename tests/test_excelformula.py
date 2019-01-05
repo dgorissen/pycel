@@ -681,7 +681,7 @@ def test_row():
     assert 6 == eval_ctx(ExcelFormula('=ROW(B6:D7 C7:E7)'))
 
 
-def test_div_zero(caplog):
+def test_div_zero():
     eval_ctx = ExcelFormula.build_eval_context(
         lambda x: DIV0, lambda x: [[1, 1], [1, DIV0]],
         logging.getLogger('pycel_x'))
@@ -690,6 +690,14 @@ def test_div_zero(caplog):
     assert DIV0 == eval_ctx(ExcelFormula('=sum(A1:B2)'))
     assert DIV0 == eval_ctx(ExcelFormula('=a1=1'))
     assert DIV0 == eval_ctx(ExcelFormula('=a1+"l"'))
+
+    assert DIV0 == eval_ctx(ExcelFormula('=1 - (1 / 0)'))
+
+
+def test_error_logging(caplog):
+    eval_ctx = ExcelFormula.build_eval_context(
+        lambda x: DIV0, lambda x: [[1, 1], [1, DIV0]],
+        logging.getLogger('pycel_x'))
 
     caplog.set_level(logging.INFO)
     assert 3 == eval_ctx(ExcelFormula('=iferror(1/0,3)'))
@@ -707,14 +715,8 @@ Eval: 1 / 0
 Values: 1 Div 0"""
     assert message in caplog.records[1].message
 
-    eval_ctx = ExcelFormula.build_eval_context(
-        lambda x: 0, lambda x: [0],
-        logging.getLogger('pycel_x'))
 
-    assert DIV0 == eval_ctx(ExcelFormula('=1 - (1 / 0)'))
-
-
-def test_value_error(caplog):
+def test_value_error():
     eval_ctx = ExcelFormula.build_eval_context(
         lambda x: VALUE_ERROR, lambda x: [[1, 1], [1, VALUE_ERROR]],
         logging.getLogger('pycel_x'))
@@ -724,41 +726,8 @@ def test_value_error(caplog):
     assert VALUE_ERROR == eval_ctx(ExcelFormula('=a1=1'))
     assert VALUE_ERROR == eval_ctx(ExcelFormula('=a1+"l"'))
 
-    caplog.set_level(logging.INFO)
     assert 3 == eval_ctx(ExcelFormula('=iferror(1+"A",3)'))
-    assert 1 == len(caplog.records)
-    assert "INFO" == caplog.records[0].levelname
-    assert "unsupported operand type(s)" in caplog.records[0].message
-
     assert VALUE_ERROR == eval_ctx(ExcelFormula('=1+"A"'))
-    assert 2 == len(caplog.records)
-    assert "WARNING" == caplog.records[1].levelname
-
-    message = """return PYTHON_AST_OPERATORS[op](left_op, right_op)
-TypeError: unsupported operand type(s) for +: 'int' and 'str'
-Eval: 1 + "A"
-Values: 1 Add A"""
-    assert message in caplog.records[1].message
-
-
-def test_string_number_mult(caplog):
-    eval_ctx = ExcelFormula.build_eval_context(
-        lambda x: VALUE_ERROR, lambda x: [[1, 1], [1, VALUE_ERROR]],
-        logging.getLogger('pycel_x'))
-
-    caplog.set_level(logging.INFO)
-    assert 3 == eval_ctx(ExcelFormula('=iferror(2*"A",3)'))
-    assert 1 == len(caplog.records)
-    assert "INFO" == caplog.records[0].levelname
-    assert "Cannot multiple type:" in caplog.records[0].message
-
-    assert VALUE_ERROR == eval_ctx(ExcelFormula('="a"*2'))
-    assert 2 == len(caplog.records)
-    assert "WARNING" == caplog.records[1].levelname
-
-    message = """Eval: "a" * 2
-Cannot multiple type: str(a) * int(2)"""
-    assert message in caplog.records[1].message
 
 
 def test_eval_exception():

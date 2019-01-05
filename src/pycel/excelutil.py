@@ -1100,19 +1100,33 @@ def build_operator_operand_fixup(capture_error_state):
         if right_op in ERROR_CODES:
             return right_op
 
-        if left_op in (None, EMPTY):
-            left_op = type_cmp_value('' if op == 'BitAnd' else right_op)[1]
-
-        if right_op in (None, EMPTY):
-            right_op = type_cmp_value('' if op == 'BitAnd' else left_op)[1]
-
         if op in COMPARISION_OPS:
+            if left_op in (None, EMPTY):
+                left_op = type_cmp_value(right_op)[1]
+
+            if right_op in (None, EMPTY):
+                right_op = type_cmp_value(left_op)[1]
+
             left_op = ExcelCmp(left_op)
             right_op = ExcelCmp(right_op)
 
         else:
             left_op = coerce_to_number(left_op)
             right_op = coerce_to_number(right_op)
+
+            if left_op in (None, EMPTY) and is_number(right_op):
+                left_op = 0
+
+            if right_op in (None, EMPTY) and is_number(left_op):
+                right_op = 0
+
+            if not (is_number(left_op) and is_number(right_op)
+                    or isinstance(left_op, AddressRange)
+                    and isinstance(right_op, AddressRange)):
+                if op not in ('USub', 'BitAnd'):
+                    capture_error_state(
+                        True, 'Values: {} {} {}'.format(left_op, op, right_op))
+                    return VALUE_ERROR
 
             if isinstance(left_op, bool):
                 left_op = (str(left_op).upper()
@@ -1130,20 +1144,8 @@ def build_operator_operand_fixup(capture_error_state):
                 right_op = str(right_op)
                 op = 'Add'
 
-        if op == 'Mult':
-            if isinstance(left_op, str) or isinstance(right_op, str):
-                # Python is quite happy to multiply strings and numbers
-                capture_error_state(
-                    False,
-                    "Cannot multiple type: {}({}) * {}({})".format(
-                        type(left_op).__name__, left_op,
-                        type(right_op).__name__, right_op
-                    )
-                )
-                return VALUE_ERROR
-
         try:
-            if op in ('USub', 'UAdd'):
+            if op == 'USub':
                 return PYTHON_AST_OPERATORS[op](right_op)
             else:
                 return PYTHON_AST_OPERATORS[op](left_op, right_op)
