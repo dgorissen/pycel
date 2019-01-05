@@ -463,22 +463,23 @@ def right(text, num_chars=1):
         return str(text)[-int(num_chars):]
 
 
-def roundup(number, num_digits):
+def roundup_unwrapped(number, num_digits):
     # Excel reference: https://support.office.com/en-us/article/
     #   ROUNDUP-function-F8BC9B23-E795-47DB-8703-DB171D0C42A7
-
-    if number in ERROR_CODES:
-        return number
-    if num_digits in ERROR_CODES:
-        return num_digits
 
     number, num_digits = coerce_to_number(number), coerce_to_number(num_digits)
 
     if not is_number(number) or not is_number(num_digits):
         return VALUE_ERROR
 
+    if isinstance(number, bool):
+        number = int(number)
+
     quant = Decimal('1E{}{}'.format('+-'[num_digits >= 0], abs(num_digits)))
     return float(Decimal(repr(number)).quantize(quant, rounding=ROUND_UP))
+
+
+roundup = math_wrap(roundup_unwrapped)
 
 
 def row(ref):

@@ -777,7 +777,7 @@ class ExcelFormula:
             name_space['_REF_'] = AddressRange.create
             name_space['pi'] = math.pi
 
-            for name in ('int', 'abs'):
+            for name in ('int', 'abs', 'round'):
                 name_space[name] = math_wrap(
                     globals()['__builtins__'][name])
 

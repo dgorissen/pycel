@@ -612,27 +612,21 @@ def test_right(text, num_chars, expected):
 
 @pytest.mark.parametrize(
     'number, digits, result', (
-            (3.2, 0, 4),
-            (76.9, 0, 77),
-            (3.14159, 3, 3.142),
-            (-3.14159, 1, -3.2),
-            (31415.92654, -2, 31500),
+        (3.2, 0, 4),
+        (76.9, 0, 77),
+        (3.14159, 3, 3.142),
+        (-3.14159, 1, -3.2),
+        (31415.92654, -2, 31500),
+        (None, -2, 0),
+        (True, -2, 100),
+        (3.2, 'X', VALUE_ERROR),
+        ('X', 0, VALUE_ERROR),
+        (3.2, VALUE_ERROR, VALUE_ERROR),
+        (VALUE_ERROR, 0, VALUE_ERROR),
     )
 )
 def test_roundup(number, digits, result):
     assert result == roundup(number, digits)
-
-
-@pytest.mark.parametrize(
-    'number, digits', (
-            (3.2, 'X'),
-            ('X', 0),
-            (3.2, VALUE_ERROR),
-            (VALUE_ERROR, 0),
-    )
-)
-def test_roundup_errors(number, digits):
-    assert VALUE_ERROR == roundup(number, digits)
 
 
 @pytest.mark.parametrize(
