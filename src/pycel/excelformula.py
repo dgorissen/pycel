@@ -325,6 +325,7 @@ class FunctionNode(ASTNode):
     func_map = {
         "atan2": "xatan2",
         "gammaln": "lgamma",
+        "if": "xif",
         "len": "xlen",
         "ln": "xlog",
         "max": "xmax",
@@ -366,15 +367,6 @@ class FunctionNode(ASTNode):
     def func_pi():
         # constant, no parens
         return "pi"
-
-    def func_if(self):
-        # inline the if
-        args = [c.emit for c in self.children] + [0]
-        if len(args) in (3, 4):
-            return "({} if {} else {})".format(args[1], args[0], args[2])
-
-        raise FormulaParserError(
-            "IF with %s arguments not supported".format(len(args) - 1))
 
     def func_array(self):
         if len(self.children) == 1:

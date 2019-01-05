@@ -581,6 +581,22 @@ def xatan2(value1, value2):
     return math_wrap(atan2)(value2, value1)
 
 
+def xif(test, true_value, false_value=0):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   IF-function-69AED7C9-4E8A-4755-A9BC-AA8BBFF73BE2
+
+    if test in ERROR_CODES:
+        return test
+
+    if isinstance(test, str):
+        if test.lower() in ('true', 'false'):
+            test = len(test) == 4
+        else:
+            return VALUE_ERROR
+
+    return true_value if test else false_value
+
+
 def xlen(value):
     if value in ERROR_CODES:
         return value
