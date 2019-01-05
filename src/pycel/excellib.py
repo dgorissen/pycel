@@ -194,7 +194,7 @@ def hlookup(lookup_value, table_array, row_index_num, range_lookup=True):
         return '#REF!'
 
     result_idx = match(
-        lookup_value, table_array[0], match_type=int(range_lookup))
+        lookup_value, table_array[0], match_type=bool(range_lookup))
 
     if isinstance(result_idx, int):
         return table_array[row_index_num - 1][result_idx - 1]
@@ -562,7 +562,7 @@ def vlookup(lookup_value, table_array, col_index_num, range_lookup=True):
     result_idx = match(
         lookup_value,
         [row[0] for row in table_array],
-        match_type=int(range_lookup)
+        match_type=bool(range_lookup)
     )
 
     if isinstance(result_idx, int):

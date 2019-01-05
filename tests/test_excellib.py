@@ -212,6 +212,7 @@ class TestDate:
         ('C', 3, 'X', True),
         ('D', 3, 'X', True),
         ('D', 3, NA_ERROR, False),
+        ('D', 3, 'X', -1),
     )
 )
 def test_hlookup(lkup, col_idx, result, approx):
@@ -743,6 +744,7 @@ def test_value():
         ('C', 3, 'X', True),
         ('D', 3, 'X', True),
         ('D', 3, NA_ERROR, False),
+        ('D', 3, 'X', -1),
     )
 )
 def test_vlookup(lkup, col_idx, result, approx):
