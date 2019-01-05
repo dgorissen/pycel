@@ -80,10 +80,17 @@ def test_average():
         ('D1:E1', 4),
         ('D1:D2', 4),
         ('D1:E2', 4),
+        (DIV0, DIV0),
+        (NUM_ERROR, NUM_ERROR),
+        (VALUE_ERROR, VALUE_ERROR),
     )
 )
 def test_column(address, result):
-    assert result == column(AddressRange.create(address))
+    try:
+        address = AddressRange.create(address)
+    except ValueError:
+        pass
+    assert result == column(address)
 
 
 class TestCount:
@@ -634,11 +641,17 @@ def test_roundup_errors(number, digits):
         ('4:7', 4),
         ('D1:E1', 1),
         ('D1:D2', 1),
-        ('D1:E2', 1),
+        (DIV0, DIV0),
+        (NUM_ERROR, NUM_ERROR),
+        (VALUE_ERROR, VALUE_ERROR),
     )
 )
 def test_row(address, result):
-    assert result == row(AddressRange.create(address))
+    try:
+        address = AddressRange.create(address)
+    except ValueError:
+        pass
+    assert result == row(address)
 
 
 class TestSumIf:

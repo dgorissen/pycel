@@ -56,6 +56,8 @@ def average(*args):
 
 
 def column(ref):
+    if ref in ERROR_CODES:
+        return ref
     if ref.is_range:
         ref = ref.start
     return max(ref.col_idx, 1)
@@ -480,6 +482,8 @@ def roundup(number, num_digits):
 
 
 def row(ref):
+    if ref in ERROR_CODES:
+        return ref
     if ref.is_range:
         ref = ref.start
     return max(ref.row, 1)
