@@ -835,6 +835,8 @@ def test_excel_cmp(lval, op, rval, result):
         (1, 'BitAnd', '1', '11'),
         (0, 'BitAnd', 'X', '0X'),
         ('X', 'BitAnd', 0, 'X0'),
+        ('X', 'BitAnd', 5.0, 'X5'),
+        ('X', 'BitAnd', 5.0, 'X5'),
 
         # divsion by zero
         (DIV0, '', '', DIV0),
@@ -926,6 +928,13 @@ def test_excel_cmp(lval, op, rval, result):
         (False, 'BitAnd', 5, 'FALSE5'),
         (5, 'BitAnd', True, '5TRUE'),
         (5, 'BitAnd', False, '5FALSE'),
+
+        (None, 'BitAnd', False, 'FALSE'),
+        (None, 'BitAnd', 5, '5'),
+        (None, 'BitAnd', 'xyzzy', 'xyzzy'),
+        (False, 'BitAnd', None, 'FALSE'),
+        (5, 'BitAnd', None, '5'),
+        ('xyzzy', 'BitAnd', None, 'xyzzy'),
 
         # value errors
         (VALUE_ERROR, 'Add', 0, VALUE_ERROR),

@@ -1110,6 +1110,24 @@ def build_operator_operand_fixup(capture_error_state):
             left_op = ExcelCmp(left_op)
             right_op = ExcelCmp(right_op)
 
+        elif op == 'BitAnd':
+            # use bitwise-and '&' as string concat not '+'
+            op = 'Add'
+
+            if left_op in (None, EMPTY):
+                left_op = ''
+            elif isinstance(left_op, bool):
+                left_op = str(left_op).upper()
+            else:
+                left_op = str(coerce_to_number(left_op))
+
+            if right_op in (None, EMPTY):
+                right_op = ''
+            elif isinstance(right_op, bool):
+                right_op = str(right_op).upper()
+            else:
+                right_op = str(coerce_to_number(right_op))
+
         else:
             left_op = coerce_to_number(left_op)
             right_op = coerce_to_number(right_op)
@@ -1123,26 +1141,20 @@ def build_operator_operand_fixup(capture_error_state):
             if not (is_number(left_op) and is_number(right_op)
                     or isinstance(left_op, AddressRange)
                     and isinstance(right_op, AddressRange)):
-                if op not in ('USub', 'BitAnd'):
+                if op != 'USub':
                     capture_error_state(
                         True, 'Values: {} {} {}'.format(left_op, op, right_op))
                     return VALUE_ERROR
 
             if isinstance(left_op, bool):
                 left_op = (str(left_op).upper()
-                           if not is_number(right_op) or op == 'BitAnd'
+                           if not is_number(right_op)
                            else int(left_op))
 
             if isinstance(right_op, bool):
                 right_op = (str(right_op).upper()
-                            if not is_number(left_op) or op == 'BitAnd'
+                            if not is_number(left_op)
                             else int(right_op))
-
-            if op == 'BitAnd':
-                # use bitwise-and '&' as string concat not '+'
-                left_op = str(left_op)
-                right_op = str(right_op)
-                op = 'Add'
 
         try:
             if op == 'USub':
