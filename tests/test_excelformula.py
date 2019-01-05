@@ -1,3 +1,4 @@
+import collections
 import logging
 import os
 import pickle
@@ -15,549 +16,362 @@ from pycel.excelutil import DIV0, VALUE_ERROR
 from test_excelutil import ATestCell
 
 
-def stringify(e):
+FormulaTest = collections.namedtuple('FormulaTest', 'formula rpn python_code')
+
+
+def stringify_rpn(e):
     return "|".join([str(x) for x in e])
 
 
 range_inputs = [
-    ('=$A1',
-     '$A1'),
-
-    ('=$B$2',
-     '$B$2'),
-
-    ('=SUM(B5:B15)',
-     'B5:B15|SUM'),
-
-    ('=SUM(B5:B15,D5:D15)',
-     'B5:B15|D5:D15|SUM'),
-
-    ('=SUM(B5:B15 A7:D7)',
-     'B5:B15|A7:D7| |SUM'),
-
-    ('=SUM((A:A,1:1))',
-     'A:A|1:1|,|SUM'),
-
-    ('=SUM((A:A A1:B1))',
-     'A:A|A1:B1| |SUM'),
-
-    ('=SUM(D9:D11,E9:E11,F9:F11)',
-     'D9:D11|E9:E11|F9:F11|SUM'),
-
-    ('=SUM((D9:D11,(E9:E11,F9:F11)))',
-     'D9:D11|E9:E11|F9:F11|,|,|SUM'),
-
-    ('={SUM(B2:D2*B3:D3)}',
-     'B2:D2|B3:D3|*|SUM|ARRAYROW|ARRAY'),
-
-    ('=SUM(123 + SUM(456) + (45<6))+456+789',
-     '123|456|SUM|+|45|6|<|+|SUM|456|+|789|+'),
-
-    ('=AVG(((((123 + 4 + AVG(A1:A2))))))',
-     '123|4|+|A1:A2|AVG|+|AVG'),
+    FormulaTest(
+        '=$A1',
+        '$A1',
+        '_C_("A1")'),
+    FormulaTest(
+        '=$B$2',
+        '$B$2',
+        '_C_("B2")'),
+    FormulaTest(
+        '=SUM(B5:B15)',
+        'B5:B15|SUM',
+        'xsum(_R_("B5:B15"))'),
+    FormulaTest(
+        '=SUM(B5:B15,D5:D15)',
+        'B5:B15|D5:D15|SUM',
+        'xsum(_R_("B5:B15"), _R_("D5:D15"))'),
+    FormulaTest(
+        '=SUM(B5:B15 A7:D7)',
+        'B5:B15|A7:D7| |SUM',
+        'xsum(_R_("B5:B15") + _R_("A7:D7"))'),
+    FormulaTest(
+        '=SUM((A:A,1:1))',
+        'A:A|1:1|,|SUM',
+        'xsum(_R_("A:A"), _R_("1:1"))'),
+    FormulaTest(
+        '=SUM((A:A A1:B1))',
+        'A:A|A1:B1| |SUM',
+        'xsum(_R_("A:A") + _R_("A1:B1"))'),
+    FormulaTest(
+        '=SUM(D9:D11,E9:E11,F9:F11)',
+        'D9:D11|E9:E11|F9:F11|SUM',
+        'xsum(_R_("D9:D11"), _R_("E9:E11"), _R_("F9:F11"))'),
+    FormulaTest(
+        '=SUM((D9:D11,(E9:E11,F9:F11)))',
+        'D9:D11|E9:E11|F9:F11|,|,|SUM',
+        'xsum(_R_("D9:D11"), (_R_("E9:E11"), _R_("F9:F11")))'),
+    FormulaTest(
+        '={SUM(B2:D2*B3:D3)}',
+        'B2:D2|B3:D3|*|SUM|ARRAYROW|ARRAY',
+        '[xsum(_R_("B2:D2") * _R_("B3:D3"))]'),
+    FormulaTest(
+        '=SUM(123 + SUM(456) + (45<6))+456+789',
+        '123|456|SUM|+|45|6|<|+|SUM|456|+|789|+',
+        '(xsum((123 + xsum(456)) + (45 < 6)) + 456) + 789'),
+    FormulaTest(
+        '=AVG(((((123 + 4 + AVG(A1:A2))))))',
+        '123|4|+|A1:A2|AVG|+|AVG',
+        'avg((123 + 4) + avg(_R_("A1:A2")))'),
 ]
 
 basic_inputs = [
-    ('=SUM((A:A 1:1))',
-     'A:A|1:1| |SUM'),
-
-    ('=A1',
-     'A1'),
-
-    ('=50',
-     '50'),
-
-    ('=1+1',
-     '1|1|+'),
-
-    ('=atan2(A1,B1)',
-     'A1|B1|atan2'),
-
-    ('=5*log(sin()+2)',
-     '5|sin|2|+|log|*'),
-
-    ('=5*log(sin(3,7,9)+2)',
-     '5|3|7|9|sin|2|+|log|*'),
+    FormulaTest(
+        '=SUM((A:A 1:1))',
+        'A:A|1:1| |SUM',
+        'xsum(_R_("A:A") + _R_("1:1"))'),
+    FormulaTest(
+        '=A1',
+        'A1',
+        '_C_("A1")'),
+    FormulaTest(
+        '=50',
+        '50',
+        '50'),
+    FormulaTest(
+        '=1+1',
+        '1|1|+',
+        '1 + 1'),
+    FormulaTest(
+        '=atan2(A1,B1)',
+        'A1|B1|atan2',
+        'xatan2(_C_("A1"), _C_("B1"))'),
+    FormulaTest(
+        '=5*log(sin()+2)',
+        '5|sin|2|+|log|*',
+        '5 * log(sin() + 2)'),
+    FormulaTest(
+        '=5*log(sin(3,7,9)+2)',
+        '5|3|7|9|sin|2|+|log|*',
+        '5 * log(sin(3, 7, 9) + 2)'),
+    FormulaTest(
+        '="x"="y"',
+        '"x"|"y"|=',
+        '"x" == "y"'),
+    FormulaTest(
+        '="x"=1',
+        '"x"|1|=',
+        '"x" == 1'),
+    FormulaTest(
+        '=3 +1-5',
+        '3|1|+|5|-',
+        '(3 + 1) - 5'),
+    FormulaTest(
+        '=3 + 4 * 5',
+        '3|4|5|*|+',
+        '3 + (4 * 5)'),
+    FormulaTest(
+        '=PI()',
+        'PI',
+        'pi'),
+    FormulaTest(
+        '=_xlfn.FUNCTION(L45)',
+        'L45|_xlfn.FUNCTION',
+        'function(_C_("L45"))'),
+    FormulaTest(
+        '=FLOOR.MATH(L45)',
+        'L45|FLOOR.MATH',
+        'floor_math(_C_("L45"))'),
+    FormulaTest(
+        '=100%',
+        '100|%',
+        '100 / 100'),
+    FormulaTest(
+        '=100^100%',
+        '100|100|%|^',
+        '100 ** (100 / 100)'),
+    FormulaTest(
+        '=SUM(B5:B15,D5:D15)%',
+        'B5:B15|D5:D15|SUM|%',
+        'xsum(_R_("B5:B15"), _R_("D5:D15")) / 100'),
 ]
 
 whitespace_inputs = [
-    ('=3 + 4 * 2 / ( 1 - 5 ) ^ 2 ^ 3',
-     '3|4|2|*|1|5|-|2|^|3|^|/|+'),
-
-    ('=1+3+5',
-     '1|3|+|5|+'),
-
-    ('=3 * 4 + 5',
-     '3|4|*|5|+'),
+    FormulaTest(
+        '=3 + 4 * 2 / ( 1 - 5 ) ^ 2 ^ 3',
+        '3|4|2|*|1|5|-|2|^|3|^|/|+',
+        '3 + ((4 * 2) / (((1 - 5) ** 2) ** 3))'),
+    FormulaTest(
+        '=1+3+5',
+        '1|3|+|5|+',
+        '(1 + 3) + 5'),
+    FormulaTest(
+        '=3 * 4 + 5',
+        '3|4|*|5|+',
+        '(3 * 4) + 5'),
 ]
 
 if_inputs = [
-    ('=IF("a"={"a","b";"c",#N/A;-1,TRUE}, "yes", "no") &'
-     '   "  more ""test"" text"',
-     '"a"|"a"|"b"|ARRAYROW|"c"|#N/A|ARRAYROW|1|-|TRUE|ARRAYROW|ARRAY|=|'
-     '"yes"|"no"|IF|"  more ""test"" text"|&'),
-
-    ('=IF(R13C3>DATE(2002,1,6),0,IF(ISERROR(R[41]C[2]),0,IF(R13C3>=R[41]C[2],0,'
-     ' IF(AND(R[23]C[11]>=55,R[24]C[11]>=20),R53C3,0))))',
-     'R13C3|2002|1|6|DATE|>|0|R[41]C[2]|ISERROR|0|R13C3|R[41]C[2]|>=|0|'
-     'R[23]C[11]|55|>=|R[24]C[11]|20|>=|AND|R53C3|0|IF|IF|IF|IF'),
-
-    ('=IF(R[39]C[11]>65,R[25]C[42],ROUND((R[11]C[11]*IF(OR(AND(R[39]C[11]>=55,'
-     ' R[40]C[11]>=20),AND(R[40]C[11]>=20,R11C3="YES")),R[44]C[11],R[43]C[11]))'
-     '+(R[14]C[11] *IF(OR(AND(R[39]C[11]>=55,R[40]C[11]>=20),AND(R[40]C[11]'
-     '>=20,R11C3="YES")), R[45]C[11],R[43]C[11])),0))',
-     'R[39]C[11]|65|>|R[25]C[42]|R[11]C[11]|R[39]C[11]|55|>=|R[40]C[11]|20|>=|'
-     'AND|R[40]C[11]|20|>=|R11C3|"YES"|=|AND|OR|R[44]C[11]|R[43]C[11]|IF|*|'
-     'R[14]C[11]|R[39]C[11]|55|>=|R[40]C[11]|20|>=|AND|R[40]C[11]|20|>=|R11C3|'
-     '"YES"|=|AND|OR|R[45]C[11]|R[43]C[11]|IF|*|+|0|ROUND|IF'),
-
-    ('=IF(AI119="","",E119)',
-     'AI119|""|=|""|E119|IF'),
-
-    ('=IF(P5=1.0,"NA",IF(P5=2.0,"A",IF(P5=3.0,"B",IF(P5=4.0,"C",IF(P5=5.0,"D",'
-     'IF(P5=6.0,"E",IF(P5=7.0,"F",IF(P5=8.0,"G"))))))))',
-     'P5|1.0|=|"NA"|P5|2.0|=|"A"|P5|3.0|=|"B"|P5|4.0|=|"C"|P5|5.0|=|"D"|P5|6.0|'
-     '=|"E"|P5|7.0|=|"F"|P5|8.0|=|"G"|IF|IF|IF|IF|IF|IF|IF|IF'),
-
+    FormulaTest(
+        '=IF("a"={"a","b";"c",#N/A;-1,TRUE}, "yes", "no") &'
+        '   "  more ""test"" text"',
+        '"a"|"a"|"b"|ARRAYROW|"c"|#N/A|ARRAYROW|1|-|TRUE|ARRAYROW|ARRAY|=|'
+        '"yes"|"no"|IF|"  more ""test"" text"|&',
+        '("yes" if "a" == [["a", "b"], ["c", "#N/A"], [-1, True]] else "no")'
+        ' & "  more \\"test\\" text"'),
+    FormulaTest(
+        '=IF(R13C3>DATE(2002,1,6),0,IF(ISERROR(R[41]C[2]),0,IF(R13C3>=R[41]C[2]'
+        ',0, IF(AND(R[23]C[11]>=55,R[24]C[11]>=20),R53C3,0))))',
+        'R13C3|2002|1|6|DATE|>|0|R[41]C[2]|ISERROR|0|R13C3|R[41]C[2]|>=|0|'
+        'R[23]C[11]|55|>=|R[24]C[11]|20|>=|AND|R53C3|0|IF|IF|IF|IF',
+        '(0 if _C_("C13") > date(2002, 1, 6) else (0 if iserror(_C_("C42")) '
+        'else (0 if _C_("C13") >= _C_("C42") else (_C_("C53") if all('
+        '(_C_("L24") >= 55, _C_("L25") >= 20,)) else 0))))'),
+    FormulaTest(
+        '=IF(R[39]C[11]>65,R[25]C[42],ROUND((R[11]C[11]*IF(OR(AND('
+        'R[39]C[11]>=55, R[40]C[11]>=20),AND(R[40]C[11]>=20,R11C3="YES")),'
+        'R[44]C[11],R[43]C[11]))+(R[14]C[11] *IF(OR(AND(R[39]C[11]>=55,'
+        'R[40]C[11]>=20),AND(R[40]C[11]>=20,R11C3="YES")), R[45]C[11],'
+        'R[43]C[11])),0))',
+        'R[39]C[11]|65|>|R[25]C[42]|R[11]C[11]|R[39]C[11]|55|>=|'
+        'R[40]C[11]|20|>=|AND|R[40]C[11]|20|>=|R11C3|"YES"|=|AND|OR|'
+        'R[44]C[11]|R[43]C[11]|IF|*|R[14]C[11]|R[39]C[11]|55|>=|'
+        'R[40]C[11]|20|>=|AND|R[40]C[11]|20|>=|R11C3|"YES"|=|AND|OR|'
+        'R[45]C[11]|R[43]C[11]|IF|*|+|0|ROUND|IF',
+        '(_C_("AQ26") if _C_("L40") > 65 else xround((_C_("L12") * (_C_("L45")'
+        ' if any((all((_C_("L40") >= 55, _C_("L41") >= 20,)), all(('
+        '_C_("L41") >= 20, _C_("C11") == "YES",)),)) else _C_("L44"))) + '
+        '(_C_("L15") * (_C_("L46") if any((all((_C_("L40") >= 55, '
+        '_C_("L41") >= 20,)), all((_C_("L41") >= 20, _C_("C11") == "YES",))'
+        ',)) else _C_("L44"))), 0))'),
+    FormulaTest(
+        '=IF(AI119="","",E119)',
+        'AI119|""|=|""|E119|IF',
+        '("" if _C_("AI119") == "" else _C_("E119"))'),
+    FormulaTest(
+        '=IF(P5=1.0,"NA",IF(P5=2.0,"A",IF(P5=3.0,"B",IF(P5=4.0,"C",'
+        'IF(P5=5.0,"D",IF(P5=6.0,"E",IF(P5=7.0,"F",IF(P5=8.0,"G"))))))))',
+        'P5|1.0|=|"NA"|P5|2.0|=|"A"|P5|3.0|=|"B"|P5|4.0|=|"C"|P5|5.0|=|'
+        '"D"|P5|6.0|=|"E"|P5|7.0|=|"F"|P5|8.0|=|"G"|IF|IF|IF|IF|IF|IF|IF|IF',
+        '("NA" if _C_("P5") == 1.0 else ("A" if _C_("P5") == 2.0 else '
+        '("B" if _C_("P5") == 3.0 else ("C" if _C_("P5") == 4.0 else '
+        '("D" if _C_("P5") == 5.0 else ("E" if _C_("P5") == 6.0 else '
+        '("F" if _C_("P5") == 7.0 else ("G" if _C_("P5") == 8.0 else 0'
+        '))))))))'),
 ]
 
 fancy_reference_inputs = [
-    ('=SUM(sheet1!$A$1:$B$2)',
-     'sheet1!$A$1:$B$2|SUM'),
-
-    ('=[data.xls]sheet1!$A$1',
-     '[data.xls]sheet1!$A$1'),
-
-    ('=(propellor_charts!B22*(propellor_charts!E21+propellor_charts!D21*'
-     '(engine_data!O16*D70+engine_data!P16)+propellor_charts!C21*'
-     '(engine_data!O16*D70+engine_data!P16)^2+propellor_charts!B21*'
-     '(engine_data!O16*D70+engine_data!P16)^3)^2)^(1/3)*(1*D70/5.33E-18)^(2/3)'
-     '*0.0000000001*28.3495231*9.81/1000',
-     'propellor_charts!B22|propellor_charts!E21|propellor_charts!D21|'
-     'engine_data!O16|D70|*|engine_data!P16|+|*|+|propellor_charts!C21|'
-     'engine_data!O16|D70|*|engine_data!P16|+|2|^|*|+|propellor_charts!B21|'
-     'engine_data!O16|D70|*|engine_data!P16|+|3|^|*|+|2|^|*|1|3|/|^|1|D70|*|'
-     '5.33E-18|/|2|3|/|^|*|0.0000000001|*|28.3495231|*|9.81|*|1000|/'),
-
-    ('=IF(configurations!$G$22=3,sizing!$C$303,M14)',
-     'configurations!$G$22|3|=|sizing!$C$303|M14|IF'),
-
-    ('=TableX[[#This Row],[COL1]]&"-"&TableX[[#This Row],[COL2]]',
-     'TableX[[#This Row],[COL1]]|"-"|&|TableX[[#This Row],[COL2]]|&'),
+    FormulaTest(
+        '=SUM(sheet1!$A$1:$B$2)',
+        'sheet1!$A$1:$B$2|SUM',
+        'xsum(_R_("sheet1!A1:B2"))'),
+    FormulaTest(
+        '=[data.xls]sheet1!$A$1',
+        '[data.xls]sheet1!$A$1',
+        '_C_("[data.xls]sheet1!A1")'),
+    FormulaTest(
+        '=(propellor_charts!B22*(propellor_charts!E21+propellor_charts!D21*'
+        '(engine_data!O16*D70+engine_data!P16)+propellor_charts!C21*'
+        '(engine_data!O16*D70+engine_data!P16)^2+propellor_charts!B21*'
+        '(engine_data!O16*D70+engine_data!P16)^3)^2)^(1/3)*'
+        '(1*D70/5.33E-18)^(2/3)*0.0000000001*28.3495231*9.81/1000',
+        'propellor_charts!B22|propellor_charts!E21|propellor_charts!D21|'
+        'engine_data!O16|D70|*|engine_data!P16|+|*|+|propellor_charts!C21|'
+        'engine_data!O16|D70|*|engine_data!P16|+|2|^|*|+|propellor_charts!B21|'
+        'engine_data!O16|D70|*|engine_data!P16|+|3|^|*|+|2|^|*|1|3|/|^|1|D70|*|'
+        '5.33E-18|/|2|3|/|^|*|0.0000000001|*|28.3495231|*|9.81|*|1000|/',
+        '((((((_C_("propellor_charts!B22") * ((((_C_("propellor_charts!E21")'
+        ' + (_C_("propellor_charts!D21") * ((_C_("engine_data!O16") '
+        '* _C_("D70")) + _C_("engine_data!P16")))) + ('
+        '_C_("propellor_charts!C21") * (((_C_("engine_data!O16") * _C_("D70"))'
+        ' + _C_("engine_data!P16")) ** 2))) + (_C_("propellor_charts!B21") '
+        '* (((_C_("engine_data!O16") * _C_("D70")) + _C_("engine_data!P16")'
+        ') ** 3))) ** 2)) ** (1 / 3)) * (((1 * _C_("D70")) / 5.33E-18) ** '
+        '(2 / 3))) * 0.0000000001) * 28.3495231) * 9.81) / 1000'),
+    FormulaTest(
+        '=IF(configurations!$G$22=3,sizing!$C$303,M14)',
+        'configurations!$G$22|3|=|sizing!$C$303|M14|IF',
+        '(_C_("sizing!C303") if _C_("configurations!G22") == 3 else '
+        '_C_("M14"))'),
+    FormulaTest(
+        '=TableX[[#This Row],[COL1]]&"-"&TableX[[#This Row],[COL2]]',
+        'TableX[[#This Row],[COL1]]|"-"|&|TableX[[#This Row],[COL2]]|&',
+        ''),
 ]
 
 math_inputs = [
-    ('=(3600/1000)*E40*(E8/E39)*(E15/E19)*LN(E54/(E54-E48))',
-     '3600|1000|/|E40|*|E8|E39|/|*|E15|E19|/|*|E54|E54|E48|-|/|LN|*'),
-
-    ('=0.000001042*E226^3-0.00004777*E226^2+0.0007646*E226-0.00075',
-     '0.000001042|E226|3|^|*|0.00004777|E226|2|^|*|-|0.0007646|E226|*|+|'
-     '0.00075|-'),
+    FormulaTest(
+        '=(3600/1000)*E40*(E8/E39)*(E15/E19)*LN(E54/(E54-E48))',
+        '3600|1000|/|E40|*|E8|E39|/|*|E15|E19|/|*|E54|E54|E48|-|/|LN|*',
+        '((((3600 / 1000) * _C_("E40")) * (_C_("E8") / _C_("E39"))) '
+        '* (_C_("E15") / _C_("E19"))) * xlog(_C_("E54") / (_C_("E54") '
+        '- _C_("E48")))'),
+    FormulaTest(
+        '=0.000001042*E226^3-0.00004777*E226^2+0.0007646*E226-0.00075',
+        '0.000001042|E226|3|^|*|0.00004777|E226|2|^|*|-|0.0007646|E226|*|'
+        '+|0.00075|-',
+        '(((0.000001042 * (_C_("E226") ** 3)) - (0.00004777 * '
+        '(_C_("E226") ** 2))) + (0.0007646 * _C_("E226"))) - 0.00075'),
 ]
 
 linest_inputs = [
-    ('=LINEST(X5:X32,W5:W32^{1,2,3})',
-     'X5:X32|W5:W32|1|2|3|ARRAYROW|ARRAY|^|LINEST'),
-
-    ('=LINEST(G2:G17,E2:E17,FALSE)',
-     'G2:G17|E2:E17|FALSE|LINEST'),
-
-    ('=LINEST(B32:(INDEX(B32:B119,MATCH(0,B32:B119,-1),1)),(F32:('
-     'INDEX(B32:F119,MATCH(0,B32:B119,-1),5)))^{1,2,3,4})',
-     'B32:B119|0|B32:B119|1|-|MATCH|1|INDEX|B32:|B32:F119|0|B32:B119|1|-|'
-     'MATCH|5|INDEX|F32:|1|2|3|4|ARRAYROW|ARRAY|^|LINEST'),
+    FormulaTest(
+        '=LINEST(X5:X32,W5:W32^{1,2,3})',
+        'X5:X32|W5:W32|1|2|3|ARRAYROW|ARRAY|^|LINEST',
+        'linest(_R_("X5:X32"), _R_("W5:W32"), degree=-1)[-2]'),
+    FormulaTest(
+        '=LINEST(G2:G17,E2:E17,FALSE)',
+        'G2:G17|E2:E17|FALSE|LINEST',
+        'linest(_R_("G2:G17"), _R_("E2:E17"), False, degree=-1)[-2]'),
+    FormulaTest(
+        '=LINEST(B32:(INDEX(B32:B119,MATCH(0,B32:B119,-1),1)),(F32:(INDEX('
+        'B32:F119,MATCH(0,B32:B119,-1),5)))^{1,2,3,4})',
+        'B32:B119|0|B32:B119|1|-|MATCH|1|INDEX|B32:|B32:F119|0|B32:B119|1|'
+        '-|MATCH|5|INDEX|F32:|1|2|3|4|ARRAYROW|ARRAY|^|LINEST',
+        'linest(b32:(index(_R_("B32:B119"), match(0, _R_("B32:B119"), -1), 1)),'
+        ' f32:(index(_R_("B32:F119"), match(0, _R_("B32:B119"), -1), 5)), '
+        'degree=-1)[-2]'),
+    FormulaTest(
+        '=LINESTMARIO(G2:G17,E2:E17,FALSE)',
+        'G2:G17|E2:E17|FALSE|LINESTMARIO',
+        'linestmario(_R_("G2:G17"), _R_("E2:E17"), False)[-2]'),
 ]
 
-
-test_names = (
-    'range_inputs', 'if_inputs', 'whitespace_inputs', 'basic_inputs',
-    'math_inputs', 'linest_inputs', 'fancy_reference_inputs')
-test_data = []
-for test_name in test_names:
-    for i, test in enumerate(globals()[test_name]):
-        test_data.append(('{}_{}'.format(test_name, i + 1), test[0], test[1]))
-
-
-@pytest.mark.parametrize('test_number, formula, rpn', test_data)
-def test_tokenizer(test_number, formula, rpn):
-    assert rpn == stringify(ExcelFormula(formula).rpn)
-
-
-test_data = [
-    dict(
-        formula='=SUM((A:A 1:1))',
-        rpn='A:A|1:1| |SUM',
-        python_code='xsum(_R_("A:A") + _R_("1:1"))',
-    ),
-    dict(
-        formula='=A1',
-        rpn='A1',
-        python_code='_C_("A1")',
-    ),
-    dict(
-        formula='="x"="y"',
-        rpn='"x"|"y"|=',
-        python_code='"x" == "y"',
-    ),
-    dict(
-        formula='="x"=1',
-        rpn='"x"|1|=',
-        python_code='"x" == 1',
-    ),
-    dict(
-        formula='=atan2(A1,B1)',
-        rpn='A1|B1|atan2',
-        python_code='xatan2(_C_("A1"), _C_("B1"))',
-    ),
-    dict(
-        formula='=5*log(sin()+2)',
-        rpn='5|sin|2|+|log|*',
-        python_code='5 * log(sin() + 2)',
-    ),
-    dict(
-        formula='=5*log(sin(3,7,9)+2)',
-        rpn='5|3|7|9|sin|2|+|log|*',
-        python_code='5 * log(sin(3, 7, 9) + 2)',
-    ),
-    dict(
-        formula='=3 +1-5',
-        rpn='3|1|+|5|-',
-        python_code='(3 + 1) - 5',
-    ),
-    dict(
-        formula='=3 + 4 * 2 / ( 1 - 5 ) ^ 2 ^ 3',
-        rpn='3|4|2|*|1|5|-|2|^|3|^|/|+',
-        python_code='3 + ((4 * 2) / (((1 - 5) ** 2) ** 3))',
-    ),
-    dict(
-        formula='=1+3+5',
-        rpn='1|3|+|5|+',
-        python_code='(1 + 3) + 5',
-    ),
-    dict(
-        formula='=3 + 4 * 5',
-        rpn='3|4|5|*|+',
-        python_code='3 + (4 * 5)',
-    ),
-    dict(
-        formula='=3 * 4 + 5',
-        rpn='3|4|*|5|+',
-        python_code='(3 * 4) + 5',
-    ),
-    dict(
-        formula='=50',
-        rpn='50',
-        python_code='50',
-    ),
-    dict(
-        formula='=1+1',
-        rpn='1|1|+',
-        python_code='1 + 1',
-    ),
-    dict(
-        formula='=$A1',
-        rpn='$A1',
-        python_code='_C_("A1")',
-    ),
-    dict(
-        formula='=$B$2',
-        rpn='$B$2',
-        python_code='_C_("B2")',
-    ),
-    dict(
-        formula='=PI()',
-        rpn='PI',
-        python_code='pi',
-    ),
-    dict(
-        formula='=SUM(B5:B15)',
-        rpn='B5:B15|SUM',
-        python_code='xsum(_R_("B5:B15"))',
-    ),
-    dict(
-        formula='=SUM(B5:B15,D5:D15)',
-        rpn='B5:B15|D5:D15|SUM',
-        python_code='xsum(_R_("B5:B15"), _R_("D5:D15"))',
-    ),
-    dict(
-        formula='=SUM(B5:B15 A7:D7)',
-        rpn='B5:B15|A7:D7| |SUM',
-        python_code='xsum(_R_("B5:B15") + _R_("A7:D7"))',
-    ),
-    dict(
-        formula='=SUM(sheet1!$A$1:$B$2)',
-        rpn='sheet1!$A$1:$B$2|SUM',
-        python_code='xsum(_R_("sheet1!A1:B2"))',
-    ),
-    dict(
-        formula='=[data.xls]sheet1!$A$1',
-        rpn='[data.xls]sheet1!$A$1',
-        python_code='_C_("[data.xls]sheet1!A1")',
-    ),
-    dict(
-        formula='=SUM((A:A,1:1))',
-        rpn='A:A|1:1|,|SUM',
-        python_code='xsum(_R_("A:A"), _R_("1:1"))',
-    ),
-    dict(
-        formula='=SUM((A:A A1:B1))',
-        rpn='A:A|A1:B1| |SUM',
-        python_code='xsum(_R_("A:A") + _R_("A1:B1"))',
-    ),
-    dict(
-        formula='=SUM(D9:D11,E9:E11,F9:F11)',
-        rpn='D9:D11|E9:E11|F9:F11|SUM',
-        python_code='xsum(_R_("D9:D11"), _R_("E9:E11"), _R_("F9:F11"))',
-    ),
-    dict(
-        formula='=SUM((D9:D11,(E9:E11,F9:F11)))',
-        rpn='D9:D11|E9:E11|F9:F11|,|,|SUM',
-        python_code='xsum(_R_("D9:D11"), (_R_("E9:E11"), _R_("F9:F11")))',
-    ),
-    dict(
-        formula='=IF(P5=1.0,"NA",IF(P5=2.0,"A",IF(P5=3.0,"B",IF(P5=4.0,"C",IF('
-                'P5=5.0,"D",IF(P5=6.0,"E",IF(P5=7.0,"F",IF(P5=8.0,"G"))))))))',
-        rpn='P5|1.0|=|"NA"|P5|2.0|=|"A"|P5|3.0|=|"B"|P5|4.0|=|"C"|P5|5.0|=|"D"|'
-            'P5|6.0|=|"E"|P5|7.0|=|"F"|P5|8.0|=|"G"|IF|IF|IF|IF|IF|IF|IF|IF',
-        python_code='("NA" if _C_("P5") == 1.0 else ("A" if _C_("P5") == 2.0'
-                    ' else ("B" if _C_("P5") == 3.0 else ("C" if _C_("P5") =='
-                    ' 4.0 else ("D" if _C_("P5") == 5.0 else ("E" if _C_("P5")'
-                    ' == 6.0 else ("F" if _C_("P5") == 7.0 else ("G" if '
-                    '_C_("P5") == 8.0 else 0))))))))',
-    ),
-    dict(
-        formula='={SUM(B2:D2*B3:D3)}',
-        rpn='B2:D2|B3:D3|*|SUM|ARRAYROW|ARRAY',
-        python_code='[xsum(_R_("B2:D2") * _R_("B3:D3"))]',
-    ),
-    dict(
-        formula='=SUM(123 + SUM(456) + (45<6))+456+789',
-        rpn='123|456|SUM|+|45|6|<|+|SUM|456|+|789|+',
-        python_code='(xsum((123 + xsum(456)) + (45 < 6)) + 456) + 789',
-    ),
-    dict(
-        formula='=AVG(((((123 + 4 + AVG(A1:A2))))))',
-        rpn='123|4|+|A1:A2|AVG|+|AVG',
-        python_code='avg((123 + 4) + avg(_R_("A1:A2")))',
-    ),
-
-    # E. W. Bachtal's test formulae
-    dict(
-        formula='=IF("a"={"a","b";"c",#N/A;-1,TRUE}, "yes", "no") &'
-                '   "  more ""test"" text"',
-        rpn='"a"|"a"|"b"|ARRAYROW|"c"|#N/A|ARRAYROW|1|-|TRUE|ARRAYROW|ARRAY|=|'
-            '"yes"|"no"|IF|"  more ""test"" text"|&',
-        python_code='("yes" if "a" == [["a", "b"], ["c", "#N/A"], [-1, True]]'
-                    ' else "no") & "  more \\"test\\" text"',
-    ),
-    dict(
-        formula='=IF(R13C3>DATE(2002,1,6),0,IF(ISERROR(R[41]C[2]),0,IF(R13C3>=R'
-                '[41]C[2],0, IF(AND(R[23]C[11]>=55,R[24]C[11]>=20),R53C3,0))))',
-        rpn='R13C3|2002|1|6|DATE|>|0|R[41]C[2]|ISERROR|0|R13C3|R[41]C[2]|>=|0|'
-            'R[23]C[11]|55|>=|R[24]C[11]|20|>=|AND|R53C3|0|IF|IF|IF|IF',
-        python_code='(0 if _C_("C13") > date(2002, 1, 6) else (0 if iserror('
-                    '_C_("C42")) else (0 if _C_("C13") >= _C_("C42") else ('
-                    '_C_("C53") if all((_C_("L24") >= 55, _C_("L25") >= 20,))'
-                    ' else 0))))',
-    ),
-    dict(
-        formula='=IF(R[39]C[11]>65,R[25]C[42],ROUND((R[11]C[11]*IF(OR(AND(R[39]'
-                'C[11]>=55, R[40]C[11]>=20),AND(R[40]C[11]>=20,R11C3="YES")),'
-                'R[44]C[11],R[43]C[11]))+(R[14]C[11] *IF(OR(AND(R[39]C[11]>=55,'
-                'R[40]C[11]>=20),AND(R[40]C[11]>=20,R11C3="YES")),'
-                ' R[45]C[11],R[43]C[11])),0))',
-        rpn='R[39]C[11]|65|>|R[25]C[42]|R[11]C[11]|R[39]C[11]|55|>=|R[40]C[11]|'
-            '20|>=|AND|R[40]C[11]|20|>=|R11C3|"YES"|=|AND|OR|R[44]C[11]|'
-            'R[43]C[11]|IF|*|R[14]C[11]|R[39]C[11]|55|>=|R[40]C[11]|20|>=|AND|'
-            'R[40]C[11]|20|>=|R11C3|"YES"|=|AND|OR|R[45]C[11]|R[43]C[11]|'
-            'IF|*|+|0|ROUND|IF',
-        python_code='(_C_("AQ26") if _C_("L40") > 65 else xround((_C_("L12") *'
-                    ' (_C_("L45") if any((all((_C_("L40") >= 55, _C_("L41") >='
-                    ' 20,)), all((_C_("L41") >= 20, _C_("C11") == "YES",)),))'
-                    ' else _C_("L44"))) + (_C_("L15") * (_C_("L46") if any('
-                    '(all((_C_("L40") >= 55, _C_("L41") >= 20,)), all(('
-                    '_C_("L41") >= 20, _C_("C11") == "YES",)),)) else'
-                    ' _C_("L44"))), 0))',
-    ),
-    dict(
-        formula='=(propellor_charts!B22*(propellor_charts!E21+propellor_charts!'
-                'D21*(engine_data!O16*D70+engine_data!P16)+propellor_charts!'
-                'C21*(engine_data!O16*D70+engine_data!P16)^2+propellor_charts!'
-                'B21*(engine_data!O16*D70+engine_data!P16)^3)^2)^(1/3)*'
-                '(1*D70/5.33E-18)^(2/3)*0.0000000001*28.3495231*9.81/1000',
-        rpn='propellor_charts!B22|propellor_charts!E21|propellor_charts!D21|'
-            'engine_data!O16|D70|*|engine_data!P16|+|*|+|propellor_charts!C21|'
-            'engine_data!O16|D70|*|engine_data!P16|+|2|^|*|+|propellor_charts!'
-            'B21|engine_data!O16|D70|*|engine_data!P16|+|3|^|*|+|2|^|*|1|3|/|^|'
-            '1|D70|*|5.33E-18|/|2|3|/|^|*|0.0000000001|*|28.3495231|*|9.81|*|'
-            '1000|/',
-        python_code='((((((_C_("propellor_charts!B22") * ((((_C_('
-                    '"propellor_charts!E21") + (_C_("propellor_charts!D21") *'
-                    ' ((_C_("engine_data!O16") * _C_("D70")) + _C_('
-                    '"engine_data!P16")))) + (_C_("propellor_charts!C21") *'
-                    ' (((_C_("engine_data!O16") * _C_("D70")) + _C_('
-                    '"engine_data!P16")) ** 2))) + (_C_("propellor_charts!B21")'
-                    ' * (((_C_("engine_data!O16") * _C_("D70")) + _C_('
-                    '"engine_data!P16")) ** 3))) ** 2)) ** (1 / 3)) * (((1 *'
-                    ' _C_("D70")) / 5.33E-18) ** (2 / 3))) * 0.0000000001) *'
-                    ' 28.3495231) * 9.81) / 1000',
-    ),
-    dict(
-        formula='=(3600/1000)*E40*(E8/E39)*(E15/E19)*LN(E54/(E54-E48))',
-        rpn='3600|1000|/|E40|*|E8|E39|/|*|E15|E19|/|*|E54|E54|E48|-|/|LN|*',
-        python_code='((((3600 / 1000) * _C_("E40")) * (_C_("E8") / _C_("E39")))'
-                    ' * (_C_("E15") / _C_("E19"))) * xlog(_C_("E54") /'
-                    ' (_C_("E54") - _C_("E48")))',
-    ),
-    dict(
-        formula='=IF(P5=1.0,"NA",IF(P5=2.0,"A",IF(P5=3.0,"B",IF(P5=4.0,"C",IF('
-                'P5=5.0,"D",IF(P5=6.0,"E",IF(P5=7.0,"F",IF(P5=8.0,"G"))))))))',
-        rpn='P5|1.0|=|"NA"|P5|2.0|=|"A"|P5|3.0|=|"B"|P5|4.0|=|"C"|P5|5.0|=|"D"|'
-            'P5|6.0|=|"E"|P5|7.0|=|"F"|P5|8.0|=|"G"|IF|IF|IF|IF|IF|IF|IF|IF',
-        python_code='("NA" if _C_("P5") == 1.0 else ("A" if _C_("P5") == 2.0'
-                    ' else ("B" if _C_("P5") == 3.0 else ("C" if _C_("P5") =='
-                    ' 4.0 else ("D" if _C_("P5") == 5.0 else ("E" if _C_("P5")'
-                    ' == 6.0 else ("F" if _C_("P5") == 7.0 else ("G" if _C_('
-                    '"P5") == 8.0 else 0))))))))',
-    ),
-    dict(
-        formula='=LINEST(X5:X32,W5:W32^{1,2,3})',
-        rpn='X5:X32|W5:W32|1|2|3|ARRAYROW|ARRAY|^|LINEST',
-        python_code='linest(_R_("X5:X32"), _R_("W5:W32"), degree=-1)[-2]',
-    ),
-    dict(
-        formula='=IF(configurations!$G$22=3,sizing!$C$303,M14)',
-        rpn='configurations!$G$22|3|=|sizing!$C$303|M14|IF',
-        python_code='(_C_("sizing!C303") if _C_("configurations!G22") == 3'
-                    ' else _C_("M14"))',
-    ),
-    dict(
-        formula='=0.000001042*E226^3-0.00004777*E226^2+0.0007646*E226-0.00075',
-        rpn='0.000001042|E226|3|^|*|0.00004777|E226|2|^|*|-|0.0007646|E226|'
-            '*|+|0.00075|-',
-        python_code='(((0.000001042 * (_C_("E226") ** 3)) - (0.00004777 * (_C_'
-                    '("E226") ** 2))) + (0.0007646 * _C_("E226"))) - 0.00075',
-    ),
-    dict(
-        formula='=LINEST(G2:G17,E2:E17,FALSE)',
-        rpn='G2:G17|E2:E17|FALSE|LINEST',
-        python_code='linest(_R_("G2:G17"), _R_("E2:E17"), '
-                    'False, degree=-1)[-2]',
-    ),
-    dict(
-        formula='=LINESTMARIO(G2:G17,E2:E17,FALSE)',
-        rpn='G2:G17|E2:E17|FALSE|LINESTMARIO',
-        python_code='linestmario(_R_("G2:G17"), _R_("E2:E17"), False)[-2]',
-    ),
-    dict(
-        formula='=IF(AI119="","",E119)',
-        rpn='AI119|""|=|""|E119|IF',
-        python_code='("" if _C_("AI119") == "" else _C_("E119"))',
-    ),
-    dict(
-        formula='=LINEST(B32:(INDEX(B32:B119,MATCH(0,B32:B119<6,-1),1)),(F32:'
-                '(INDEX(B32:F119,MATCH(0,B32:B119,-1),5)))^{1,2,3,4})',
-        rpn='B32:B119|0|B32:B119|6|<|1|-|MATCH|1|INDEX|B32:|B32:F119|0|B32:B119'
-            '|1|-|MATCH|5|INDEX|F32:|1|2|3|4|ARRAYROW|ARRAY|^|LINEST',
-        python_code='linest(b32:(index(_R_("B32:B119"), match(0, _R_('
-                    '"B32:B119") < 6, -1), 1)), f32:(index(_R_("B32:F119"),'
-                    ' match(0, _R_("B32:B119"), -1), 5)), degree=-1)[-2]',
-    ),
-
-    dict(
-        formula='=ROW(4:7)',
-        rpn='4:7|ROW',
-        python_code='row(_REF_("4:7"))'
-    ),
-    dict(
-        formula='=ROW(D1:E1)',
-        rpn='D1:E1|ROW',
-        python_code='row(_REF_("D1:E1"))'
-    ),
-    dict(
-        formula='=COLUMN(D1:D2)',
-        rpn='D1:D2|COLUMN',
-        python_code='column(_REF_("D1:D2"))'
-    ),
-    dict(
-        formula='=ROW(D1:E2)',
-        rpn='D1:E2|ROW',
-        python_code='row(_REF_("D1:E2"))'
-    ),
-    dict(
-        formula='=ROW(B53:D54 C54:E54)',
-        rpn='B53:D54|C54:E54| |ROW',
-        python_code='row(_REF_("B53:D54") + _REF_("C54:E54"))'
-    ),
-    dict(
-        formula='=COLUMN(L45)',
-        rpn='L45|COLUMN',
-        python_code='column(_REF_("L45"))'
-    ),
-    dict(
-        formula='=_xlfn.FUNCTION(L45)',
-        rpn='L45|_xlfn.FUNCTION',
-        python_code='function(_C_("L45"))'
-    ),
-    dict(
-        formula='=FLOOR.MATH(L45)',
-        rpn='L45|FLOOR.MATH',
-        python_code='floor_math(_C_("L45"))'
-    ),
-    dict(
-        formula='=100%',
-        rpn='100|%',
-        python_code='100 / 100'
-    ),
-    dict(
-        formula='=100^100%',
-        rpn='100|100|%|^',
-        python_code='100 ** (100 / 100)'
-    ),
-    dict(
-        formula='=SUM(B5:B15,D5:D15)%',
-        rpn='B5:B15|D5:D15|SUM|%',
-        python_code='xsum(_R_("B5:B15"), _R_("D5:D15")) / 100',
-    ),
+reference_inputs = [
+    FormulaTest(
+        '=ROW(4:7)',
+        '4:7|ROW',
+        'row(_REF_("4:7"))'),
+    FormulaTest(
+        '=ROW(D1:E1)',
+        'D1:E1|ROW',
+        'row(_REF_("D1:E1"))'),
+    FormulaTest(
+        '=COLUMN(D1:D2)',
+        'D1:D2|COLUMN',
+        'column(_REF_("D1:D2"))'),
+    FormulaTest(
+        '=ROW(D1:E2)',
+        'D1:E2|ROW',
+        'row(_REF_("D1:E2"))'),
+    FormulaTest(
+        '=ROW(B53:D54 C54:E54)',
+        'B53:D54|C54:E54| |ROW',
+        'row(_REF_("B53:D54") + _REF_("C54:E54"))'),
+    FormulaTest(
+        '=COLUMN(L45)',
+        'L45|COLUMN',
+        'column(_REF_("L45"))'),
 ]
 
 
 def dump_test_case(formula, python_code, rpn):
     escaped_python_code = python_code.replace('\\', r'\\')
 
-    print('    dict(')
-    print("        formula='{}',".format(formula))
-    print("        rpn='{}',".format(rpn))
-    print("        python_code='{}',".format(escaped_python_code))
-    print('    ),')
+    print('    FormulaTest(')
+    print("        '{}',".format(formula))
+    print("        '{}',".format(rpn))
+    print("        '{}'),".format(escaped_python_code))
 
 
-def dump_parse():
+def dump_parse(to_dump):
+    cell = ATestCell('A', 1)
+
     print('[')
-    for test_case in test_data:
-        excel_formula = ExcelFormula(test_case['formula'])
+    for formula in to_dump:
+        excel_formula = ExcelFormula(formula, cell=cell)
         parsed = excel_formula.rpn
         ast_root = excel_formula.ast
         result_rpn = "|".join(str(x) for x in parsed)
-        result_python_code = ast_root.emit
-        dump_test_case(test_case['formula'], result_python_code, result_rpn)
+        try:
+            result_python_code = ast_root.emit
+        except:  # noqa: E722
+            result_python_code = ''
+        dump_test_case(formula, result_python_code, result_rpn)
     print(']')
 
 
-sorted_keys = tuple(map(str, sorted(test_data[0])))
+test_names = (
+    'range_inputs', 'if_inputs', 'whitespace_inputs', 'basic_inputs',
+    'math_inputs', 'linest_inputs', 'reference_inputs',
+    'fancy_reference_inputs')
+
+test_data = []
+for test_name in test_names:
+    for i, test in enumerate(globals()[test_name]):
+        test_data.append(
+            ('{}_{}'.format(test_name, i + 1), test[0], test[1], test[2]))
 
 
-@pytest.mark.parametrize(
-    ', '.join(sorted_keys),
-    [tuple(test_case[k] for k in sorted_keys) for test_case in test_data]
-)
-def test_parse(formula, python_code, rpn):
+@pytest.mark.parametrize('test_number, formula, rpn, python_code', test_data)
+def test_tokenizer(test_number, formula, rpn, python_code):
+    assert rpn == stringify_rpn(ExcelFormula(formula).rpn)
+
+
+@pytest.mark.parametrize('test_number, formula, rpn, python_code', test_data)
+def test_parse(test_number, formula, rpn, python_code):
     cell = ATestCell('A', 1)
 
     excel_formula = ExcelFormula(formula, cell=cell)
     parsed = excel_formula.rpn
     result_rpn = "|".join(str(x) for x in parsed)
-    result_python_code = excel_formula.python_code
+    try:
+        result_python_code = excel_formula.python_code
+    except AttributeError as exc:
+        # we have not mocked the excel table, so this test doesn't work
+        if "no attribute 'table'" in str(exc):
+            return
+        raise
+
     assert result_python_code == excel_formula.ast.emit
 
     if (rpn, python_code) != (result_rpn, result_python_code):
@@ -569,7 +383,6 @@ def test_parse(formula, python_code, rpn):
 
         print('--------------')
 
-    assert rpn == result_rpn
     assert python_code == result_python_code
 
 
