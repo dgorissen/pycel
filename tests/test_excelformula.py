@@ -479,6 +479,7 @@ def test_build_eval_context():
     assert 42 == eval_context(ExcelFormula('=2 * 21'))
     assert 44 == eval_context(ExcelFormula('=2 * 21 + A1 + a1:a2'))
     assert 1 == eval_context(ExcelFormula('=1 + sin(0)'))
+    assert pytest.approx(4.1415926) == eval_context(ExcelFormula('=1 + PI()'))
 
     with pytest.raises(FormulaEvalError,
                        match="name 'unknown_function' is not defined"):

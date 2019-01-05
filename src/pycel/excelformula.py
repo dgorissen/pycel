@@ -1,6 +1,7 @@
 import ast
 import logging
 import marshal
+import math
 import re
 import sys
 
@@ -774,6 +775,7 @@ class ExcelFormula:
             name_space['_C_'] = evaluate
             name_space['_R_'] = evaluate_range
             name_space['_REF_'] = AddressRange.create
+            name_space['pi'] = math.pi
 
             for name in ('int', 'abs'):
                 name_space[name] = math_wrap(
