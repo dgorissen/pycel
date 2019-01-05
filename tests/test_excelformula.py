@@ -120,6 +120,10 @@ basic_inputs = [
         '3|4|5|*|+',
         '3 + (4 * 5)'),
     FormulaTest(
+        '=+3',
+        '3',
+        '3'),
+    FormulaTest(
         '=PI()',
         'PI',
         'pi'),

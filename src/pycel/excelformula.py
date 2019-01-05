@@ -44,7 +44,9 @@ class Tokenizer(tokenizer.Tokenizer):
         tokens = []
         for prev_token, token, next_token in zip(t, t[1:], t[2:]):
             if token.type != Token.WSPACE or not prev_token or not next_token:
-                tokens.append(token)
+                # drop unary +
+                if not token.matches(type_=Token.OP_PRE, value='+'):
+                    tokens.append(token)
 
             elif (
                 prev_token.matches(type_=Token.FUNC, subtype=Token.CLOSE) or
