@@ -1,3 +1,20 @@
+1.0b2 (2019-01-05)
+===================
+
+Changes
+-------
+
+* Much work to better match Excel error processing
+* Extend validate_calcs() to allow testing entire workbook
+* Improvements to match(), including wildcard support
+* Finished implementing match(), lookup(), vlookup() and hlookup()
+* Implement COLUMN() and ROW()
+* Implement % operator
+* Implement len()
+* Implement binary base number Excel functions (hex2dec, etc.)
+* Fix PI()
+
+
 1.0b0 (2018-12-25)
 ===================
 

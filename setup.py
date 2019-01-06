@@ -29,7 +29,7 @@ exec(open('src/pycel/version.py').read())
 # PYPI page will contain complete changelog.
 long_description = u'{}\n\n\nChanges\n=======\n\n\n{}'.format(
     open('README.rst', 'r', encoding='utf-8').read(),
-    open('docs/source/CHANGES.rst', 'r', encoding='utf-8').read()
+    open('CHANGES.rst', 'r', encoding='utf-8').read()
 )
 
 with open('test-requirements.txt') as f:
@@ -58,7 +58,7 @@ setup(
         'ruamel.yaml',
     ],
     python_requires='>=3.4',
-    author='Dirk Gorissen',
+    author='Dirk Gorissen, Stephen Rauch',
     author_email='dgorissen@gmail.com',
     maintainer='Stephen Rauch',
     maintainer_email='stephen.rauch+pycel@gmail.com',

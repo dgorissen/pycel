@@ -1,7 +1,7 @@
 Pycel
 =====
 
-|build-state| |coverage| |requirements| |repo-size| |code-size|
+|build-state| |pypi| |coverage| |requirements| |repo-size| |code-size|
 
 Pycel is a small python library that can translate an Excel spreadsheet into
 executable python code which can be run independently of Excel.
@@ -92,6 +92,10 @@ The code currently uses a tokenizer of similar origin from the
 .. |coverage| image:: https://codecov.io/gh/stephenrauch/pycel/branch/master/graph/badge.svg
   :target: https://codecov.io/gh/stephenrauch/pycel/list/master
   :alt: Code Coverage
+
+.. |pypi| image:: https://img.shields.io/pypi/v/pycel.svg
+  :target: https://pypi.org/project/pycel/
+  :alt: Latest Release
 
 .. |requirements| image:: https://requires.io/github/stephenrauch/pycel/requirements.svg?branch=master
   :target: https://requires.io/github/stephenrauch/pycel/requirements/?branch=master

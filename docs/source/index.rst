@@ -1,4 +1,4 @@
-.. PyCel documentation master file, created by
+.. Pycel documentation master file, created by
    sphinx-quickstart on Sat Dec 22 11:57:41 2018.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.

@@ -9,7 +9,7 @@ import pycel
 @pytest.fixture(scope='session')
 def doc_versions():
     docs_path = os.path.join(
-        os.path.dirname(__file__), '../docs/source/CHANGES.rst')
+        os.path.dirname(__file__), '../CHANGES.rst')
     with open(docs_path, 'r') as f:
         changes = f.readlines()
 
