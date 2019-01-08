@@ -1,8 +1,9 @@
 """
 Python equivalents of various excel functions
 """
-from bisect import bisect_right
 import itertools as it
+
+from bisect import bisect_right
 from collections import Counter
 from datetime import datetime
 from decimal import Decimal, ROUND_HALF_UP, ROUND_UP

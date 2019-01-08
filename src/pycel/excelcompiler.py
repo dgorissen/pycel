@@ -487,8 +487,8 @@ class ExcelCompiler:
                 else:
                     exc_str_key = exc_str_split[-2]
 
-                if ('NameError: name ' in exc_str
-                        or exc_str_key.startswith('NotImplementedError: ')):
+                if ('NameError: name ' in exc_str or
+                        exc_str_key.startswith('NotImplementedError: ')):
                     failed.setdefault('not-implemented', {}).setdefault(
                         exc_str_key, []).append((str(addr), formula, exc_str))
                 else:

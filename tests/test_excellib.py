@@ -844,16 +844,16 @@ def test_xmin():
 
 @pytest.mark.parametrize(
     'result, digits', (
-            (0, -5),
-            (10000, -4),
-            (12000, -3),
-            (12300, -2),
-            (12350, -1),
-            (12346, 0),
-            (12345.7, 1),
-            (12345.68, 2),
-            (12345.679, 3),
-            (12345.6789, 4),
+        (0, -5),
+        (10000, -4),
+        (12000, -3),
+        (12300, -2),
+        (12350, -1),
+        (12346, 0),
+        (12345.7, 1),
+        (12345.68, 2),
+        (12345.679, 3),
+        (12345.6789, 4),
     )
 )
 def test_xround(result, digits):
@@ -863,15 +863,15 @@ def test_xround(result, digits):
 
 @pytest.mark.parametrize(
     'number, digits, result', (
-            (2.15, 1, 2.2),
-            (2.149, 1, 2.1),
-            (-1.475, 2, -1.48),
-            (21.5, -1, 20),
-            (626.3, -3, 1000),
-            (1.98, -1, 0),
-            (-50.55, -2, -100),
-            (DIV0, 1, DIV0),
-            (1, DIV0, DIV0),
+        (2.15, 1, 2.2),
+        (2.149, 1, 2.1),
+        (-1.475, 2, -1.48),
+        (21.5, -1, 20),
+        (626.3, -3, 1000),
+        (1.98, -1, 0),
+        (-50.55, -2, -100),
+        (DIV0, 1, DIV0),
+        (1, DIV0, DIV0),
     )
 )
 def test_xround2(number, digits, result):
@@ -956,14 +956,14 @@ class TestYearfrac:
             yearfrac(date(2015, 4, 20), date(2008, 1, 1)))
 
     def test_yearfrac_basis_1_sub_year(self):
-        assert 11/365 == pytest.approx(
+        assert 11 / 365 == pytest.approx(
             yearfrac(date(2015, 4, 20), date(2015, 5, 1), basis=1))
 
-        assert 11/366 == pytest.approx(
+        assert 11 / 366 == pytest.approx(
             yearfrac(date(2016, 4, 20), date(2016, 5, 1), basis=1))
 
-        assert 316/366 == pytest.approx(
+        assert 316 / 366 == pytest.approx(
             yearfrac(date(2016, 2, 20), date(2017, 1, 1), basis=1))
 
-        assert 61/366 == pytest.approx(
+        assert 61 / 366 == pytest.approx(
             yearfrac(date(2015, 12, 31), date(2016, 3, 1), basis=1))

@@ -345,7 +345,7 @@ test_names = (
     'range_inputs', 'basic_inputs', 'whitespace_inputs', 'if_inputs',
     'fancy_reference_inputs', 'math_inputs', 'linest_inputs',
     'reference_inputs',
-    )
+)
 
 test_data = []
 for test_name in test_names:

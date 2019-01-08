@@ -1138,9 +1138,9 @@ def build_operator_operand_fixup(capture_error_state):
             if right_op in (None, EMPTY) and is_number(left_op):
                 right_op = 0
 
-            if not (is_number(left_op) and is_number(right_op)
-                    or isinstance(left_op, AddressRange)
-                    and isinstance(right_op, AddressRange)):
+            if not (is_number(left_op) and is_number(right_op) or
+                    isinstance(left_op, AddressRange) and
+                    isinstance(right_op, AddressRange)):
                 if op != 'USub':
                     capture_error_state(
                         True, 'Values: {} {} {}'.format(left_op, op, right_op))
