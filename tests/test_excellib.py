@@ -336,6 +336,10 @@ class TestIndex:
         with pytest.raises(IndexError):
             index(TestIndex.test_data, None)
 
+    def test_error_inputs(self):
+        assert NA_ERROR == index(TestIndex.test_data, NA_ERROR, 1)
+        assert NA_ERROR == index(TestIndex.test_data, 1, NA_ERROR)
+
     def test_np_ndarray(self):
         test_data = np.asarray(self.test_data)
 
@@ -580,13 +584,22 @@ class TestMod:
         assert mod(2, 1.1) == pytest.approx(0.9)
 
 
-def test_npv():
-    assert 1188.44 == round(
-        npv(0.1, -10000, 3000, 4200, 6800), 2)
-    assert 1922.06 == round(
-        npv(0.08, 8000, 9200, 10000, 12000, 14500) - 40000, 2)
-    assert -3749.47 == round(
-        npv(0.08, 8000, 9200, 10000, 12000, 14500, -9000) - 40000, 2)
+@pytest.mark.parametrize(
+    'data, expected', (
+        ((0.1, -10000, 3000, 4200, 6800), 1188.44),
+        ((0.08, 8000, 9200, 10000, 12000, 14500), 41922.06),
+        ((0.08, 8000, 9200, 10000, 12000, 14500, -9000), 40000 - 3749.47),
+        ((NA_ERROR, 8000, 9200, 10000, 12000, 14500, -9000), NA_ERROR),
+        ((0.08, 8000, DIV0, 10000, 12000, 14500, -9000), DIV0),
+    )
+)
+def test_npv(data, expected):
+    result = npv(*data)
+
+    if isinstance(result, str):
+        assert result == expected
+    else:
+        result == pytest.approx(expected, rel=1e-3)
 
 
 @pytest.mark.parametrize(

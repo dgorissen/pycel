@@ -144,6 +144,8 @@ def date(year, month, day):
     # Excel reference: https://support.office.com/en-us/article/
     #   DATE-function-e36c0c8c-4104-49da-ab83-82328b832349
 
+    # ::TODO:: error handling
+
     if not isinstance(year, int):
         raise TypeError("%s is not an integer" % year)
 
@@ -214,6 +216,12 @@ def iferror(arg, value_if_error):
 def index(array, row_num, col_num=None):
     # Excel reference: https://support.office.com/en-us/article/
     #   index-function-a5dcf0dd-996d-40a4-a822-b56b061328bd
+
+    if row_num in ERROR_CODES:
+        return row_num
+
+    if col_num in ERROR_CODES:
+        return col_num
 
     if isinstance(array[0], (list, tuple, np.ndarray)):
         # rectangular array
@@ -438,6 +446,10 @@ def mod(number, divisor):
 def npv(*args):
     # Excel reference: https://support.office.com/en-us/article/
     #   NPV-function-8672CB67-2576-4D07-B67B-AC28ACF2A568
+
+    for arg in args:
+        if arg in ERROR_CODES:
+            return arg
 
     rate = args[0] + 1
     cashflow = args[1:]

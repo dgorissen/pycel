@@ -612,7 +612,7 @@ class ExcelCompiler:
 
             elif cell.python_code:
                 self.log.debug(
-                    "Evaluating: %s, %s".format(cell.address, cell.python_code))
+                    "Evaluating: {}, {}".format(cell.address, cell.python_code))
                 if self.eval is None:
                     self.eval = ExcelFormula.build_eval_context(
                         self._evaluate, self._evaluate_range, self.log)
