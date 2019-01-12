@@ -1,775 +1,839 @@
-# We will choose our wrapper with os compatibility
-#       ExcelComWrapper : Must be run on Windows as it requires a COM link to an Excel instance.
-#       ExcelOpxWrapper : Can be run anywhere but only with post 2010 Excel formats
-try:
-    import win32com.client
-    import pythoncom
-    from pycel.excelwrapper import ExcelComWrapper as ExcelWrapperImpl
-except:
-    print "Can\'t import win32com -> switch from Com to Openpyxl wrapping implementation"
-    from pycel.excelwrapper import ExcelOpxWrapper as ExcelWrapperImpl
-
-import excellib
-from excellib import *
-from excelutil import *
-from math import *
-from networkx.classes.digraph import DiGraph
-from networkx.drawing.nx_pydot import write_dot
-from networkx.drawing.nx_pylab import draw, draw_circular
-from networkx.readwrite.gexf import write_gexf
-from tokenizer import ExcelParser, f_token, shunting_yard
-import cPickle
+import collections
+import hashlib
+import itertools as it
+import json
 import logging
+import os
+import pickle
+
 import networkx as nx
+from pycel.excelformula import ExcelFormula
+from pycel.excelutil import (
+    AddressCell,
+    AddressRange,
+    resolve_range,
+)
+from pycel.excelwrapper import ExcelOpxWrapper
+from ruamel.yaml import YAML
 
 
-__version__ = filter(str.isdigit, "$Revision: 2524 $")
-__date__ = filter(str.isdigit, "$Date: 2011-09-06 17:05:00 +0100 (Tue, 06 Sep 2011) $")
-__author__ = filter(str.isdigit, "$Author: dg2d09 $")
-
-
-class Spreadsheet(object):
-    def __init__(self,G,cellmap):
-        super(Spreadsheet,self).__init__()
-        self.G = G
-        self.cellmap = cellmap
-        self.params = None
-
-    @staticmethod
-    def load_from_file(fname):
-        f = open(fname,'rb')
-        obj = cPickle.load(f)
-        #obj = load(f)
-        return obj
-    
-    def save_to_file(self,fname):
-        f = open(fname,'wb')
-        cPickle.dump(self, f, protocol=2)
-        f.close()
-
-    def export_to_dot(self,fname):
-        write_dot(self.G,fname)
-                    
-    def export_to_gexf(self,fname):
-        write_gexf(self.G,fname)
-    
-    def plot_graph(self):
-        import matplotlib.pyplot as plt
-
-        pos=nx.spring_layout(self.G,iterations=2000)
-        #pos=nx.spectral_layout(G)
-        #pos = nx.random_layout(G)
-        nx.draw_networkx_nodes(self.G, pos)
-        nx.draw_networkx_edges(self.G, pos, arrows=True)
-        nx.draw_networkx_labels(self.G, pos)
-        plt.show()
-    
-    def set_value(self,cell,val,is_addr=True):
-        if is_addr:
-            cell = self.cellmap[cell]
-
-        if cell.value != val:
-            # reset the node + its dependencies
-            self.reset(cell)
-            # set the value
-            cell.value = val
-        
-    def reset(self, cell):
-        if cell.value is None: return
-        #print "resetting", cell.address()
-        cell.value = None
-        map(self.reset,self.G.successors_iter(cell)) 
-
-    def print_value_tree(self,addr,indent):
-        cell = self.cellmap[addr]
-        print "%s %s = %s" % (" "*indent,addr,cell.value)
-        for c in self.G.predecessors_iter(cell):
-            self.print_value_tree(c.address(), indent+1)
-
-    def recalculate(self):
-        for c in self.cellmap.values():
-            if isinstance(c,CellRange):
-                self.evaluate_range(c,is_addr=False)
-            else:
-                self.evaluate(c,is_addr=False)
-                
-    def evaluate_range(self,rng,is_addr=True):
-
-        if is_addr:
-            rng = self.cellmap[rng]
-
-        # its important that [] gets treated ad false here
-        if rng.value:
-            return rng.value
-
-        cells,nrows,ncols = rng.celladdrs,rng.nrows,rng.ncols
-
-        if nrows == 1 or ncols == 1:
-            data = [ self.evaluate(c) for c in cells ]
-        else:
-            data = [ [self.evaluate(c) for c in cells[i]] for i in range(len(cells)) ] 
-        
-        rng.value = data
-        
-        return data
-
-    def evaluate(self,cell,is_addr=True):
-
-        if is_addr:
-            cell = self.cellmap[cell]
-            
-        # no formula, fixed value
-        if not cell.formula or cell.value != None:
-            #print "  returning constant or cached value for ", cell.address()
-            return cell.value
-        
-        # recalculate formula
-        # the compiled expression calls this function
-        def eval_cell(address):
-            return self.evaluate(address)
-        
-        def eval_range(rng):
-            return self.evaluate_range(rng)
-                
-        try:
-            print "Evalling: %s, %s" % (cell.address(),cell.python_expression)
-            vv = eval(cell.compiled_expression)
-            #print "Cell %s evalled to %s" % (cell.address(),vv)
-            if vv is None:
-                print "WARNING %s is None" % (cell.address())
-            cell.value = vv
-        except Exception as e:
-            if e.message.startswith("Problem evalling"):
-                raise e
-            else:
-                raise Exception("Problem evalling: %s for %s, %s" % (e,cell.address(),cell.python_expression)) 
-        
-        return cell.value
-
-class ASTNode(object):
-    """A generic node in the AST"""
-    
-    def __init__(self,token):
-        super(ASTNode,self).__init__()
-        self.token = token
-    def __str__(self):
-        return self.token.tvalue
-    def __getattr__(self,name):
-        return getattr(self.token,name)
-
-    def children(self,ast):
-        args = ast.predecessors(self)
-        args = sorted(args,key=lambda x: ast.node[x]['pos'])
-        #args.reverse()
-        return args
-
-    def parent(self,ast):
-        args = ast.successors(self)
-        return args[0] if args else None
-    
-    def emit(self,ast,context=None):
-        """Emit code"""
-        self.token.tvalue
-    
-class OperatorNode(ASTNode):
-    def __init__(self,*args):
-        super(OperatorNode,self).__init__(*args)
-        
-        # convert the operator to python equivalents
-        self.opmap = {
-                 "^":"**",
-                 "=":"==",
-                 "&":"+",
-                 "":"+" #union
-                 }
-
-    def emit(self,ast,context=None):
-        xop = self.tvalue
-        
-        # Get the arguments
-        args = self.children(ast)
-        
-        op = self.opmap.get(xop,xop)
-        
-        if self.ttype == "operator-prefix":
-            return "-" + args[0].emit(ast,context=context)
-
-        parent = self.parent(ast)
-        # dont render the ^{1,2,..} part in a linest formula
-        #TODO: bit of a hack
-        if op == "**":
-            if parent and parent.tvalue.lower() == "linest": 
-                return args[0].emit(ast,context=context)
-
-        #TODO silly hack to work around the fact that None < 0 is True (happens on blank cells)
-        if op == "<" or op == "<=":
-            aa = args[0].emit(ast,context=context)
-            ss = "(" + aa + " if " + aa + " is not None else float('inf'))" + op + args[1].emit(ast,context=context)
-        elif op == ">" or op == ">=":
-            aa = args[1].emit(ast,context=context)
-            ss =  args[0].emit(ast,context=context) + op + "(" + aa + " if " + aa + " is not None else float('inf'))"
-        else:
-            ss = args[0].emit(ast,context=context) + op + args[1].emit(ast,context=context)
-        
-        #avoid needless parentheses
-        if parent and not isinstance(parent,FunctionNode):
-            ss = "("+ ss + ")" 
-        
-        return ss
-
-class OperandNode(ASTNode):
-    def __init__(self,*args):
-        super(OperandNode,self).__init__(*args)
-    def emit(self,ast,context=None):
-        t = self.tsubtype
-        
-        if t == "logical":
-            return str(self.tvalue.lower() == "true")
-        elif t == "text" or t == "error":
-            #if the string contains quotes, escape them
-            val = self.tvalue.replace('"','\\"')
-            return '"' + val + '"'
-        else:
-            return str(self.tvalue)
-
-class RangeNode(OperandNode):
-    """Represents a spreadsheet cell or range, e.g., A5 or B3:C20"""
-    def __init__(self,*args):
-        super(RangeNode,self).__init__(*args)
-    
-    def get_cells(self):
-        return resolve_range(self.tvalue)[0]
-    
-    def emit(self,ast,context=None):
-        # resolve the range into cells
-        rng = self.tvalue.replace('$','')
-        sheet = context.curcell.sheet + "!" if context else ""
-        if is_range(rng):
-            sh,start,end = split_range(rng)
-            if sh:
-                str = 'eval_range("' + rng + '")'
-            else:
-                str = 'eval_range("' + sheet + rng + '")'
-        else:
-            sh,col,row = split_address(rng)
-            if sh:
-                str = 'eval_cell("' + rng + '")'
-            else:
-                str = 'eval_cell("' + sheet + rng + '")'
-                
-        return str
-    
-class FunctionNode(ASTNode):
-    """AST node representing a function call"""
-    def __init__(self,*args):
-        super(FunctionNode,self).__init__(*args)
-        self.numargs = 0
-
-        # map  excel functions onto their python equivalents
-        self.funmap = excellib.FUNCTION_MAP
-        
-    def emit(self,ast,context=None):
-        fun = self.tvalue.lower()
-        str = ''
-
-        # Get the arguments
-        args = self.children(ast)
-        
-        if fun == "atan2":
-            # swap arguments
-            str = "atan2(%s,%s)" % (args[1].emit(ast,context=context),args[0].emit(ast,context=context))
-        elif fun == "pi":
-            # constant, no parens
-            str = "pi"
-        elif fun == "if":
-            # inline the if
-            if len(args) == 2:
-                str = "%s if %s else 0" %(args[1].emit(ast,context=context),args[0].emit(ast,context=context))
-            elif len(args) == 3:
-                str = "(%s if %s else %s)" % (args[1].emit(ast,context=context),args[0].emit(ast,context=context),args[2].emit(ast,context=context))
-            else:
-                raise Exception("if with %s arguments not supported" % len(args))
-
-        elif fun == "array":
-            str += '['
-            if len(args) == 1:
-                # only one row
-                str += args[0].emit(ast,context=context)
-            else:
-                # multiple rows
-                str += ",".join(['[' + n.emit(ast,context=context) + ']' for n in args])
-                     
-            str += ']'
-        elif fun == "arrayrow":
-            #simply create a list
-            str += ",".join([n.emit(ast,context=context) for n in args])
-        elif fun == "linest" or fun == "linestmario":
-            
-            str = fun + "(" + ",".join([n.emit(ast,context=context) for n in args])
-
-            if not context:
-                degree,coef = -1,-1
-            else:
-                #linests are often used as part of an array formula spanning multiple cells,
-                #one cell for each coefficient.  We have to figure out where we currently are
-                #in that range
-                degree,coef = get_linest_degree(context.excel,context.curcell)
-                
-            # if we are the only linest (degree is one) and linest is nested -> return vector
-            # else return the coef.
-            if degree == 1 and self.parent(ast):
-                if fun == "linest":
-                    str += ",degree=%s)" % degree
-                else:
-                    str += ")"
-            else:
-                if fun == "linest":
-                    str += ",degree=%s)[%s]" % (degree,coef-1)
-                else:
-                    str += ")[%s]" % (coef-1)
-
-        elif fun == "and":
-            str = "all([" + ",".join([n.emit(ast,context=context) for n in args]) + "])"
-        elif fun == "or":
-            str = "any([" + ",".join([n.emit(ast,context=context) for n in args]) + "])"
-        else:
-            # map to the correct name
-            f = self.funmap.get(fun,fun)
-            str = f + "(" + ",".join([n.emit(ast,context=context) for n in args]) + ")"
-
-        return str
-
-def create_node(t):
-    """Simple factory function"""
-    if t.ttype == "operand":
-        if t.tsubtype == "range":
-            return RangeNode(t)
-        else:
-            return OperandNode(t)
-    elif t.ttype == "function":
-        return FunctionNode(t)
-    elif t.ttype.startswith("operator"):
-        return OperatorNode(t)
-    else:
-        return ASTNode(t)
-
-class Operator:
-    """Small wrapper class to manage operators during shunting yard"""
-    def __init__(self,value,precedence,associativity):
-        self.value = value
-        self.precedence = precedence
-        self.associativity = associativity
-
-def shunting_yard(expression):
-    """
-    Tokenize an excel formula expression into reverse polish notation
-    
-    Core algorithm taken from wikipedia with varargs extensions from
-    http://www.kallisti.net.nz/blog/2008/02/extension-to-the-shunting-yard-algorithm-to-allow-variable-numbers-of-arguments-to-functions/
-    """
-    #remove leading =
-    if expression.startswith('='):
-        expression = expression[1:]
-        
-    p = ExcelParser();
-    p.parse(expression)
-
-    # insert tokens for '(' and ')', to make things clearer below
-    tokens = []
-    for t in p.tokens.items:
-        if t.ttype == "function" and t.tsubtype == "start":
-            t.tsubtype = ""
-            tokens.append(t)
-            tokens.append(f_token('(','arglist','start'))
-        elif t.ttype == "function" and t.tsubtype == "stop":
-            tokens.append(f_token(')','arglist','stop'))
-        elif t.ttype == "subexpression" and t.tsubtype == "start":
-            t.tvalue = '('
-            tokens.append(t)
-        elif t.ttype == "subexpression" and t.tsubtype == "stop":
-            t.tvalue = ')'
-            tokens.append(t)
-        else:
-            tokens.append(t)
-
-    #print "tokens: ", "|".join([x.tvalue for x in tokens])
-
-    #http://office.microsoft.com/en-us/excel-help/calculation-operators-and-precedence-HP010078886.aspx
-    operators = {}
-    operators[':'] = Operator(':',8,'left')
-    operators[''] = Operator(' ',8,'left')
-    operators[','] = Operator(',',8,'left')
-    operators['u-'] = Operator('u-',7,'left') #unary negation
-    operators['%'] = Operator('%',6,'left')
-    operators['^'] = Operator('^',5,'left')
-    operators['*'] = Operator('*',4,'left')
-    operators['/'] = Operator('/',4,'left')
-    operators['+'] = Operator('+',3,'left')
-    operators['-'] = Operator('-',3,'left')
-    operators['&'] = Operator('&',2,'left')
-    operators['='] = Operator('=',1,'left')
-    operators['<'] = Operator('<',1,'left')
-    operators['>'] = Operator('>',1,'left')
-    operators['<='] = Operator('<=',1,'left')
-    operators['>='] = Operator('>=',1,'left')
-    operators['<>'] = Operator('<>',1,'left')
-            
-    output = collections.deque()
-    stack = []
-    were_values = []
-    arg_count = []
-    
-    for t in tokens:
-        if t.ttype == "operand":
-
-            output.append(create_node(t))
-            if were_values:
-                were_values.pop()
-                were_values.append(True)
-                
-        elif t.ttype == "function":
-
-            stack.append(t)
-            arg_count.append(0)
-            if were_values:
-                were_values.pop()
-                were_values.append(True)
-            were_values.append(False)
-            
-        elif t.ttype == "argument":
-            
-            while stack and (stack[-1].tsubtype != "start"):
-                output.append(create_node(stack.pop()))   
-            
-            if were_values.pop(): arg_count[-1] += 1
-            were_values.append(False)
-            
-            if not len(stack):
-                raise Exception("Mismatched or misplaced parentheses")
-        
-        elif t.ttype.startswith('operator'):
-
-            if t.ttype.endswith('-prefix') and t.tvalue =="-":
-                o1 = operators['u-']
-            else:
-                o1 = operators[t.tvalue]
-
-            while stack and stack[-1].ttype.startswith('operator'):
-                
-                if stack[-1].ttype.endswith('-prefix') and stack[-1].tvalue =="-":
-                    o2 = operators['u-']
-                else:
-                    o2 = operators[stack[-1].tvalue]
-                
-                if ( (o1.associativity == "left" and o1.precedence <= o2.precedence)
-                        or
-                      (o1.associativity == "right" and o1.precedence < o2.precedence) ):
-                    
-                    output.append(create_node(stack.pop()))
-                else:
-                    break
-                
-            stack.append(t)
-        
-        elif t.tsubtype == "start":
-            stack.append(t)
-            
-        elif t.tsubtype == "stop":
-            
-            while stack and stack[-1].tsubtype != "start":
-                output.append(create_node(stack.pop()))
-            
-            if not stack:
-                raise Exception("Mismatched or misplaced parentheses")
-            
-            stack.pop()
-
-            if stack and stack[-1].ttype == "function":
-                f = create_node(stack.pop())
-                a = arg_count.pop()
-                w = were_values.pop()
-                if w: a += 1
-                f.num_args = a
-                #print f, "has ",a," args"
-                output.append(f)
-
-    while stack:
-        if stack[-1].tsubtype == "start" or stack[-1].tsubtype == "stop":
-            raise Exception("Mismatched or misplaced parentheses")
-        
-        output.append(create_node(stack.pop()))
-
-    #print "Stack is: ", "|".join(stack)
-    #print "Ouput is: ", "|".join([x.tvalue for x in output])
-    
-    # convert to list
-    result = [x for x in output]
-    return result
-   
-def build_ast(expression):
-    """build an AST from an Excel formula expression in reverse polish notation"""
-    
-    #use a directed graph to store the tree
-    G = DiGraph()
-    
-    stack = []
-    
-    for n in expression:
-        # Since the graph does not maintain the order of adding nodes/edges
-        # add an extra attribute 'pos' so we can always sort to the correct order
-        if isinstance(n,OperatorNode):
-            if n.ttype == "operator-infix":
-                arg2 = stack.pop()
-                arg1 = stack.pop()
-                G.add_node(arg1,{'pos':1})
-                G.add_node(arg2,{'pos':2})
-                G.add_edge(arg1, n)
-                G.add_edge(arg2, n)
-            else:
-                arg1 = stack.pop()
-                G.add_node(arg1,{'pos':1})
-                G.add_edge(arg1, n)
-                
-        elif isinstance(n,FunctionNode):
-            args = [stack.pop() for _ in range(n.num_args)]
-            args.reverse()
-            for i,a in enumerate(args):
-                G.add_node(a,{'pos':i})
-                G.add_edge(a,n)
-            #for i in range(n.num_args):
-            #    G.add_edge(stack.pop(),n)
-        else:
-            G.add_node(n,{'pos':0})
-
-        stack.append(n)
-        
-    return G,stack.pop()
-
-class Context(object):
-    """A small context object that nodes in the AST can use to emit code"""
-    def __init__(self,curcell,excel):
-        # the current cell for which we are generating code
-        self.curcell = curcell
-        # a handle to an excel instance
-        self.excel = excel
-
-class ExcelCompiler(object):
-    """Class responsible for taking an Excel spreadsheet and compiling it to a Spreadsheet instance
-       that can be serialized to disk, and executed independently of excel.
+class ExcelCompiler:
+    """Class responsible for taking an Excel spreadsheet and compiling it
+    to an instance that can be serialized to disk, and executed
+    independently of excel.
     """
 
-    def __init__(self, filename=None, excel=None, *args,**kwargs):
+    save_file_extensions = ('pkl', 'pickle', 'yml', 'yaml', 'json')
 
-        super(ExcelCompiler,self).__init__()
-        self.filename = filename
-        
+    def __init__(self, filename=None, excel=None):
+
+        self.eval = None
+
         if excel:
             # if we are running as an excel addin, this gets passed to us
             self.excel = excel
+            self.filename = excel.filename
+            self.hash = None
         else:
-            # TODO: use a proper interface so we can (eventually) support loading from file (much faster)  Still need to find a good lib though.
-            self.excel = ExcelWrapperImpl(filename=filename)
+            # TODO: use a proper interface so we can (eventually) support
+            # loading from file (much faster)  Still need to find a good lib.
+            self.excel = ExcelOpxWrapper(filename=filename)
             self.excel.connect()
-            
-        self.log = logging.getLogger("decode.{0}".format(self.__class__.__name__))
-        
-    def cell2code(self,cell):
-        """Generate python code for the given cell"""
-        if cell.formula:
-            e = shunting_yard(cell.formula or str(cell.value))
-            ast,root = build_ast(e)
-            code = root.emit(ast,context=Context(cell,self.excel))
+            self.filename = filename
+
+        # grab a copy of the current hash
+        self._excel_file_md5_digest = self._compute_excel_file_md5_digest
+
+        self.log = logging.getLogger('pycel')
+
+        # directed graph for cell dependencies
+        self.dep_graph = nx.DiGraph()
+
+        # cell address to Cell mapping, cells and ranges already built
+        self.cell_map = {}
+
+        # cells, ranges and graph_edges that need to be built
+        self.graph_todos = []
+        self.range_todos = []
+
+        self.extra_data = None
+        self._formula_cells_list = None
+
+    def __getstate__(self):
+        # code objects are not serializable
+        state = dict(self.__dict__)
+        for to_remove in 'eval excel log graph_todos range_todos'.split():
+            if to_remove in state:    # pragma: no branch
+                state[to_remove] = None
+        return state
+
+    def __setstate__(self, d):
+        self.__dict__.update(d)
+        self.log = logging.getLogger('pycel')
+
+    @staticmethod
+    def _compute_file_md5_digest(filename):
+        hash_md5 = hashlib.md5()
+        with open(filename, "rb") as f:
+            for chunk in iter(lambda: f.read(4096), b""):
+                hash_md5.update(chunk)
+        return hash_md5.hexdigest()
+
+    @property
+    def _compute_excel_file_md5_digest(self):
+        return self._compute_file_md5_digest(self.filename)
+
+    @property
+    def hash_matches(self):
+        current_hash = self._compute_excel_file_md5_digest
+        return self._excel_file_md5_digest == current_hash
+
+    @classmethod
+    def _filename_has_extension(cls, filename):
+        return next((extension for extension in cls.save_file_extensions
+                     if filename.endswith(extension)), None)
+
+    def _to_text(self, filename=None, is_json=False):
+        """Serialize to a json/yaml file"""
+        extra_data = {} if self.extra_data is None else self.extra_data
+
+        def cell_value(a_cell):
+            if a_cell.formula and a_cell.formula.python_code:
+                return '=' + a_cell.formula.python_code
+            else:
+                return a_cell.value
+
+        extra_data.update(dict(
+            excel_hash=self._excel_file_md5_digest,
+            cell_map=dict(sorted(
+                ((addr, cell_value(cell))
+                 for addr, cell in self.cell_map.items() if ':' not in addr),
+                key=lambda x: AddressCell(x[0]).sort_key
+            )),
+        ))
+        if not filename:
+            filename = self.filename + ('.json' if is_json else '.yml')
+
+        # hash the current file to see if this function makes any changes
+        existing_hash = (self._compute_file_md5_digest(filename)
+                         if os.path.exists(filename) else None)
+
+        if not is_json:
+            with open(filename, 'w') as f:
+                ymlo = YAML()
+                ymlo.width = 120
+                ymlo.dump(extra_data, f)
         else:
-            ast = None
-            code = str('"' + cell.value + '"' if isinstance(cell.value,unicode) else cell.value)
-            
-        return code,ast
+            with open(filename, 'w') as f:
+                json.dump(extra_data, f, indent=4)
 
-    def add_node_to_graph(self,G, n):
-        G.add_node(n)
-        G.node[n]['sheet'] = n.sheet
-        
-        if isinstance(n,Cell):
-            G.node[n]['label'] = n.col + str(n.row)
+        del extra_data['cell_map']
+
+        # hash the newfile, return True if it changed, this is only reliable
+        # on pythons which have ordered dict (CPython 3.6 & python 3.7+)
+        return (existing_hash is None or
+                existing_hash != self._compute_file_md5_digest(filename))
+
+    @classmethod
+    def _from_text(cls, filename, is_json=False):
+        """deserialize from a json/yaml file"""
+
+        if not is_json:
+            if not filename.split('.')[-1].startswith('y'):
+                filename += '.yml'
         else:
-            #strip the sheet
-            G.node[n]['label'] = n.address()[n.address().find('!')+1:]
-            
-    def gen_graph(self, seed, sheet=None):
-        """Given a starting point (e.g., A6, or A3:B7) on a particular sheet, generate
-           a Spreadsheet instance that captures the logic and control flow of the equations."""
+            if not filename.endswith('.json'):  # pragma: no branch
+                filename += '.json'
 
-        # starting points
-        cursheet = sheet if sheet else self.excel.get_active_sheet()
-        self.excel.set_sheet(cursheet)
-        
-        seeds, nr, nc = Cell.make_cells(self.excel, seed, sheet=cursheet) # no need to output nr and nc here, since seed can be a list of unlinked cells
-        seeds = list(flatten(seeds))
-        
-        print "Seed %s expanded into %s cells" % (seed,len(seeds))
-        
-        # only keep seeds with formulas or numbers
-        seeds = [s for s in seeds if s.formula or isinstance(s.value,(int,float))]
+        with open(filename, 'r') as f:
+            data = YAML().load(f)
 
-        print "%s filtered seeds " % len(seeds)
-        
-        # cells to analyze: only formulas
-        todo = [s for s in seeds if s.formula]
+        excel = _CompiledImporter(filename)
+        excel_compiler = cls(excel=excel)
+        excel.compiler = excel_compiler
 
-        print "%s cells on the todo list" % len(todo)
+        for address, python_code in data['cell_map'].items():
+            lineno = data['cell_map'].lc.data[address][0] + 1
+            address = AddressRange(address)
+            excel.value = python_code
+            excel_compiler._make_cells(address)
+            formula = excel_compiler.cell_map[address.address].formula
+            if formula is not None:
+                formula.lineno = lineno
+                formula.filename = filename
 
-        # map of all cells
-        cellmap = dict([(x.address(),x) for x in seeds])
-        
-        # directed graph
-        G = nx.DiGraph()
+        excel_compiler._process_gen_graph()
+        del data['cell_map']
 
-        # match the info in cellmap
-        for c in cellmap.itervalues(): self.add_node_to_graph(G, c)
+        excel_compiler._excel_file_md5_digest = data['excel_hash']
+        del data['excel_hash']
 
-        while todo:
-            c1 = todo.pop()
-            
-            print "Handling ", c1.address()
-            
-            # set the current sheet so relative addresses resolve properly
-            if c1.sheet != cursheet:
-                cursheet = c1.sheet
-                self.excel.set_sheet(cursheet)
-            
-            # parse the formula into code
-            pystr,ast = self.cell2code(c1)
+        excel_compiler.extra_data = data
+        excel_compiler.excel = None
+        return excel_compiler
 
-            # set the code & compile it (will flag problems sooner rather than later)
-            c1.python_expression = pystr
-            c1.compile()                
-            
-            # get all the cells/ranges this formula refers to
-            deps = [x.tvalue.replace('$','') for x in ast.nodes() if isinstance(x,RangeNode)]
-            
-            # remove dupes
-            deps = uniqueify(deps)
-            
-            for dep in deps:
-                
-                # if the dependency is a multi-cell range, create a range object
-                if is_range(dep):
-                    # this will make sure we always have an absolute address
-                    rng = CellRange(dep,sheet=cursheet)
-                    
-                    if rng.address() in cellmap:
-                        # already dealt with this range
-                        # add an edge from the range to the parent
-                        G.add_edge(cellmap[rng.address()],cellmap[c1.address()])
-                        continue
-                    else:
-                        # turn into cell objects
-                        cells,nrows,ncols = Cell.make_cells(self.excel,dep,sheet=cursheet)
+    def to_file(self, filename=None, file_types=('pkl', 'yml')):
+        """ Save the spreadsheet to a file so it can be loaded later w/o excel
 
-                        # get the values so we can set the range value
-                        if nrows == 1 or ncols == 1:
-                            rng.value = [c.value for c in cells]
-                        else:
-                            rng.value = [ [c.value for c in cells[i]] for i in range(len(cells)) ] 
+        :param filename: filename to save as, defaults to xlsx_name + file_type
+        :param file_types: one or more of: pkl, pickle, yml, yaml, json
 
-                        # save the range
-                        cellmap[rng.address()] = rng
-                        # add an edge from the range to the parent
-                        self.add_node_to_graph(G, rng)
-                        G.add_edge(rng,cellmap[c1.address()])
-                        # cells in the range should point to the range as their parent
-                        target = rng
+        If the filename has one of the expected extensions, then this
+        parameter is ignored.
+
+        The text file formats (yaml and json) provide the benefits of:
+            1. Can `diff` subsequent version of xlsx to monitor changes.
+            2. Can "debug" the generated code.
+                Since the compiled code is marked with the line number in
+                the text file and will be shown by debuggers and stack traces.
+            3. The file size on disk is somewhat smaller than pickle files
+
+        The pickle file format provides the benefits of:
+            1. Much faster to load (5x to 10x)
+            2. ...  (no #2, speed is the thing)
+        """
+
+        filename = filename or self.filename
+        extension = self._filename_has_extension(filename)
+        if extension:
+            file_types = (extension, )
+        elif isinstance(file_types, str):
+            file_types = (file_types, )
+
+        unknown_types = tuple(ft for ft in file_types
+                              if ft not in self.save_file_extensions)
+        if unknown_types:
+            raise ValueError('Unknown file types: {}'.format(
+                ' '.join(unknown_types)))
+
+        pickle_extension = next((ft for ft in file_types
+                                 if ft.startswith('p')), None)
+        non_pickle_extension = next((ft for ft in file_types
+                                     if not ft.startswith('p')), None)
+        extra_extensions = tuple(ft for ft in file_types if ft not in (
+            pickle_extension, non_pickle_extension))
+
+        if extra_extensions:
+            raise ValueError(
+                'Only allowed one pickle extension and one text extension. '
+                'Extras: {}'.format(extra_extensions))
+
+        is_json = non_pickle_extension and non_pickle_extension[0] == 'j'
+
+        # round trip through yaml/json to strip out junk
+        text_name = filename
+        if not text_name.endswith(non_pickle_extension or '.yml'):
+            text_name += '.' + (non_pickle_extension or 'yml')
+        text_changed = self._to_text(text_name, is_json=is_json)
+
+        # save pickle file if requested and has changed
+        if pickle_extension:
+            if not filename.endswith(pickle_extension):
+                filename += '.' + pickle_extension
+
+            if text_changed or not os.path.exists(filename):
+                excel_compiler = self._from_text(text_name, is_json=is_json)
+                if non_pickle_extension not in file_types:
+                    os.unlink(text_name)
+
+                with open(filename, 'wb') as f:
+                    pickle.dump(excel_compiler, f)
+
+    @classmethod
+    def from_file(cls, filename):
+        """ Load the spreadsheet saved by `to_file`
+
+        :param filename: filename to load from, can be xlsx_name
+        """
+
+        extension = cls._filename_has_extension(filename) or next(
+            (ext for ext in cls.save_file_extensions
+             if os.path.exists(filename + '.' + ext)), None)
+
+        if not extension:
+            raise ValueError("Unrecognized file type or compiled file not found"
+                             ": '{}'".format(filename))
+
+        if not filename.endswith(extension):
+            filename += '.' + extension
+
+        if extension[0] == 'p':
+            with open(filename, 'rb') as f:
+                excel_compiler = pickle.load(f)
+        else:
+            excel_compiler = cls._from_text(
+                filename, is_json=extension == 'json')
+
+        return excel_compiler
+
+    def export_to_dot(self, filename=None):
+        try:
+            # test pydot is importable  (optionally installed)
+            import pydot  # noqa: F401
+        except ImportError:
+            raise ImportError("Package 'pydot' is not installed")
+
+        from networkx.drawing.nx_pydot import write_dot
+        filename = filename or (self.filename + '.dot')
+        write_dot(self.dep_graph, filename)
+
+    def export_to_gexf(self, filename=None):
+        from networkx.readwrite.gexf import write_gexf
+        filename = filename or (self.filename + '.gexf')
+        write_gexf(self.dep_graph, filename)
+
+    def plot_graph(self, layout_type='spring_layout'):
+        try:
+            # test matplotlib is importable  (optionally installed)
+            import matplotlib.pyplot as plt
+        except ImportError:
+            raise ImportError("Package 'matplotlib' is not installed")
+
+        pos = getattr(nx, layout_type)(self.dep_graph, iterations=2000)
+        nx.draw_networkx_nodes(self.dep_graph, pos)
+        nx.draw_networkx_edges(self.dep_graph, pos, arrows=True)
+        nx.draw_networkx_labels(self.dep_graph, pos)
+        plt.show()
+
+    def set_value(self, address, value):
+        """ Set the value of one or more cells or ranges
+
+        :param address: `str`, `AddressRange`, `AddressCell` or a tuple, list
+            or an iterable of these three
+        :param value: value to set.  This can be a value or a tuple/list
+            which matches the shapes needed for the given address/addresses
+        """
+
+        if (not isinstance(address, (AddressRange, AddressCell)) and
+                isinstance(address, (tuple, list))):
+            assert isinstance(value, (tuple, list))
+            assert len(address) == len(value)
+            for addr, val in zip(address, value):
+                self.set_value(addr, val)
+            return
+
+        elif address not in self.cell_map:
+            address = AddressRange.create(address).address
+            assert address in self.cell_map
+
+        cell_or_range = self.cell_map[address]
+
+        if cell_or_range.value != value:  # pragma: no branch
+            # need to be able to 'set' an empty cell
+            if cell_or_range.value is None:
+                cell_or_range.value = value
+
+            # reset the node + its dependencies
+            self._reset(cell_or_range)
+
+            # set the value
+            cell_or_range.value = value
+
+    def _reset(self, cell):
+        if cell.value is None:
+            return
+        self.log.info("Resetting {}".format(cell.address))
+        cell.value = None
+
+        if cell in self.dep_graph:
+            for child_cell in self.dep_graph.successors(cell):
+                if child_cell.value is not None:
+                    self._reset(child_cell)
+
+    def value_tree_str(self, address, indent=0):
+        """Generator which returns a formatted dependency graph"""
+        cell = self.cell_map[address]
+        yield "{}{} = {}".format(" " * indent, address, cell.value)
+        for children in sorted(self.dep_graph.predecessors(cell),
+                               key=lambda a: a.address.address):
+            yield from self.value_tree_str(children.address.address, indent + 1)
+
+    def recalculate(self):
+        """Recalculate all of the known cells"""
+        for cell in self.cell_map.values():
+            if isinstance(cell, _CellRange) or cell.formula:
+                cell.value = None
+
+        for cell in self.cell_map.values():
+            if isinstance(cell, _CellRange):
+                self._evaluate_range(cell.address.address)
+            else:
+                self._evaluate(cell.address.address)
+
+    def trim_graph(self, input_addrs, output_addrs):
+        """Remove unneeded cells from the graph"""
+        input_addrs = tuple(AddressRange(addr).address for addr in input_addrs)
+        output_addrs = tuple(AddressRange(addr) for addr in output_addrs)
+
+        # 1) build graph for all needed outputs
+        self._gen_graph(output_addrs)
+
+        # 2) walk the dependant tree (from the inputs) and find needed cells
+        needed_cells = set()
+
+        def walk_dependents(cell):
+            """passed in a _Cell or _CellRange"""
+            for child_cell in self.dep_graph.successors(cell):
+                child_addr = child_cell.address.address
+                if child_addr not in needed_cells:
+                    needed_cells.add(child_addr)
+                    walk_dependents(child_cell)
+
+        try:
+            for addr in input_addrs:
+                if addr in self.cell_map:
+                    walk_dependents(self.cell_map[addr])
                 else:
-                    # not a range, create the cell object
-                    cells = [Cell.resolve_cell(self.excel, dep, sheet=cursheet)]
-                    target = cellmap[c1.address()]
+                    self.log.warning(
+                        'Address {} not found in cell_map'.format(addr))
+        except nx.exception.NetworkXError as exc:
+            if AddressRange(addr) not in output_addrs:
+                raise ValueError('{}: which usually means no outputs '
+                                 'are dependant on it.'.format(exc))
 
-                # process each cell                    
-                for c2 in flatten(cells):
-                    # if we havent treated this cell allready
-                    if c2.address() not in cellmap:
-                        if c2.formula:
-                            # cell with a formula, needs to be added to the todo list
-                            todo.append(c2)
-                            #print "appended ", c2.address()
-                        else:
-                            # constant cell, no need for further processing, just remember to set the code
-                            pystr,ast = self.cell2code(c2)
-                            c2.python_expression = pystr
-                            c2.compile()     
-                            #print "skipped ", c2.address()
-                        
-                        # save in the cellmap
-                        cellmap[c2.address()] = c2
-                        # add to the graph
-                        self.add_node_to_graph(G, c2)
-                        
-                    # add an edge from the cell to the parent (range or cell)
-                    G.add_edge(cellmap[c2.address()],target)
-            
-        print "Graph construction done, %s nodes, %s edges, %s cellmap entries" % (len(G.nodes()),len(G.edges()),len(cellmap))
+        # even unconnected output addresses are needed
+        for addr in output_addrs:
+            needed_cells.add(addr.address)
 
-        sp = Spreadsheet(G,cellmap)
-        
-        return sp
+        # 3) walk the precedent tree (from the output) and trim unneeded cells
+        processed_cells = set()
 
-if __name__ == '__main__':
-    
-    # some test formulas
-    inputs = [
-              '=SUM((A:A 1:1))',
-              '=A1',
-              '=atan2(A1,B1)',
-              '=5*log(sin()+2)',
-              '=5*log(sin(3,7,9)+2)',
-              '=3 + 4 * 2 / ( 1 - 5 ) ^ 2 ^ 3',
-              '=1+3+5',
-              '=3 * 4 + 5',
-              '=50',
-              '=1+1',
-              '=$A1',
-              '=$B$2',
-              '=SUM(B5:B15)',
-              '=SUM(B5:B15,D5:D15)',
-              '=SUM(B5:B15 A7:D7)',
-              '=SUM(sheet1!$A$1:$B$2)',
-              '=[data.xls]sheet1!$A$1',
-              '=SUM((A:A,1:1))',
-              '=SUM((A:A A1:B1))',
-              '=SUM(D9:D11,E9:E11,F9:F11)',
-              '=SUM((D9:D11,(E9:E11,F9:F11)))',
-              '=IF(P5=1.0,"NA",IF(P5=2.0,"A",IF(P5=3.0,"B",IF(P5=4.0,"C",IF(P5=5.0,"D",IF(P5=6.0,"E",IF(P5=7.0,"F",IF(P5=8.0,"G"))))))))',
-              '={SUM(B2:D2*B3:D3)}',
-              '=SUM(123 + SUM(456) + (45<6))+456+789',
-              '=AVG(((((123 + 4 + AVG(A1:A2))))))',
-              
-              # E. W. Bachtal's test formulae
-              '=IF("a"={"a","b";"c",#N/A;-1,TRUE}, "yes", "no") &   "  more ""test"" text"',
-              #'=+ AName- (-+-+-2^6) = {"A","B"} + @SUM(R1C1) + (@ERROR.TYPE(#VALUE!) = 2)',
-              '=IF(R13C3>DATE(2002,1,6),0,IF(ISERROR(R[41]C[2]),0,IF(R13C3>=R[41]C[2],0, IF(AND(R[23]C[11]>=55,R[24]C[11]>=20),R53C3,0))))',
-              '=IF(R[39]C[11]>65,R[25]C[42],ROUND((R[11]C[11]*IF(OR(AND(R[39]C[11]>=55, ' + 
-                  'R[40]C[11]>=20),AND(R[40]C[11]>=20,R11C3="YES")),R[44]C[11],R[43]C[11]))+(R[14]C[11] ' +
-                  '*IF(OR(AND(R[39]C[11]>=55,R[40]C[11]>=20),AND(R[40]C[11]>=20,R11C3="YES")), ' +
-                  'R[45]C[11],R[43]C[11])),0))',
-              '=(propellor_charts!B22*(propellor_charts!E21+propellor_charts!D21*(engine_data!O16*D70+engine_data!P16)+propellor_charts!C21*(engine_data!O16*D70+engine_data!P16)^2+propellor_charts!B21*(engine_data!O16*D70+engine_data!P16)^3)^2)^(1/3)*(1*D70/5.33E-18)^(2/3)*0.0000000001*28.3495231*9.81/1000',
-              '=(3600/1000)*E40*(E8/E39)*(E15/E19)*LN(E54/(E54-E48))',
-              '=IF(P5=1.0,"NA",IF(P5=2.0,"A",IF(P5=3.0,"B",IF(P5=4.0,"C",IF(P5=5.0,"D",IF(P5=6.0,"E",IF(P5=7.0,"F",IF(P5=8.0,"G"))))))))',
-              '=LINEST(X5:X32,W5:W32^{1,2,3})',
-              '=IF(configurations!$G$22=3,sizing!$C$303,M14)',
-              '=0.000001042*E226^3-0.00004777*E226^2+0.0007646*E226-0.00075',
-              '=LINEST(G2:G17,E2:E17,FALSE)',
-              '=IF(AI119="","",E119)',
-              '=LINEST(B32:(INDEX(B32:B119,MATCH(0,B32:B119,-1),1)),(F32:(INDEX(B32:F119,MATCH(0,B32:B119,-1),5)))^{1,2,3,4})',
-              ]
+        def walk_precedents(cell):
+            for child_address in (a.address for a in cell.needed_addresses):
+                if child_address not in processed_cells:  # pragma: no branch
+                    processed_cells.add(child_address)
+                    child_cell = self.cell_map[child_address]
+                    if child_address in needed_cells or ':' in child_address:
+                        walk_precedents(child_cell)
+                    else:
+                        # trim this cell, now we will need only its value
+                        needed_cells.add(child_address)
+                        child_cell.formula = None
+                        self.log.debug('Trimming {}'.format(child_address))
 
-    for i in inputs:
-        print "**************************************************"
-        print "Formula: ", i
+        for addr in output_addrs:
+            walk_precedents(self.cell_map[addr.address])
 
-        e = shunting_yard(i);
-        print "RPN: ",  "|".join([str(x) for x in e])
-        
-        G,root = build_ast(e)
-        
-        print "Python code: ", root.emit(G,context=None)
-        print "**************************************************"
+        # 4) check for any buried (not leaf node) inputs
+        for addr in input_addrs:
+            cell = self.cell_map.get(addr)
+            if cell and getattr(cell, 'formula', None):
+                self.log.info("{} is not a leaf node".format(addr))
+
+        # 5) remove unneeded cells
+        cells_to_remove = tuple(addr for addr in self.cell_map
+                                if addr not in needed_cells)
+        for addr in cells_to_remove:
+            del self.cell_map[addr]
+
+    def validate_calcs(self, output_addrs=None):
+        """For each address, calc the value, and verify that it matches
+
+        This is a debugging tool which will show which cells evaluate
+        differently than they do for excel.
+
+        :param output_addrs: The cells to evaluate from (defaults to all)
+        :return: dict of addresses with good/bad values that failed to verify
+        """
+        def close_enough(val1, val2):
+            import pytest
+            if isinstance(val1, (int, float)):
+                return val2 == pytest.approx(val1)
+            else:
+                return val1 == val2
+
+        Mismatch = collections.namedtuple('Mismatch', 'original calced formula')
+
+        if output_addrs is None:
+            to_verify = self._formula_cells
+        else:
+            to_verify = list(AddressCell(addr) for addr in output_addrs)
+        verified = set()
+        failed = {}
+        while to_verify:
+            addr = to_verify.pop()
+            try:
+                self._gen_graph(addr)
+                cell = self.cell_map[addr.address]
+                if isinstance(cell, _Cell) and cell.python_code:
+                    original_value = cell.value
+                    cell.value = None
+                    self._evaluate(cell.address.address)
+
+                    # pragma: no branch
+                    if not close_enough(original_value, cell.value):
+                        failed.setdefault('mismatch', {})[str(addr)] = Mismatch(
+                            original_value, cell.value,
+                            cell.formula.base_formula)
+                        print('{} mismatch  {} -> {}  {}'.format(
+                            addr, original_value, cell.value,
+                            cell.formula.base_formula))
+
+                        # do it again to allow easy breakpointing
+                        cell.value = None
+                        self._evaluate(cell.address.address)
+
+                verified.add(addr)
+                for addr in cell.needed_addresses:
+                    if addr not in verified:  # pragma: no branch
+                        to_verify.append(addr)
+            except Exception as exc:   # pragma: no cover
+                cell = self.cell_map.get(addr.address, None)
+                formula = cell and cell.formula.base_formula
+                exc_str = str(exc)
+                exc_str_split = exc_str.split('\n')
+                if len(exc_str_split) == 1:
+                    exc_str_key = '{}: {}'.format(type(exc).__name__, exc_str)
+                else:
+                    exc_str_key = exc_str_split[-2]
+
+                if ('NameError: name ' in exc_str or
+                        exc_str_key.startswith('NotImplementedError: ')):
+                    failed.setdefault('not-implemented', {}).setdefault(
+                        exc_str_key, []).append((str(addr), formula, exc_str))
+                else:
+                    failed.setdefault('exceptions', {}).setdefault(
+                        exc_str_key, []).append((str(addr), formula, exc_str))
+
+        return failed
+
+    @property
+    def _formula_cells(self):
+        """Iterate all cells and find cells with formulas"""
+
+        if self._formula_cells_list is None:
+            self._formula_cells_list = [
+                AddressCell.create(cell.coordinate, ws.title)
+                for ws in self.excel.workbook
+                for row in ws.iter_rows()
+                for cell in row
+                if isinstance(cell.value, str) and cell.value.startswith('=')
+            ]
+        return self._formula_cells_list
+
+    def _make_cells(self, address):
+        """Given an AddressRange or AddressCell generate compiler Cells"""
+
+        # from here don't build cells that are already in the cell_map
+        assert address.address not in self.cell_map
+
+        def add_node_to_graph(node):
+            self.dep_graph.add_node(node)
+            self.dep_graph.node[node]['sheet'] = node.sheet
+            self.dep_graph.node[node]['label'] = node.address.coordinate
+
+            # stick in queue to add edges
+            self.graph_todos.append(node)
+
+        def build_cell(addr):
+            excel_range = self.excel.get_range(addr)
+            formula = None
+            if excel_range.Formula.startswith('='):
+                formula = excel_range.Formula
+
+            self.cell_map[addr.address] = _Cell(
+                addr, value=excel_range.Value,
+                formula=formula, excel=self.excel)
+            return self.cell_map[addr.address]
+
+        def build_range(rng):
+
+            # ensure in the same nested format as fs/vs will be
+            height, width = address.size
+            addrs = resolve_range(rng)
+            if height == 1:
+                addrs = [addrs]
+            elif width == 1:
+                addrs = [[x] for x in addrs]
+
+            # get everything in blocks, as it is faster
+            excel_range = self.excel.get_range(rng)
+            excel_cells = zip(addrs, excel_range.Formula, excel_range.Value)
+
+            cells = []
+            for row in (zip(*x) for x in excel_cells):
+                for cell_address, f, value in row:
+                    if cell_address.address not in self.cell_map:
+                        formula = f if f and f.startswith('=') else None
+                        if None not in (f, value):
+                            cell = _Cell(cell_address, value=value,
+                                         formula=formula, excel=self.excel)
+                            self.cell_map[cell_address.address] = cell
+                            cells.append(cell)
+            return cells
+
+        if address.is_range:
+            cell_range = _CellRange(address, self)
+            self.range_todos.append(address.address)
+            self.cell_map[address.address] = cell_range
+            add_node_to_graph(cell_range)
+
+            new_cells = build_range(address)
+        else:
+            new_cells = [build_cell(address)]
+
+        for cell in new_cells:
+            if cell.formula:
+                # cells to analyze: only formulas have precedents
+                add_node_to_graph(cell)
+
+    def _evaluate_range(self, address):
+
+        cell_range = self.cell_map.get(address)
+        if cell_range is None:
+            # we don't save the _CellRange values in the text format files
+            assert '!' in address, "{} missing sheetname".format(address)
+            self._gen_graph(address)
+            cell_range = self.cell_map[address]
+
+        if cell_range.value is None:
+            self.log.debug("Evaluating: {}".format(cell_range.address))
+            cells = cell_range.cells
+
+            if 1 == min(cell_range.address.size):
+                data = [self._evaluate(cell.address.address) for cell in cells]
+            else:
+                data = [
+                    [self._evaluate(cell.address.address) for cell in cells[i]]
+                    for i in range(len(cells))
+                ]
+
+            cell_range.value = data
+
+        return cell_range.value
+
+    def _evaluate(self, address):
+        cell = self.cell_map[address]
+
+        # calculate the cell value for formulas and ranges
+        if cell.value is None:
+            if isinstance(cell, _CellRange):
+                self._evaluate_range(cell.address.address)
+
+            elif cell.python_code:
+                self.log.debug(
+                    "Evaluating: {}, {}".format(cell.address, cell.python_code))
+                if self.eval is None:
+                    self.eval = ExcelFormula.build_eval_context(
+                        self._evaluate, self._evaluate_range, self.log)
+                value = self.eval(cell.formula)
+                self.log.info("Cell %s evaluated to '%s' (%s)" % (
+                    cell.address, value, type(value).__name__))
+                cell.value = value
+
+        return cell.value
+
+    def evaluate(self, address):
+        """ evaluate a cell or cells in the spreadsheet
+
+        :param address: str, AddressRange, AddressCell or a tuple or list
+            or iterable of these three
+        :return: evaluted value/values
+        """
+
+        try:
+            not_in_cell_map = address not in self.cell_map
+        except TypeError:
+            not_in_cell_map = True
+
+        if not_in_cell_map:
+            if (not isinstance(address, (str, AddressRange, AddressCell)) and
+                    isinstance(address, collections.Iterable)):
+
+                if not isinstance(address, (tuple, list)):
+                    address = tuple(address)
+
+                # process a tuple or list of addresses
+                return type(address)(self.evaluate(c) for c in address)
+
+            address = AddressRange.create(address).address
+            if address not in self.cell_map:
+                self._gen_graph(address)
+
+        return self._evaluate(address)
+
+    def _gen_graph(self, seed, recursed=False):
+        """Given a starting point (e.g., A6, or A3:B7) on a particular sheet,
+        generate a Spreadsheet instance that captures the logic and control
+        flow of the equations.
+        """
+        if not isinstance(seed, (AddressCell, AddressRange)):
+            if isinstance(seed, str):
+                seed = AddressRange(seed)
+            elif isinstance(seed, collections.Iterable):
+                for s in seed:
+                    self._gen_graph(s, recursed=True)
+                self._process_gen_graph()
+                return
+            else:
+                raise ValueError('Unknown seed: {}'.format(seed))
+
+        # get/set the current sheet
+        if not seed.has_sheet:
+            seed = AddressRange(seed, sheet=self.excel.get_active_sheet_name())
+
+        if seed.address in self.cell_map:
+            # already did this cell/range
+            return
+
+        # process the seed
+        self._make_cells(seed)
+
+        if not recursed:
+            # if not entered to process one cell / cellrange process other work
+            self._process_gen_graph()
+
+    def _process_gen_graph(self):
+
+        while self.graph_todos:
+            # connect the dependant cells in the graph
+            dependant = self.graph_todos.pop()
+
+            self.log.debug("Handling {}".format(dependant.address))
+
+            for precedent_address in dependant.needed_addresses:
+                if precedent_address.address not in self.cell_map:
+                    self._gen_graph(precedent_address, recursed=True)
+
+                self.dep_graph.add_edge(
+                    self.cell_map[precedent_address.address], dependant)
+
+        # calc the values for ranges
+        for range_todo in reversed(self.range_todos):
+            self._evaluate_range(range_todo)
+        self.range_todos = []
+
+        self.log.info(
+            "Graph construction done, %s nodes, "
+            "%s edges, %s self.cell_map entries" % (
+                len(self.dep_graph.nodes()),
+                len(self.dep_graph.edges()),
+                len(self.cell_map))
+        )
+
+
+class _CellRange:
+    # TODO: only supports rectangular ranges
+
+    def __init__(self, address, excel):
+        self.address = AddressRange(address)
+        self.excel = excel
+        if not self.address.sheet:
+            raise ValueError("Must pass in a sheet: {}".format(address))
+
+        self.addresses = resolve_range(self.address)
+        self._cells = None
+        self.size = self.address.size
+        self.value = None
+
+    def __getstate__(self):
+        state = dict(self.__dict__)
+        state['excel'] = None
+        return state
+
+    def __repr__(self):
+        return str(self.address)
+
+    __str__ = __repr__
+
+    def __iter__(self):
+        if 1 == min(self.size):
+            return iter(self.addresses)
+        else:
+            return it.chain.from_iterable(self.addresses)
+
+    @property
+    def cells(self):
+        if self._cells is None:
+            cell_map = self.excel.cell_map
+            if 1 == min(self.size):
+                self._cells = [cell_map[addr.address]
+                               for addr in self.addresses]
+            else:
+                self._cells = [[cell_map[addr.address] for addr in row]
+                               for row in self.addresses]
+        return self._cells
+
+    @property
+    def needed_addresses(self):
+        return iter(self)
+
+    @property
+    def sheet(self):
+        return self.address.sheet
+
+
+class _Cell:
+    ctr = 0
+
+    @classmethod
+    def next_id(cls):
+        cls.ctr += 1
+        return cls.ctr
+
+    def __init__(self, address, value=None, formula=None, excel=None):
+        self.address = address
+        if isinstance(excel, _CompiledImporter):
+            excel = None
+
+        self.excel = excel
+        self.formula = formula and ExcelFormula(
+            formula, cell=self, formula_is_python_code=(excel is None))
+        self.value = value
+
+        # every cell has a unique id
+        self.id = _Cell.next_id()
+
+    def __getstate__(self):
+        state = dict(self.__dict__)
+        state['excel'] = None
+        return state
+
+    def __repr__(self):
+        return "{} -> {}".format(self.address, self.formula or self.value)
+
+    __str__ = __repr__
+
+    @property
+    def needed_addresses(self):
+        return self.formula and self.formula.needed_addresses or ()
+
+    @property
+    def sheet(self):
+        return self.address.sheet
+
+    @property
+    def python_code(self):
+        return self.formula and self.formula.python_code
+
+
+class _CompiledImporter:
+    def __init__(self, filename):
+        self.filename = filename.rsplit('.', maxsplit=1)[0]
+        self.value = None
+        self.compiler = None
+
+    CellValue = collections.namedtuple('CellValue', 'Formula Value')
+
+    def get_range(self, address):
+        if address.address in self.compiler.cell_map:
+            cell_map = self.compiler.cell_map
+            cell = cell_map[address.address]
+            addrs = cell.addresses
+
+            height, width = address.size
+            if height == 1:
+                addrs = [addrs]
+            elif width == 1:  # pragma: no branch
+                addrs = [[x] for x in addrs]
+
+            cells = [[cell_map[addr.address] for addr in row] for row in addrs]
+            formulas = [[c.formula for c in row] for row in cells]
+            values = [[c.value for c in row] for row in cells]
+
+            return self.CellValue(formulas, values)
+
+        elif isinstance(self.value, str) and self.value.startswith('='):
+            return self.CellValue(self.value, None)
+        else:
+            return self.CellValue('', self.value)

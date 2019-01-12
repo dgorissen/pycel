@@ -1,0 +1,15 @@
+---
+language: python
+
+python: ["3.4", "3.5", "3.6"]
+
+sudo: false
+
+install:
+  - pip install -r test-requirements.txt
+
+script:
+  - tox
+
+after_success:
+  - codecov

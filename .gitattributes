@@ -1,0 +1,14 @@
+*.py text eol=lf
+*.sql text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.rst text eol=lf
+*.sln text eol=lf
+*.json text eol=lf
+*.rdl text eol=lf
+*.mdb binary
+*.accdb binary
+*.zip binary
+*.xlsx binary
+
+notebooks/* linguist-documentation
