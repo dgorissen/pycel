@@ -63,6 +63,8 @@ class Tokenizer(tokenizer.Tokenizer):
 
         # ::TODO:: remove after openpyxl updated
         # ::HACK:: to workaround openpyxl issue fixed in PR #301
+        # ::HACK:: subsequent edit to PR #301 released in 2.5.14 has a bug
+        # ::HACK:: wait for release of PR #315
         token_stream = iter(tokens)
         tokens = []
         for token in token_stream:
