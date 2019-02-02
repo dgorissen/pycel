@@ -6,6 +6,7 @@
 
 import abc
 import collections
+import datetime as dt
 import itertools as it
 import os
 
@@ -65,7 +66,14 @@ class _OpxRange:
 
     @classmethod
     def cell_to_value(cls, cell):
-        return None if cell.data_type is Cell.TYPE_FORMULA else cell.value
+        value = None if cell.data_type is Cell.TYPE_FORMULA else cell.value
+        if isinstance(value, (dt.date, dt.datetime)):
+            # ::HACK:: excel thinks that 1900/02/29 was a thing.  In certain
+            # circumstances openpyxl will return a datetime.  This is a problem
+            # as we don't want them, and having been mapped to datetime
+            # information may have been lost, so reach around the conversions
+            value = cell._value
+        return value
 
     @property
     def Formula(self):

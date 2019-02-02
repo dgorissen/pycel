@@ -121,3 +121,9 @@ def test_get_tables(excel):
         assert 'Table1' == table.name
 
     assert (None, None) == excel.table('JUNK')
+
+
+def test_get_datetimes(excel):
+    result = excel.get_range("datetime!A1:B11").Value
+    for row in result:
+        assert row[0] == row[1]
