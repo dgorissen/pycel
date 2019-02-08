@@ -37,14 +37,15 @@ def fixture_xls_path_basic(fixture_dir, tmpdir):
 
 @pytest.fixture('session')
 def unconnected_excel(fixture_xls_path):
-    import openpyxl.reader.worksheet as orw
+    import openpyxl.worksheet._reader as orw
     old_warn = orw.warn
 
     def new_warn(msg, *args, **kwargs):
         if 'Unknown' not in msg:
             old_warn(msg, *args, **kwargs)
 
-    with mock.patch('openpyxl.reader.worksheet.warn', new_warn):
+    # quiet the warnings about unknown extensions
+    with mock.patch('openpyxl.worksheet._reader.warn', new_warn):
         yield ExcelWrapperImpl(fixture_xls_path)
 
 

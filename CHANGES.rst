@@ -1,3 +1,12 @@
+1.0b4 (unreleased)
+===================
+
+Changes
+-------
+
+* Move to openpyxl 2.6+
+* Remove support for Python 3.4
+
 1.0b3 (2019-02-02)
 ===================
 

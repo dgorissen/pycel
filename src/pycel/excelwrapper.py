@@ -9,10 +9,12 @@ import collections
 import datetime as dt
 import itertools as it
 import os
+from unittest import mock
 
 from openpyxl import load_workbook
-from openpyxl.cell import Cell
+from openpyxl.cell.cell import Cell, TYPE_FORMULA
 from openpyxl.cell.read_only import EMPTY_CELL
+from openpyxl.utils import datetime as opxl_dt
 from pycel.excelutil import AddressCell, AddressRange
 
 
@@ -66,14 +68,7 @@ class _OpxRange:
 
     @classmethod
     def cell_to_value(cls, cell):
-        value = None if cell.data_type is Cell.TYPE_FORMULA else cell.value
-        if isinstance(value, (dt.date, dt.datetime)):
-            # ::HACK:: excel thinks that 1900/02/29 was a thing.  In certain
-            # circumstances openpyxl will return a datetime.  This is a problem
-            # as we don't want them, and having been mapped to datetime
-            # information may have been lost, so reach around the conversions
-            value = cell._value
-        return value
+        return None if cell.data_type is TYPE_FORMULA else cell.value
 
     @property
     def Formula(self):
@@ -155,6 +150,17 @@ class ExcelOpxWrapper(ExcelWrapper):
             self.workbook_dataonly[s])
         return self.workbook.active
 
+    @staticmethod
+    def from_excel(value, offset=opxl_dt.CALENDAR_WINDOWS_1900):
+        new_value = opxl_dt.from_excel(value, offset)
+        if isinstance(new_value, (dt.date, dt.datetime)):
+            # ::HACK:: excel thinks that 1900/02/29 was a thing.  In certain
+            # circumstances openpyxl will return a datetime.  This is a problem
+            # as we don't want them, and having been mapped to datetime
+            # information may have been lost, so ignore the conversions
+            new_value = value
+        return new_value
+
     def get_range(self, address):
         if not isinstance(address, (AddressRange, AddressCell)):
             address = AddressRange(address)
@@ -166,26 +172,31 @@ class ExcelOpxWrapper(ExcelWrapper):
             sheet = self.workbook.active
             sheet_dataonly = self.workbook_dataonly.active
 
-        cells = sheet[address.coordinate]
-        if isinstance(cells, Cell):
-            cell = cells
-            cell_dataonly = sheet_dataonly[address.coordinate]
-            return _OpxCell(cell, cell_dataonly)
+        with mock.patch('openpyxl.worksheet._reader.from_excel',
+                        self.from_excel):
+            # work around type coercion to datetime that causes some issues
 
-        else:
-            cells_dataonly = sheet_dataonly[address.coordinate]
+            cells = sheet[address.coordinate]
+            if isinstance(cells, Cell):
+                cell = cells
+                cell_dataonly = sheet_dataonly[address.coordinate]
+                return _OpxCell(cell, cell_dataonly)
 
-            if len(cells) != len(cells_dataonly):
-                # The read_only version of an openpyxl worksheet has the
-                # somewhat annoying property of not giving empty rows at the
-                # end.  Which is not the same behavior as the non-readonly
-                # version.  So we need to align the data here by adding
-                # empty rows.
-                empty_row = (EMPTY_CELL, ) * len(cells[0])
-                empty_rows = (empty_row, ) * (len(cells) - len(cells_dataonly))
-                cells_dataonly += empty_rows
+            else:
+                cells_dataonly = sheet_dataonly[address.coordinate]
 
-            return _OpxRange(cells, cells_dataonly)
+                if len(cells) != len(cells_dataonly):
+                    # The read_only version of an openpyxl worksheet has the
+                    # somewhat annoying property of not giving empty rows at the
+                    # end.  Which is not the same behavior as the non-readonly
+                    # version.  So we need to align the data here by adding
+                    # empty rows.
+                    empty_row = (EMPTY_CELL, ) * len(cells[0])
+                    empty_rows = (empty_row, ) * (
+                        len(cells) - len(cells_dataonly))
+                    cells_dataonly += empty_rows
+
+                return _OpxRange(cells, cells_dataonly)
 
     def get_used_range(self):
         return self.workbook.active.iter_rows()
