@@ -740,11 +740,7 @@ class ExcelFormula:
         def capture_error_state(is_exception, msg):
             if is_exception:
                 import traceback
-                try:
-                    trace = traceback.format_exc()
-                except AttributeError:  # pragma: no cover
-                    # this is a ::HACK:: to work around PY34
-                    trace = ''
+                trace = traceback.format_exc()
             else:
                 trace = ''  # pragma: no cover
             error_messages.append((trace, msg))

@@ -89,7 +89,7 @@ PYTHON_AST_OPERATORS = {
     'BitOr': operator.or_,
     'BitXor': operator.xor,
     'BitAnd': operator.and_,
-    # 'MatMult': operator.matmul,  # not supported on py34
+    'MatMult': operator.matmul,
 }
 
 COMPARISION_OPS = frozenset(('Eq', 'Lt', 'Gt', 'LtE', 'GtE', 'NotEq'))
