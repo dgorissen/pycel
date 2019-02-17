@@ -57,7 +57,7 @@ setup(
         'openpyxl>=2.6.0',
         'ruamel.yaml',
     ],
-    python_requires='>=3.4',
+    python_requires='>=3.5',
     author='Dirk Gorissen, Stephen Rauch',
     author_email='dgorissen@gmail.com',
     maintainer='Stephen Rauch',
