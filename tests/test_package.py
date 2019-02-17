@@ -36,3 +36,22 @@ def test_docs_version(doc_versions):
 def test_docs_versions(doc_versions):
     for v1, v2 in zip(doc_versions, doc_versions[1:]):
         assert LooseVersion(v1) > LooseVersion(v2)
+
+
+def test_binder_requirements():
+    binder_reqs_file = '../binder/requirements.txt'
+    if os.path.exists(binder_reqs_file):
+        with open('../binder/requirements.txt', 'r') as f:
+            binder_reqs = sorted(l.strip() for l in f.readlines())
+
+        from unittest import mock
+        with mock.patch('setuptools.setup') as setup:
+            cwd = os.getcwd()
+            os.chdir('..')
+            with open('setup.py', 'r') as f:
+                exec(f.read())
+            os.chdir(cwd)
+            setup_reqs = setup.mock_calls[0][2]['install_requires']
+
+            # the binder requirements also include the optional graphing libs
+            assert binder_reqs == sorted(setup_reqs + ['matplotlib', 'pydot'])

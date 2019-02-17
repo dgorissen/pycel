@@ -61,20 +61,6 @@ class Tokenizer(tokenizer.Tokenizer):
                 # this whitespace is an intersect operator
                 tokens.append(Token(token.value, Token.OP_IN, Token.INTERSECT))
 
-        # ::TODO:: remove after openpyxl updated
-        # ::HACK:: to workaround openpyxl issue fixed in PR #301
-        token_stream = iter(tokens)
-        tokens = []
-        for token in token_stream:
-            if token.type == Token.OPERAND and (
-                token.value.count('[') != token.value.count(']')
-            ):
-                new_value = (token.value +
-                             next(token_stream).value +
-                             next(token_stream).value)
-                token = Token(new_value, token.type, token.subtype)
-            tokens.append(token)
-
         return tokens
 
 
@@ -738,11 +724,7 @@ class ExcelFormula:
         def capture_error_state(is_exception, msg):
             if is_exception:
                 import traceback
-                try:
-                    trace = traceback.format_exc()
-                except AttributeError:  # pragma: no cover
-                    # this is a ::HACK:: to work around PY34
-                    trace = ''
+                trace = traceback.format_exc()
             else:
                 trace = ''  # pragma: no cover
             error_messages.append((trace, msg))

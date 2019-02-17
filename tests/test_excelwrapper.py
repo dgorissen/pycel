@@ -1,3 +1,4 @@
+import datetime as dt
 
 
 def test_connect(unconnected_excel):
@@ -121,3 +122,10 @@ def test_get_tables(excel):
         assert 'Table1' == table.name
 
     assert (None, None) == excel.table('JUNK')
+
+
+def test_get_datetimes(excel):
+    result = excel.get_range("datetime!A1:B12").Value
+    for row in result:
+        if isinstance(row[1], (dt.date, dt.datetime)):
+            assert row[0] == row[1]

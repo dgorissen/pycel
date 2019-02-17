@@ -1,3 +1,21 @@
+1.0b4 (2019-02-17)
+===================
+
+Changes
+-------
+
+* Move to openpyxl 2.6+
+* Remove support for Python 3.4
+
+1.0b3 (2019-02-02)
+===================
+
+Changes
+-------
+
+* Work around openpyxl returning datetimes
+* Pin to openpyxl 2.5.12 to avoid bug in 2.5.14 (fixed in PR #315)
+
 1.0b2 (2019-01-05)
 ===================
 
