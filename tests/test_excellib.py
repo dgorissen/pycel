@@ -23,6 +23,7 @@ from pycel.excellib import (
     mid,
     mod,
     npv,
+    power,
     right,
     roundup,
     row,
@@ -599,7 +600,31 @@ def test_npv(data, expected):
     if isinstance(result, str):
         assert result == expected
     else:
-        result == pytest.approx(expected, rel=1e-3)
+        assert result == pytest.approx(expected, rel=1e-3)
+
+
+@pytest.mark.parametrize(
+    'data, expected', (
+        ((0, 0), NA_ERROR),
+        ((0, 1), 0),
+        ((1, 0), 1),
+        ((1, 2), 1),
+        ((2, 1), 2),
+        ((0.1, 0.1), 0.1 ** 0.1),
+        ((NA_ERROR, 1), NA_ERROR),
+        ((1, NA_ERROR), NA_ERROR),
+        ((1, DIV0), DIV0),
+        ((DIV0, 1), DIV0),
+        ((NA_ERROR, DIV0), NA_ERROR),
+        ((DIV0, NA_ERROR), DIV0),
+    )
+)
+def test_power(data, expected):
+    result = power(*data)
+    if isinstance(result, str):
+        assert result == expected
+    else:
+        assert result == pytest.approx(expected, rel=1e-3)
 
 
 @pytest.mark.parametrize(

@@ -456,6 +456,21 @@ def npv(*args):
     return sum([float(x) * rate ** -i for i, x in enumerate(cashflow, start=1)])
 
 
+def power(number, power):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   POWER-function-D3F2908B-56F4-4C3F-895A-07FB519C362A
+
+    for arg in (number, power):
+        if arg in ERROR_CODES:
+            return arg
+
+    if number == power == 0:
+        # Really excel?  What were you thinking?
+        return NA_ERROR
+
+    return number ** power
+
+
 def right(text, num_chars=1):
     # Excel reference:  https://support.office.com/en-us/article/
     #   RIGHT-RIGHTB-functions-240267EE-9AFA-4639-A02B-F19E1786CF2F
