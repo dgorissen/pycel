@@ -507,7 +507,8 @@ class ExcelCompiler:
                 for ws in self.excel.workbook
                 for row in ws.iter_rows()
                 for cell in row
-                if isinstance(cell.value, str) and cell.value.startswith('=')
+                if isinstance(getattr(cell, 'value', None), str) and
+                cell.value.startswith('=')
             ]
         return self._formula_cells_list
 
