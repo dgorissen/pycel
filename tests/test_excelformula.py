@@ -147,6 +147,14 @@ basic_inputs = [
         '=SUM(B5:B15,D5:D15)%',
         'B5:B15|D5:D15|SUM|%',
         'xsum(_R_("B5:B15"), _R_("D5:D15")) / 100'),
+    FormulaTest(
+        '=AND(G3, 1)',
+        'G3|1|AND',
+        'x_and(_C_("G3"), 1)'),
+    FormulaTest(
+        '=OR(TRUE, TRUE(), FALSE, FALSE())',
+        'TRUE|TRUE|FALSE|FALSE|OR',
+        'x_or(True, True, False, False)'),
 ]
 
 whitespace_inputs = [
@@ -178,8 +186,8 @@ if_inputs = [
         'R13C3|2002|1|6|DATE|>|0|R[41]C[2]|ISERROR|0|R13C3|R[41]C[2]|>=|0|'
         'R[23]C[11]|55|>=|R[24]C[11]|20|>=|AND|R53C3|0|IF|IF|IF|IF',
         'x_if(_C_("C13") > date(2002, 1, 6), 0, x_if(iserror(_C_("C42")), 0, '
-        'x_if(_C_("C13") >= _C_("C42"), 0, x_if(all('
-        '(_C_("L24") >= 55, _C_("L25") >= 20,)), _C_("C53"), 0))))'),
+        'x_if(_C_("C13") >= _C_("C42"), 0, x_if(x_and('
+        '_C_("L24") >= 55, _C_("L25") >= 20), _C_("C53"), 0))))'),
     FormulaTest(
         '=IF(R[39]C[11]>65,R[25]C[42],ROUND((R[11]C[11]*IF(OR(AND('
         'R[39]C[11]>=55, R[40]C[11]>=20),AND(R[40]C[11]>=20,R11C3="YES")),'
@@ -191,11 +199,11 @@ if_inputs = [
         'R[44]C[11]|R[43]C[11]|IF|*|R[14]C[11]|R[39]C[11]|55|>=|'
         'R[40]C[11]|20|>=|AND|R[40]C[11]|20|>=|R11C3|"YES"|=|AND|OR|'
         'R[45]C[11]|R[43]C[11]|IF|*|+|0|ROUND|IF',
-        'x_if(_C_("L40") > 65, _C_("AQ26"), xround((_C_("L12") * x_if(any(('
-        'all((_C_("L40") >= 55, _C_("L41") >= 20,)), all((_C_("L41") >= 20, '
-        '_C_("C11") == "YES",)),)), _C_("L45"), _C_("L44"))) + (_C_("L15") * '
-        'x_if(any((all((_C_("L40") >= 55, _C_("L41") >= 20,)), all((_C_("L41") '
-        '>= 20, _C_("C11") == "YES",)),)), _C_("L46"), _C_("L44"))), 0))'),
+        'x_if(_C_("L40") > 65, _C_("AQ26"), xround((_C_("L12") * x_if(x_or('
+        'x_and(_C_("L40") >= 55, _C_("L41") >= 20), x_and(_C_("L41") >= 20, '
+        '_C_("C11") == "YES")), _C_("L45"), _C_("L44"))) + (_C_("L15") * '
+        'x_if(x_or(x_and(_C_("L40") >= 55, _C_("L41") >= 20), x_and(_C_("L41") '
+        '>= 20, _C_("C11") == "YES")), _C_("L46"), _C_("L44"))), 0))'),
     FormulaTest(
         '=IF(AI119="","",E119)',
         'AI119|""|=|""|E119|IF',
@@ -579,6 +587,27 @@ def test_string_number_compare():
     )
 )
 def test_bool_ops(formula, result):
+    eval_ctx = ExcelFormula.build_eval_context(lambda x: None, None)
+    assert eval_ctx(ExcelFormula(formula)) == result
+
+
+@pytest.mark.parametrize(
+    'formula, result', (
+        ('=NOT(FALSE)', True),
+        ('=NOT(TRUE)', False),
+        ('=OR(FALSE, FALSE)', False),
+        ('=OR(TRUE, FALSE)', True),
+        ('=AND(TRUE, FALSE)', False),
+        ('=AND(TRUE, TRUE)', True),
+        ('=XOR(FALSE, FALSE)', False),
+        ('=XOR(TRUE, FALSE)', True),
+        ('=XOR(FALSE, TRUE)', True),
+        ('=XOR(TRUE, TRUE)', False),
+        ('=FALSE()', False),
+        ('=TRUE()', True),
+    )
+)
+def test_bool_funcs(formula, result):
     eval_ctx = ExcelFormula.build_eval_context(lambda x: None, None)
     assert eval_ctx(ExcelFormula(formula)) == result
 

@@ -2,24 +2,11 @@
 Python equivalents of excel logical functions (bools)
 """
 
-from pycel.excelutil import ERROR_CODES, VALUE_ERROR
+from pycel.excelutil import flatten, ERROR_CODES, VALUE_ERROR
 
 
-# AND function
-# Returns TRUE if all of its arguments are TRUE
-# Excel reference: https://support.office.com/en-us/article/
-#   and-function-5f19b2e8-e1df-4408-897a-ce285a19e9d9
-
-
-# FALSE function
-# Returns the logical value FALSE
-# Excel reference: https://support.office.com/en-us/article/
-#   false-function-2d58dfa5-9c03-4259-bf8f-f0ae14346904
-
-
-def x_if(test, true_value, false_value=0):
-    # Excel reference: https://support.office.com/en-us/article/
-    #   IF-function-69AED7C9-4E8A-4755-A9BC-AA8BBFF73BE2
+def _clean_logical(test):
+    """For logicals that take one argument, clean via excel rules"""
 
     if test in ERROR_CODES:
         return test
@@ -30,7 +17,53 @@ def x_if(test, true_value, false_value=0):
         else:
             return VALUE_ERROR
 
-    return true_value if test else false_value
+    if test is None:
+        return False
+    elif isinstance(test, (bool, int, float)):
+        return bool(test)
+    else:
+        return VALUE_ERROR
+
+
+def _clean_logicals(*args):
+    """For logicals that take more than one argument, clean via excel rules"""
+
+    values = tuple(flatten(args))
+
+    error = next((x for x in values if x in ERROR_CODES), None)
+
+    if error is not None:
+        # return the first error in the list
+        return error
+    else:
+        values = tuple(x for x in values
+                       if not (x is None or isinstance(x, str)))
+        return VALUE_ERROR if len(values) == 0 else values
+
+
+def x_and(*args):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   and-function-5f19b2e8-e1df-4408-897a-ce285a19e9d9
+
+    values = _clean_logicals(*args)
+    if isinstance(values, str):
+        # return error code
+        return values
+    else:
+        return all(values)
+
+
+def x_if(test, true_value, false_value=0):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   IF-function-69AED7C9-4E8A-4755-A9BC-AA8BBFF73BE2
+
+    test = _clean_logical(test)
+
+    if isinstance(test, str):
+        # return error code
+        return test
+    else:
+        return true_value if test else false_value
 
 
 def iferror(arg, value_if_error):
@@ -56,16 +89,29 @@ def iferror(arg, value_if_error):
 #   ifs-function-36329a26-37b2-467c-972b-4a39bd951d45
 
 
-# NOT function
-# Reverses the logic of its argument
-# Excel reference: https://support.office.com/en-us/article/
-#   not-function-9cfc6011-a054-40c7-a140-cd4ba2d87d77
+def x_not(value):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   not-function-9cfc6011-a054-40c7-a140-cd4ba2d87d77
+
+    value = _clean_logical(value)
+
+    if isinstance(value, str):
+        # return error code
+        return value
+    else:
+        return not value
 
 
-# OR function
-# Returns TRUE if any argument is TRUE
-# Excel reference: https://support.office.com/en-us/article/
-#   or-function-7d17ad14-8700-4281-b308-00b131e22af0
+def x_or(*args):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   or-function-7d17ad14-8700-4281-b308-00b131e22af0
+
+    values = _clean_logicals(*args)
+    if isinstance(values, str):
+        # return error code
+        return values
+    else:
+        return any(values)
 
 
 # SWITCH function
@@ -77,14 +123,12 @@ def iferror(arg, value_if_error):
 #   switch-function-47ab33c0-28ce-4530-8a45-d532ec4aa25e
 
 
-# TRUE function
-# Returns the logical value TRUE
-# Excel reference: https://support.office.com/en-us/article/
-#   true-function-7652c6e3-8987-48d0-97cd-ef223246b3fb
-
-
-# XOR function
-# Excel 2013
-# Returns a logical exclusive OR
-# Excel reference: https://support.office.com/en-us/article/
-#   xor-function-1548d4c2-5e47-4f77-9a92-0533bba14f37
+def x_xor(*args):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   xor-function-1548d4c2-5e47-4f77-9a92-0533bba14f37
+    values = _clean_logicals(*args)
+    if isinstance(values, str):
+        # return error code
+        return values
+    else:
+        return sum(bool(v) for v in values) % 2

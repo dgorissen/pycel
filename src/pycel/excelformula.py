@@ -312,15 +312,19 @@ class FunctionNode(ASTNode):
 
     # dict of excel equivalent functions
     func_map = {
+        "and": "x_and",
         "atan2": "xatan2",
         "gammaln": "lgamma",
         "if": "x_if",
         "len": "xlen",
         "ln": "xlog",
         "max": "xmax",
+        "not": "x_not",
+        "or": "x_or",
         "min": "xmin",
         "round": "xround",
         "sum": "xsum",
+        "xor": "x_xor",
     }
 
     def __init__(self, *args):
@@ -356,6 +360,16 @@ class FunctionNode(ASTNode):
     def func_pi():
         # constant, no parens
         return "pi"
+
+    @staticmethod
+    def func_true():
+        # constant, no parens
+        return "True"
+
+    @staticmethod
+    def func_false():
+        # constant, no parens
+        return "False"
 
     def func_array(self):
         if len(self.children) == 1:
@@ -393,12 +407,6 @@ class FunctionNode(ASTNode):
         return code
 
     func_linestmario = func_linest
-
-    def func_and(self):
-        return "all(({},))".format(self.comma_join_emit())
-
-    def func_or(self):
-        return "any(({},))".format(self.comma_join_emit())
 
     def func_row(self):
         assert len(self.children) <= 1
