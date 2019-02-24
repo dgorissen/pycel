@@ -13,7 +13,6 @@ from pycel.excellib import (
     countifs,
     date,
     hlookup,
-    iferror,
     index,
     isNa,
     istext,
@@ -32,7 +31,6 @@ from pycel.excellib import (
     value as lib_value,
     vlookup,
     xatan2,
-    xif,
     xlog,
     xlen,
     xmax,
@@ -44,7 +42,6 @@ from pycel.excellib import (
 from pycel.excelutil import (
     AddressRange,
     DIV0,
-    ERROR_CODES,
     ExcelCmp,
     NA_ERROR,
     NUM_ERROR,
@@ -240,13 +237,6 @@ def test_hlookup_vlookup_error():
 
     with pytest.raises(NotImplementedError, match='Array Formulas'):
         vlookup(1, ((1, 2), (3, 4)), (1, 2), 1)
-
-
-def test_iferror():
-    assert 'A' == iferror('A', 2)
-
-    for error in ERROR_CODES:
-        assert 2 == iferror(error, 2)
 
 
 def test_is_text():
@@ -801,27 +791,6 @@ def test_vlookup(lkup, col_idx, result, approx):
 )
 def test_xatan2(param1, param2, result):
     assert xatan2(param1, param2) == result
-
-
-@pytest.mark.parametrize(
-    'test_value, true_value, false_value, result', (
-        ('xyzzy', 3, 2, VALUE_ERROR),
-        ('0', 2, 1, VALUE_ERROR),
-        (True, 2, 1, 2),
-        (False, 2, 1, 1),
-        ('True', 2, 1, 2),
-        ('False', 2, 1, 1),
-        (None, 2, 1, 1),
-        (NA_ERROR, 0, 0, NA_ERROR),
-        (DIV0, 0, 0, DIV0),
-        (1, VALUE_ERROR, 1, VALUE_ERROR),
-        (0, VALUE_ERROR, 1, 1),
-        (0, 1, VALUE_ERROR, VALUE_ERROR),
-        (1, 1, VALUE_ERROR, 1),
-    )
-)
-def test_xif(test_value, true_value, false_value, result):
-    assert xif(test_value, true_value, false_value) == result
 
 
 @pytest.mark.parametrize(

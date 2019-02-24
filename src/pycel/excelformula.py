@@ -314,7 +314,7 @@ class FunctionNode(ASTNode):
     func_map = {
         "atan2": "xatan2",
         "gammaln": "lgamma",
-        "if": "xif",
+        "if": "x_if",
         "len": "xlen",
         "ln": "xlog",
         "max": "xmax",
@@ -715,6 +715,7 @@ class ExcelFormula:
         modules = (
             importlib.import_module('pycel.excellib'),
             importlib.import_module('pycel.lib.binary'),
+            importlib.import_module('pycel.lib.logical'),
             importlib.import_module('math'),
         )
 

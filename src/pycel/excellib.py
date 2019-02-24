@@ -206,13 +206,6 @@ def hlookup(lookup_value, table_array, row_index_num, range_lookup=True):
         return result_idx
 
 
-def iferror(arg, value_if_error):
-    # Excel reference: https://support.office.com/en-us/article/
-    #   IFERROR-function-C526FD07-CAEB-47B8-8BB6-63F3E417F611
-
-    return value_if_error if arg in ERROR_CODES else arg
-
-
 def index(array, row_num, col_num=None):
     # Excel reference: https://support.office.com/en-us/article/
     #   index-function-a5dcf0dd-996d-40a4-a822-b56b061328bd
@@ -612,22 +605,6 @@ def xatan2(value1, value2):
 
     # swap arguments
     return math_wrap(atan2)(value2, value1)
-
-
-def xif(test, true_value, false_value=0):
-    # Excel reference: https://support.office.com/en-us/article/
-    #   IF-function-69AED7C9-4E8A-4755-A9BC-AA8BBFF73BE2
-
-    if test in ERROR_CODES:
-        return test
-
-    if isinstance(test, str):
-        if test.lower() in ('true', 'false'):
-            test = len(test) == 4
-        else:
-            return VALUE_ERROR
-
-    return true_value if test else false_value
 
 
 def xlen(value):
