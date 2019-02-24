@@ -1,3 +1,14 @@
+1.0b5 (2019-02-24)
+===================
+
+Changes
+-------
+
+* Implement XOR(), NOT(), TRUE(), FALSE()
+* Improve error handling for AND(), OR()
+* Implement POWER() function
+
+
 1.0b4 (2019-02-17)
 ===================
 
