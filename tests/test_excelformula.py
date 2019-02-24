@@ -12,7 +12,7 @@ from pycel.excelformula import (
     FormulaParserError,
     Token,
 )
-from pycel.excelutil import DIV0, VALUE_ERROR
+from pycel.excelutil import DIV0, NAME_ERROR, VALUE_ERROR
 from test_excelutil import ATestCell
 
 
@@ -709,6 +709,12 @@ def test_row():
     assert 3 == eval_ctx(ExcelFormula('=ROW()', cell=cell))
 
     assert 6 == eval_ctx(ExcelFormula('=ROW(B6:D7 C7:E7)'))
+
+
+def test_unknown_name():
+    eval_ctx = ExcelFormula.build_eval_context(None, None)
+
+    assert NAME_ERROR == eval_ctx(ExcelFormula('=CE'))
 
 
 def test_div_zero():

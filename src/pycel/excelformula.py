@@ -15,6 +15,7 @@ from pycel.excelutil import (
     ERROR_CODES,
     get_linest_degree,
     math_wrap,
+    NAME_ERROR,
     PyCelException,
     uniqueify,
 )
@@ -287,8 +288,12 @@ class RangeNode(OperandNode):
         sheet = self.cell and self.cell.sheet or ''
         if '!' in self.value:
             sheet = ''
-        address = AddressRange.create(
-            self.value.replace('$', ''), sheet=sheet, cell=self.cell)
+        try:
+            address = AddressRange.create(
+                self.value.replace('$', ''), sheet=sheet, cell=self.cell)
+        except ValueError:
+            return '"{}"'.format(NAME_ERROR)
+
         template = '_R_("{}")' if address.is_range else '_C_("{}")'
         return template.format(address)
 

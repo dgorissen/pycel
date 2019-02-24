@@ -18,6 +18,7 @@ EMPTY = '#EMPTY!'
 VALUE_ERROR = '#VALUE!'
 NUM_ERROR = '#NUM!'
 NA_ERROR = '#N/A'
+NAME_ERROR = "#NAME?"
 
 R1C1_ROW_RE_STR = r"R(\[-?\d+\]|\d+)?"
 R1C1_COL_RE_STR = r"C(\[-?\d+\]|\d+)?"
