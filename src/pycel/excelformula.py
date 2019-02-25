@@ -15,6 +15,7 @@ from pycel.excelutil import (
     ERROR_CODES,
     get_linest_degree,
     math_wrap,
+    NAME_ERROR,
     PyCelException,
     uniqueify,
 )
@@ -287,8 +288,12 @@ class RangeNode(OperandNode):
         sheet = self.cell and self.cell.sheet or ''
         if '!' in self.value:
             sheet = ''
-        address = AddressRange.create(
-            self.value.replace('$', ''), sheet=sheet, cell=self.cell)
+        try:
+            address = AddressRange.create(
+                self.value.replace('$', ''), sheet=sheet, cell=self.cell)
+        except ValueError:
+            return '"{}"'.format(NAME_ERROR)
+
         template = '_R_("{}")' if address.is_range else '_C_("{}")'
         return template.format(address)
 
@@ -312,15 +317,19 @@ class FunctionNode(ASTNode):
 
     # dict of excel equivalent functions
     func_map = {
+        "and": "x_and",
         "atan2": "xatan2",
         "gammaln": "lgamma",
-        "if": "xif",
+        "if": "x_if",
         "len": "xlen",
         "ln": "xlog",
         "max": "xmax",
+        "not": "x_not",
+        "or": "x_or",
         "min": "xmin",
         "round": "xround",
         "sum": "xsum",
+        "xor": "x_xor",
     }
 
     def __init__(self, *args):
@@ -356,6 +365,16 @@ class FunctionNode(ASTNode):
     def func_pi():
         # constant, no parens
         return "pi"
+
+    @staticmethod
+    def func_true():
+        # constant, no parens
+        return "True"
+
+    @staticmethod
+    def func_false():
+        # constant, no parens
+        return "False"
 
     def func_array(self):
         if len(self.children) == 1:
@@ -393,12 +412,6 @@ class FunctionNode(ASTNode):
         return code
 
     func_linestmario = func_linest
-
-    def func_and(self):
-        return "all(({},))".format(self.comma_join_emit())
-
-    def func_or(self):
-        return "any(({},))".format(self.comma_join_emit())
 
     def func_row(self):
         assert len(self.children) <= 1
@@ -715,6 +728,7 @@ class ExcelFormula:
         modules = (
             importlib.import_module('pycel.excellib'),
             importlib.import_module('pycel.lib.binary'),
+            importlib.import_module('pycel.lib.logical'),
             importlib.import_module('math'),
         )
 

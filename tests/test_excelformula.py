@@ -12,7 +12,7 @@ from pycel.excelformula import (
     FormulaParserError,
     Token,
 )
-from pycel.excelutil import DIV0, VALUE_ERROR
+from pycel.excelutil import DIV0, NAME_ERROR, VALUE_ERROR
 from test_excelutil import ATestCell
 
 
@@ -147,6 +147,14 @@ basic_inputs = [
         '=SUM(B5:B15,D5:D15)%',
         'B5:B15|D5:D15|SUM|%',
         'xsum(_R_("B5:B15"), _R_("D5:D15")) / 100'),
+    FormulaTest(
+        '=AND(G3, 1)',
+        'G3|1|AND',
+        'x_and(_C_("G3"), 1)'),
+    FormulaTest(
+        '=OR(TRUE, TRUE(), FALSE, FALSE())',
+        'TRUE|TRUE|FALSE|FALSE|OR',
+        'x_or(True, True, False, False)'),
 ]
 
 whitespace_inputs = [
@@ -170,16 +178,16 @@ if_inputs = [
         '   "  more ""test"" text"',
         '"a"|"a"|"b"|ARRAYROW|"c"|#N/A|ARRAYROW|1|-|TRUE|ARRAYROW|ARRAY|=|'
         '"yes"|"no"|IF|"  more ""test"" text"|&',
-        'xif("a" == [["a", "b"], ["c", "#N/A"], [-1, True]], "yes", "no")'
+        'x_if("a" == [["a", "b"], ["c", "#N/A"], [-1, True]], "yes", "no")'
         ' & "  more \\"test\\" text"'),
     FormulaTest(
         '=IF(R13C3>DATE(2002,1,6),0,IF(ISERROR(R[41]C[2]),0,IF(R13C3>=R[41]C[2]'
         ',0, IF(AND(R[23]C[11]>=55,R[24]C[11]>=20),R53C3,0))))',
         'R13C3|2002|1|6|DATE|>|0|R[41]C[2]|ISERROR|0|R13C3|R[41]C[2]|>=|0|'
         'R[23]C[11]|55|>=|R[24]C[11]|20|>=|AND|R53C3|0|IF|IF|IF|IF',
-        'xif(_C_("C13") > date(2002, 1, 6), 0, xif(iserror(_C_("C42")), 0, '
-        'xif(_C_("C13") >= _C_("C42"), 0, xif(all('
-        '(_C_("L24") >= 55, _C_("L25") >= 20,)), _C_("C53"), 0))))'),
+        'x_if(_C_("C13") > date(2002, 1, 6), 0, x_if(iserror(_C_("C42")), 0, '
+        'x_if(_C_("C13") >= _C_("C42"), 0, x_if(x_and('
+        '_C_("L24") >= 55, _C_("L25") >= 20), _C_("C53"), 0))))'),
     FormulaTest(
         '=IF(R[39]C[11]>65,R[25]C[42],ROUND((R[11]C[11]*IF(OR(AND('
         'R[39]C[11]>=55, R[40]C[11]>=20),AND(R[40]C[11]>=20,R11C3="YES")),'
@@ -191,24 +199,24 @@ if_inputs = [
         'R[44]C[11]|R[43]C[11]|IF|*|R[14]C[11]|R[39]C[11]|55|>=|'
         'R[40]C[11]|20|>=|AND|R[40]C[11]|20|>=|R11C3|"YES"|=|AND|OR|'
         'R[45]C[11]|R[43]C[11]|IF|*|+|0|ROUND|IF',
-        'xif(_C_("L40") > 65, _C_("AQ26"), xround((_C_("L12") * xif(any(('
-        'all((_C_("L40") >= 55, _C_("L41") >= 20,)), all((_C_("L41") >= 20, '
-        '_C_("C11") == "YES",)),)), _C_("L45"), _C_("L44"))) + (_C_("L15") * '
-        'xif(any((all((_C_("L40") >= 55, _C_("L41") >= 20,)), all((_C_("L41") '
-        '>= 20, _C_("C11") == "YES",)),)), _C_("L46"), _C_("L44"))), 0))'),
+        'x_if(_C_("L40") > 65, _C_("AQ26"), xround((_C_("L12") * x_if(x_or('
+        'x_and(_C_("L40") >= 55, _C_("L41") >= 20), x_and(_C_("L41") >= 20, '
+        '_C_("C11") == "YES")), _C_("L45"), _C_("L44"))) + (_C_("L15") * '
+        'x_if(x_or(x_and(_C_("L40") >= 55, _C_("L41") >= 20), x_and(_C_("L41") '
+        '>= 20, _C_("C11") == "YES")), _C_("L46"), _C_("L44"))), 0))'),
     FormulaTest(
         '=IF(AI119="","",E119)',
         'AI119|""|=|""|E119|IF',
-        'xif(_C_("AI119") == "", "", _C_("E119"))'),
+        'x_if(_C_("AI119") == "", "", _C_("E119"))'),
     FormulaTest(
         '=IF(P5=1.0,"NA",IF(P5=2.0,"A",IF(P5=3.0,"B",IF(P5=4.0,"C",'
         'IF(P5=5.0,"D",IF(P5=6.0,"E",IF(P5=7.0,"F",IF(P5=8.0,"G"))))))))',
         'P5|1.0|=|"NA"|P5|2.0|=|"A"|P5|3.0|=|"B"|P5|4.0|=|"C"|P5|5.0|=|'
         '"D"|P5|6.0|=|"E"|P5|7.0|=|"F"|P5|8.0|=|"G"|IF|IF|IF|IF|IF|IF|IF|IF',
-        'xif(_C_("P5") == 1.0, "NA", xif(_C_("P5") == 2.0, "A", xif(_C_("P5") '
-        '== 3.0, "B", xif(_C_("P5") == 4.0, "C", xif(_C_("P5") == 5.0, "D", '
-        'xif(_C_("P5") == 6.0, "E", xif(_C_("P5") == 7.0, "F", '
-        'xif(_C_("P5") == 8.0, "G"))))))))'),
+        'x_if(_C_("P5") == 1.0, "NA", x_if(_C_("P5") == 2.0, "A", '
+        'x_if(_C_("P5") == 3.0, "B", x_if(_C_("P5") == 4.0, "C", '
+        'x_if(_C_("P5") == 5.0, "D", x_if(_C_("P5") == 6.0, "E", '
+        'x_if(_C_("P5") == 7.0, "F", x_if(_C_("P5") == 8.0, "G"))))))))'),
 ]
 
 fancy_reference_inputs = [
@@ -242,7 +250,7 @@ fancy_reference_inputs = [
     FormulaTest(
         '=IF(configurations!$G$22=3,sizing!$C$303,M14)',
         'configurations!$G$22|3|=|sizing!$C$303|M14|IF',
-        'xif(_C_("configurations!G22") == 3, _C_("sizing!C303"), _C_("M14"))'),
+        'x_if(_C_("configurations!G22") == 3, _C_("sizing!C303"), _C_("M14"))'),
     FormulaTest(
         '=TableX[[#This Row],[COL1]]&"-"&TableX[[#This Row],[COL2]]',
         'TableX[[#This Row],[COL1]]|"-"|&|TableX[[#This Row],[COL2]]|&',
@@ -583,6 +591,27 @@ def test_bool_ops(formula, result):
     assert eval_ctx(ExcelFormula(formula)) == result
 
 
+@pytest.mark.parametrize(
+    'formula, result', (
+        ('=NOT(FALSE)', True),
+        ('=NOT(TRUE)', False),
+        ('=OR(FALSE, FALSE)', False),
+        ('=OR(TRUE, FALSE)', True),
+        ('=AND(TRUE, FALSE)', False),
+        ('=AND(TRUE, TRUE)', True),
+        ('=XOR(FALSE, FALSE)', False),
+        ('=XOR(TRUE, FALSE)', True),
+        ('=XOR(FALSE, TRUE)', True),
+        ('=XOR(TRUE, TRUE)', False),
+        ('=FALSE()', False),
+        ('=TRUE()', True),
+    )
+)
+def test_bool_funcs(formula, result):
+    eval_ctx = ExcelFormula.build_eval_context(lambda x: None, None)
+    assert eval_ctx(ExcelFormula(formula)) == result
+
+
 def test_empty_cell_logic_op():
     eval_ctx = ExcelFormula.build_eval_context(lambda x: None, None)
     assert 1 == eval_ctx(ExcelFormula('=(A1=0) + (A1=1)'))
@@ -680,6 +709,12 @@ def test_row():
     assert 3 == eval_ctx(ExcelFormula('=ROW()', cell=cell))
 
     assert 6 == eval_ctx(ExcelFormula('=ROW(B6:D7 C7:E7)'))
+
+
+def test_unknown_name():
+    eval_ctx = ExcelFormula.build_eval_context(None, None)
+
+    assert NAME_ERROR == eval_ctx(ExcelFormula('=CE'))
 
 
 def test_div_zero():
