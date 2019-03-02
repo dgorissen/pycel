@@ -627,7 +627,7 @@ class ExcelFormula:
                 assert token.type in (token.FUNC, token.PAREN, token.ARRAY)
                 stack.append(token)
 
-            else:
+            elif token.type != token.WSPACE:
                 assert token.subtype == token.CLOSE
 
                 while stack and stack[-1].subtype != Token.OPEN:
