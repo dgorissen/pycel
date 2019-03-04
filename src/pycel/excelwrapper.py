@@ -15,7 +15,7 @@ from openpyxl import load_workbook
 from openpyxl.cell.cell import Cell, TYPE_FORMULA
 from openpyxl.cell.read_only import EMPTY_CELL
 from openpyxl.utils import datetime as opxl_dt
-from pycel.excelutil import AddressCell, AddressRange
+from pycel.excelutil import AddressCell, AddressRange, MAX_ROW
 
 
 class ExcelWrapper:
@@ -144,6 +144,20 @@ class ExcelOpxWrapper(ExcelWrapper):
                     for addr in addrs:
                         ws[addr.coordinate] = formula
 
+        # ::HACK:: this is only needed because openpyxl does not define
+        # iter_cols for read only workbooks
+        def _iter_cols(self, min_col=None, max_col=None, min_row=None,
+                       max_row=None, values_only=False):
+            # In the case of lookup for something like C:D, openpyxl
+            # attempts to use iter_cols() which is not defined for read_only
+            for col in range(min_col, max_col + 1):
+                rows = (r for r in self.iter_rows(min_col=col, max_col=col))
+                yield tuple(c[0] for c in rows)
+
+        import types
+        for sheet in self.workbook_dataonly:
+            sheet.iter_cols = types.MethodType(_iter_cols, sheet)
+
     def set_sheet(self, s):
         self.workbook.active = self.workbook.index(self.workbook[s])
         self.workbook_dataonly.active = self.workbook_dataonly.index(
@@ -184,9 +198,27 @@ class ExcelOpxWrapper(ExcelWrapper):
 
             else:
                 cells_dataonly = sheet_dataonly[address.coordinate]
+                addr_size = address.size
+
+                if 1 in addr_size:
+                    if cells_dataonly \
+                            and not isinstance(cells_dataonly[0], tuple):
+                        # openpyxl returns a one dimensional structure for some
+                        if addr_size.width == 1:
+                            cells = tuple((c,) for c in cells)
+                            cells_dataonly = tuple(
+                                (c,) for c in cells_dataonly)
+                        else:
+                            cells = cells,
+                            cells_dataonly = cells_dataonly,
+
+                elif addr_size.height == MAX_ROW:
+                    # openpyxl does iter_cols, we need to transpose
+                    cells = tuple(zip(*cells))
+                    cells_dataonly = tuple(zip(*cells_dataonly))
 
                 if len(cells) != len(cells_dataonly):
-                    # The read_only version of an openpyxl worksheet has the
+                    # The read_only version of openpyxl worksheet has the
                     # somewhat annoying property of not giving empty rows at the
                     # end.  Which is not the same behavior as the non-readonly
                     # version.  So we need to align the data here by adding
