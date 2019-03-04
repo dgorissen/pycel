@@ -1,5 +1,15 @@
+1.0b6 (2019-03-03)
+==================
+
+Bug Fixes
+---------
+
+* Fix #42 - 'ReadOnlyWorksheet' object has no attribute 'iter_cols'
+* Fix #43 - Fix error with leading/trailing whitespace
+
+
 1.0b5 (2019-02-24)
-===================
+==================
 
 Changes
 -------
@@ -10,7 +20,7 @@ Changes
 
 
 1.0b4 (2019-02-17)
-===================
+==================
 
 Changes
 -------
@@ -18,8 +28,9 @@ Changes
 * Move to openpyxl 2.6+
 * Remove support for Python 3.4
 
+
 1.0b3 (2019-02-02)
-===================
+==================
 
 Changes
 -------
@@ -27,8 +38,9 @@ Changes
 * Work around openpyxl returning datetimes
 * Pin to openpyxl 2.5.12 to avoid bug in 2.5.14 (fixed in PR #315)
 
+
 1.0b2 (2019-01-05)
-===================
+==================
 
 Changes
 -------
