@@ -150,9 +150,7 @@ class ExcelOpxWrapper(ExcelWrapper):
                        max_row=None, values_only=False):
             # In the case of lookup for something like C:D, openpyxl
             # attempts to use iter_cols() which is not defined for read_only
-            for col in range(min_col, max_col + 1):
-                rows = (r for r in self.iter_rows(min_col=col, max_col=col))
-                yield tuple(c[0] for c in rows)
+            yield from zip(*self.iter_rows(min_col=min_col, max_col=max_col))
 
         import types
         for sheet in self.workbook_dataonly:
