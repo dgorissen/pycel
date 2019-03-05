@@ -56,6 +56,7 @@ class _OpxRange:
     """ Excel range wrapper that distributes reduced api used by compiler
         (Formula & Value)
     """
+
     def __init__(self, cells, cells_dataonly):
         self.formulas = tuple(tuple(self.cell_to_formula(cell) for cell in row)
                               for row in cells)
@@ -83,6 +84,7 @@ class _OpxCell(_OpxRange):
     """ Excel cell wrapper that distributes reduced api used by compiler
         (Formula & Value)
     """
+
     def __init__(self, cell, cell_dataonly):
         self.formulas = self.cell_to_formula(cell)
         self.values = self.cell_to_value(cell_dataonly)
@@ -139,8 +141,13 @@ class ExcelOpxWrapper(ExcelWrapper):
             for address, props in ws.formula_attributes.items():
                 if props.get('t') == 'array':
                     formula = '{%s}' % ws[address].value
-                    addrs = it.chain.from_iterable(
-                        AddressRange(props.get('ref')).rows)
+                    cells = AddressRange(props.get('ref'))
+
+                    if isinstance(cells, AddressCell):
+                        # Single cell array formulas can be ignored
+                        continue
+
+                    addrs = it.chain.from_iterable(cells.rows)
                     for addr in addrs:
                         ws[addr.coordinate] = formula
 
