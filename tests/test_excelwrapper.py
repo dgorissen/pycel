@@ -1,4 +1,5 @@
 import datetime as dt
+import pytest
 
 
 def test_connect(unconnected_excel):
@@ -129,3 +130,19 @@ def test_get_datetimes(excel):
     for row in result:
         if isinstance(row[1], (dt.date, dt.datetime)):
             assert row[0] == row[1]
+
+
+@pytest.mark.parametrize(
+    'result_range, expected_range',
+    [
+        ("Sheet1!C:C", "Sheet1!C1:C18"),
+        ("Sheet1!2:2", "Sheet1!A2:D2"),
+        ("Sheet1!B:C", "Sheet1!B1:C18"),
+        ("Sheet1!2:3", "Sheet1!A2:D3"),
+    ]
+)
+def test_get_entire_rows_columns(excel, result_range, expected_range):
+
+    result = excel.get_range(result_range).Value
+    expected = excel.get_range(expected_range).Value
+    assert result == expected
