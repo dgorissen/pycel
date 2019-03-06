@@ -529,11 +529,11 @@ class ExcelCompiler:
         def build_cell(addr):
             excel_range = self.excel.get_range(addr)
             formula = None
-            if excel_range.Formula.startswith('='):
-                formula = excel_range.Formula
+            if excel_range.formulas.startswith('='):
+                formula = excel_range.formulas
 
             self.cell_map[addr.address] = _Cell(
-                addr, value=excel_range.Value,
+                addr, value=excel_range.values,
                 formula=formula, excel=self.excel)
             return self.cell_map[addr.address]
 
@@ -549,7 +549,7 @@ class ExcelCompiler:
 
             # get everything in blocks, as it is faster
             excel_range = self.excel.get_range(rng)
-            excel_cells = zip(addrs, excel_range.Formula, excel_range.Value)
+            excel_cells = zip(addrs, excel_range.formulas, excel_range.values)
 
             cells = []
             for row in (zip(*x) for x in excel_cells):
@@ -814,7 +814,7 @@ class _CompiledImporter:
         self.value = None
         self.compiler = None
 
-    CellValue = collections.namedtuple('CellValue', 'Formula Value')
+    CellValue = collections.namedtuple('CellValue', 'formulas values')
 
     def get_range(self, address):
         if address.address in self.compiler.cell_map:

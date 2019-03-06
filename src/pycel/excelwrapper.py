@@ -38,7 +38,7 @@ class ExcelWrapper:
         """"""
 
     def get_formula_from_range(self, address):
-        f = self.get_range(address).Formula
+        f = self.get_range(address).formulas
         if isinstance(f, (list, tuple)):
             if any(x for x in f if x[0].startswith("=")):
                 return [x[0] for x in f]
@@ -49,7 +49,7 @@ class ExcelWrapper:
 
     def get_formula_or_value(self, name):
         r = self.get_range(name)
-        return r.Formula or r.Value
+        return r.formulas or r.values
 
 
 class _OpxRange:
@@ -69,14 +69,6 @@ class _OpxRange:
     @classmethod
     def cell_to_value(cls, cell):
         return None if cell.data_type is TYPE_FORMULA else cell.value
-
-    @property
-    def Formula(self):
-        return self.formulas
-
-    @property
-    def Value(self):
-        return self.values
 
 
 class _OpxCell(_OpxRange):
