@@ -58,3 +58,8 @@ def excel(unconnected_excel):
 @pytest.fixture('session')
 def basic_ws(fixture_xls_path_basic):
     return ExcelCompiler(fixture_xls_path_basic)
+
+
+@pytest.fixture
+def excel_compiler(excel):
+    return ExcelCompiler(excel=excel)
