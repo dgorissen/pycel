@@ -627,8 +627,7 @@ class ExcelFormula:
                 assert token.type in (token.FUNC, token.PAREN, token.ARRAY)
                 stack.append(token)
 
-            elif token.type != token.WSPACE:
-                assert token.subtype == token.CLOSE
+            elif token.subtype == token.CLOSE:
 
                 while stack and stack[-1].subtype != Token.OPEN:
                     output.append(self._ast_node(stack.pop()))
@@ -643,6 +642,10 @@ class ExcelFormula:
                     f = self._ast_node(stack.pop())
                     f.num_args = arg_count.pop() + int(were_values.pop())
                     output.append(f)
+
+            else:
+                assert token.type == token.WSPACE, \
+                    'Unexpected token: {}'.format(token)
 
         while stack:
             if stack[-1].subtype in (Token.OPEN, Token.CLOSE):

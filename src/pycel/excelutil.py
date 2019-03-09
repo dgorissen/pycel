@@ -242,6 +242,15 @@ class AddressRange(collections.namedtuple(
             yield (AddressCell((col, row, col, row), sheet=self.sheet)
                    for row in range(self.start.row, self.end.row + 1))
 
+    @property
+    def resolve_range(self):
+        """Return nested tuples with AddressCell for each element"""
+        rows, cols = self.size
+        assert rows != MAX_ROW
+        assert cols != MAX_COL
+
+        return tuple(tuple(row) for row in self.rows)
+
     @classmethod
     def create(cls, address, sheet='', cell=None):
         """ Factory method.
@@ -390,6 +399,11 @@ class AddressCell(collections.namedtuple(
         new_row = self.inc_row(row_inc)
         return AddressCell((new_col, new_row, new_col, new_row),
                            sheet=self.sheet)
+
+    @property
+    def resolve_range(self):
+        """Return a nested lists with AddressCell for each element"""
+        return (self, ),
 
     @classmethod
     def create(cls, address, sheet='', cell=None):
@@ -709,35 +723,6 @@ def r1c1_boundaries(address, cell=None, sheet=None):
     return (min_col, min_row, max_col, max_row), sheet
 
 
-def resolve_range(address):
-    """Return a list or nested lists with AddressCell for each element"""
-
-    # ::TODO:: look at removing the assert
-    assert isinstance(address, (AddressRange, AddressCell))
-
-    # single cell, no range
-    if not address.is_range:
-        data = [address]
-
-    else:
-        start = address.start
-        end = address.end
-
-        # single column
-        if start.column == end.column:
-            data = list(next(address.cols))
-
-        # single row
-        elif start.row == end.row:
-            data = list(next(address.rows))
-
-        # rectangular range
-        else:
-            data = list(list(row) for row in address.rows)
-
-    return data
-
-
 def get_linest_degree(cell):
     # TODO: assumes a row or column of linest formulas &
     # that all coefficients are needed
@@ -805,7 +790,8 @@ def flatten(data, coerce=lambda x: x):
     :param coerce: apply coercion to top level, but not to sub ranges
     :return: flattened (coerced) items
     """
-    if isinstance(data, collections.Iterable) and not isinstance(data, str):
+    if isinstance(data, collections.Iterable) and not isinstance(
+            data, (str, AddressRange, AddressCell)):
         for item in data:
             yield from flatten(coerce(item))
     else:

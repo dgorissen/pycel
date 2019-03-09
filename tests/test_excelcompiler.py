@@ -6,6 +6,7 @@ import pytest
 from pycel.excelcompiler import _Cell, _CellRange, ExcelCompiler
 from pycel.excelformula import FormulaEvalError
 from pycel.excelutil import AddressCell, AddressRange
+from pycel.excelwrapper import ExcelWrapper
 
 
 # ::TODO:: need some rectangular ranges for testing
@@ -21,6 +22,18 @@ def test_end_2_end(excel, fixture_xls_path):
 
         excel_compiler.set_value('Sheet1!A1', 200)
         assert -0.00331 == round(excel_compiler.evaluate('Sheet1!D1'), 5)
+
+
+def test_no_sheet_given(excel_compiler):
+    sh1_value = excel_compiler.evaluate('Sheet1!A1')
+
+    excel_compiler.excel.set_sheet('Sheet1')
+    value = excel_compiler.evaluate('A1')
+    assert sh1_value == value
+
+    excel_compiler.excel.set_sheet('Sheet2')
+    value = excel_compiler.evaluate('A1')
+    assert sh1_value != value
 
 
 def test_round_trip_through_json_yaml_and_pickle(
@@ -193,14 +206,14 @@ def test_value_tree_str(excel_compiler):
     expected = [
         'trim-range!B2 = 136',
         ' trim-range!B1 = 24',
-        '  trim-range!D1:E3 = [[1, 5], [2, 6], [3, 7]]',
+        '  trim-range!D1:E3 = ((1, 5), (2, 6), (3, 7))',
         '   trim-range!D1 = 1',
         '   trim-range!D2 = 2',
         '   trim-range!D3 = 3',
         '   trim-range!E1 = 5',
         '   trim-range!E2 = 6',
         '   trim-range!E3 = 7',
-        ' trim-range!D4:E4 = [4, 8]',
+        ' trim-range!D4:E4 = (4, 8)',
         '  trim-range!D4 = 4',
         '  trim-range!E4 = 8',
         ' trim-range!D5 = 100'
@@ -349,12 +362,14 @@ def test_compile_error_message_line_number(excel_compiler):
 
 def test_init_cell_address_error(excel):
     with pytest.raises(ValueError):
-        _CellRange('A1', excel)
+        _CellRange(ExcelWrapper.RangeData(
+            AddressCell('A1'), (('', ),), ((0, ),)))
 
 
 def test_cell_range_repr(excel):
-    cell_range = _CellRange('sheet!A1', excel)
-    assert 'sheet!A1' == repr(cell_range)
+    cell_range = _CellRange(ExcelWrapper.RangeData(
+        AddressRange('sheet!A1:B1'), (('', ''),), ((0, 0),)))
+    assert 'sheet!A1:B1' == repr(cell_range)
 
 
 def test_cell_repr(excel):

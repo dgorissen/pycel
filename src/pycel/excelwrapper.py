@@ -12,7 +12,7 @@ import os
 from unittest import mock
 
 from openpyxl import load_workbook
-from openpyxl.cell.cell import Cell, TYPE_FORMULA
+from openpyxl.cell.cell import Cell
 from openpyxl.cell.read_only import EMPTY_CELL
 from openpyxl.utils import datetime as opxl_dt
 from pycel.excelutil import AddressCell, AddressRange, MAX_ROW
@@ -20,6 +20,8 @@ from pycel.excelutil import AddressCell, AddressRange, MAX_ROW
 
 class ExcelWrapper:
     __metaclass__ = abc.ABCMeta
+
+    RangeData = collections.namedtuple('RangeData', 'address formulas values')
 
     @abc.abstractmethod
     def connect(self):
@@ -52,32 +54,30 @@ class ExcelWrapper:
         return r.formulas or r.values
 
 
-class _OpxRange:
+class _OpxRange(ExcelWrapper.RangeData):
     """ Excel range wrapper that distributes reduced api used by compiler
         (Formula & Value)
     """
-    def __init__(self, cells, cells_dataonly):
-        self.formulas = tuple(tuple(self.cell_to_formula(cell) for cell in row)
-                              for row in cells)
-        self.values = tuple(tuple(self.cell_to_value(cell) for cell in row)
-                            for row in cells_dataonly)
+    def __new__(cls, cells, cells_dataonly, address):
+        formulas = tuple(tuple(cls.cell_to_formula(cell) for cell in row)
+                         for row in cells)
+        values = tuple(tuple(cell.value for cell in row)
+                       for row in cells_dataonly)
+        return ExcelWrapper.RangeData(address, formulas, values)
 
     @classmethod
     def cell_to_formula(cls, cell):
         return str(cell.value) if cell.value is not None else ''
-
-    @classmethod
-    def cell_to_value(cls, cell):
-        return None if cell.data_type is TYPE_FORMULA else cell.value
 
 
 class _OpxCell(_OpxRange):
     """ Excel cell wrapper that distributes reduced api used by compiler
         (Formula & Value)
     """
-    def __init__(self, cell, cell_dataonly):
-        self.formulas = self.cell_to_formula(cell)
-        self.values = self.cell_to_value(cell_dataonly)
+    def __new__(cls, cell, cell_dataonly, address):
+        assert isinstance(address, AddressCell)
+        return ExcelWrapper.RangeData(
+            address, cls.cell_to_formula(cell), cell_dataonly.value)
 
 
 class ExcelOpxWrapper(ExcelWrapper):
@@ -184,7 +184,7 @@ class ExcelOpxWrapper(ExcelWrapper):
             if isinstance(cells, Cell):
                 cell = cells
                 cell_dataonly = sheet_dataonly[address.coordinate]
-                return _OpxCell(cell, cell_dataonly)
+                return _OpxCell(cell, cell_dataonly, address)
 
             else:
                 cells_dataonly = sheet_dataonly[address.coordinate]
@@ -199,8 +199,8 @@ class ExcelOpxWrapper(ExcelWrapper):
                             cells_dataonly = tuple(
                                 (c,) for c in cells_dataonly)
                         else:
-                            cells = cells,
-                            cells_dataonly = cells_dataonly,
+                            cells = (cells,)
+                            cells_dataonly = (cells_dataonly,)
 
                 elif addr_size.height == MAX_ROW:
                     # openpyxl does iter_cols, we need to transpose
@@ -218,7 +218,7 @@ class ExcelOpxWrapper(ExcelWrapper):
                         len(cells) - len(cells_dataonly))
                     cells_dataonly += empty_rows
 
-                return _OpxRange(cells, cells_dataonly)
+                return _OpxRange(cells, cells_dataonly, address)
 
     def get_used_range(self):
         return self.workbook.active.iter_rows()

@@ -12,6 +12,9 @@ def test_connect(unconnected_excel):
 
 
 def test_set_and_get_active_sheet(excel):
+    excel.set_sheet("Sheet2")
+    assert excel.get_active_sheet_name() == 'Sheet2'
+
     excel.set_sheet("Sheet3")
     assert excel.get_active_sheet_name() == 'Sheet3'
 
