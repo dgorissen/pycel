@@ -279,6 +279,12 @@ def test_resolve_range():
     assert ((a('sh!B1'), a('sh!C1')), (a('sh!B2'), a('sh!C2'))) == \
         (a('sh!B1:C2', sheet='sh')).resolve_range
 
+    with pytest.raises(AssertionError):
+        a('B:C').resolve_range
+
+    with pytest.raises(AssertionError):
+        a('1:2').resolve_range
+
 
 @pytest.mark.parametrize(
     'ref, expected', (

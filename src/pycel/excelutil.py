@@ -96,6 +96,9 @@ PYTHON_AST_OPERATORS = {
 COMPARISION_OPS = frozenset(('Eq', 'Lt', 'Gt', 'LtE', 'GtE', 'NotEq'))
 
 
+AddressSize = collections.namedtuple('AddressSize', 'height width')
+
+
 class PyCelException(Exception):
     """Base class for PyCel errors"""
 
@@ -197,25 +200,31 @@ class AddressRange(collections.namedtuple(
         """top row"""
         return self.start.row
 
+    # Is this address a range?
+    is_range = True
+
     @property
-    def is_range(self):
-        """Is this address a range?"""
-        return True
+    def is_bounded_range(self):
+        """Is this address a bounded range?"""
+        rows, cols = self.size
+        return rows != MAX_ROW and cols != MAX_COL
 
     @property
     def size(self):
         """Range dimensions"""
-        if 0 in (self.end.row, self.start.row):
-            height = MAX_ROW
-        else:
-            height = self.end.row - self.start.row + 1
+        if not hasattr(self, '_size'):
+            if 0 in (self.end.row, self.start.row):
+                height = MAX_ROW
+            else:
+                height = self.end.row - self.start.row + 1
 
-        if 0 in (self.end.col_idx, self.start.col_idx):
-            width = MAX_COL
-        else:
-            width = self.end.col_idx - self.start.col_idx + 1
+            if 0 in (self.end.col_idx, self.start.col_idx):
+                width = MAX_COL
+            else:
+                width = self.end.col_idx - self.start.col_idx + 1
 
-        return AddressSize(height, width)
+            self._size = AddressSize(height, width)
+        return self._size
 
     @property
     def has_sheet(self):
@@ -245,10 +254,7 @@ class AddressRange(collections.namedtuple(
     @property
     def resolve_range(self):
         """Return nested tuples with AddressCell for each element"""
-        rows, cols = self.size
-        assert rows != MAX_ROW
-        assert cols != MAX_COL
-
+        assert self.is_bounded_range
         return tuple(tuple(row) for row in self.rows)
 
     @classmethod
@@ -350,15 +356,13 @@ class AddressCell(collections.namedtuple(
     def __str__(self):
         return self.address
 
-    @property
-    def is_range(self):
-        """Is this address a range?"""
-        return False
+    # Is this address a range?
+    is_range = False
 
-    @property
-    def size(self):
-        """Range dimensions"""
-        return AddressSize(1, 1)
+    # Is this address a bounded range?"""
+    is_bounded_range = False
+
+    size = AddressSize(1, 1)
 
     @property
     def has_sheet(self):
@@ -422,9 +426,6 @@ class AddressCell(collections.namedtuple(
             raise ValueError(
                 "{0} is not a valid coordinate".format(address))
         return addr
-
-
-AddressSize = collections.namedtuple('AddressSize', 'height width')
 
 
 def unquote_sheetname(sheetname):
