@@ -44,20 +44,28 @@ def test_get_formula_from_range(excel):
     assert formula == "=SIN(B3*A3^2)"
 
 
-def test_get_formula_or_value(excel):
-    result = excel.get_formula_or_value("Sheet1!A2:C2")
-    assert (('2', '=SUM(A2:A4)', '=SIN(B2*A2^2)'),) == result
-
-    result = excel.get_formula_or_value("Sheet1!A1:A3")
-    assert (('1',), ('2',), ('3',)) == result
+@pytest.mark.parametrize(
+    'address, value',
+    [
+        ("Sheet1!A2", 2),
+        ("Sheet1!B2", '=SUM(A2:A4)'),
+        ("Sheet1!A2:C2", ((2, '=SUM(A2:A4)', '=SIN(B2*A2^2)'),)),
+        ("Sheet1!A1:A3", ((1,), (2,), (3,))),
+        ("Sheet1!1:2", (
+            (1, '=SUM(A1:A3)', '=SIN(B1*A1^2)', '=LINEST(C1:C18,B1:B18)'),
+            (2, '=SUM(A2:A4)', '=SIN(B2*A2^2)', None))),
+    ]
+)
+def test_get_formula_or_value(excel, address, value):
+    assert value == excel.get_formula_or_value(address)
 
 
 def test_get_range_formula(excel):
     result = excel.get_range("Sheet1!A2:C2").formulas
-    assert (('2', '=SUM(A2:A4)', '=SIN(B2*A2^2)'),) == result
+    assert (('', '=SUM(A2:A4)', '=SIN(B2*A2^2)'),) == result
 
     result = excel.get_range("Sheet1!A1:A3").formulas
-    assert (('1',), ('2',), ('3',)) == result
+    assert (('',), ('',), ('',)) == result
 
     result = excel.get_range("Sheet1!C2").formulas
     assert '=SIN(B2*A2^2)' == result
@@ -71,6 +79,19 @@ def test_get_range_formula(excel):
 
     result = excel.get_range("Sheet1!CC2").formulas
     assert '' == result
+
+
+@pytest.mark.parametrize(
+    'address1, address2',
+    [
+        ("Sheet1!1:2", "Sheet1!A1:D2"),
+        ("Sheet1!A:B", "Sheet1!A1:B18"),
+        ("Sheet1!2:2", "Sheet1!A2:D2"),
+        ("Sheet1!B:B", "Sheet1!B1:B18"),
+    ]
+)
+def test_get_unbounded_range(excel, address1, address2):
+    assert excel.get_range(address1) == excel.get_range(address2)
 
 
 def test_get_value_with_formula(excel):

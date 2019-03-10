@@ -750,7 +750,7 @@ class _Cell:
             excel = None
 
         self.excel = excel
-        self.formula = formula.startswith('=') and ExcelFormula(
+        self.formula = formula and ExcelFormula(
             formula, cell=self, formula_is_python_code=(excel is None)) or None
         self.value = value
 

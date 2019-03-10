@@ -51,7 +51,13 @@ class ExcelWrapper:
 
     def get_formula_or_value(self, name):
         r = self.get_range(name)
-        return r.formulas or r.values
+        if not isinstance(r.formulas, tuple):
+            return r.formulas or r.values
+        else:
+            return tuple(
+                tuple(f or v for f, v in zip(fs, vs))
+                for fs, vs in zip(r.formulas, r.values)
+            )
 
 
 class _OpxRange(ExcelWrapper.RangeData):
@@ -67,7 +73,11 @@ class _OpxRange(ExcelWrapper.RangeData):
 
     @classmethod
     def cell_to_formula(cls, cell):
-        return str(cell.value) if cell.value is not None else ''
+        if cell.value is None:
+            return ''
+        else:
+            formula = str(cell.value)
+            return formula if formula.startswith('=') else ''
 
 
 class _OpxCell(_OpxRange):
@@ -217,6 +227,22 @@ class ExcelOpxWrapper(ExcelWrapper):
                     empty_rows = (empty_row, ) * (
                         len(cells) - len(cells_dataonly))
                     cells_dataonly += empty_rows
+
+                # full range column or row addresses, trim the address
+                if len(cells) < addr_size.height or \
+                        len(cells[0]) < addr_size.width:
+                    start_col = address.start.column or 'A'
+                    start_row = address.start.row or 1
+                    start_addr = AddressCell(
+                        start_col + str(start_row), sheet=address.sheet)
+
+                    stop_addr = start_addr.address_at_offset(
+                        len(cells) - 1, len(cells[0]) - 1)
+
+                    address = AddressRange((
+                        start_addr.col_idx, start_addr.row,
+                        stop_addr.col_idx, stop_addr.row),
+                        sheet=address.sheet)
 
                 return _OpxRange(cells, cells_dataonly, address)
 
