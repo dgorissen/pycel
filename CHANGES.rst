@@ -1,3 +1,17 @@
+1.0b7 (2019-03-10)
+==================
+
+Changes
+-------
+
+* Implement Array (CSE) Formulas
+
+Bug Fixes
+---------
+
+* Fix #45 - Unbounded Range Addresses (ie: A:B or 1:2) broken
+
+
 1.0b6 (2019-03-03)
 ==================
 

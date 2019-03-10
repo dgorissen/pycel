@@ -36,11 +36,6 @@ def fixture_xls_path_basic(fixture_dir, tmpdir):
 
 
 @pytest.fixture('session')
-def fixture_xls_path_array(fixture_dir, tmpdir):
-    return copy_fixture_xls_path(fixture_dir, tmpdir, 'array.xlsx')
-
-
-@pytest.fixture('session')
 def unconnected_excel(fixture_xls_path):
     import openpyxl.worksheet._reader as orw
     old_warn = orw.warn
@@ -52,11 +47,6 @@ def unconnected_excel(fixture_xls_path):
     # quiet the warnings about unknown extensions
     with mock.patch('openpyxl.worksheet._reader.warn', new_warn):
         yield ExcelWrapperImpl(fixture_xls_path)
-
-
-@pytest.fixture('session')
-def unconnected_array_excel(fixture_xls_path_array):
-    return ExcelWrapperImpl(fixture_xls_path_array)
 
 
 @pytest.fixture()

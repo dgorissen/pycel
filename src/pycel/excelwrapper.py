@@ -7,7 +7,6 @@
 import abc
 import collections
 import datetime as dt
-import itertools as it
 import os
 from unittest import mock
 
@@ -135,21 +134,21 @@ class ExcelOpxWrapper(ExcelWrapper):
         self.workbook_dataonly = load_workbook(
             self.filename, data_only=True, read_only=True)
 
-        for ws in self.workbook:  # pragma: no cover
-            # ::TODO:: this is simple hack so that we won't try to eval
-            # array formulas since they are not implemented
+        # expand array formulas
+        for ws in self.workbook:
             for address, props in ws.formula_attributes.items():
-                if props.get('t') == 'array':
-                    formula = '{%s}' % ws[address].value
-                    cells = AddressRange(props.get('ref'))
+                if props.get('t') != 'array':
+                    continue  # pragma: no cover
 
-                    if isinstance(cells, AddressCell):
-                        # Single cell array formulas can be ignored
-                        continue
+                # get the reference address for the array formula
+                ref_addr = AddressRange(props.get('ref'))
 
-                    addrs = it.chain.from_iterable(cells.rows)
-                    for addr in addrs:
-                        ws[addr.coordinate] = formula
+                if isinstance(ref_addr, AddressRange):
+                    # Single cell array formulas can be ignored
+                    formula = '=INDEX(%s,{},{})' % ws[address].value[1:]
+                    for i, row in enumerate(ref_addr.rows, 1):
+                        for j, addr in enumerate(row, 1):
+                            ws[addr.coordinate] = formula.format(i, j)
 
         # ::HACK:: this is only needed because openpyxl does not define
         # iter_cols for read only workbooks

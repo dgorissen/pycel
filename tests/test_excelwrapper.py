@@ -1,19 +1,12 @@
 import datetime as dt
 import pytest
 
+from pycel.excelutil import AddressRange
+
 
 def test_connect(unconnected_excel):
     try:
         unconnected_excel.connect()
-        connected = True
-    except:  # noqa: E722
-        connected = False
-    assert connected
-
-
-def test_connect_array(unconnected_array_excel):
-    try:
-        unconnected_array_excel.connect()
         connected = True
     except:  # noqa: E722
         connected = False
@@ -156,6 +149,27 @@ def test_get_tables(excel):
         assert 'Table1' == table.name
 
     assert (None, None) == excel.table('JUNK')
+
+
+@pytest.mark.parametrize(
+    'address, values, formulas',
+    [
+        ('ArrayForm!H1:I2', ((1, 2), (1, 2)),
+         (('=INDEX(COLUMN(A1:B1),1,1)', '=INDEX(COLUMN(A1:B1),1,2)'),
+          ('=INDEX(COLUMN(A1:B1),1,1)', '=INDEX(COLUMN(A1:B1),1,2)')),
+         ),
+        ('ArrayForm!E1:F3', ((1, 1), (2, 2), (3, 3)),
+         (('=INDEX(ROW(A1:A3),1,1)', '=INDEX(ROW(A1:A3), 1)'),
+          ('=INDEX(ROW(A1:A3),2,1)', '=INDEX(ROW(A1:A3), 2)'),
+          ('=INDEX(ROW(A1:A3),3,1)', '=INDEX(ROW(A1:A3), 3)'))
+         ),
+    ]
+)
+def test_array_formulas(excel, address, values, formulas):
+    result = excel.get_range(address)
+    assert result.address == AddressRange(address)
+    assert result.values == values
+    assert result.formulas == formulas
 
 
 def test_get_datetimes(excel):
