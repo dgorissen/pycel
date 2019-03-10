@@ -27,7 +27,6 @@ from pycel.excelutil import (
     OPERATORS,
     PyCelException,
     range_boundaries,
-    resolve_range,
     split_sheetname,
     structured_reference_boundaries,
     uniqueify,
@@ -261,25 +260,30 @@ def test_address_cell_enum():
 def test_resolve_range():
     a = AddressRange.create
 
-    assert [a('B1')] == resolve_range(a('B1'))
-    assert [a('B1'), a('C1')] == resolve_range(a('B1:C1'))
-    assert [a('B1'), a('B2')] == resolve_range(a('B1:B2'))
-    assert [[a('B1'), a('C1')], [a('B2'), a('C2')]] == resolve_range(a('B1:C2'))
+    assert ((a('B1'), ), ) == a('B1').resolve_range
+    assert ((a('B1'), a('C1')),) == a('B1:C1').resolve_range
+    assert ((a('B1'),), (a('B2'), )) == a('B1:B2').resolve_range
+    assert ((a('B1'), a('C1')), (a('B2'), a('C2'))) == a('B1:C2').resolve_range
 
-    assert [a('sh!B1')] == resolve_range(a('sh!B1'))
-    assert [a('sh!B1'), a('sh!C1')] == resolve_range(a('sh!B1:C1'))
-    assert [a('sh!B1'), a('sh!B2')] == resolve_range(a('sh!B1:B2'))
-    assert [[a('sh!B1'), a('sh!C1')],
-            [a('sh!B2'), a('sh!C2')]] == resolve_range(a('sh!B1:C2'))
+    assert ((a('sh!B1'),),) == a('sh!B1').resolve_range
+    assert ((a('sh!B1'), a('sh!C1')),) == a('sh!B1:C1').resolve_range
+    assert ((a('sh!B1'),), (a('sh!B2'),)) == a('sh!B1:B2').resolve_range
+    assert ((a('sh!B1'), a('sh!C1')),
+            (a('sh!B2'), a('sh!C2'))) == (a('sh!B1:C2')).resolve_range
 
-    assert [a('sh!B1')] == resolve_range(a('sh!B1', sheet='sh'))
-    assert [a('sh!B1'), a('sh!C1')] == resolve_range(a('sh!B1:C1', sheet='sh'))
-    assert [a('sh!B1'), a('sh!B2')] == resolve_range(a('sh!B1:B2', sheet='sh'))
-    assert [[a('sh!B1'), a('sh!C1')], [a('sh!B2'), a('sh!C2')]] == \
-        resolve_range(a('sh!B1:C2', sheet='sh'))
+    assert ((a('sh!B1'),),) == a('sh!B1', sheet='sh').resolve_range
+    assert ((a('sh!B1'), a('sh!C1')),) == (
+        a('sh!B1:C1', sheet='sh')).resolve_range
+    assert ((a('sh!B1'),), (a('sh!B2'),)) == (
+        a('sh!B1:B2', sheet='sh')).resolve_range
+    assert ((a('sh!B1'), a('sh!C1')), (a('sh!B2'), a('sh!C2'))) == \
+        (a('sh!B1:C2', sheet='sh')).resolve_range
 
-    with pytest.raises(TypeError):
-        resolve_range(a('sh!B1'), sheet='shx')
+    with pytest.raises(AssertionError):
+        a('B:C').resolve_range
+
+    with pytest.raises(AssertionError):
+        a('1:2').resolve_range
 
 
 @pytest.mark.parametrize(

@@ -96,6 +96,9 @@ PYTHON_AST_OPERATORS = {
 COMPARISION_OPS = frozenset(('Eq', 'Lt', 'Gt', 'LtE', 'GtE', 'NotEq'))
 
 
+AddressSize = collections.namedtuple('AddressSize', 'height width')
+
+
 class PyCelException(Exception):
     """Base class for PyCel errors"""
 
@@ -197,25 +200,31 @@ class AddressRange(collections.namedtuple(
         """top row"""
         return self.start.row
 
+    # Is this address a range?
+    is_range = True
+
     @property
-    def is_range(self):
-        """Is this address a range?"""
-        return True
+    def is_bounded_range(self):
+        """Is this address a bounded range?"""
+        rows, cols = self.size
+        return rows != MAX_ROW and cols != MAX_COL
 
     @property
     def size(self):
         """Range dimensions"""
-        if 0 in (self.end.row, self.start.row):
-            height = MAX_ROW
-        else:
-            height = self.end.row - self.start.row + 1
+        if not hasattr(self, '_size'):
+            if 0 in (self.end.row, self.start.row):
+                height = MAX_ROW
+            else:
+                height = self.end.row - self.start.row + 1
 
-        if 0 in (self.end.col_idx, self.start.col_idx):
-            width = MAX_COL
-        else:
-            width = self.end.col_idx - self.start.col_idx + 1
+            if 0 in (self.end.col_idx, self.start.col_idx):
+                width = MAX_COL
+            else:
+                width = self.end.col_idx - self.start.col_idx + 1
 
-        return AddressSize(height, width)
+            self._size = AddressSize(height, width)
+        return self._size
 
     @property
     def has_sheet(self):
@@ -241,6 +250,12 @@ class AddressRange(collections.namedtuple(
         for col in range(*col_range):
             yield (AddressCell((col, row, col, row), sheet=self.sheet)
                    for row in range(self.start.row, self.end.row + 1))
+
+    @property
+    def resolve_range(self):
+        """Return nested tuples with AddressCell for each element"""
+        assert self.is_bounded_range
+        return tuple(tuple(row) for row in self.rows)
 
     @classmethod
     def create(cls, address, sheet='', cell=None):
@@ -341,15 +356,13 @@ class AddressCell(collections.namedtuple(
     def __str__(self):
         return self.address
 
-    @property
-    def is_range(self):
-        """Is this address a range?"""
-        return False
+    # Is this address a range?
+    is_range = False
 
-    @property
-    def size(self):
-        """Range dimensions"""
-        return AddressSize(1, 1)
+    # Is this address a bounded range?"""
+    is_bounded_range = False
+
+    size = AddressSize(1, 1)
 
     @property
     def has_sheet(self):
@@ -391,6 +404,11 @@ class AddressCell(collections.namedtuple(
         return AddressCell((new_col, new_row, new_col, new_row),
                            sheet=self.sheet)
 
+    @property
+    def resolve_range(self):
+        """Return a nested lists with AddressCell for each element"""
+        return (self, ),
+
     @classmethod
     def create(cls, address, sheet='', cell=None):
         """ Factory method.
@@ -408,9 +426,6 @@ class AddressCell(collections.namedtuple(
             raise ValueError(
                 "{0} is not a valid coordinate".format(address))
         return addr
-
-
-AddressSize = collections.namedtuple('AddressSize', 'height width')
 
 
 def unquote_sheetname(sheetname):
@@ -709,35 +724,6 @@ def r1c1_boundaries(address, cell=None, sheet=None):
     return (min_col, min_row, max_col, max_row), sheet
 
 
-def resolve_range(address):
-    """Return a list or nested lists with AddressCell for each element"""
-
-    # ::TODO:: look at removing the assert
-    assert isinstance(address, (AddressRange, AddressCell))
-
-    # single cell, no range
-    if not address.is_range:
-        data = [address]
-
-    else:
-        start = address.start
-        end = address.end
-
-        # single column
-        if start.column == end.column:
-            data = list(next(address.cols))
-
-        # single row
-        elif start.row == end.row:
-            data = list(next(address.rows))
-
-        # rectangular range
-        else:
-            data = list(list(row) for row in address.rows)
-
-    return data
-
-
 def get_linest_degree(cell):
     # TODO: assumes a row or column of linest formulas &
     # that all coefficients are needed
@@ -805,7 +791,8 @@ def flatten(data, coerce=lambda x: x):
     :param coerce: apply coercion to top level, but not to sub ranges
     :return: flattened (coerced) items
     """
-    if isinstance(data, collections.Iterable) and not isinstance(data, str):
+    if isinstance(data, collections.Iterable) and not isinstance(
+            data, (str, AddressRange, AddressCell)):
         for item in data:
             yield from flatten(coerce(item))
     else:

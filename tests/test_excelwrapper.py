@@ -21,6 +21,9 @@ def test_connect_array(unconnected_array_excel):
 
 
 def test_set_and_get_active_sheet(excel):
+    excel.set_sheet("Sheet2")
+    assert excel.get_active_sheet_name() == 'Sheet2'
+
     excel.set_sheet("Sheet3")
     assert excel.get_active_sheet_name() == 'Sheet3'
 
@@ -50,70 +53,91 @@ def test_get_formula_from_range(excel):
     assert formula == "=SIN(B3*A3^2)"
 
 
-def test_get_formula_or_value(excel):
-    result = excel.get_formula_or_value("Sheet1!A2:C2")
-    assert (('2', '=SUM(A2:A4)', '=SIN(B2*A2^2)'),) == result
-
-    result = excel.get_formula_or_value("Sheet1!A1:A3")
-    assert (('1',), ('2',), ('3',)) == result
+@pytest.mark.parametrize(
+    'address, value',
+    [
+        ("Sheet1!A2", 2),
+        ("Sheet1!B2", '=SUM(A2:A4)'),
+        ("Sheet1!A2:C2", ((2, '=SUM(A2:A4)', '=SIN(B2*A2^2)'),)),
+        ("Sheet1!A1:A3", ((1,), (2,), (3,))),
+        ("Sheet1!1:2", (
+            (1, '=SUM(A1:A3)', '=SIN(B1*A1^2)', '=LINEST(C1:C18,B1:B18)'),
+            (2, '=SUM(A2:A4)', '=SIN(B2*A2^2)', None))),
+    ]
+)
+def test_get_formula_or_value(excel, address, value):
+    assert value == excel.get_formula_or_value(address)
 
 
 def test_get_range_formula(excel):
-    result = excel.get_range("Sheet1!A2:C2").Formula
-    assert (('2', '=SUM(A2:A4)', '=SIN(B2*A2^2)'),) == result
+    result = excel.get_range("Sheet1!A2:C2").formulas
+    assert (('', '=SUM(A2:A4)', '=SIN(B2*A2^2)'),) == result
 
-    result = excel.get_range("Sheet1!A1:A3").Formula
-    assert (('1',), ('2',), ('3',)) == result
+    result = excel.get_range("Sheet1!A1:A3").formulas
+    assert (('',), ('',), ('',)) == result
 
-    result = excel.get_range("Sheet1!C2").Formula
+    result = excel.get_range("Sheet1!C2").formulas
     assert '=SIN(B2*A2^2)' == result
 
     excel.set_sheet('Sheet1')
-    result = excel.get_range("C2").Formula
+    result = excel.get_range("C2").formulas
     assert '=SIN(B2*A2^2)' == result
 
-    result = excel.get_range("Sheet1!AA1:AA3").Formula
+    result = excel.get_range("Sheet1!AA1:AA3").formulas
     assert (('',), ('',), ('',)) == result
 
-    result = excel.get_range("Sheet1!CC2").Formula
+    result = excel.get_range("Sheet1!CC2").formulas
     assert '' == result
 
 
+@pytest.mark.parametrize(
+    'address1, address2',
+    [
+        ("Sheet1!1:2", "Sheet1!A1:D2"),
+        ("Sheet1!A:B", "Sheet1!A1:B18"),
+        ("Sheet1!2:2", "Sheet1!A2:D2"),
+        ("Sheet1!B:B", "Sheet1!B1:B18"),
+    ]
+)
+def test_get_unbounded_range(excel, address1, address2):
+    assert excel.get_range(address1) == excel.get_range(address2)
+
+
 def test_get_value_with_formula(excel):
-    result = excel.get_range("Sheet1!A2:C2").Value
+    result = excel.get_range("Sheet1!A2:C2").values
     assert ((2, 9, -0.9917788534431158),) == result
 
-    result = excel.get_range("Sheet1!A1:A3").Value
+    result = excel.get_range("Sheet1!A1:A3").values
     assert ((1,), (2,), (3,)) == result
 
-    result = excel.get_range("Sheet1!B2").Value
+    result = excel.get_range("Sheet1!B2").values
     assert 9 == result
 
     excel.set_sheet('Sheet1')
-    result = excel.get_range("B2").Value
+    result = excel.get_range("B2").values
     assert 9 == result
 
-    result = excel.get_range("Sheet1!AA1:AA3").Value
+    result = excel.get_range("Sheet1!AA1:AA3").values
     assert ((None,), (None,), (None,)) == result
 
-    result = excel.get_range("Sheet1!CC2").Value
+    result = excel.get_range("Sheet1!CC2").values
     assert result is None
 
 
 def test_get_range_value(excel):
-    result = excel.get_range("Sheet1!A2:C2").Value
+    result = excel.get_range("Sheet1!A2:C2").values
     assert ((2, 9, -0.9917788534431158),) == result
 
-    result = excel.get_range("Sheet1!A1:A3").Value
+    result = excel.get_range("Sheet1!A1:A3").values
     assert ((1,), (2,), (3,)) == result
 
-    result = excel.get_range("Sheet1!A1").Value
+    result = excel.get_range("Sheet1!A1").values
     assert 1 == result
 
-    result = excel.get_range("Sheet1!AA1:AA3").Value
+    result = excel.get_range("Sheet1!AA1:AA3").values
     assert ((None,), (None,), (None,)) == result
 
-    result = excel.get_range("Sheet1!CC2").Value
+    result = excel.get_range("Sheet1!CC2").values
     assert result is None
 
 
@@ -135,7 +159,7 @@ def test_get_tables(excel):
 
 
 def test_get_datetimes(excel):
-    result = excel.get_range("datetime!A1:B12").Value
+    result = excel.get_range("datetime!A1:B12").values
     for row in result:
         if isinstance(row[1], (dt.date, dt.datetime)):
             assert row[0] == row[1]
@@ -152,6 +176,6 @@ def test_get_datetimes(excel):
 )
 def test_get_entire_rows_columns(excel, result_range, expected_range):
 
-    result = excel.get_range(result_range).Value
-    expected = excel.get_range(expected_range).Value
+    result = excel.get_range(result_range).values
+    expected = excel.get_range(expected_range).values
     assert result == expected

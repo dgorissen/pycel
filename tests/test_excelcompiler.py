@@ -6,6 +6,7 @@ import pytest
 from pycel.excelcompiler import _Cell, _CellRange, ExcelCompiler
 from pycel.excelformula import FormulaEvalError
 from pycel.excelutil import AddressCell, AddressRange
+from pycel.excelwrapper import ExcelWrapper
 
 
 # ::TODO:: need some rectangular ranges for testing
@@ -23,8 +24,20 @@ def test_end_2_end(excel, fixture_xls_path):
         assert -0.00331 == round(excel_compiler.evaluate('Sheet1!D1'), 5)
 
 
-def test_round_trip_through_json_yaml_and_pickle(excel, fixture_xls_path):
-    excel_compiler = ExcelCompiler(excel=excel)
+def test_no_sheet_given(excel_compiler):
+    sh1_value = excel_compiler.evaluate('Sheet1!A1')
+
+    excel_compiler.excel.set_sheet('Sheet1')
+    value = excel_compiler.evaluate('A1')
+    assert sh1_value == value
+
+    excel_compiler.excel.set_sheet('Sheet2')
+    value = excel_compiler.evaluate('A1')
+    assert sh1_value != value
+
+
+def test_round_trip_through_json_yaml_and_pickle(
+        excel_compiler, fixture_xls_path):
     excel_compiler.evaluate('Sheet1!D1')
     excel_compiler.extra_data = {1: 3}
     excel_compiler.to_file(file_types=('pickle', ))
@@ -32,9 +45,11 @@ def test_round_trip_through_json_yaml_and_pickle(excel, fixture_xls_path):
     excel_compiler.to_file(file_types=('json', ))
 
     # read the spreadsheet from json, yaml and pickle
-    excel_compiler_json = ExcelCompiler.from_file(excel.filename + '.json')
-    excel_compiler_yaml = ExcelCompiler.from_file(excel.filename + '.yml')
-    excel_compiler = ExcelCompiler.from_file(excel.filename)
+    excel_compiler_json = ExcelCompiler.from_file(
+        excel_compiler.filename + '.json')
+    excel_compiler_yaml = ExcelCompiler.from_file(
+        excel_compiler.filename + '.yml')
+    excel_compiler = ExcelCompiler.from_file(excel_compiler.filename)
 
     # test evaluation
     assert -0.02286 == round(excel_compiler_json.evaluate('Sheet1!D1'), 5)
@@ -51,8 +66,7 @@ def test_round_trip_through_json_yaml_and_pickle(excel, fixture_xls_path):
     assert -0.00331 == round(excel_compiler.evaluate('Sheet1!D1'), 5)
 
 
-def test_filename_ext(excel, fixture_xls_path):
-    excel_compiler = ExcelCompiler(excel=excel)
+def test_filename_ext(excel_compiler, fixture_xls_path):
     excel_compiler.evaluate('Sheet1!D1')
     excel_compiler.extra_data = {1: 3}
     pickle_name = excel_compiler.filename + '.pkl'
@@ -73,11 +87,9 @@ def test_filename_ext(excel, fixture_xls_path):
     assert os.path.exists(json_name)
 
 
-def test_filename_extension_errors(excel, fixture_xls_path):
+def test_filename_extension_errors(excel_compiler, fixture_xls_path):
     with pytest.raises(ValueError, match='Unrecognized file type'):
-        ExcelCompiler.from_file(excel.filename + '.xyzzy')
-
-    excel_compiler = ExcelCompiler(excel=excel)
+        ExcelCompiler.from_file(excel_compiler.filename + '.xyzzy')
 
     with pytest.raises(ValueError, match='Only allowed one '):
         excel_compiler.to_file(file_types=('pkl', 'pickle'))
@@ -89,20 +101,18 @@ def test_filename_extension_errors(excel, fixture_xls_path):
         excel_compiler.to_file(file_types=('pkly',))
 
 
-def test_hash_matches(excel):
-    excel_compiler = ExcelCompiler(excel=excel)
+def test_hash_matches(excel_compiler):
     assert excel_compiler.hash_matches
 
     excel_compiler._excel_file_md5_digest = 0
     assert not excel_compiler.hash_matches
 
 
-def test_pickle_file_rebuilding(excel):
+def test_pickle_file_rebuilding(excel_compiler):
 
     input_addrs = ['Sheet1!A11']
     output_addrs = ['Sheet1!D1']
 
-    excel_compiler = ExcelCompiler(excel=excel)
     excel_compiler.trim_graph(input_addrs, output_addrs)
     excel_compiler.to_file()
 
@@ -125,8 +135,7 @@ def test_pickle_file_rebuilding(excel):
     assert new_hash != excel_compiler._compute_file_md5_digest(pickle_name)
 
 
-def test_reset(excel):
-    excel_compiler = ExcelCompiler(excel=excel)
+def test_reset(excel_compiler):
     in_address = 'Sheet1!A1'
     out_address = 'Sheet1!D1'
 
@@ -145,8 +154,7 @@ def test_reset(excel):
     assert -0.02286 == round(excel_compiler.cell_map[out_address].value, 5)
 
 
-def test_recalculate(excel):
-    excel_compiler = ExcelCompiler(excel=excel)
+def test_recalculate(excel_compiler):
     out_address = 'Sheet1!D1'
 
     assert -0.02286 == round(excel_compiler.evaluate(out_address), 5)
@@ -156,15 +164,13 @@ def test_recalculate(excel):
     assert -0.02286 == round(excel_compiler.cell_map[out_address].value, 5)
 
 
-def test_evaluate_from_generator(excel):
-    excel_compiler = ExcelCompiler(excel=excel)
+def test_evaluate_from_generator(excel_compiler):
     result = excel_compiler.evaluate(
         a for a in ('trim-range!B1', 'trim-range!B2'))
     assert (24, 136) == result
 
 
-def test_evaluate_empty(excel):
-    excel_compiler = ExcelCompiler(excel=excel)
+def test_evaluate_empty(excel_compiler):
     assert 0 == excel_compiler.evaluate('Empty!B1')
 
     excel_compiler.recalculate()
@@ -186,31 +192,28 @@ def test_evaluate_empty(excel):
     assert [10, 20] == text_excel_compiler.evaluate(output_addrs)
 
 
-def test_gen_graph(excel):
-    excel_compiler = ExcelCompiler(excel=excel)
-    excel.set_sheet('trim-range')
+def test_gen_graph(excel_compiler):
     excel_compiler._gen_graph('B2')
 
     with pytest.raises(ValueError, match='Unknown seed'):
         excel_compiler._gen_graph(None)
 
 
-def test_value_tree_str(excel):
+def test_value_tree_str(excel_compiler):
     out_address = 'trim-range!B2'
-    excel_compiler = ExcelCompiler(excel=excel)
     excel_compiler.evaluate(out_address)
 
     expected = [
         'trim-range!B2 = 136',
         ' trim-range!B1 = 24',
-        '  trim-range!D1:E3 = [[1, 5], [2, 6], [3, 7]]',
+        '  trim-range!D1:E3 = ((1, 5), (2, 6), (3, 7))',
         '   trim-range!D1 = 1',
         '   trim-range!D2 = 2',
         '   trim-range!D3 = 3',
         '   trim-range!E1 = 5',
         '   trim-range!E2 = 6',
         '   trim-range!E3 = 7',
-        ' trim-range!D4:E4 = [4, 8]',
+        ' trim-range!D4:E4 = (4, 8)',
         '  trim-range!D4 = 4',
         '  trim-range!E4 = 8',
         ' trim-range!D5 = 100'
@@ -218,8 +221,7 @@ def test_value_tree_str(excel):
     assert expected == list(excel_compiler.value_tree_str(out_address))
 
 
-def test_trim_cells(excel):
-    excel_compiler = ExcelCompiler(excel=excel)
+def test_trim_cells(excel_compiler):
     input_addrs = ['trim-range!D5']
     output_addrs = ['trim-range!B2']
 
@@ -234,8 +236,7 @@ def test_trim_cells(excel):
     assert old_value == new_value
 
 
-def test_trim_cells_range(excel):
-    excel_compiler = ExcelCompiler(excel=excel)
+def test_trim_cells_range(excel_compiler):
     input_addrs = [AddressRange('trim-range!D4:E4')]
     output_addrs = ['trim-range!B2']
 
@@ -257,9 +258,7 @@ def test_trim_cells_range(excel):
     assert old_value - 1 == excel_compiler.evaluate(output_addrs[0])
 
 
-def test_evaluate_from_non_cells(excel):
-    excel_compiler = ExcelCompiler(excel=excel)
-
+def test_evaluate_from_non_cells(excel_compiler):
     input_addrs = ['Sheet1!A11']
     output_addrs = ['Sheet1!A11:A13', 'Sheet1!D1', 'Sheet1!B11', ]
 
@@ -279,8 +278,7 @@ def test_evaluate_from_non_cells(excel):
     assert old_values[0] == range_value
 
 
-def test_validate_calcs(excel, capsys):
-    excel_compiler = ExcelCompiler(excel=excel)
+def test_validate_calcs(excel_compiler, capsys):
     input_addrs = ['trim-range!D5']
     output_addrs = ['trim-range!B2']
 
@@ -310,8 +308,30 @@ def test_validate_calcs_all_cells(basic_ws):
     assert {} == basic_ws.validate_calcs()
 
 
-def test_trim_cells_warn_address_not_found(excel):
-    excel_compiler = ExcelCompiler(excel=excel)
+def test_evaluate_entire_row_column(excel_compiler):
+
+    value = excel_compiler.evaluate(AddressRange('Sheet1!A:B'))
+    expected = excel_compiler.evaluate(AddressRange('Sheet1!A1:B18'))
+    assert value == expected
+
+    value = excel_compiler.evaluate(AddressRange('Sheet1!1:2'))
+    expected = excel_compiler.evaluate(AddressRange('Sheet1!A1:D2'))
+    assert value == expected
+
+    # now from the text based file
+    excel_compiler._to_text()
+    text_excel_compiler = ExcelCompiler._from_text(excel_compiler.filename)
+
+    value = text_excel_compiler.evaluate(AddressRange('Sheet1!A:B'))
+    expected = text_excel_compiler.evaluate(AddressRange('Sheet1!A1:B18'))
+    assert value == expected
+
+    value = text_excel_compiler.evaluate(AddressRange('Sheet1!1:2'))
+    expected = text_excel_compiler.evaluate(AddressRange('Sheet1!A1:D2'))
+    assert value == expected
+
+
+def test_trim_cells_warn_address_not_found(excel_compiler):
     input_addrs = ['trim-range!D5', 'trim-range!H1']
     output_addrs = ['trim-range!B2']
 
@@ -321,8 +341,7 @@ def test_trim_cells_warn_address_not_found(excel):
     assert 1 == excel_compiler.log.warning.call_count
 
 
-def test_trim_cells_info_buried_input(excel):
-    excel_compiler = ExcelCompiler(excel=excel)
+def test_trim_cells_info_buried_input(excel_compiler):
     input_addrs = ['trim-range!B1', 'trim-range!D1']
     output_addrs = ['trim-range!B2']
 
@@ -333,9 +352,7 @@ def test_trim_cells_info_buried_input(excel):
     assert 'not a leaf node' in excel_compiler.log.info.mock_calls[1][1][0]
 
 
-def test_trim_cells_exception_input_unused(excel):
-
-    excel_compiler = ExcelCompiler(excel=excel)
+def test_trim_cells_exception_input_unused(excel_compiler):
     input_addrs = ['trim-range!G1']
     output_addrs = ['trim-range!B2']
     excel_compiler.evaluate(output_addrs[0])
@@ -347,9 +364,7 @@ def test_trim_cells_exception_input_unused(excel):
         excel_compiler.trim_graph(input_addrs, output_addrs)
 
 
-def test_compile_error_message_line_number(excel):
-    excel_compiler = ExcelCompiler(excel=excel)
-
+def test_compile_error_message_line_number(excel_compiler):
     input_addrs = ['trim-range!D5']
     output_addrs = ['trim-range!B2']
 
@@ -370,12 +385,14 @@ def test_compile_error_message_line_number(excel):
 
 def test_init_cell_address_error(excel):
     with pytest.raises(ValueError):
-        _CellRange('A1', excel)
+        _CellRange(ExcelWrapper.RangeData(
+            AddressCell('A1'), (('', ),), ((0, ),)))
 
 
 def test_cell_range_repr(excel):
-    cell_range = _CellRange('sheet!A1', excel)
-    assert 'sheet!A1' == repr(cell_range)
+    cell_range = _CellRange(ExcelWrapper.RangeData(
+        AddressRange('sheet!A1:B1'), (('', ''),), ((0, 0),)))
+    assert 'sheet!A1:B1' == repr(cell_range)
 
 
 def test_cell_repr(excel):
@@ -383,8 +400,7 @@ def test_cell_repr(excel):
     assert 'sheet!A1 -> 0' == repr(cell_range)
 
 
-def test_gen_gexf(excel, tmpdir):
-    excel_compiler = ExcelCompiler(excel=excel)
+def test_gen_gexf(excel_compiler, tmpdir):
     filename = os.path.join(str(tmpdir), 'test.gexf')
     assert not os.path.exists(filename)
     excel_compiler.export_to_gexf(filename)
@@ -393,10 +409,7 @@ def test_gen_gexf(excel, tmpdir):
     assert os.path.exists(filename)
 
 
-def test_gen_dot(excel, tmpdir):
-    from unittest import mock
-
-    excel_compiler = ExcelCompiler(excel=excel)
+def test_gen_dot(excel_compiler, tmpdir):
     with pytest.raises(ImportError, match="Package 'pydot' is not installed"):
         excel_compiler.export_to_dot()
 
@@ -411,10 +424,7 @@ def test_gen_dot(excel, tmpdir):
         excel_compiler.export_to_dot()
 
 
-def test_plot_graph(excel, tmpdir):
-    from unittest import mock
-
-    excel_compiler = ExcelCompiler(excel=excel)
+def test_plot_graph(excel_compiler, tmpdir):
     with pytest.raises(ImportError,
                        match="Package 'matplotlib' is not installed"):
         excel_compiler.plot_graph()
@@ -437,8 +447,7 @@ def test_plot_graph(excel, tmpdir):
         excel_compiler.plot_graph()
 
 
-def test_structured_ref(excel):
-    excel_compiler = ExcelCompiler(excel=excel)
+def test_structured_ref(excel_compiler):
     input_addrs = ['sref!F3']
     output_addrs = ['sref!B3']
 
