@@ -308,6 +308,29 @@ def test_validate_calcs_all_cells(basic_ws):
     assert {} == basic_ws.validate_calcs()
 
 
+def test_evaluate_entire_row_column(excel_compiler):
+
+    value = excel_compiler.evaluate(AddressRange('Sheet1!A:B'))
+    expected = excel_compiler.evaluate(AddressRange('Sheet1!A1:B18'))
+    assert value == expected
+
+    value = excel_compiler.evaluate(AddressRange('Sheet1!1:2'))
+    expected = excel_compiler.evaluate(AddressRange('Sheet1!A1:D2'))
+    assert value == expected
+
+    # now from the text based file
+    excel_compiler._to_text()
+    text_excel_compiler = ExcelCompiler._from_text(excel_compiler.filename)
+
+    value = text_excel_compiler.evaluate(AddressRange('Sheet1!A:B'))
+    expected = text_excel_compiler.evaluate(AddressRange('Sheet1!A1:B18'))
+    assert value == expected
+
+    value = text_excel_compiler.evaluate(AddressRange('Sheet1!1:2'))
+    expected = text_excel_compiler.evaluate(AddressRange('Sheet1!A1:D2'))
+    assert value == expected
+
+
 def test_trim_cells_warn_address_not_found(excel_compiler):
     input_addrs = ['trim-range!D5', 'trim-range!H1']
     output_addrs = ['trim-range!B2']

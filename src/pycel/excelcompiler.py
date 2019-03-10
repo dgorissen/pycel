@@ -15,6 +15,10 @@ from pycel.excelutil import (
 from pycel.excelwrapper import ExcelOpxWrapper
 from ruamel.yaml import YAML
 
+REF_START = '=_REF_("'
+REF_END = '")'
+REF_FORMAT = REF_START + '{}' + REF_END
+
 
 class ExcelCompiler:
     """Class responsible for taking an Excel spreadsheet and compiling it
@@ -106,8 +110,8 @@ class ExcelCompiler:
             excel_hash=self._excel_file_md5_digest,
             cell_map=dict(sorted(
                 ((addr, cell_value(cell))
-                 for addr, cell in self.cell_map.items() if ':' not in addr),
-                key=lambda x: AddressCell(x[0]).sort_key
+                 for addr, cell in self.cell_map.items() if cell.serialize),
+                key=lambda x: AddressRange(x[0]).sort_key
             )),
         ))
         if not filename:
@@ -151,17 +155,28 @@ class ExcelCompiler:
         excel_compiler = cls(excel=excel)
         excel.compiler = excel_compiler
 
+        def add_line_numbers(cell_addr, line_number):
+            formula = excel_compiler.cell_map[cell_addr].formula
+            if formula is not None:
+                formula.lineno = line_number
+                formula.filename = filename
+
         # populate the cells
+        range_todos = []
         for address, python_code in data['cell_map'].items():
             lineno = data['cell_map'].lc.data[address][0] + 1
             address = AddressRange(address)
-            excel_compiler._make_cells(address)
-            formula = excel_compiler.cell_map[address.address].formula
-            if formula is not None:
-                formula.lineno = lineno
-                formula.filename = filename
+            if address.is_range:
+                range_todos.append((address, lineno))
+            else:
+                excel_compiler._make_cells(address)
+                add_line_numbers(address.address, lineno)
 
         # populate the ranges and dependant graph
+        for address, lineno in range_todos:
+            excel_compiler._make_cells(address)
+            add_line_numbers(address.address, lineno)
+
         excel_compiler._process_gen_graph()
         del data['cell_map']
 
@@ -555,6 +570,12 @@ class ExcelCompiler:
 
         excel_data = self.excel.get_range(address)
         if address.is_range:
+            if excel_data.address != address:
+                # if the actual data returned is not the same as the address
+                # given, then use a reference
+                self.cell_map[str(address)] = _Cell(
+                    address, formula=REF_FORMAT.format(excel_data.address))
+
             self.range_todos.append(str(excel_data.address))
             new_nodes = build_range(excel_data)
         else:
@@ -566,7 +587,7 @@ class ExcelCompiler:
                 add_node_to_graph(node)
 
     def _evaluate_range(self, address):
-
+        """Evaluate a range"""
         cell_range = self.cell_map.get(address)
         if cell_range is None:
             # we don't save the _CellRange values in the text format files
@@ -592,6 +613,7 @@ class ExcelCompiler:
         return cell_range.value
 
     def _evaluate(self, address):
+        """Evaluate a single cell"""
         cell = self.cell_map[address]
 
         # calculate the cell value for formulas and ranges
@@ -609,6 +631,10 @@ class ExcelCompiler:
                 self.log.info("Cell %s evaluated to '%s' (%s)" % (
                     cell.address, value, type(value).__name__))
                 cell.value = value
+
+        if isinstance(cell.value, AddressRange):
+            # If the cell returns a reference, then dereference
+            return self._evaluate(str(cell.value))
 
         return cell.value
 
@@ -705,6 +731,8 @@ class ExcelCompiler:
 class _CellRange:
     # TODO: only supports rectangular ranges
 
+    serialize = False
+
     def __init__(self, data):
         self.address = AddressRange(data.address)
         if not self.address.sheet:
@@ -738,6 +766,7 @@ class _CellRange:
 
 class _Cell:
     ctr = 0
+    serialize = True
 
     @classmethod
     def next_id(cls):
@@ -789,8 +818,17 @@ class _CompiledImporter:
 
     def get_range(self, address):
 
-        if not address.is_range:
-            return self._get_cell(address)
+        if not address.is_bounded_range:
+            if not address.is_range:
+                return self._get_cell(address)
+            else:
+                # this is a unbounded range to range mapping, disassemble
+                cell = self._get_cell(address)
+                formula = cell.formulas
+                assert formula.startswith(REF_START)
+                assert formula.endswith(REF_END)
+                ref_addr = formula[len(REF_START):-len(REF_END)]
+                return self.get_range(AddressRange(ref_addr))
 
         # need to map col or row ranges to a specific range
         addresses = address.resolve_range
