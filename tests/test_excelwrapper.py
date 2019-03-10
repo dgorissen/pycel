@@ -11,6 +11,15 @@ def test_connect(unconnected_excel):
     assert connected
 
 
+def test_connect_array(unconnected_array_excel):
+    try:
+        unconnected_array_excel.connect()
+        connected = True
+    except:  # noqa: E722
+        connected = False
+    assert connected
+
+
 def test_set_and_get_active_sheet(excel):
     excel.set_sheet("Sheet2")
     assert excel.get_active_sheet_name() == 'Sheet2'

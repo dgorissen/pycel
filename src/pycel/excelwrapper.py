@@ -141,8 +141,13 @@ class ExcelOpxWrapper(ExcelWrapper):
             for address, props in ws.formula_attributes.items():
                 if props.get('t') == 'array':
                     formula = '{%s}' % ws[address].value
-                    addrs = it.chain.from_iterable(
-                        AddressRange(props.get('ref')).rows)
+                    cells = AddressRange(props.get('ref'))
+
+                    if isinstance(cells, AddressCell):
+                        # Single cell array formulas can be ignored
+                        continue
+
+                    addrs = it.chain.from_iterable(cells.rows)
                     for addr in addrs:
                         ws[addr.coordinate] = formula
 
