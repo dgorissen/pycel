@@ -155,13 +155,22 @@ def test_get_tables(excel):
     'address, values, formulas',
     [
         ('ArrayForm!H1:I2', ((1, 2), (1, 2)),
-         (('=INDEX(COLUMN(A1:B1),1,1)', '=INDEX(COLUMN(A1:B1),1,2)'),
+         (('=COLUMN(A1:B1)', '=INDEX(COLUMN(A1:B1),1,2)'),
           ('=INDEX(COLUMN(A1:B1),1,1)', '=INDEX(COLUMN(A1:B1),1,2)')),
          ),
         ('ArrayForm!E1:F3', ((1, 1), (2, 2), (3, 3)),
-         (('=INDEX(ROW(A1:A3),1,1)', '=INDEX(ROW(A1:A3), 1)'),
+         (('=ROW(A1:A3)', '=INDEX(ROW(A1:A3), 1)'),
           ('=INDEX(ROW(A1:A3),2,1)', '=INDEX(ROW(A1:A3), 2)'),
           ('=INDEX(ROW(A1:A3),3,1)', '=INDEX(ROW(A1:A3), 3)'))
+         ),
+        ('ArrayForm!E7:E9', ((11,), (10,), (16,)),
+         (('=SUM((A7:A13="a")*(B7:B13="y")*C7:C13)',),
+          ('=SUM((A7:A13<>"b")*(B7:B13<>"y")*C7:C13)',),
+          ('=SUM((A7:A13>"b")*(B7:B13<"z")*(C7:C13+3.5))',))
+         ),
+        ('ArrayForm!G16:H17', ((1, 6), (6, 16)),
+         (('=A16:B17*D16:E17', '=INDEX(A16:B17*D16:E17,1,2)'),
+          ('=INDEX(A16:B17*D16:E17,2,1)', '=INDEX(A16:B17*D16:E17,2,2)'))
          ),
     ]
 )

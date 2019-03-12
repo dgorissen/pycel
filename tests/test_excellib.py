@@ -318,14 +318,9 @@ class TestIndex:
         assert 3 == index(TestIndex.test_data[1], 1, 2)
 
     def test_out_of_range(self):
-        with pytest.raises(IndexError):
-            index(TestIndex.test_data[1], 2, 2)
-
-        with pytest.raises(IndexError):
-            index(TestIndex.test_data[1], 1, 3)
-
-        with pytest.raises(IndexError):
-            index(TestIndex.test_data, None)
+        assert NA_ERROR == index(TestIndex.test_data[1], 2, 2)
+        assert NA_ERROR == index(TestIndex.test_data[1], 1, 3)
+        assert NA_ERROR == index(TestIndex.test_data, None)
 
     def test_error_inputs(self):
         assert NA_ERROR == index(TestIndex.test_data, NA_ERROR, 1)

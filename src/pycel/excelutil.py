@@ -1069,6 +1069,27 @@ class ExcelCmp(collections.namedtuple('ExcelCmp', 'cmp_type value empty')):
 
 def build_operator_operand_fixup(capture_error_state):
 
+    def is_array(value):
+        return not isinstance(
+            value, (AddressRange, AddressCell)) and isinstance(value, tuple)
+
+    def array_fixup(left_op, op, right_op):
+        """use numpy broadcasting for ranges"""
+        # ::TODO:: this needs better error processing to match excel behavior
+        left_op = np.array(left_op, dtype=object)
+        right_op = np.array(right_op, dtype=object)
+        b = np.broadcast(left_op, right_op)
+
+        size = b.shape
+        if len(size) == 1:
+            return tuple(fixup(u, op, v) for (u, v) in b)
+        else:
+            data = tuple(b)
+            return tuple(
+                tuple(fixup(u, op, v) for (u, v) in data[i: i + size[1]])
+                for i in range(0, len(data), size[1])
+            )
+
     def fixup(left_op, op, right_op):
         """Fix up python operations to be more excel like in these cases:
 
@@ -1079,14 +1100,14 @@ def build_operator_operand_fixup(capture_error_state):
             String to Number coercion
             String / Number multiplication
         """
-        if isinstance(left_op, list) or isinstance(right_op, list):
-            raise NotImplementedError('Array Formulas not implemented')
-
-        if left_op in ERROR_CODES:
+        if not is_array(left_op) and left_op in ERROR_CODES:
             return left_op
 
-        if right_op in ERROR_CODES:
+        if not is_array(right_op) and right_op in ERROR_CODES:
             return right_op
+
+        if is_array(left_op) or is_array(right_op):
+            return array_fixup(left_op, op, right_op)
 
         if op in COMPARISION_OPS:
             if left_op in (None, EMPTY):

@@ -216,30 +216,31 @@ def index(array, row_num, col_num=None):
     if col_num in ERROR_CODES:
         return col_num
 
-    if isinstance(array[0], (list, tuple, np.ndarray)):
-        # rectangular array
-        if None not in (row_num, col_num):
-            return array[row_num - 1][col_num - 1]
+    try:
+        if isinstance(array[0], (list, tuple, np.ndarray)):
+            # rectangular array
+            if None not in (row_num, col_num):
+                return array[row_num - 1][col_num - 1]
 
-        if row_num is not None:
+            elif row_num is not None:
+                return array[row_num - 1]
+
+            elif col_num is not None:
+                if isinstance(array, np.ndarray):
+                    return array[:, col_num - 1]
+                else:
+                    return type(array)(row[col_num - 1] for row in array)
+
+        elif col_num in (1, None):
             return array[row_num - 1]
 
-        if col_num is not None:
-            if isinstance(array, np.ndarray):
-                return array[:, col_num - 1]
-            else:
-                return type(array)(row[col_num - 1] for row in array)
+        elif row_num == 1:
+            return array[col_num - 1]
 
-        raise IndexError("For Index either row_num or col_num must be given")
+    except IndexError:
+        pass
 
-    elif col_num in (1, None):
-        return array[row_num - 1]
-
-    elif row_num == 1:
-        return array[col_num - 1]
-
-    raise IndexError("Index (%s,%s) out of range for %s" % (
-        row_num, col_num, array))
+    return NA_ERROR
 
 
 def istext(arg):
