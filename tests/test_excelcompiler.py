@@ -4,7 +4,7 @@ from unittest import mock
 
 import pytest
 from pycel.excelcompiler import _Cell, _CellRange, ExcelCompiler
-from pycel.excelformula import FormulaEvalError
+from pycel.excelformula import UnknownFunction
 from pycel.excelutil import AddressCell, AddressRange
 from pycel.excelwrapper import ExcelWrapper
 
@@ -378,8 +378,7 @@ def test_compile_error_message_line_number(excel_compiler):
     formula._python_code = '(x)'
     formula.lineno = 3000
     formula.filename = 'a_file'
-    with pytest.raises(
-            FormulaEvalError, match='File "a_file", line 3000'):
+    with pytest.raises(UnknownFunction, match='File "a_file", line 3000'):
         excel_compiler.evaluate(output_addrs[0])
 
 

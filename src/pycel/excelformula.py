@@ -19,12 +19,18 @@ from pycel.excelutil import (
     PyCelException,
     uniqueify,
 )
+from pycel.lib.function_info import func_status_msg
+
 
 EVAL_REGEX = re.compile(r'(_C_|_R_)(\([^)]*\))')
 
 
 class FormulaParserError(PyCelException):
     """Error during parsing"""
+
+
+class UnknownFunction(PyCelException):
+    """Functions unknown to PyCel"""
 
 
 class FormulaEvalError(PyCelException):
@@ -791,13 +797,16 @@ class ExcelFormula:
             compiled, names = excel_formula.compiled_python
 
             # load the needed names
+            not_found = set()
             for name in names:
                 if name not in name_space:
                     funcs = ((getattr(module, name, None), module)
                              for module in modules)
                     func, module = next(
                         (f for f in funcs if f[0] is not None), (None, None))
-                    if func is not None:
+                    if func is None:
+                        not_found.add(name)
+                    else:
                         if module.__name__ == 'math':
                             name_space[name] = math_wrap(func)
                         else:
@@ -807,15 +816,26 @@ class ExcelFormula:
             exec(compiled, name_space, name_space)
             excel_formula.compiled_lambda = lambdas[0]
             del name_space['lambdas']
+            return not_found
 
         def eval_func(excel_formula):
             """ Call the compiled lambda to evaluate the cell """
 
+            msg = None
             if excel_formula.compiled_lambda is None:
-                load_function(excel_formula, locals())
+                missing = load_function(excel_formula, locals())
+                if missing:
+                    msg_fmt = 'Function {} has not been implemented. '
+                    msg = '\n'.join(
+                        msg_fmt.format(f.upper()) +
+                        func_status_msg(f)[1] for f in sorted(missing))
 
             try:
                 ret_val = excel_formula.compiled_lambda()
+
+            except NameError:
+                error_logger('error', excel_formula.python_code,
+                             msg=msg, exc=UnknownFunction)
 
             except Exception:
                 error_logger('error', excel_formula.python_code,

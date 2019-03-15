@@ -11,6 +11,7 @@ from pycel.excelformula import (
     FormulaEvalError,
     FormulaParserError,
     Token,
+    UnknownFunction,
 )
 from pycel.excelutil import DIV0, NAME_ERROR, VALUE_ERROR
 from test_excelutil import ATestCell
@@ -486,17 +487,17 @@ def test_needed_addresses():
     assert () == ExcelFormula('').needed_addresses
 
 
-def test_build_eval_context():
+@pytest.mark.parametrize(
+    'result, formula', (
+        (42, '=2 * 21'),
+        (44, '=2 * 21 + A1 + a1:a2'),
+        (1, '=1 + sin(0)'),
+        (4.1415926, '=1 + PI()'),
+    )
+)
+def test_build_eval_context(result, formula):
     eval_context = ExcelFormula.build_eval_context(lambda x: 1, lambda x: 1)
-
-    assert 42 == eval_context(ExcelFormula('=2 * 21'))
-    assert 44 == eval_context(ExcelFormula('=2 * 21 + A1 + a1:a2'))
-    assert 1 == eval_context(ExcelFormula('=1 + sin(0)'))
-    assert pytest.approx(4.1415926) == eval_context(ExcelFormula('=1 + PI()'))
-
-    with pytest.raises(FormulaEvalError,
-                       match="name 'unknown_function' is not defined"):
-        eval_context(ExcelFormula('=unknown_function(0)'))
+    assert eval_context(ExcelFormula(formula)) == pytest.approx(result)
 
 
 def test_math_wrap():
@@ -788,7 +789,8 @@ def test_lineno_on_error_reporting():
     excel_formula.lineno = 6
     excel_formula.filename = 'a_file'
 
-    with pytest.raises(FormulaEvalError, match='File "a_file", line 6'):
+    msg = 'File "a_file", line 6,'
+    with pytest.raises(UnknownFunction, match=msg):
         eval_ctx(excel_formula)
 
     excel_formula._python_code = '(x)'
@@ -797,8 +799,30 @@ def test_lineno_on_error_reporting():
     excel_formula.compiled_lambda = None
     excel_formula.lineno = 60
 
-    with pytest.raises(FormulaEvalError, match=', line 60,'):
+    with pytest.raises(UnknownFunction, match='File "a_file", line 60,'):
         eval_ctx(excel_formula)
+
+
+@pytest.mark.parametrize(
+    'msg, formula', (
+        ("Function XYZZY has not been implemented. "
+         "XYZZY is not a known Excel function", '=xyzzy()'),
+        ("Function PLUGH has not been implemented. "
+         "PLUGH is not a known Excel function\n"
+         "Function XYZZY has not been implemented. "
+         "XYZZY is not a known Excel function", '=xyzzy() + plugh()'),
+        ('Function ARABIC has not been implemented. '
+         'ARABIC is in the "Math and trigonometry" group, '
+         'and was introduced in Excel 2013',
+         '=ARABIC()'),
+    )
+)
+def test_unknown_function(msg, formula):
+    eval_ctx = ExcelFormula.build_eval_context(
+        lambda x: None, lambda x: None, logging.getLogger('pycel_x'))
+
+    with pytest.raises(UnknownFunction, match=msg):
+        eval_ctx(ExcelFormula(formula))
 
 
 if __name__ == '__main__':
