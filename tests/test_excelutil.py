@@ -8,8 +8,10 @@ from openpyxl.utils import column_index_from_string, quote_sheetname
 from pycel.excelutil import (
     AddressCell,
     AddressRange,
+    assert_list_like,
     build_operator_operand_fixup,
     coerce_to_number,
+    coerce_to_string,
     criteria_parser,
     date_from_int,
     ExcelCmp,
@@ -19,6 +21,7 @@ from pycel.excelutil import (
     get_max_days_in_month,
     is_leap_year,
     is_number,
+    list_like,
     MAX_COL,
     MAX_ROW,
     math_wrap,
@@ -477,6 +480,21 @@ def test_coerce_to_number():
 
 @pytest.mark.parametrize(
     'value, result', (
+        (True, 'TRUE'),
+        (False, 'FALSE'),
+        (None, ''),
+        (1, '1'),
+        (1.0, '1'),
+        (1.1, '1.1'),
+        ('xyzzy', 'xyzzy'),
+    )
+)
+def test_coerce_to_string(value, result):
+    assert coerce_to_string(value) == result
+
+
+@pytest.mark.parametrize(
+    'value, result', (
         (1, 1),
         (DIV0, DIV0),
         (None, 0),
@@ -649,6 +667,26 @@ def test_find_corresponding_index():
 
     with pytest.raises(ValueError):
         find_corresponding_index(list('ABB'), None)
+
+
+@pytest.mark.parametrize(
+    'value, expected', (
+        ('xyzzy', False),
+        (AddressRange('A1:B2'), False),
+        (AddressCell('A1'), False),
+        ([1, 2], True),
+        ((1, 2), True),
+        ({1: 2, 3: 4}, True),
+        ((a for a in range(2)), True),
+    )
+)
+def test_list_like(value, expected):
+    assert list_like(value) == expected
+    if expected:
+        assert_list_like(value)
+    else:
+        with pytest.raises(TypeError, match='Must be a list like: '):
+            assert_list_like(value)
 
 
 @pytest.mark.parametrize(

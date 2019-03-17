@@ -839,6 +839,20 @@ def coerce_to_number(value, raise_div0=True):
         return value
 
 
+def coerce_to_string(value):
+    if isinstance(value, bool):
+        return str(value).upper()
+
+    elif value is None:
+        return ''
+
+    elif not isinstance(value, str):
+        return str(coerce_to_number(value))
+
+    else:
+        return value
+
+
 def math_wrap(bare_func):
     """wrapper for functions that take numbers to handle errors"""
 
@@ -1003,7 +1017,8 @@ def find_corresponding_index_generator(rng, criteria):
 
 
 def list_like(data):
-    return isinstance(data, (list, tuple, np.ndarray))
+    return (not isinstance(data, (str, AddressRange, AddressCell)) and
+            isinstance(data, collections.Iterable))
 
 
 def assert_list_like(data):
