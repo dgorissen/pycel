@@ -16,7 +16,7 @@ from openpyxl.cell.read_only import EMPTY_CELL
 from openpyxl.utils import datetime as opxl_dt
 from pycel.excelutil import AddressCell, AddressRange, MAX_ROW
 
-ARRAY_FORMULA_FORMAT = '=INDEX(%s,%s,%s)'
+ARRAY_FORMULA_FORMAT = '=INDEX(%s,%s,%s,%s,%s)'
 
 
 class ExcelWrapper:
@@ -150,9 +150,8 @@ class ExcelOpxWrapper(ExcelWrapper):
                     formula = ws[address].value
                     for i, row in enumerate(ref_addr.rows, start=1):
                         for j, addr in enumerate(row, start=1):
-                            if (i, j) != (1, 1):
-                                ws[addr.coordinate] = ARRAY_FORMULA_FORMAT % (
-                                    formula[1:], i, j)
+                            ws[addr.coordinate] = ARRAY_FORMULA_FORMAT % (
+                                formula[1:], i, j, *ref_addr.size)
 
         # ::HACK:: this is only needed because openpyxl does not define
         # iter_cols for read only workbooks
