@@ -152,6 +152,28 @@ def test_get_tables(excel):
 
 
 @pytest.mark.parametrize(
+    'address, table_name',
+    [
+        ('sref!D1', 'Table1'),
+        ('sref!F1', 'Table1'),
+        ('sref!D4', 'Table1'),
+        ('sref!F4', 'Table1'),
+        ('sref!F4', 'Table1'),
+        ('sref!C1', None),
+        ('sref!G1', None),
+        ('sref!D5', None),
+        ('sref!F5', None),
+    ]
+)
+def test_table_name_containing(excel, address, table_name):
+    table = excel.table_name_containing(address)
+    if table_name is None:
+        assert table is None
+    else:
+        assert table.lower() == table_name.lower()
+
+
+@pytest.mark.parametrize(
     'address, values, formulas',
     [
         ('ArrayForm!H1:I2', ((1, 2), (1, 2)),

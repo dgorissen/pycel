@@ -100,6 +100,7 @@ class ExcelOpxWrapper(ExcelWrapper):
         self.filename = os.path.abspath(filename)
         self._defined_names = None
         self._tables = None
+        self._table_refs = {}
         self.workbook = None
         self.workbook_dataonly = None
 
@@ -130,6 +131,17 @@ class ExcelOpxWrapper(ExcelWrapper):
                 for ws in self.workbook for t in ws._tables}
             self._tables[None] = TableAndSheet(None, None)
         return self._tables.get(table_name.lower(), self._tables[None])
+
+    def table_name_containing(self, address):
+        """ Return the table name containing the address given """
+        address = AddressCell(address)
+        if address not in self._table_refs:
+            for t in self.workbook[address.sheet]._tables:
+                if address in AddressRange(t.ref):
+                    self._table_refs[address] = t.name.lower()
+                    break
+
+        return self._table_refs.get(address)
 
     def connect(self):
         self.workbook = load_workbook(self.filename)
