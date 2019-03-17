@@ -190,6 +190,11 @@ class AddressRange(collections.namedtuple(
 
         return AddressRange((min_col_idx, min_row, max_col_idx, max_row))
 
+    def __contains__(self, address):
+        address = AddressCell(address)
+        return (self.start.row <= address.row <= self.end.row and
+                self.start.col_idx <= address.col_idx <= self.end.col_idx)
+
     @property
     def col_idx(self):
         """col_idx for left column"""

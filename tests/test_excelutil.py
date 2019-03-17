@@ -99,6 +99,25 @@ def test_address_range_add(left, right, result):
     assert AddressRange(left) + AddressRange(right) == AddressRange(result)
 
 
+@pytest.mark.parametrize(
+    'a_range, address, expected', (
+        ('s!D2:F4', 's!D2', True),
+        ('s!D2:F4', 's!F2', True),
+        ('s!D2:F4', 's!D4', True),
+        ('s!D2:F4', 's!F4', True),
+        ('s!D2:F4', 's!C2', False),
+        ('s!D2:F4', 's!D1', False),
+        ('s!D2:F4', 's!G4', False),
+        ('s!D2:F4', 's!F5', False),
+    )
+)
+def test_address_range_contains(a_range, address, expected):
+    a_range = AddressRange(a_range)
+    assert expected == (address in a_range)
+    address = AddressCell(address)
+    assert expected == (address in a_range)
+
+
 def test_is_range():
 
     assert AddressRange('a1:b2').is_range
