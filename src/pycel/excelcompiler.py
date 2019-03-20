@@ -12,6 +12,7 @@ from pycel.excelutil import (
     AddressRange,
     flatten,
     list_like,
+    VALUE_ERROR,
 )
 from pycel.excelwrapper import ExcelOpxWrapper
 from ruamel.yaml import YAML
@@ -614,14 +615,10 @@ class ExcelCompiler:
             self.log.debug("Evaluating: {}".format(cell_range.address))
             addresses = cell_range.addresses
 
-            if 1 == min(cell_range.address.size):
-                data = tuple(
-                    self._evaluate(addr.address) for addr in cell_range)
-            else:
-                data = tuple(
-                    tuple(self._evaluate(addr.address) for addr in row)
-                    for row in addresses
-                )
+            data = tuple(
+                tuple(self._evaluate(addr.address) for addr in row)
+                for row in addresses
+            )
 
             cell_range.value = data
 
@@ -645,7 +642,7 @@ class ExcelCompiler:
                 value = self.eval(cell.formula)
                 self.log.info("Cell %s evaluated to '%s' (%s)" % (
                     cell.address, value, type(value).__name__))
-                cell.value = value
+                cell.value = VALUE_ERROR if list_like(value) else value
 
         if isinstance(cell.value, AddressRange):
             # If the cell returns a reference, then dereference
@@ -662,9 +659,7 @@ class ExcelCompiler:
         """
 
         if str(address) not in self.cell_map:
-            if (not isinstance(address, (str, AddressRange, AddressCell)) and
-                    isinstance(address, collections.Iterable)):
-
+            if list_like(address):
                 if not isinstance(address, (tuple, list)):
                     address = tuple(address)
 

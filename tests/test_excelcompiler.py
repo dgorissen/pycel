@@ -5,7 +5,7 @@ from unittest import mock
 import pytest
 from pycel.excelcompiler import _Cell, _CellRange, ExcelCompiler
 from pycel.excelformula import FormulaParserError, UnknownFunction
-from pycel.excelutil import AddressCell, AddressRange
+from pycel.excelutil import AddressCell, AddressRange, flatten
 from pycel.excelwrapper import ExcelWrapper
 
 
@@ -213,7 +213,7 @@ def test_value_tree_str(excel_compiler):
         '   trim-range!E1 = 5',
         '   trim-range!E2 = 6',
         '   trim-range!E3 = 7',
-        ' trim-range!D4:E4 = (4, 8)',
+        ' trim-range!D4:E4 = ((4, 8),)',
         '  trim-range!D4 = 4',
         '  trim-range!E4 = 8',
         ' trim-range!D5 = 100'
@@ -270,7 +270,7 @@ def test_evaluate_from_non_cells(excel_compiler):
     excel_compiler = ExcelCompiler.from_file(excel_compiler.filename)
     for expected, result in zip(
             old_values, excel_compiler.evaluate(output_addrs)):
-        assert expected == pytest.approx(result)
+        assert tuple(flatten(expected)) == pytest.approx(tuple(flatten(result)))
 
     range_cell = excel_compiler.cell_map[output_addrs[0]]
     excel_compiler._reset(range_cell)
