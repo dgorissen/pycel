@@ -295,10 +295,22 @@ class RangeNode(OperandNode):
         if '!' in self.value:
             sheet = ''
         try:
-            address = AddressRange.create(
-                self.value.replace('$', ''), sheet=sheet, cell=self.cell)
+            addr_str = self.value.replace('$', '')
+            address = AddressRange.create(addr_str, sheet=sheet, cell=self.cell)
         except ValueError:
-            return '"{}"'.format(NAME_ERROR)
+            # check for table relative address
+            table_name = None
+            if self.cell:
+                excel = self.cell.excel
+                if excel and '[' in addr_str:
+                    table_name = excel.table_name_containing(self.cell.address)
+
+            if not table_name:
+                return '"{}"'.format(NAME_ERROR)
+
+            addr_str = '{}{}'.format(table_name, addr_str)
+            address = AddressRange.create(
+                addr_str, sheet=self.cell.address.sheet, cell=self.cell)
 
         template = '_R_("{}")' if address.is_range else '_C_("{}")'
         return template.format(address)

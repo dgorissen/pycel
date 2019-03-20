@@ -409,6 +409,36 @@ def test_parse(test_number, formula, rpn, python_code):
     assert python_code == result_python_code
 
 
+def test_table_relative_address():
+    cell = ATestCell('A', 1, sheet='s')
+
+    excel_formula = ExcelFormula('=junk')
+    assert '"#NAME?"' == excel_formula.ast.emit
+
+    excel_formula = ExcelFormula('=junk', cell=cell)
+    assert '"#NAME?"' == excel_formula.ast.emit
+
+    excel_formula = ExcelFormula('=[col1]', cell=cell)
+    assert '"#NAME?"' == excel_formula.ast.emit
+
+    with mock.patch.object(cell, 'excel') as excel, \
+            mock.patch.object(excel, 'table') as get_table, \
+            mock.patch.object(excel, 'table_name_containing') as etnc:
+        excel.defined_names = {}
+        table = mock.Mock()
+        table.ref = 'A1:B2'
+        table.headerRowCount = 0
+        table.totalsRowCount = 0
+        table.tableColumns = [mock.Mock()]
+        table.tableColumns[0].name = 'col1'
+
+        get_table.return_value = table, 's'
+        etnc.return_value = 'Table'
+
+        excel_formula = ExcelFormula('=[col1]', cell=cell)
+        assert '_R_("s!A1:A2")' == excel_formula.ast.emit
+
+
 def test_str():
     excel_formula = ExcelFormula('=E54-E48')
     assert '=E54-E48' == str(excel_formula)
