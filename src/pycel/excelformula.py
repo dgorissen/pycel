@@ -11,6 +11,7 @@ from networkx.exception import NetworkXError
 from pycel.excelutil import (
     AddressRange,
     build_operator_operand_fixup,
+    coerce_to_number,
     EMPTY,
     ERROR_CODES,
     get_linest_degree,
@@ -354,12 +355,14 @@ class FunctionNode(ASTNode):
         super(FunctionNode, self).__init__(*args)
         self.num_args = 0
 
-    def comma_join_emit(self, fmt_str=None):
+    def comma_join_emit(self, fmt_str=None, to_emit=None):
+        if to_emit is None:
+            to_emit = self.children
         if fmt_str is None:
-            return ", ".join(n.emit for n in self.children)
+            return ", ".join(n.emit for n in to_emit)
         else:
             return ", ".join(
-                fmt_str.format(n.emit) for n in self.children)
+                fmt_str.format(n.emit) for n in to_emit)
 
     @property
     def emit(self):
@@ -448,6 +451,39 @@ class FunctionNode(ASTNode):
             address = self.children[0].emit
             address = address.replace('_R_', '_REF_').replace('_C_', '_REF_')
         return 'column({})'.format(address)
+
+    SUBTOTAL_FUNCS = {
+        1: 'average',
+        2: 'count',
+        3: 'counta',
+        4: 'xmax',
+        5: 'xmin',
+        6: 'product',
+        7: 'stdev',
+        8: 'stdevp',
+        9: 'xsum',
+        10: 'var',
+        11: 'varp',
+    }
+
+    def func_subtotal(self):
+        # Excel reference: https://support.office.com/en-us/article/
+        #   SUBTOTAL-function-7B027003-F060-4ADE-9040-E478765B9939
+
+        # Note: This does not implement skipping hidden rows.
+
+        func_num = coerce_to_number(self.children[0].emit)
+        if func_num not in self.SUBTOTAL_FUNCS:
+            if func_num - 100 in self.SUBTOTAL_FUNCS:
+                func_num -= 100
+            else:
+                raise ValueError(
+                    "Unknown SUBTOTAL function number: {}".format(func_num))
+
+        func = self.SUBTOTAL_FUNCS[func_num]
+
+        return "{}({})".format(
+            func, self.comma_join_emit(fmt_str="{}", to_emit=self.children[1:]))
 
 
 class ExcelFormula:

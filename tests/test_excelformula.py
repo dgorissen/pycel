@@ -747,6 +747,37 @@ def test_row():
     assert (6, 7) == eval_ctx(ExcelFormula('=ROW(B6:D7 C7:E7)'))
 
 
+@pytest.mark.parametrize(
+    'formula, result', (
+        ('=subtotal(01,A1:B3)', 'average(_R_("A1:B3"))'),
+        ('=subtotal(02,A1:B3)', 'count(_R_("A1:B3"))'),
+        ('=subtotal(03,A1:B3)', 'counta(_R_("A1:B3"))'),
+        ('=subtotal(04,A1:B3)', 'xmax(_R_("A1:B3"))'),
+        ('=subtotal(05,A1:B3)', 'xmin(_R_("A1:B3"))'),
+        ('=subtotal(06,A1:B3)', 'product(_R_("A1:B3"))'),
+        ('=subtotal(07,A1:B3)', 'stdev(_R_("A1:B3"))'),
+        ('=subtotal(08,A1:B3)', 'stdevp(_R_("A1:B3"))'),
+        ('=subtotal(09,A1:B3)', 'xsum(_R_("A1:B3"))'),
+        ('=subtotal(10,A1:B3)', 'var(_R_("A1:B3"))'),
+        ('=subtotal(11,A1:B3)', 'varp(_R_("A1:B3"))'),
+    )
+)
+def test_subtotal(formula, result):
+    assert ExcelFormula(formula).ast.emit == result
+    assert ExcelFormula(formula.replace('tal(', 'tal(1')).ast.emit == result
+
+
+def test_subtotal_errors():
+    with pytest.raises(ValueError):
+        ExcelFormula('=subtotal(0)').ast.emit
+    with pytest.raises(ValueError):
+        ExcelFormula('=subtotal(12)').ast.emit
+    with pytest.raises(ValueError):
+        ExcelFormula('=subtotal(100)').ast.emit
+    with pytest.raises(ValueError):
+        ExcelFormula('=subtotal(112)').ast.emit
+
+
 def test_unknown_name():
     eval_ctx = ExcelFormula.build_eval_context(None, None)
 
