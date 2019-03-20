@@ -821,8 +821,14 @@ def test_unknown_function(msg, formula):
     eval_ctx = ExcelFormula.build_eval_context(
         lambda x: None, lambda x: None, logging.getLogger('pycel_x'))
 
+    compiled = ExcelFormula(formula)
+
     with pytest.raises(UnknownFunction, match=msg):
-        eval_ctx(ExcelFormula(formula))
+        eval_ctx(compiled)
+
+    # second time is needed to test cached msg
+    with pytest.raises(UnknownFunction, match=msg):
+        eval_ctx(compiled)
 
 
 if __name__ == '__main__':

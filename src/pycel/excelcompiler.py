@@ -11,6 +11,7 @@ from pycel.excelutil import (
     AddressCell,
     AddressRange,
     flatten,
+    list_like,
 )
 from pycel.excelwrapper import ExcelOpxWrapper
 from ruamel.yaml import YAML
@@ -76,11 +77,14 @@ class ExcelCompiler:
 
     @staticmethod
     def _compute_file_md5_digest(filename):
-        hash_md5 = hashlib.md5()
-        with open(filename, "rb") as f:
-            for chunk in iter(lambda: f.read(4096), b""):
-                hash_md5.update(chunk)
-        return hash_md5.hexdigest()
+        if not os.path.exists(filename):
+            return None
+        else:
+            hash_md5 = hashlib.md5()
+            with open(filename, "rb") as f:
+                for chunk in iter(lambda: f.read(4096), b""):
+                    hash_md5.update(chunk)
+            return hash_md5.hexdigest()
 
     @property
     def _compute_excel_file_md5_digest(self):
@@ -464,6 +468,8 @@ class ExcelCompiler:
         if output_addrs is None:
             to_verify = self._formula_cells
         else:
+            if not list_like(output_addrs):
+                output_addrs = [output_addrs]
             to_verify = list(AddressCell(addr) for addr in output_addrs)
         verified = set()
         failed = {}
@@ -494,18 +500,27 @@ class ExcelCompiler:
                 for addr in cell.needed_addresses:
                     if addr not in verified:  # pragma: no branch
                         to_verify.append(addr)
-            except Exception as exc:   # pragma: no cover
+            except Exception as exc:
                 cell = self.cell_map.get(addr.address, None)
                 formula = cell and cell.formula.base_formula
                 exc_str = str(exc)
                 exc_str_split = exc_str.split('\n')
-                if len(exc_str_split) == 1:
-                    exc_str_key = '{}: {}'.format(type(exc).__name__, exc_str)
-                else:
-                    exc_str_key = exc_str_split[-2]
 
-                if ('NameError: name ' in exc_str or
-                        exc_str_key.startswith('NotImplementedError: ')):
+                if 'has not been implemented' in exc_str:
+                    exc_str_key = exc_str.split('has not been implemented')[0]
+                    exc_str_key = exc_str_key.strip().rsplit(' ', 1)[1].upper()
+                    not_implemented = True
+
+                else:
+                    if len(exc_str_split) == 1:
+                        exc_str_key = '{}: {}'.format(
+                            type(exc).__name__, exc_str)
+                    else:
+                        exc_str_key = exc_str_split[-2]  # pragma: no cover
+                    not_implemented = exc_str_key.startswith(
+                        'NotImplementedError: ')
+
+                if not_implemented:
                     failed.setdefault('not-implemented', {}).setdefault(
                         exc_str_key, []).append((str(addr), formula, exc_str))
                 else:

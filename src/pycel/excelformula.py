@@ -459,6 +459,7 @@ class ExcelFormula:
         self._compiled_python = None
         self._marshalled_python = None
         self.compiled_lambda = None
+        self.msg = None
 
     def __str__(self):
         return self.base_formula or self.python_code
@@ -821,12 +822,11 @@ class ExcelFormula:
         def eval_func(excel_formula):
             """ Call the compiled lambda to evaluate the cell """
 
-            msg = None
             if excel_formula.compiled_lambda is None:
                 missing = load_function(excel_formula, locals())
                 if missing:
                     msg_fmt = 'Function {} has not been implemented. '
-                    msg = '\n'.join(
+                    excel_formula.msg = '\n'.join(
                         msg_fmt.format(f.upper()) +
                         func_status_msg(f)[1] for f in sorted(missing))
 
@@ -835,7 +835,7 @@ class ExcelFormula:
 
             except NameError:
                 error_logger('error', excel_formula.python_code,
-                             msg=msg, exc=UnknownFunction)
+                             msg=excel_formula.msg, exc=UnknownFunction)
 
             except Exception:
                 error_logger('error', excel_formula.python_code,
