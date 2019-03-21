@@ -326,9 +326,13 @@ class ExcelCompiler:
             which matches the shapes needed for the given address/addresses
         """
 
-        if (not isinstance(address, (AddressRange, AddressCell)) and
-                isinstance(address, (tuple, list))):
-            assert isinstance(value, (tuple, list))
+        if list_like(value):
+            value = tuple(flatten(value))
+            if list_like(address):
+                address = (AddressCell(addr) for addr in flatten(address))
+            else:
+                address = flatten(AddressRange(address).resolve_range)
+            address = tuple(address)
             assert len(address) == len(value)
             for addr, val in zip(address, value):
                 self.set_value(addr, val)
@@ -459,7 +463,8 @@ class ExcelCompiler:
         """
         def close_enough(val1, val2):
             import pytest
-            if isinstance(val1, (int, float)):
+            if isinstance(val1, (int, float)) and \
+                    isinstance(val2, (int, float)):
                 return val2 == pytest.approx(val1)
             else:
                 return val1 == val2
@@ -468,10 +473,11 @@ class ExcelCompiler:
 
         if output_addrs is None:
             to_verify = self._formula_cells
+        elif list_like(output_addrs):
+            to_verify = [AddressCell(addr) for addr in flatten(output_addrs)]
         else:
-            if not list_like(output_addrs):
-                output_addrs = [output_addrs]
-            to_verify = list(AddressCell(addr) for addr in output_addrs)
+            to_verify = [AddressCell(output_addrs)]
+
         verified = set()
         failed = {}
         while to_verify:
@@ -481,8 +487,13 @@ class ExcelCompiler:
                 cell = self.cell_map[addr.address]
                 if isinstance(cell, _Cell) and cell.python_code:
                     original_value = cell.value
+                    if original_value == str(cell.formula):
+                        self.log.debug(
+                            "No Orig data?: {}: {}".format(addr, cell.value))
+                        continue
+
                     cell.value = None
-                    self._evaluate(cell.address.address)
+                    self._evaluate(addr.address)
 
                     # pragma: no branch
                     if not close_enough(original_value, cell.value):
@@ -683,7 +694,7 @@ class ExcelCompiler:
         generate a Spreadsheet instance that captures the logic and control
         flow of the equations.
         """
-        if not isinstance(seed, (AddressCell, AddressRange)):
+        if not isinstance(seed, (AddressRange, AddressCell)):
             if isinstance(seed, str):
                 seed = AddressRange(seed)
             elif isinstance(seed, collections.Iterable):

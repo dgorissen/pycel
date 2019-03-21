@@ -1,3 +1,4 @@
+import json
 import os
 import shutil
 from unittest import mock
@@ -306,6 +307,17 @@ def test_validate_calcs_all_cells(basic_ws):
     }
     assert expected == set(formula_cells)
     assert {} == basic_ws.validate_calcs()
+
+
+def test_validate_calcs_excel_compiler(excel_compiler):
+    """Find all formula cells w/ values and verify calc"""
+    errors = excel_compiler.validate_calcs()
+    msg = json.dumps(errors, indent=2)
+    assert msg == '{}'
+
+    errors = excel_compiler.validate_calcs('Sheet1!B1')
+    msg = json.dumps(errors, indent=2)
+    assert msg == '{}'
 
 
 def test_evaluate_entire_row_column(excel_compiler):

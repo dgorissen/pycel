@@ -6,7 +6,6 @@
 
 import abc
 import collections
-import datetime as dt
 import os
 from unittest import mock
 
@@ -185,14 +184,11 @@ class ExcelOpxWrapper(ExcelWrapper):
 
     @staticmethod
     def from_excel(value, offset=opxl_dt.CALENDAR_WINDOWS_1900):
-        new_value = opxl_dt.from_excel(value, offset)
-        if isinstance(new_value, (dt.date, dt.datetime)):
-            # ::HACK:: excel thinks that 1900/02/29 was a thing.  In certain
-            # circumstances openpyxl will return a datetime.  This is a problem
-            # as we don't want them, and having been mapped to datetime
-            # information may have been lost, so ignore the conversions
-            new_value = value
-        return new_value
+        # ::HACK:: excel thinks that 1900/02/29 was a thing.  In certain
+        # circumstances openpyxl will return a datetime.  This is a problem
+        # as we don't want them, and having been mapped to datetime
+        # information may have been lost, so ignore the conversions
+        return value
 
     def get_range(self, address):
         if not isinstance(address, (AddressRange, AddressCell)):
