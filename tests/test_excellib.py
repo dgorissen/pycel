@@ -8,6 +8,8 @@ from pycel.excellib import (
     _numerics,
     average,
     column,
+    concat,
+    concatenate,
     count,
     countif,
     countifs,
@@ -44,6 +46,7 @@ from pycel.excelutil import (
     DIV0,
     ExcelCmp,
     NA_ERROR,
+    NAME_ERROR,
     NUM_ERROR,
     PyCelException,
     VALUE_ERROR,
@@ -71,24 +74,48 @@ def test_average():
 
 
 @pytest.mark.parametrize(
-    'address, result', (
+    'address, expected', (
         ('L45', 12),
-        ('B:E', 2),
-        ('4:7', 1),
-        ('D1:E1', 4),
-        ('D1:D2', 4),
-        ('D1:E2', 4),
+        ('B:E', (2, 3, 4, 5)),
+        ('4:7', None),
+        ('D1:E1', (4, 5)),
+        ('D1:D2', (4, )),
+        ('D1:E2', (4, 5)),
         (DIV0, DIV0),
         (NUM_ERROR, NUM_ERROR),
         (VALUE_ERROR, VALUE_ERROR),
     )
 )
-def test_column(address, result):
+def test_column(address, expected):
     try:
         address = AddressRange.create(address)
     except ValueError:
         pass
-    assert result == column(address)
+
+    result = column(address)
+    if expected is None:
+        assert 1 == next(iter(result))
+    else:
+        assert expected == result
+
+
+@pytest.mark.parametrize(
+    'args, result', (
+        ('a 1 abc'.split(), 'a1abc'),
+        ('a Jan-00 abc'.split(), 'aJan-00abc'),
+        ('a	#DIV/0! abc'.split(), DIV0),
+        ('a	1 #DIV/0!'.split(), DIV0),
+        ('a #NAME? abc'.split(), NAME_ERROR),
+        (('a', True, 'abc'), 'aTRUEabc'),
+        (('a', False, 'abc'), 'aFALSEabc'),
+        (('a', 2, 'abc'), 'a2abc'),
+    )
+)
+def test_concatenate(args, result):
+    assert concat(*args) == result
+    assert concatenate(*args) == result
+    assert concat(args) == result
+    assert concatenate(args) == VALUE_ERROR
 
 
 class TestCount:
@@ -290,6 +317,7 @@ class TestIndex:
 
     """
     test_data = [[0, 1], [2, 3]]
+    test_data_col = [[0], [2]]
 
     def test_array(self):
 
@@ -318,16 +346,12 @@ class TestIndex:
         assert 3 == index(TestIndex.test_data[1], 1, 2)
 
     def test_out_of_range(self):
-        with pytest.raises(IndexError):
-            index(TestIndex.test_data[1], 2, 2)
-
-        with pytest.raises(IndexError):
-            index(TestIndex.test_data[1], 1, 3)
-
-        with pytest.raises(IndexError):
-            index(TestIndex.test_data, None)
+        assert NA_ERROR == index(TestIndex.test_data[1], 2, 2)
+        assert NA_ERROR == index(TestIndex.test_data[1], 1, 3)
+        assert NA_ERROR == index(TestIndex.test_data, None)
 
     def test_error_inputs(self):
+        assert NA_ERROR == index(NA_ERROR, 1)
         assert NA_ERROR == index(TestIndex.test_data, NA_ERROR, 1)
         assert NA_ERROR == index(TestIndex.test_data, 1, NA_ERROR)
 
@@ -344,6 +368,15 @@ class TestIndex:
 
         assert [0, 2] == list(index(test_data, None, 1))
         assert [1, 3] == list(index(test_data, None, 2))
+
+    def test_extended_data(self):
+        assert 0 == index([TestIndex.test_data[0]], 1, 1, 2, 2)
+        assert 1 == index([TestIndex.test_data[0]], 1, 2, 2, 2)
+        assert 2 == index([TestIndex.test_data[1]], 2, 1, 2, 2)
+        assert 3 == index([TestIndex.test_data[1]], 2, 2, 2, 2)
+
+        assert 0 == index(TestIndex.test_data_col, 1, 1, 2, 2)
+        assert 3 == index([TestIndex.test_data[1]], 2, 2, 2, 2)
 
 
 class TestIsNa:
@@ -658,23 +691,28 @@ def test_roundup(number, digits, result):
 
 
 @pytest.mark.parametrize(
-    'address, result', (
+    'address, expected', (
         ('L45', 45),
-        ('B:E', 1),
-        ('4:7', 4),
-        ('D1:E1', 1),
-        ('D1:D2', 1),
+        ('B:E', None),
+        ('4:7', (4, 5, 6, 7)),
+        ('D1:E1', (1, )),
+        ('D1:D2', (1, 2)),
         (DIV0, DIV0),
         (NUM_ERROR, NUM_ERROR),
         (VALUE_ERROR, VALUE_ERROR),
     )
 )
-def test_row(address, result):
+def test_row(address, expected):
     try:
         address = AddressRange.create(address)
     except ValueError:
         pass
-    assert result == row(address)
+
+    result = row(address)
+    if expected is None:
+        assert 1 == next(iter(result))
+    else:
+        assert expected == result
 
 
 class TestSumIf:

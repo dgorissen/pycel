@@ -11,6 +11,8 @@ from pycel.excelutil import (
     AddressCell,
     AddressRange,
     flatten,
+    list_like,
+    VALUE_ERROR,
 )
 from pycel.excelwrapper import ExcelOpxWrapper
 from ruamel.yaml import YAML
@@ -76,11 +78,14 @@ class ExcelCompiler:
 
     @staticmethod
     def _compute_file_md5_digest(filename):
-        hash_md5 = hashlib.md5()
-        with open(filename, "rb") as f:
-            for chunk in iter(lambda: f.read(4096), b""):
-                hash_md5.update(chunk)
-        return hash_md5.hexdigest()
+        if not os.path.exists(filename):
+            return None
+        else:
+            hash_md5 = hashlib.md5()
+            with open(filename, "rb") as f:
+                for chunk in iter(lambda: f.read(4096), b""):
+                    hash_md5.update(chunk)
+            return hash_md5.hexdigest()
 
     @property
     def _compute_excel_file_md5_digest(self):
@@ -321,9 +326,13 @@ class ExcelCompiler:
             which matches the shapes needed for the given address/addresses
         """
 
-        if (not isinstance(address, (AddressRange, AddressCell)) and
-                isinstance(address, (tuple, list))):
-            assert isinstance(value, (tuple, list))
+        if list_like(value):
+            value = tuple(flatten(value))
+            if list_like(address):
+                address = (AddressCell(addr) for addr in flatten(address))
+            else:
+                address = flatten(AddressRange(address).resolve_range)
+            address = tuple(address)
             assert len(address) == len(value)
             for addr, val in zip(address, value):
                 self.set_value(addr, val)
@@ -454,7 +463,8 @@ class ExcelCompiler:
         """
         def close_enough(val1, val2):
             import pytest
-            if isinstance(val1, (int, float)):
+            if isinstance(val1, (int, float)) and \
+                    isinstance(val2, (int, float)):
                 return val2 == pytest.approx(val1)
             else:
                 return val1 == val2
@@ -463,8 +473,11 @@ class ExcelCompiler:
 
         if output_addrs is None:
             to_verify = self._formula_cells
+        elif list_like(output_addrs):
+            to_verify = [AddressCell(addr) for addr in flatten(output_addrs)]
         else:
-            to_verify = list(AddressCell(addr) for addr in output_addrs)
+            to_verify = [AddressCell(output_addrs)]
+
         verified = set()
         failed = {}
         while to_verify:
@@ -474,8 +487,13 @@ class ExcelCompiler:
                 cell = self.cell_map[addr.address]
                 if isinstance(cell, _Cell) and cell.python_code:
                     original_value = cell.value
+                    if original_value == str(cell.formula):
+                        self.log.debug(
+                            "No Orig data?: {}: {}".format(addr, cell.value))
+                        continue
+
                     cell.value = None
-                    self._evaluate(cell.address.address)
+                    self._evaluate(addr.address)
 
                     # pragma: no branch
                     if not close_enough(original_value, cell.value):
@@ -494,18 +512,27 @@ class ExcelCompiler:
                 for addr in cell.needed_addresses:
                     if addr not in verified:  # pragma: no branch
                         to_verify.append(addr)
-            except Exception as exc:   # pragma: no cover
+            except Exception as exc:
                 cell = self.cell_map.get(addr.address, None)
                 formula = cell and cell.formula.base_formula
                 exc_str = str(exc)
                 exc_str_split = exc_str.split('\n')
-                if len(exc_str_split) == 1:
-                    exc_str_key = '{}: {}'.format(type(exc).__name__, exc_str)
-                else:
-                    exc_str_key = exc_str_split[-2]
 
-                if ('NameError: name ' in exc_str or
-                        exc_str_key.startswith('NotImplementedError: ')):
+                if 'has not been implemented' in exc_str:
+                    exc_str_key = exc_str.split('has not been implemented')[0]
+                    exc_str_key = exc_str_key.strip().rsplit(' ', 1)[1].upper()
+                    not_implemented = True
+
+                else:
+                    if len(exc_str_split) == 1:
+                        exc_str_key = '{}: {}'.format(
+                            type(exc).__name__, exc_str)
+                    else:
+                        exc_str_key = exc_str_split[-2]  # pragma: no cover
+                    not_implemented = exc_str_key.startswith(
+                        'NotImplementedError: ')
+
+                if not_implemented:
                     failed.setdefault('not-implemented', {}).setdefault(
                         exc_str_key, []).append((str(addr), formula, exc_str))
                 else:
@@ -599,14 +626,10 @@ class ExcelCompiler:
             self.log.debug("Evaluating: {}".format(cell_range.address))
             addresses = cell_range.addresses
 
-            if 1 == min(cell_range.address.size):
-                data = tuple(
-                    self._evaluate(addr.address) for addr in cell_range)
-            else:
-                data = tuple(
-                    tuple(self._evaluate(addr.address) for addr in row)
-                    for row in addresses
-                )
+            data = tuple(
+                tuple(self._evaluate(addr.address) for addr in row)
+                for row in addresses
+            )
 
             cell_range.value = data
 
@@ -630,7 +653,7 @@ class ExcelCompiler:
                 value = self.eval(cell.formula)
                 self.log.info("Cell %s evaluated to '%s' (%s)" % (
                     cell.address, value, type(value).__name__))
-                cell.value = value
+                cell.value = VALUE_ERROR if list_like(value) else value
 
         if isinstance(cell.value, AddressRange):
             # If the cell returns a reference, then dereference
@@ -647,9 +670,7 @@ class ExcelCompiler:
         """
 
         if str(address) not in self.cell_map:
-            if (not isinstance(address, (str, AddressRange, AddressCell)) and
-                    isinstance(address, collections.Iterable)):
-
+            if list_like(address):
                 if not isinstance(address, (tuple, list)):
                     address = tuple(address)
 
@@ -673,7 +694,7 @@ class ExcelCompiler:
         generate a Spreadsheet instance that captures the logic and control
         flow of the equations.
         """
-        if not isinstance(seed, (AddressCell, AddressRange)):
+        if not isinstance(seed, (AddressRange, AddressCell)):
             if isinstance(seed, str):
                 seed = AddressRange(seed)
             elif isinstance(seed, collections.Iterable):

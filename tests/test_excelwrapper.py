@@ -152,16 +152,88 @@ def test_get_tables(excel):
 
 
 @pytest.mark.parametrize(
+    'address, table_name',
+    [
+        ('sref!D1', 'Table1'),
+        ('sref!F1', 'Table1'),
+        ('sref!D4', 'Table1'),
+        ('sref!F4', 'Table1'),
+        ('sref!F4', 'Table1'),
+        ('sref!C1', None),
+        ('sref!G1', None),
+        ('sref!D5', None),
+        ('sref!F5', None),
+    ]
+)
+def test_table_name_containing(excel, address, table_name):
+    table = excel.table_name_containing(address)
+    if table_name is None:
+        assert table is None
+    else:
+        assert table.lower() == table_name.lower()
+
+
+@pytest.mark.parametrize(
     'address, values, formulas',
     [
         ('ArrayForm!H1:I2', ((1, 2), (1, 2)),
-         (('=INDEX(COLUMN(A1:B1),1,1)', '=INDEX(COLUMN(A1:B1),1,2)'),
+         (('=INDEX(COLUMN(A1:B1),1,1,1,2)', '=INDEX(COLUMN(A1:B1),1,2,1,2)'),
           ('=INDEX(COLUMN(A1:B1),1,1)', '=INDEX(COLUMN(A1:B1),1,2)')),
          ),
         ('ArrayForm!E1:F3', ((1, 1), (2, 2), (3, 3)),
-         (('=INDEX(ROW(A1:A3),1,1)', '=INDEX(ROW(A1:A3), 1)'),
-          ('=INDEX(ROW(A1:A3),2,1)', '=INDEX(ROW(A1:A3), 2)'),
-          ('=INDEX(ROW(A1:A3),3,1)', '=INDEX(ROW(A1:A3), 3)'))
+         (('=INDEX(ROW(A1:A3),1,1,3,1)', '=INDEX(ROW(A1:A3), 1)'),
+          ('=INDEX(ROW(A1:A3),2,1,3,1)', '=INDEX(ROW(A1:A3), 2)'),
+          ('=INDEX(ROW(A1:A3),3,1,3,1)', '=INDEX(ROW(A1:A3), 3)'))
+         ),
+        ('ArrayForm!E7:E9', ((11,), (10,), (16,)),
+         (('=SUM((A7:A13="a")*(B7:B13="y")*C7:C13)',),
+          ('=SUM((A7:A13<>"b")*(B7:B13<>"y")*C7:C13)',),
+          ('=SUM((A7:A13>"b")*(B7:B13<"z")*(C7:C13+3.5))',))
+         ),
+        ('ArrayForm!G16:H17', ((1, 6), (6, 16)),
+         (('=INDEX(A16:B17*D16:E17,1,1,2,2)',
+           '=INDEX(A16:B17*D16:E17,1,2,2,2)'),
+          ('=INDEX(A16:B17*D16:E17,2,1,2,2)',
+           '=INDEX(A16:B17*D16:E17,2,2,2,2)'))
+         ),
+        ('ArrayForm!E21:F24', ((6, 6), (8, 8), (10, 10), (12, 12)),
+         (('=INDEX(A21:A24+C21:C24,1,1,4,2)',
+           '=INDEX(A21:A24+C21:C24,1,2,4,2)'),
+          ('=INDEX(A21:A24+C21:C24,2,1,4,2)',
+           '=INDEX(A21:A24+C21:C24,2,2,4,2)'),
+          ('=INDEX(A21:A24+C21:C24,3,1,4,2)',
+           '=INDEX(A21:A24+C21:C24,3,2,4,2)'),
+          ('=INDEX(A21:A24+C21:C24,4,1,4,2)',
+           '=INDEX(A21:A24+C21:C24,4,2,4,2)'))
+         ),
+        ('ArrayForm!A32:D33', ((6, 8, 10, 12), (6, 8, 10, 12)),
+         (('=INDEX(A28:D28+A30:D30,1,1,2,4)',
+           '=INDEX(A28:D28+A30:D30,1,2,2,4)',
+           '=INDEX(A28:D28+A30:D30,1,3,2,4)',
+           '=INDEX(A28:D28+A30:D30,1,4,2,4)'),
+          ('=INDEX(A28:D28+A30:D30,2,1,2,4)',
+           '=INDEX(A28:D28+A30:D30,2,2,2,4)',
+           '=INDEX(A28:D28+A30:D30,2,3,2,4)',
+           '=INDEX(A28:D28+A30:D30,2,4,2,4)'))
+         ),
+        ('ArrayForm!F28:I31',
+         ((5, 6, 7, 8), (10, 12, 14, 16), (15, 18, 21, 24), (20, 24, 28, 32)),
+         (('=INDEX(A21:A24*A30:D30,1,1,4,4)',
+           '=INDEX(A21:A24*A30:D30,1,2,4,4)',
+           '=INDEX(A21:A24*A30:D30,1,3,4,4)',
+           '=INDEX(A21:A24*A30:D30,1,4,4,4)'),
+          ('=INDEX(A21:A24*A30:D30,2,1,4,4)',
+           '=INDEX(A21:A24*A30:D30,2,2,4,4)',
+           '=INDEX(A21:A24*A30:D30,2,3,4,4)',
+           '=INDEX(A21:A24*A30:D30,2,4,4,4)'),
+          ('=INDEX(A21:A24*A30:D30,3,1,4,4)',
+           '=INDEX(A21:A24*A30:D30,3,2,4,4)',
+           '=INDEX(A21:A24*A30:D30,3,3,4,4)',
+           '=INDEX(A21:A24*A30:D30,3,4,4,4)'),
+          ('=INDEX(A21:A24*A30:D30,4,1,4,4)',
+           '=INDEX(A21:A24*A30:D30,4,2,4,4)',
+           '=INDEX(A21:A24*A30:D30,4,3,4,4)',
+           '=INDEX(A21:A24*A30:D30,4,4,4,4)'))
          ),
     ]
 )

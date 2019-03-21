@@ -14,6 +14,7 @@ from pycel.excelutil import (
     assert_list_like,
     build_wildcard_re,
     coerce_to_number,
+    coerce_to_string,
     date_from_int,
     DIV0,
     ERROR_CODES,
@@ -24,6 +25,8 @@ from pycel.excelutil import (
     is_number,
     list_like,
     math_wrap,
+    MAX_COL,
+    MAX_ROW,
     NA_ERROR,
     normalize_year,
     PyCelException,
@@ -59,9 +62,33 @@ def average(*args):
 def column(ref):
     if ref in ERROR_CODES:
         return ref
+
     if ref.is_range:
-        ref = ref.start
-    return max(ref.col_idx, 1)
+        if ref.end.col_idx == 0:
+            return range(1, MAX_COL + 1)
+        else:
+            return tuple(range(ref.start.col_idx, ref.end.col_idx + 1))
+    else:
+        return ref.col_idx
+
+
+def concat(*args):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   concat-function-9b1a9a3f-94ff-41af-9736-694cbd6b4ca2
+    return concatenate(*tuple(flatten(args)))
+
+
+def concatenate(*args):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   CONCATENATE-function-8F8AE884-2CA8-4F7A-B093-75D702BEA31D
+    if tuple(flatten(args)) != args:
+        return VALUE_ERROR
+
+    error = next((x for x in args if x in ERROR_CODES), None)
+    if error:
+        return error
+
+    return ''.join(coerce_to_string(a) for a in args)
 
 
 def count(*args):
@@ -206,9 +233,13 @@ def hlookup(lookup_value, table_array, row_index_num, range_lookup=True):
         return result_idx
 
 
-def index(array, row_num, col_num=None):
+def index(array, row_num, col_num=None, rows=None, cols=None):
     # Excel reference: https://support.office.com/en-us/article/
     #   index-function-a5dcf0dd-996d-40a4-a822-b56b061328bd
+
+    # A returned string is an error code
+    if isinstance(array, str):
+        return array
 
     if row_num in ERROR_CODES:
         return row_num
@@ -216,30 +247,41 @@ def index(array, row_num, col_num=None):
     if col_num in ERROR_CODES:
         return col_num
 
-    if isinstance(array[0], (list, tuple, np.ndarray)):
-        # rectangular array
-        if None not in (row_num, col_num):
-            return array[row_num - 1][col_num - 1]
+    try:
+        if list_like(array[0]):
+            if rows or cols:
+                # when we get array formulas out of the worksheet we expand
+                # them into an index call.  If we have rows and cols then
+                # this is the size of the original range.  Excel will expand
+                # a vector to fill the rectangle.
+                if 1 == len(array) and row_num <= rows:
+                    row_num = 1
+                if 1 == len(array[0]) and col_num <= cols:
+                    col_num = 1
 
-        if row_num is not None:
+            # rectangular array
+            if None not in (row_num, col_num):
+                return array[row_num - 1][col_num - 1]
+
+            elif row_num is not None:
+                return array[row_num - 1]
+
+            elif col_num is not None:
+                if isinstance(array, np.ndarray):
+                    return array[:, col_num - 1]
+                else:
+                    return type(array)(row[col_num - 1] for row in array)
+
+        elif col_num in (1, None):
             return array[row_num - 1]
 
-        if col_num is not None:
-            if isinstance(array, np.ndarray):
-                return array[:, col_num - 1]
-            else:
-                return type(array)(row[col_num - 1] for row in array)
+        elif row_num == 1:
+            return array[col_num - 1]
 
-        raise IndexError("For Index either row_num or col_num must be given")
+    except IndexError:
+        pass
 
-    elif col_num in (1, None):
-        return array[row_num - 1]
-
-    elif row_num == 1:
-        return array[col_num - 1]
-
-    raise IndexError("Index (%s,%s) out of range for %s" % (
-        row_num, col_num, array))
+    return NA_ERROR
 
 
 def istext(arg):
@@ -258,6 +300,14 @@ def isNa(arg):
 def linest(Y, X, const=True, degree=1):  # pragma: no cover  ::TODO::
     if isinstance(const, str):
         const = (const.lower() == "true")
+
+    def assert_vector(data):
+        vector = np.array(data)
+        assert 1 in vector.shape
+        return vector.ravel()
+
+    X = assert_vector(X)
+    Y = assert_vector(Y)
 
     # build the vandermonde matrix
     A = np.vander(X, degree + 1)
@@ -506,9 +556,14 @@ roundup = math_wrap(roundup_unwrapped)
 def row(ref):
     if ref in ERROR_CODES:
         return ref
+
     if ref.is_range:
-        ref = ref.start
-    return max(ref.row, 1)
+        if ref.end.row == 0:
+            return range(1, MAX_ROW + 1)
+        else:
+            return tuple(range(ref.start.row, ref.end.row + 1))
+    else:
+        return ref.row
 
 
 def sumif(rng, criteria, sum_range=None):

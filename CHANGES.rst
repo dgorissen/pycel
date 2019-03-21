@@ -1,3 +1,19 @@
+1.0b8 (2019-03-20)
+==================
+
+Changes
+-------
+
+* Implement operators for Array Formulas
+* Implement concatenate and concat
+* Implement subtotal
+* Add support for expanding array formulas
+* Fix column and row for array formulas
+* Add support for table relative references
+* Add function information methods
+* Improve messages for validate_calcs and not implemented functions
+
+
 1.0b7 (2019-03-10)
 ==================
 

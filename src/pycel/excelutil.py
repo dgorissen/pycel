@@ -190,6 +190,11 @@ class AddressRange(collections.namedtuple(
 
         return AddressRange((min_col_idx, min_row, max_col_idx, max_row))
 
+    def __contains__(self, address):
+        address = AddressCell(address)
+        return (self.start.row <= address.row <= self.end.row and
+                self.start.col_idx <= address.col_idx <= self.end.col_idx)
+
     @property
     def col_idx(self):
         """col_idx for left column"""
@@ -834,6 +839,20 @@ def coerce_to_number(value, raise_div0=True):
         return value
 
 
+def coerce_to_string(value):
+    if isinstance(value, bool):
+        return str(value).upper()
+
+    elif value is None:
+        return ''
+
+    elif not isinstance(value, str):
+        return str(coerce_to_number(value))
+
+    else:
+        return value
+
+
 def math_wrap(bare_func):
     """wrapper for functions that take numbers to handle errors"""
 
@@ -998,7 +1017,8 @@ def find_corresponding_index_generator(rng, criteria):
 
 
 def list_like(data):
-    return isinstance(data, (list, tuple, np.ndarray))
+    return (not isinstance(data, (str, AddressRange, AddressCell)) and
+            isinstance(data, collections.Iterable))
 
 
 def assert_list_like(data):
@@ -1069,6 +1089,20 @@ class ExcelCmp(collections.namedtuple('ExcelCmp', 'cmp_type value empty')):
 
 def build_operator_operand_fixup(capture_error_state):
 
+    def array_fixup(left_op, op, right_op):
+        """use numpy broadcasting for ranges"""
+        # ::TODO:: this needs better error processing to match excel behavior
+        left_op = np.array(left_op, dtype=object)
+        right_op = np.array(right_op, dtype=object)
+        b = np.broadcast(left_op, right_op)
+
+        size = b.shape
+        data = tuple(b)
+        return tuple(
+            tuple(fixup(u, op, v) for (u, v) in data[i: i + size[1]])
+            for i in range(0, len(data), size[1])
+        )
+
     def fixup(left_op, op, right_op):
         """Fix up python operations to be more excel like in these cases:
 
@@ -1079,14 +1113,15 @@ def build_operator_operand_fixup(capture_error_state):
             String to Number coercion
             String / Number multiplication
         """
-        if isinstance(left_op, list) or isinstance(right_op, list):
-            raise NotImplementedError('Array Formulas not implemented')
-
-        if left_op in ERROR_CODES:
+        left_list, right_list = list_like(left_op), list_like(right_op)
+        if not left_list and left_op in ERROR_CODES:
             return left_op
 
-        if right_op in ERROR_CODES:
+        if not right_list and right_op in ERROR_CODES:
             return right_op
+
+        if left_list or right_list:
+            return array_fixup(left_op, op, right_op)
 
         if op in COMPARISION_OPS:
             if left_op in (None, EMPTY):

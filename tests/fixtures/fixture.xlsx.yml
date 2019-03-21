@@ -1,0 +1,59 @@
+excel_hash: null
+cell_map:
+  Sheet1!A1: 1
+  Sheet1!A2: 2
+  Sheet1!A3: 3
+  Sheet1!A4: 4
+  Sheet1!A5: 5
+  Sheet1!A6: 6
+  Sheet1!A7: 7
+  Sheet1!A8: 8
+  Sheet1!A9: 9
+  Sheet1!A10: 10
+  Sheet1!A11: 11
+  Sheet1!A12: 12
+  Sheet1!A13: 13
+  Sheet1!A14: 14
+  Sheet1!A15: 15
+  Sheet1!A16: 16
+  Sheet1!A17: 17
+  Sheet1!A18: 18
+  Sheet1!A19:
+  Sheet1!A20:
+  Sheet1!B1: =xsum(_R_("Sheet1!A1:A3"))
+  Sheet1!B2: =xsum(_R_("Sheet1!A2:A4"))
+  Sheet1!B3: =xsum(_R_("Sheet1!A3:A5"))
+  Sheet1!B4: =xsum(_R_("Sheet1!A4:A6"))
+  Sheet1!B5: =xsum(_R_("Sheet1!A5:A7"))
+  Sheet1!B6: =xsum(_R_("Sheet1!A6:A8"))
+  Sheet1!B7: =xsum(_R_("Sheet1!A7:A9"))
+  Sheet1!B8: =xsum(_R_("Sheet1!A8:A10"))
+  Sheet1!B9: =xsum(_R_("Sheet1!A9:A11"))
+  Sheet1!B10: =xsum(_R_("Sheet1!A10:A12"))
+  Sheet1!B11: =xsum(_R_("Sheet1!A11:A13"))
+  Sheet1!B12: =xsum(_R_("Sheet1!A12:A14"))
+  Sheet1!B13: =xsum(_R_("Sheet1!A13:A15"))
+  Sheet1!B14: =xsum(_R_("Sheet1!A14:A16"))
+  Sheet1!B15: =xsum(_R_("Sheet1!A15:A17"))
+  Sheet1!B16: =xsum(_R_("Sheet1!A16:A18"))
+  Sheet1!B17: =xsum(_R_("Sheet1!A17:A19"))
+  Sheet1!B18: =xsum(_R_("Sheet1!A18:A20"))
+  Sheet1!C1: =sin(_C_("Sheet1!B1") * (_C_("Sheet1!A1") ** 2))
+  Sheet1!C2: =sin(_C_("Sheet1!B2") * (_C_("Sheet1!A2") ** 2))
+  Sheet1!C3: =sin(_C_("Sheet1!B3") * (_C_("Sheet1!A3") ** 2))
+  Sheet1!C4: =sin(_C_("Sheet1!B4") * (_C_("Sheet1!A4") ** 2))
+  Sheet1!C5: =sin(_C_("Sheet1!B5") * (_C_("Sheet1!A5") ** 2))
+  Sheet1!C6: =sin(_C_("Sheet1!B6") * (_C_("Sheet1!A6") ** 2))
+  Sheet1!C7: =sin(_C_("Sheet1!B7") * (_C_("Sheet1!A7") ** 2))
+  Sheet1!C8: =sin(_C_("Sheet1!B8") * (_C_("Sheet1!A8") ** 2))
+  Sheet1!C9: =sin(_C_("Sheet1!B9") * (_C_("Sheet1!A9") ** 2))
+  Sheet1!C10: =sin(_C_("Sheet1!B10") * (_C_("Sheet1!A10") ** 2))
+  Sheet1!C11: =sin(_C_("Sheet1!B11") * (_C_("Sheet1!A11") ** 2))
+  Sheet1!C12: =sin(_C_("Sheet1!B12") * (_C_("Sheet1!A12") ** 2))
+  Sheet1!C13: =sin(_C_("Sheet1!B13") * (_C_("Sheet1!A13") ** 2))
+  Sheet1!C14: =sin(_C_("Sheet1!B14") * (_C_("Sheet1!A14") ** 2))
+  Sheet1!C15: =sin(_C_("Sheet1!B15") * (_C_("Sheet1!A15") ** 2))
+  Sheet1!C16: =sin(_C_("Sheet1!B16") * (_C_("Sheet1!A16") ** 2))
+  Sheet1!C17: =sin(_C_("Sheet1!B17") * (_C_("Sheet1!A17") ** 2))
+  Sheet1!C18: =sin(_C_("Sheet1!B18") * (_C_("Sheet1!A18") ** 2))
+  Sheet1!D1: =linest(_R_("Sheet1!C1:C18"), _R_("Sheet1!B1:B18"), degree=1)[0]

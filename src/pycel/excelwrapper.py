@@ -6,7 +6,6 @@
 
 import abc
 import collections
-import datetime as dt
 import os
 from unittest import mock
 
@@ -15,6 +14,8 @@ from openpyxl.cell.cell import Cell
 from openpyxl.cell.read_only import EMPTY_CELL
 from openpyxl.utils import datetime as opxl_dt
 from pycel.excelutil import AddressCell, AddressRange, MAX_ROW
+
+ARRAY_FORMULA_FORMAT = '=INDEX(%s,%s,%s,%s,%s)'
 
 
 class ExcelWrapper:
@@ -98,6 +99,7 @@ class ExcelOpxWrapper(ExcelWrapper):
         self.filename = os.path.abspath(filename)
         self._defined_names = None
         self._tables = None
+        self._table_refs = {}
         self.workbook = None
         self.workbook_dataonly = None
 
@@ -129,6 +131,17 @@ class ExcelOpxWrapper(ExcelWrapper):
             self._tables[None] = TableAndSheet(None, None)
         return self._tables.get(table_name.lower(), self._tables[None])
 
+    def table_name_containing(self, address):
+        """ Return the table name containing the address given """
+        address = AddressCell(address)
+        if address not in self._table_refs:
+            for t in self.workbook[address.sheet]._tables:
+                if address in AddressRange(t.ref):
+                    self._table_refs[address] = t.name.lower()
+                    break
+
+        return self._table_refs.get(address)
+
     def connect(self):
         self.workbook = load_workbook(self.filename)
         self.workbook_dataonly = load_workbook(
@@ -145,10 +158,11 @@ class ExcelOpxWrapper(ExcelWrapper):
 
                 if isinstance(ref_addr, AddressRange):
                     # Single cell array formulas can be ignored
-                    formula = '=INDEX(%s,{},{})' % ws[address].value[1:]
-                    for i, row in enumerate(ref_addr.rows, 1):
-                        for j, addr in enumerate(row, 1):
-                            ws[addr.coordinate] = formula.format(i, j)
+                    formula = ws[address].value
+                    for i, row in enumerate(ref_addr.rows, start=1):
+                        for j, addr in enumerate(row, start=1):
+                            ws[addr.coordinate] = ARRAY_FORMULA_FORMAT % (
+                                formula[1:], i, j, *ref_addr.size)
 
         # ::HACK:: this is only needed because openpyxl does not define
         # iter_cols for read only workbooks
@@ -170,14 +184,11 @@ class ExcelOpxWrapper(ExcelWrapper):
 
     @staticmethod
     def from_excel(value, offset=opxl_dt.CALENDAR_WINDOWS_1900):
-        new_value = opxl_dt.from_excel(value, offset)
-        if isinstance(new_value, (dt.date, dt.datetime)):
-            # ::HACK:: excel thinks that 1900/02/29 was a thing.  In certain
-            # circumstances openpyxl will return a datetime.  This is a problem
-            # as we don't want them, and having been mapped to datetime
-            # information may have been lost, so ignore the conversions
-            new_value = value
-        return new_value
+        # ::HACK:: excel thinks that 1900/02/29 was a thing.  In certain
+        # circumstances openpyxl will return a datetime.  This is a problem
+        # as we don't want them, and having been mapped to datetime
+        # information may have been lost, so ignore the conversions
+        return value
 
     def get_range(self, address):
         if not isinstance(address, (AddressRange, AddressCell)):

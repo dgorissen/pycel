@@ -11,6 +11,7 @@ from networkx.exception import NetworkXError
 from pycel.excelutil import (
     AddressRange,
     build_operator_operand_fixup,
+    coerce_to_number,
     EMPTY,
     ERROR_CODES,
     get_linest_degree,
@@ -19,12 +20,18 @@ from pycel.excelutil import (
     PyCelException,
     uniqueify,
 )
+from pycel.lib.function_info import func_status_msg
+
 
 EVAL_REGEX = re.compile(r'(_C_|_R_)(\([^)]*\))')
 
 
 class FormulaParserError(PyCelException):
     """Error during parsing"""
+
+
+class UnknownFunction(PyCelException):
+    """Functions unknown to PyCel"""
 
 
 class FormulaEvalError(PyCelException):
@@ -289,10 +296,22 @@ class RangeNode(OperandNode):
         if '!' in self.value:
             sheet = ''
         try:
-            address = AddressRange.create(
-                self.value.replace('$', ''), sheet=sheet, cell=self.cell)
+            addr_str = self.value.replace('$', '')
+            address = AddressRange.create(addr_str, sheet=sheet, cell=self.cell)
         except ValueError:
-            return '"{}"'.format(NAME_ERROR)
+            # check for table relative address
+            table_name = None
+            if self.cell:
+                excel = self.cell.excel
+                if excel and '[' in addr_str:
+                    table_name = excel.table_name_containing(self.cell.address)
+
+            if not table_name:
+                return '"{}"'.format(NAME_ERROR)
+
+            addr_str = '{}{}'.format(table_name, addr_str)
+            address = AddressRange.create(
+                addr_str, sheet=self.cell.address.sheet, cell=self.cell)
 
         template = '_R_("{}")' if address.is_range else '_C_("{}")'
         return template.format(address)
@@ -336,12 +355,14 @@ class FunctionNode(ASTNode):
         super(FunctionNode, self).__init__(*args)
         self.num_args = 0
 
-    def comma_join_emit(self, fmt_str=None):
+    def comma_join_emit(self, fmt_str=None, to_emit=None):
+        if to_emit is None:
+            to_emit = self.children
         if fmt_str is None:
-            return ", ".join(n.emit for n in self.children)
+            return ", ".join(n.emit for n in to_emit)
         else:
             return ", ".join(
-                fmt_str.format(n.emit) for n in self.children)
+                fmt_str.format(n.emit) for n in to_emit)
 
     @property
     def emit(self):
@@ -431,6 +452,39 @@ class FunctionNode(ASTNode):
             address = address.replace('_R_', '_REF_').replace('_C_', '_REF_')
         return 'column({})'.format(address)
 
+    SUBTOTAL_FUNCS = {
+        1: 'average',
+        2: 'count',
+        3: 'counta',
+        4: 'xmax',
+        5: 'xmin',
+        6: 'product',
+        7: 'stdev',
+        8: 'stdevp',
+        9: 'xsum',
+        10: 'var',
+        11: 'varp',
+    }
+
+    def func_subtotal(self):
+        # Excel reference: https://support.office.com/en-us/article/
+        #   SUBTOTAL-function-7B027003-F060-4ADE-9040-E478765B9939
+
+        # Note: This does not implement skipping hidden rows.
+
+        func_num = coerce_to_number(self.children[0].emit)
+        if func_num not in self.SUBTOTAL_FUNCS:
+            if func_num - 100 in self.SUBTOTAL_FUNCS:
+                func_num -= 100
+            else:
+                raise ValueError(
+                    "Unknown SUBTOTAL function number: {}".format(func_num))
+
+        func = self.SUBTOTAL_FUNCS[func_num]
+
+        return "{}({})".format(
+            func, self.comma_join_emit(fmt_str="{}", to_emit=self.children[1:]))
+
 
 class ExcelFormula:
     """Take an Excel formula and compile it to Python code."""
@@ -453,6 +507,7 @@ class ExcelFormula:
         self._compiled_python = None
         self._marshalled_python = None
         self.compiled_lambda = None
+        self.msg = None
 
     def __str__(self):
         return self.base_formula or self.python_code
@@ -791,13 +846,16 @@ class ExcelFormula:
             compiled, names = excel_formula.compiled_python
 
             # load the needed names
+            not_found = set()
             for name in names:
                 if name not in name_space:
                     funcs = ((getattr(module, name, None), module)
                              for module in modules)
                     func, module = next(
                         (f for f in funcs if f[0] is not None), (None, None))
-                    if func is not None:
+                    if func is None:
+                        not_found.add(name)
+                    else:
                         if module.__name__ == 'math':
                             name_space[name] = math_wrap(func)
                         else:
@@ -807,15 +865,25 @@ class ExcelFormula:
             exec(compiled, name_space, name_space)
             excel_formula.compiled_lambda = lambdas[0]
             del name_space['lambdas']
+            return not_found
 
         def eval_func(excel_formula):
             """ Call the compiled lambda to evaluate the cell """
 
             if excel_formula.compiled_lambda is None:
-                load_function(excel_formula, locals())
+                missing = load_function(excel_formula, locals())
+                if missing:
+                    msg_fmt = 'Function {} has not been implemented. '
+                    excel_formula.msg = '\n'.join(
+                        msg_fmt.format(f.upper()) +
+                        func_status_msg(f)[1] for f in sorted(missing))
 
             try:
                 ret_val = excel_formula.compiled_lambda()
+
+            except NameError:
+                error_logger('error', excel_formula.python_code,
+                             msg=excel_formula.msg, exc=UnknownFunction)
 
             except Exception:
                 error_logger('error', excel_formula.python_code,

@@ -1,11 +1,12 @@
+import json
 import os
 import shutil
 from unittest import mock
 
 import pytest
 from pycel.excelcompiler import _Cell, _CellRange, ExcelCompiler
-from pycel.excelformula import FormulaEvalError
-from pycel.excelutil import AddressCell, AddressRange
+from pycel.excelformula import FormulaParserError, UnknownFunction
+from pycel.excelutil import AddressCell, AddressRange, flatten
 from pycel.excelwrapper import ExcelWrapper
 
 
@@ -213,7 +214,7 @@ def test_value_tree_str(excel_compiler):
         '   trim-range!E1 = 5',
         '   trim-range!E2 = 6',
         '   trim-range!E3 = 7',
-        ' trim-range!D4:E4 = (4, 8)',
+        ' trim-range!D4:E4 = ((4, 8),)',
         '  trim-range!D4 = 4',
         '  trim-range!E4 = 8',
         ' trim-range!D5 = 100'
@@ -270,7 +271,7 @@ def test_evaluate_from_non_cells(excel_compiler):
     excel_compiler = ExcelCompiler.from_file(excel_compiler.filename)
     for expected, result in zip(
             old_values, excel_compiler.evaluate(output_addrs)):
-        assert expected == pytest.approx(result)
+        assert tuple(flatten(expected)) == pytest.approx(tuple(flatten(result)))
 
     range_cell = excel_compiler.cell_map[output_addrs[0]]
     excel_compiler._reset(range_cell)
@@ -306,6 +307,17 @@ def test_validate_calcs_all_cells(basic_ws):
     }
     assert expected == set(formula_cells)
     assert {} == basic_ws.validate_calcs()
+
+
+def test_validate_calcs_excel_compiler(excel_compiler):
+    """Find all formula cells w/ values and verify calc"""
+    errors = excel_compiler.validate_calcs()
+    msg = json.dumps(errors, indent=2)
+    assert msg == '{}'
+
+    errors = excel_compiler.validate_calcs('Sheet1!B1')
+    msg = json.dumps(errors, indent=2)
+    assert msg == '{}'
 
 
 def test_evaluate_entire_row_column(excel_compiler):
@@ -378,8 +390,7 @@ def test_compile_error_message_line_number(excel_compiler):
     formula._python_code = '(x)'
     formula.lineno = 3000
     formula.filename = 'a_file'
-    with pytest.raises(
-            FormulaEvalError, match='File "a_file", line 3000'):
+    with pytest.raises(UnknownFunction, match='File "a_file", line 3000'):
         excel_compiler.evaluate(output_addrs[0])
 
 
@@ -458,3 +469,54 @@ def test_structured_ref(excel_compiler):
 
     excel_compiler.set_value(input_addrs[0], 11)
     assert 20 == excel_compiler.evaluate(output_addrs[0])
+
+
+@pytest.mark.parametrize(
+    'msg, formula', (
+        ("Function XYZZY has not been implemented. "
+         "XYZZY is not a known Excel function", '=xyzzy()'),
+        ("Function PLUGH has not been implemented. "
+         "PLUGH is not a known Excel function\n"
+         "Function XYZZY has not been implemented. "
+         "XYZZY is not a known Excel function", '=xyzzy() + plugh()'),
+        ('Function ARABIC has not been implemented. '
+         'ARABIC is in the "Math and trigonometry" group, '
+         'and was introduced in Excel 2013',
+         '=ARABIC()'),
+    )
+)
+def test_unknown_functions(fixture_dir, msg, formula):
+    excel_compiler = ExcelCompiler.from_file(
+        os.path.join(fixture_dir, 'fixture.xlsx.yml'))
+
+    address = AddressCell('s!A1')
+    excel_compiler.cell_map[str(address)] = _Cell(
+        address, None, formula, excel_compiler.excel
+    )
+    with pytest.raises(UnknownFunction, match=msg):
+        excel_compiler.evaluate(address)
+
+    result = excel_compiler.validate_calcs([address])
+    assert 'not-implemented' in result
+    assert len(result['not-implemented']) == 1
+
+
+def test_evaluate_exceptions(fixture_dir):
+    excel_compiler = ExcelCompiler.from_file(
+        os.path.join(fixture_dir, 'fixture.xlsx.yml'))
+
+    address = AddressCell('s!A1')
+    excel_compiler.cell_map[str(address)] = _Cell(
+        address, None, '=__REF__("s!A2")', excel_compiler.excel
+    )
+    address = AddressCell('s!A2')
+    excel_compiler.cell_map[str(address)] = _Cell(
+        address, None, '=$', excel_compiler.excel
+    )
+
+    with pytest.raises(FormulaParserError):
+        excel_compiler.evaluate(address)
+
+    result = excel_compiler.validate_calcs(address)
+    assert 'exceptions' in result
+    assert len(result['exceptions']) == 1

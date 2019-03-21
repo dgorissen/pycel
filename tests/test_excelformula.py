@@ -11,6 +11,7 @@ from pycel.excelformula import (
     FormulaEvalError,
     FormulaParserError,
     Token,
+    UnknownFunction,
 )
 from pycel.excelutil import DIV0, NAME_ERROR, VALUE_ERROR
 from test_excelutil import ATestCell
@@ -408,6 +409,36 @@ def test_parse(test_number, formula, rpn, python_code):
     assert python_code == result_python_code
 
 
+def test_table_relative_address():
+    cell = ATestCell('A', 1, sheet='s')
+
+    excel_formula = ExcelFormula('=junk')
+    assert '"#NAME?"' == excel_formula.ast.emit
+
+    excel_formula = ExcelFormula('=junk', cell=cell)
+    assert '"#NAME?"' == excel_formula.ast.emit
+
+    excel_formula = ExcelFormula('=[col1]', cell=cell)
+    assert '"#NAME?"' == excel_formula.ast.emit
+
+    with mock.patch.object(cell, 'excel') as excel, \
+            mock.patch.object(excel, 'table') as get_table, \
+            mock.patch.object(excel, 'table_name_containing') as etnc:
+        excel.defined_names = {}
+        table = mock.Mock()
+        table.ref = 'A1:B2'
+        table.headerRowCount = 0
+        table.totalsRowCount = 0
+        table.tableColumns = [mock.Mock()]
+        table.tableColumns[0].name = 'col1'
+
+        get_table.return_value = table, 's'
+        etnc.return_value = 'Table'
+
+        excel_formula = ExcelFormula('=[col1]', cell=cell)
+        assert '_R_("s!A1:A2")' == excel_formula.ast.emit
+
+
 def test_str():
     excel_formula = ExcelFormula('=E54-E48')
     assert '=E54-E48' == str(excel_formula)
@@ -486,17 +517,17 @@ def test_needed_addresses():
     assert () == ExcelFormula('').needed_addresses
 
 
-def test_build_eval_context():
+@pytest.mark.parametrize(
+    'result, formula', (
+        (42, '=2 * 21'),
+        (44, '=2 * 21 + A1 + a1:a2'),
+        (1, '=1 + sin(0)'),
+        (4.1415926, '=1 + PI()'),
+    )
+)
+def test_build_eval_context(result, formula):
     eval_context = ExcelFormula.build_eval_context(lambda x: 1, lambda x: 1)
-
-    assert 42 == eval_context(ExcelFormula('=2 * 21'))
-    assert 44 == eval_context(ExcelFormula('=2 * 21 + A1 + a1:a2'))
-    assert 1 == eval_context(ExcelFormula('=1 + sin(0)'))
-    assert pytest.approx(4.1415926) == eval_context(ExcelFormula('=1 + PI()'))
-
-    with pytest.raises(FormulaEvalError,
-                       match="name 'unknown_function' is not defined"):
-        eval_context(ExcelFormula('=unknown_function(0)'))
+    assert eval_context(ExcelFormula(formula)) == pytest.approx(result)
 
 
 def test_math_wrap():
@@ -688,32 +719,63 @@ def test_column():
     eval_ctx = ExcelFormula.build_eval_context(None, None)
 
     assert 12 == eval_ctx(ExcelFormula('=COLUMN(L45)'))
-    assert 2 == eval_ctx(ExcelFormula('=COLUMN(B:E)'))
-    assert 1 == eval_ctx(ExcelFormula('=COLUMN(4:7)'))
-    assert 4 == eval_ctx(ExcelFormula('=COLUMN(D1:E1)'))
-    assert 4 == eval_ctx(ExcelFormula('=COLUMN(D1:D2)'))
-    assert 4 == eval_ctx(ExcelFormula('=COLUMN(D1:E2)'))
+    assert (2, 3, 4, 5) == eval_ctx(ExcelFormula('=COLUMN(B:E)'))
+    assert 1 == next(iter(eval_ctx(ExcelFormula('=COLUMN(4:7)'))))
+    assert (4, 5) == eval_ctx(ExcelFormula('=COLUMN(D1:E1)'))
+    assert (4, ) == eval_ctx(ExcelFormula('=COLUMN(D1:D2)'))
+    assert (4, 5) == eval_ctx(ExcelFormula('=COLUMN(D1:E2)'))
 
     cell = ATestCell('B', 3)
     assert 2 == eval_ctx(ExcelFormula('=COLUMN()', cell=cell))
 
-    assert 2 == eval_ctx(ExcelFormula('=COLUMN(B6:D7 C7:E7)'))
+    assert (2, 3, 4, 5) == eval_ctx(ExcelFormula('=COLUMN(B6:D7 C7:E7)'))
 
 
 def test_row():
     eval_ctx = ExcelFormula.build_eval_context(None, None)
 
     assert 45 == eval_ctx(ExcelFormula('=ROW(L45)'))
-    assert 1 == eval_ctx(ExcelFormula('=ROW(B:E)'))
-    assert 4 == eval_ctx(ExcelFormula('=ROW(4:7)'))
-    assert 1 == eval_ctx(ExcelFormula('=ROW(D1:E1)'))
-    assert 1 == eval_ctx(ExcelFormula('=ROW(D1:D2)'))
-    assert 1 == eval_ctx(ExcelFormula('=ROW(D1:E2)'))
+    assert 1 == next(iter(eval_ctx(ExcelFormula('=ROW(B:E)'))))
+    assert (4, 5, 6, 7) == eval_ctx(ExcelFormula('=ROW(4:7)'))
+    assert (1, ) == eval_ctx(ExcelFormula('=ROW(D1:E1)'))
+    assert (1, 2) == eval_ctx(ExcelFormula('=ROW(D1:D2)'))
+    assert (1, 2) == eval_ctx(ExcelFormula('=ROW(D1:E2)'))
 
     cell = ATestCell('B', 3)
     assert 3 == eval_ctx(ExcelFormula('=ROW()', cell=cell))
 
-    assert 6 == eval_ctx(ExcelFormula('=ROW(B6:D7 C7:E7)'))
+    assert (6, 7) == eval_ctx(ExcelFormula('=ROW(B6:D7 C7:E7)'))
+
+
+@pytest.mark.parametrize(
+    'formula, result', (
+        ('=subtotal(01,A1:B3)', 'average(_R_("A1:B3"))'),
+        ('=subtotal(02,A1:B3)', 'count(_R_("A1:B3"))'),
+        ('=subtotal(03,A1:B3)', 'counta(_R_("A1:B3"))'),
+        ('=subtotal(04,A1:B3)', 'xmax(_R_("A1:B3"))'),
+        ('=subtotal(05,A1:B3)', 'xmin(_R_("A1:B3"))'),
+        ('=subtotal(06,A1:B3)', 'product(_R_("A1:B3"))'),
+        ('=subtotal(07,A1:B3)', 'stdev(_R_("A1:B3"))'),
+        ('=subtotal(08,A1:B3)', 'stdevp(_R_("A1:B3"))'),
+        ('=subtotal(09,A1:B3)', 'xsum(_R_("A1:B3"))'),
+        ('=subtotal(10,A1:B3)', 'var(_R_("A1:B3"))'),
+        ('=subtotal(11,A1:B3)', 'varp(_R_("A1:B3"))'),
+    )
+)
+def test_subtotal(formula, result):
+    assert ExcelFormula(formula).ast.emit == result
+    assert ExcelFormula(formula.replace('tal(', 'tal(1')).ast.emit == result
+
+
+def test_subtotal_errors():
+    with pytest.raises(ValueError):
+        ExcelFormula('=subtotal(0)').ast.emit
+    with pytest.raises(ValueError):
+        ExcelFormula('=subtotal(12)').ast.emit
+    with pytest.raises(ValueError):
+        ExcelFormula('=subtotal(100)').ast.emit
+    with pytest.raises(ValueError):
+        ExcelFormula('=subtotal(112)').ast.emit
 
 
 def test_unknown_name():
@@ -788,7 +850,8 @@ def test_lineno_on_error_reporting():
     excel_formula.lineno = 6
     excel_formula.filename = 'a_file'
 
-    with pytest.raises(FormulaEvalError, match='File "a_file", line 6'):
+    msg = 'File "a_file", line 6,'
+    with pytest.raises(UnknownFunction, match=msg):
         eval_ctx(excel_formula)
 
     excel_formula._python_code = '(x)'
@@ -797,8 +860,36 @@ def test_lineno_on_error_reporting():
     excel_formula.compiled_lambda = None
     excel_formula.lineno = 60
 
-    with pytest.raises(FormulaEvalError, match=', line 60,'):
+    with pytest.raises(UnknownFunction, match='File "a_file", line 60,'):
         eval_ctx(excel_formula)
+
+
+@pytest.mark.parametrize(
+    'msg, formula', (
+        ("Function XYZZY has not been implemented. "
+         "XYZZY is not a known Excel function", '=xyzzy()'),
+        ("Function PLUGH has not been implemented. "
+         "PLUGH is not a known Excel function\n"
+         "Function XYZZY has not been implemented. "
+         "XYZZY is not a known Excel function", '=xyzzy() + plugh()'),
+        ('Function ARABIC has not been implemented. '
+         'ARABIC is in the "Math and trigonometry" group, '
+         'and was introduced in Excel 2013',
+         '=ARABIC()'),
+    )
+)
+def test_unknown_function(msg, formula):
+    eval_ctx = ExcelFormula.build_eval_context(
+        lambda x: None, lambda x: None, logging.getLogger('pycel_x'))
+
+    compiled = ExcelFormula(formula)
+
+    with pytest.raises(UnknownFunction, match=msg):
+        eval_ctx(compiled)
+
+    # second time is needed to test cached msg
+    with pytest.raises(UnknownFunction, match=msg):
+        eval_ctx(compiled)
 
 
 if __name__ == '__main__':

@@ -8,8 +8,10 @@ from openpyxl.utils import column_index_from_string, quote_sheetname
 from pycel.excelutil import (
     AddressCell,
     AddressRange,
+    assert_list_like,
     build_operator_operand_fixup,
     coerce_to_number,
+    coerce_to_string,
     criteria_parser,
     date_from_int,
     ExcelCmp,
@@ -19,6 +21,7 @@ from pycel.excelutil import (
     get_max_days_in_month,
     is_leap_year,
     is_number,
+    list_like,
     MAX_COL,
     MAX_ROW,
     math_wrap,
@@ -44,7 +47,8 @@ class ATestCell:
         self.col_idx = column_index_from_string(col)
         self.sheet = sheet
         self.excel = excel
-        self.address = AddressCell('{}{}'.format(col, row)).address
+        self.address = AddressCell(
+            '{}{}'.format(col, row), sheet=sheet)
 
 
 def test_address_range():
@@ -97,6 +101,25 @@ def test_address_range_errors():
 )
 def test_address_range_add(left, right, result):
     assert AddressRange(left) + AddressRange(right) == AddressRange(result)
+
+
+@pytest.mark.parametrize(
+    'a_range, address, expected', (
+        ('s!D2:F4', 's!D2', True),
+        ('s!D2:F4', 's!F2', True),
+        ('s!D2:F4', 's!D4', True),
+        ('s!D2:F4', 's!F4', True),
+        ('s!D2:F4', 's!C2', False),
+        ('s!D2:F4', 's!D1', False),
+        ('s!D2:F4', 's!G4', False),
+        ('s!D2:F4', 's!F5', False),
+    )
+)
+def test_address_range_contains(a_range, address, expected):
+    a_range = AddressRange(a_range)
+    assert expected == (address in a_range)
+    address = AddressCell(address)
+    assert expected == (address in a_range)
 
 
 def test_is_range():
@@ -458,6 +481,21 @@ def test_coerce_to_number():
 
 @pytest.mark.parametrize(
     'value, result', (
+        (True, 'TRUE'),
+        (False, 'FALSE'),
+        (None, ''),
+        (1, '1'),
+        (1.0, '1'),
+        (1.1, '1.1'),
+        ('xyzzy', 'xyzzy'),
+    )
+)
+def test_coerce_to_string(value, result):
+    assert coerce_to_string(value) == result
+
+
+@pytest.mark.parametrize(
+    'value, result', (
         (1, 1),
         (DIV0, DIV0),
         (None, 0),
@@ -630,6 +668,26 @@ def test_find_corresponding_index():
 
     with pytest.raises(ValueError):
         find_corresponding_index(list('ABB'), None)
+
+
+@pytest.mark.parametrize(
+    'value, expected', (
+        ('xyzzy', False),
+        (AddressRange('A1:B2'), False),
+        (AddressCell('A1'), False),
+        ([1, 2], True),
+        ((1, 2), True),
+        ({1: 2, 3: 4}, True),
+        ((a for a in range(2)), True),
+    )
+)
+def test_list_like(value, expected):
+    assert list_like(value) == expected
+    if expected:
+        assert_list_like(value)
+    else:
+        with pytest.raises(TypeError, match='Must be a list like: '):
+            assert_list_like(value)
 
 
 @pytest.mark.parametrize(
@@ -988,6 +1046,14 @@ def test_excel_cmp(lval, op, rval, result):
         (0, 'Div', NUM_ERROR, NUM_ERROR),
 
         ('', 'BadOp', '', VALUE_ERROR),
+
+        # arrays
+        (((0, 1),), 'Add', ((2, 3),), ((2, 4),)),
+        (((0, 1),), 'Sub', ((2, 3),), ((-2, -2), )),
+        (((0,), (1,)), 'Mult', ((2,), (3,)), ((0,), (3,))),
+        (((0, 2), (1, 3)), 'Div', ((2, 1), (3, 2)), ((0, 2), (1 / 3, 3 / 2))),
+
+        # ::TODO:: need error processing for arrays
     ]
 )
 def test_excel_operator_operand_fixup(left_op, op, right_op, expected):
@@ -1007,20 +1073,3 @@ def test_excel_operator_operand_fixup(left_op, op, right_op, expected):
     elif expected == DIV0 and DIV0 not in (left_op, right_op):
         assert [(True, 'Values: {} {} {}'.format(left_op, op, right_op))
                 ] == error_messages
-
-
-@pytest.mark.parametrize(
-    'left_op, op, right_op, exc',
-    [
-        ([], 'Add', '', NotImplementedError),
-        ('', 'Add', [], NotImplementedError),
-    ]
-)
-def test_excel_operator_operand_fixup_errors(left_op, op, right_op, exc):
-    error_messages = []
-
-    def capture_error_state(is_exception, msg):
-        error_messages.append((is_exception, msg))
-
-    with pytest.raises(exc):
-        build_operator_operand_fixup(capture_error_state)(left_op, op, right_op)
