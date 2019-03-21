@@ -14,6 +14,7 @@ from pycel.excelutil import (
     assert_list_like,
     build_wildcard_re,
     coerce_to_number,
+    coerce_to_string,
     date_from_int,
     DIV0,
     ERROR_CODES,
@@ -69,6 +70,25 @@ def column(ref):
             return tuple(range(ref.start.col_idx, ref.end.col_idx + 1))
     else:
         return ref.col_idx
+
+
+def concat(*args):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   concat-function-9b1a9a3f-94ff-41af-9736-694cbd6b4ca2
+    return concatenate(*tuple(flatten(args)))
+
+
+def concatenate(*args):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   CONCATENATE-function-8F8AE884-2CA8-4F7A-B093-75D702BEA31D
+    if tuple(flatten(args)) != args:
+        return VALUE_ERROR
+
+    error = next((x for x in args if x in ERROR_CODES), None)
+    if error:
+        return error
+
+    return ''.join(coerce_to_string(a) for a in args)
 
 
 def count(*args):

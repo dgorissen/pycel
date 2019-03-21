@@ -8,6 +8,8 @@ from pycel.excellib import (
     _numerics,
     average,
     column,
+    concat,
+    concatenate,
     count,
     countif,
     countifs,
@@ -44,6 +46,7 @@ from pycel.excelutil import (
     DIV0,
     ExcelCmp,
     NA_ERROR,
+    NAME_ERROR,
     NUM_ERROR,
     PyCelException,
     VALUE_ERROR,
@@ -94,6 +97,25 @@ def test_column(address, expected):
         assert 1 == next(iter(result))
     else:
         assert expected == result
+
+
+@pytest.mark.parametrize(
+    'args, result', (
+        ('a 1 abc'.split(), 'a1abc'),
+        ('a Jan-00 abc'.split(), 'aJan-00abc'),
+        ('a	#DIV/0! abc'.split(), DIV0),
+        ('a	1 #DIV/0!'.split(), DIV0),
+        ('a #NAME? abc'.split(), NAME_ERROR),
+        (('a', True, 'abc'), 'aTRUEabc'),
+        (('a', False, 'abc'), 'aFALSEabc'),
+        (('a', 2, 'abc'), 'a2abc'),
+    )
+)
+def test_concatenate(args, result):
+    assert concat(*args) == result
+    assert concatenate(*args) == result
+    assert concat(args) == result
+    assert concatenate(args) == VALUE_ERROR
 
 
 class TestCount:
