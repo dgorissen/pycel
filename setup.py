@@ -3,7 +3,7 @@
 """Setup script for packaging pycel.
 
 To release:
-    Update src/pycel/version.py, docs/source/CHANGES.rst
+    Update /src/pycel/version.py, /CHANGES.rst
 
 Run tests with:
     tox
