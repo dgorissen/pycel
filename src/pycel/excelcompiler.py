@@ -572,28 +572,18 @@ class ExcelCompiler:
 
         def build_cell(excel_cell):
             a_cell = _Cell(excel_cell.address, value=excel_cell.values,
-                           formula=excel_cell.formulas, excel=self.excel)
+                           formula=excel_cell.formula, excel=self.excel)
             self.cell_map[str(excel_cell.address)] = a_cell
             return a_cell
 
         def build_range(excel_range):
             a_range = _CellRange(excel_range)
-            excel_cells = zip(a_range,
-                              flatten(excel_range.formulas),
-                              flatten(excel_range.values))
-
-            added_nodes = [a_range]
-            for cell_address, f, value in excel_cells:
-                assert isinstance(cell_address, AddressCell)
-                if str(cell_address) not in self.cell_map:
-                    if (f, value) != ('', None):
-                        a_cell = _Cell(cell_address, value=value,
-                                       formula=f, excel=self.excel)
-                        self.cell_map[str(cell_address)] = a_cell
-                        added_nodes.append(a_cell)
+            for addr in a_range:
+                if addr.address not in self.cell_map:
+                    self._make_cells(addr)
 
             self.cell_map[str(excel_range.address)] = a_range
-            return added_nodes
+            return a_range
 
         excel_data = self.excel.get_range(address)
         if address.is_range:
@@ -604,14 +594,13 @@ class ExcelCompiler:
                     address, formula=REF_FORMAT.format(excel_data.address))
 
             self.range_todos.append(str(excel_data.address))
-            new_nodes = build_range(excel_data)
+            new_node = build_range(excel_data)
         else:
-            new_nodes = [build_cell(excel_data)]
+            new_node = build_cell(excel_data)
 
-        for node in new_nodes:
-            if isinstance(node, _CellRange) or node.formula:
-                # nodes to analyze: only ranges and formulas have precedents
-                add_node_to_graph(node)
+        if isinstance(new_node, _CellRange) or new_node.formula:
+            # nodes to analyze: only ranges and formulas have precedents
+            add_node_to_graph(new_node)
 
     def _evaluate_range(self, address):
         """Evaluate a range"""
@@ -845,7 +834,7 @@ class _CompiledImporter:
             else:
                 # this is a unbounded range to range mapping, disassemble
                 cell = self._get_cell(address)
-                formula = cell.formulas
+                formula = cell.formula
                 assert formula.startswith(REF_START)
                 assert formula.endswith(REF_END)
                 ref_addr = formula[len(REF_START):-len(REF_END)]
@@ -855,10 +844,9 @@ class _CompiledImporter:
         addresses = address.resolve_range
 
         cells = [[self._get_cell(addr) for addr in row] for row in addresses]
-        formulas = [[c.formulas for c in row] for row in cells]
         values = [[c.values for c in row] for row in cells]
 
-        return ExcelOpxWrapper.RangeData(address, formulas, values)
+        return ExcelOpxWrapper.RangeData(address, None, values)
 
     def _get_cell(self, address):
         cell_value = self.cell_map.get(str(address))

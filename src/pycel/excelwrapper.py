@@ -21,7 +21,7 @@ ARRAY_FORMULA_FORMAT = '=INDEX(%s,%s,%s,%s,%s)'
 class ExcelWrapper:
     __metaclass__ = abc.ABCMeta
 
-    RangeData = collections.namedtuple('RangeData', 'address formulas values')
+    RangeData = collections.namedtuple('RangeData', 'address formula values')
 
     @abc.abstractmethod
     def connect(self):
@@ -40,24 +40,26 @@ class ExcelWrapper:
         """"""
 
     def get_formula_from_range(self, address):
-        f = self.get_range(address).formulas
-        if isinstance(f, (list, tuple)):
-            if any(x for x in f if x[0].startswith("=")):
-                return [x[0] for x in f]
-            else:
-                return None
+        if not isinstance(address, (AddressRange, AddressCell)):
+            address = AddressRange(address)
+        result = self.get_range(address)
+        if isinstance(address, AddressCell):
+            return result.formula if result.formula.startswith("=") else None
         else:
-            return f if f.startswith("=") else None
+            return tuple(tuple(
+                self.get_formula_from_range(a) for a in row
+            ) for row in result.resolve_range)
 
-    def get_formula_or_value(self, name):
-        r = self.get_range(name)
-        if not isinstance(r.formulas, tuple):
-            return r.formulas or r.values
+    def get_formula_or_value(self, address):
+        if not isinstance(address, (AddressRange, AddressCell)):
+            address = AddressRange(address)
+        result = self.get_range(address)
+        if isinstance(address, AddressCell):
+            return result.formula or result.values
         else:
-            return tuple(
-                tuple(f or v for f, v in zip(fs, vs))
-                for fs, vs in zip(r.formulas, r.values)
-            )
+            return tuple(tuple(
+                self.get_formula_or_value(a) for a in row
+            ) for row in result.resolve_range)
 
 
 class _OpxRange(ExcelWrapper.RangeData):
@@ -65,11 +67,9 @@ class _OpxRange(ExcelWrapper.RangeData):
         (Formula & Value)
     """
     def __new__(cls, cells, cells_dataonly, address):
-        formulas = tuple(tuple(cls.cell_to_formula(cell) for cell in row)
-                         for row in cells)
         values = tuple(tuple(cell.value for cell in row)
                        for row in cells_dataonly)
-        return ExcelWrapper.RangeData(address, formulas, values)
+        return ExcelWrapper.RangeData.__new__(cls, address, None, values)
 
     @classmethod
     def cell_to_formula(cls, cell):
@@ -79,6 +79,16 @@ class _OpxRange(ExcelWrapper.RangeData):
             formula = str(cell.value)
             return formula if formula.startswith('=') else ''
 
+    @property
+    def resolve_range(self):
+        return AddressRange(
+            (self.address.start.col_idx,
+             self.address.start.row,
+             self.address.start.col_idx + len(self.values[0]) - 1,
+             self.address.start.row + len(self.values) - 1),
+            sheet=self.address.sheet
+        ).resolve_range
+
 
 class _OpxCell(_OpxRange):
     """ Excel cell wrapper that distributes reduced api used by compiler
@@ -86,8 +96,8 @@ class _OpxCell(_OpxRange):
     """
     def __new__(cls, cell, cell_dataonly, address):
         assert isinstance(address, AddressCell)
-        return ExcelWrapper.RangeData(
-            address, cls.cell_to_formula(cell), cell_dataonly.value)
+        return ExcelWrapper.RangeData.__new__(
+            cls, address, cls.cell_to_formula(cell), cell_dataonly.value)
 
 
 class ExcelOpxWrapper(ExcelWrapper):
