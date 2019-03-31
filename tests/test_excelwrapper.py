@@ -153,7 +153,7 @@ def test_table_name_containing(excel, address, table_name):
 
 
 @pytest.mark.parametrize(
-    'address, values, formulas',
+    'address, values, formula',
     [
         ('ArrayForm!H1:I2', ((1, 2), (1, 2)),
          (('=INDEX(COLUMN(A1:B1),1,1,1,2)', '=INDEX(COLUMN(A1:B1),1,2,1,2)'),
@@ -169,60 +169,26 @@ def test_table_name_containing(excel, address, table_name):
           ('=SUM((A7:A13<>"b")*(B7:B13<>"y")*C7:C13)',),
           ('=SUM((A7:A13>"b")*(B7:B13<"z")*(C7:C13+3.5))',))
          ),
-        ('ArrayForm!G16:H17', ((1, 6), (6, 16)),
-         (('=INDEX(A16:B17*D16:E17,1,1,2,2)',
-           '=INDEX(A16:B17*D16:E17,1,2,2,2)'),
-          ('=INDEX(A16:B17*D16:E17,2,1,2,2)',
-           '=INDEX(A16:B17*D16:E17,2,2,2,2)'))
+        ('ArrayForm!G16:H17',
+         ((1, 6), (6, 16)), '={A16:B17*D16:E17}'),
+        ('ArrayForm!E21:F24',
+         ((6, 6), (8, 8), (10, 10), (12, 12)), '={A21:A24+C21:C24}'
          ),
-        ('ArrayForm!E21:F24', ((6, 6), (8, 8), (10, 10), (12, 12)),
-         (('=INDEX(A21:A24+C21:C24,1,1,4,2)',
-           '=INDEX(A21:A24+C21:C24,1,2,4,2)'),
-          ('=INDEX(A21:A24+C21:C24,2,1,4,2)',
-           '=INDEX(A21:A24+C21:C24,2,2,4,2)'),
-          ('=INDEX(A21:A24+C21:C24,3,1,4,2)',
-           '=INDEX(A21:A24+C21:C24,3,2,4,2)'),
-          ('=INDEX(A21:A24+C21:C24,4,1,4,2)',
-           '=INDEX(A21:A24+C21:C24,4,2,4,2)'))
-         ),
-        ('ArrayForm!A32:D33', ((6, 8, 10, 12), (6, 8, 10, 12)),
-         (('=INDEX(A28:D28+A30:D30,1,1,2,4)',
-           '=INDEX(A28:D28+A30:D30,1,2,2,4)',
-           '=INDEX(A28:D28+A30:D30,1,3,2,4)',
-           '=INDEX(A28:D28+A30:D30,1,4,2,4)'),
-          ('=INDEX(A28:D28+A30:D30,2,1,2,4)',
-           '=INDEX(A28:D28+A30:D30,2,2,2,4)',
-           '=INDEX(A28:D28+A30:D30,2,3,2,4)',
-           '=INDEX(A28:D28+A30:D30,2,4,2,4)'))
+        ('ArrayForm!A32:D33',
+         ((6, 8, 10, 12), (6, 8, 10, 12)), '={A28:D28+A30:D30}'
          ),
         ('ArrayForm!F28:I31',
          ((5, 6, 7, 8), (10, 12, 14, 16), (15, 18, 21, 24), (20, 24, 28, 32)),
-         (('=INDEX(A21:A24*A30:D30,1,1,4,4)',
-           '=INDEX(A21:A24*A30:D30,1,2,4,4)',
-           '=INDEX(A21:A24*A30:D30,1,3,4,4)',
-           '=INDEX(A21:A24*A30:D30,1,4,4,4)'),
-          ('=INDEX(A21:A24*A30:D30,2,1,4,4)',
-           '=INDEX(A21:A24*A30:D30,2,2,4,4)',
-           '=INDEX(A21:A24*A30:D30,2,3,4,4)',
-           '=INDEX(A21:A24*A30:D30,2,4,4,4)'),
-          ('=INDEX(A21:A24*A30:D30,3,1,4,4)',
-           '=INDEX(A21:A24*A30:D30,3,2,4,4)',
-           '=INDEX(A21:A24*A30:D30,3,3,4,4)',
-           '=INDEX(A21:A24*A30:D30,3,4,4,4)'),
-          ('=INDEX(A21:A24*A30:D30,4,1,4,4)',
-           '=INDEX(A21:A24*A30:D30,4,2,4,4)',
-           '=INDEX(A21:A24*A30:D30,4,3,4,4)',
-           '=INDEX(A21:A24*A30:D30,4,4,4,4)'))
+         '={A21:A24*A30:D30}',
          ),
     ]
 )
-def test_array_formulas(excel, address, values, formulas):
+def test_array_formulas(excel, address, values, formula):
     result = excel.get_range(address)
     assert result.address == AddressRange(address)
     assert result.values == values
-    # ::TODO:: fix this with CSE reorg
-    assert result.formula is None
-    assert formulas is not None
+    if result.formula:
+        assert result.formula == formula
 
 
 def test_get_datetimes(excel):

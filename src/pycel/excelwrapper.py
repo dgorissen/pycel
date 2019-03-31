@@ -13,9 +13,10 @@ from openpyxl import load_workbook
 from openpyxl.cell.cell import Cell
 from openpyxl.cell.read_only import EMPTY_CELL
 from openpyxl.utils import datetime as opxl_dt
-from pycel.excelutil import AddressCell, AddressRange, MAX_ROW
+from pycel.excelutil import AddressCell, AddressRange, flatten, MAX_ROW
 
-ARRAY_FORMULA_FORMAT = '=INDEX(%s,%s,%s,%s,%s)'
+ARRAY_FORMULA_NAME = '=CSE_INDEX'
+ARRAY_FORMULA_FORMAT = '{}(%s,%s,%s,%s,%s)'.format(ARRAY_FORMULA_NAME)
 
 
 class ExcelWrapper:
@@ -67,9 +68,18 @@ class _OpxRange(ExcelWrapper.RangeData):
         (Formula & Value)
     """
     def __new__(cls, cells, cells_dataonly, address):
+        formula = None
+        value = cells[0][0].value
+        if isinstance(value, str) and value.startswith(ARRAY_FORMULA_NAME):
+            # if this range refers to a CSE Array Formula, get the formula
+            front = cells[0][0].value.rsplit(',', 4)[0]
+            if all(c.value and c.value.startswith(front)
+                   for c in flatten(cells)):
+                formula = '={%s}' % front[len(ARRAY_FORMULA_NAME) + 1:]
+
         values = tuple(tuple(cell.value for cell in row)
                        for row in cells_dataonly)
-        return ExcelWrapper.RangeData.__new__(cls, address, None, values)
+        return ExcelWrapper.RangeData.__new__(cls, address, formula, values)
 
     @classmethod
     def cell_to_formula(cls, cell):
@@ -77,7 +87,22 @@ class _OpxRange(ExcelWrapper.RangeData):
             return ''
         else:
             formula = str(cell.value)
-            return formula if formula.startswith('=') else ''
+            if not formula.startswith('='):
+                return ''
+
+            elif formula.startswith(ARRAY_FORMULA_NAME):
+                params = formula[len(ARRAY_FORMULA_NAME) + 1:-1].rsplit(',', 4)
+                start_row = cell.row - int(params[1]) + 1
+                start_col_idx = cell.col_idx - int(params[2]) + 1
+                end_row = start_row + int(params[3]) - 1
+                end_col_idx = start_col_idx + int(params[4]) - 1
+                cse_range = AddressRange(
+                    (start_col_idx, start_row, end_col_idx, end_row),
+                    sheet=cell.parent.title)
+                return '=index({},{},{})'.format(
+                    cse_range.quoted_address, *params[1:3])
+            else:
+                return formula
 
     @property
     def resolve_range(self):
@@ -167,7 +192,6 @@ class ExcelOpxWrapper(ExcelWrapper):
                 ref_addr = AddressRange(props.get('ref'))
 
                 if isinstance(ref_addr, AddressRange):
-                    # Single cell array formulas can be ignored
                     formula = ws[address].value
                     for i, row in enumerate(ref_addr.rows, start=1):
                         for j, addr in enumerate(row, start=1):
