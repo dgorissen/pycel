@@ -237,16 +237,6 @@ def index(array, row_num, col_num=None, rows=None, cols=None):
     # Excel reference: https://support.office.com/en-us/article/
     #   index-function-a5dcf0dd-996d-40a4-a822-b56b061328bd
 
-    # A returned string is an error code
-    if isinstance(array, str):
-        return array
-
-    if row_num in ERROR_CODES:
-        return row_num
-
-    if col_num in ERROR_CODES:
-        return col_num
-
     if not list_like(array) or not list_like(array[0]):
         return VALUE_ERROR
 

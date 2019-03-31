@@ -52,6 +52,8 @@ from pycel.excelutil import (
     VALUE_ERROR,
 )
 
+from pycel.lib.function_helpers import error_string_wrapper
+
 
 def test_numerics():
     assert (1, 3, 2, 3.1) == _numerics(1, '3', 2.0, pytest, 3.1, 'x')
@@ -354,10 +356,11 @@ class TestIndex:
         assert NA_ERROR == index(TestIndex.test_data, None)
 
     def test_error_inputs(self):
-        assert NA_ERROR == index(NA_ERROR, 1)
-        assert NA_ERROR == index(TestIndex.test_data, NA_ERROR, 1)
-        assert NA_ERROR == index(TestIndex.test_data, 1, NA_ERROR)
-        assert VALUE_ERROR == index(None, 1, 1)
+        index_f = error_string_wrapper(index)
+        assert NA_ERROR == index_f(NA_ERROR, 1)
+        assert NA_ERROR == index_f(TestIndex.test_data, NA_ERROR, 1)
+        assert NA_ERROR == index_f(TestIndex.test_data, 1, NA_ERROR)
+        assert VALUE_ERROR == index_f(None, 1, 1)
 
     def test_np_ndarray(self):
         test_data = np.asarray(self.test_data)

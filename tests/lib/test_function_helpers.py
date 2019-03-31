@@ -1,8 +1,16 @@
+from unittest import mock
 import importlib
 import math
 import pytest
 
-from pycel.lib.function_helpers import cse_array_wrapper, load_functions
+
+from pycel.excelutil import DIV0, NUM_ERROR
+
+from pycel.lib.function_helpers import (
+    cse_array_wrapper,
+    error_string_wrapper,
+    load_functions,
+)
 
 
 DATA = (
@@ -27,9 +35,32 @@ def test_cse_array_wrapper(arg_num, f_args, result):
     assert cse_array_wrapper(f_test, arg_num)(*f_args) == result
 
 
+@pytest.mark.parametrize(
+    'arg_nums, f_args, result', (
+        ((0, 1), (DIV0, 1), DIV0),
+        ((0, 1), (1, DIV0), DIV0),
+        ((0, 1), (NUM_ERROR, DIV0), NUM_ERROR),
+        ((0, 1), (DIV0, NUM_ERROR), DIV0),
+        ((0,), (1, DIV0), "args: (1, '#DIV/0!')"),
+        ((1,), (1, DIV0), DIV0),
+    )
+)
+def test_error_string_wrapper(arg_nums, f_args, result):
+
+    def f_test(*args):
+        return 'args: {}'.format(args)
+
+    esf_name = 'pycel.lib.function_helpers.error_string_functions'
+    with mock.patch(esf_name, {'f_test': arg_nums}):
+        assert error_string_wrapper(f_test)(*f_args) == result
+
+    assert error_string_wrapper(f_test, arg_nums)(*f_args) == result
+
+
 def test_load_functions():
 
     modules = (
+        importlib.import_module('pycel.excellib'),
         importlib.import_module('pycel.lib.logical'),
         importlib.import_module('math'),
     )
@@ -52,3 +83,6 @@ def test_load_functions():
 
     assert namespace['x_if'](0, 'Y', 'N') == 'N'
     assert namespace['x_if'](((0, 1),), 'Y', 'N') == (('N', 'Y'),)
+
+    missing = load_functions(['index'], namespace, modules)
+    assert namespace['index'](DIV0, 1, 1) == DIV0
