@@ -16,12 +16,11 @@ from pycel.excelutil import (
     ERROR_CODES,
     get_linest_degree,
     in_array_formula_context,
-    math_wrap,
     NAME_ERROR,
     PyCelException,
     uniqueify,
 )
-from pycel.lib.function_helpers import load_functions
+from pycel.lib.function_helpers import load_functions, math_wrapper
 from pycel.lib.function_info import func_status_msg
 
 
@@ -834,7 +833,7 @@ class ExcelFormula:
             name_space['pi'] = math.pi
 
             for name in ('int', 'abs', 'round'):
-                name_space[name] = math_wrap(
+                name_space[name] = math_wrapper(
                     globals()['__builtins__'][name])
 
             # function to fixup the operands

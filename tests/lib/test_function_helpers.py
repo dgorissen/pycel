@@ -4,12 +4,13 @@ import math
 import pytest
 
 
-from pycel.excelutil import DIV0, NUM_ERROR
+from pycel.excelutil import DIV0, NUM_ERROR, VALUE_ERROR
 
 from pycel.lib.function_helpers import (
     cse_array_wrapper,
     error_string_wrapper,
     load_functions,
+    math_wrapper,
 )
 
 
@@ -55,6 +56,23 @@ def test_error_string_wrapper(arg_nums, f_args, result):
         assert error_string_wrapper(f_test)(*f_args) == result
 
     assert error_string_wrapper(f_test, arg_nums)(*f_args) == result
+
+
+@pytest.mark.parametrize(
+    'value, result', (
+        (1, 1),
+        (DIV0, DIV0),
+        (None, 0),
+        ('1.1', 1.1),
+        ('xyzzy', VALUE_ERROR),
+    )
+)
+def test_math_wrap(value, result):
+    assert math_wrapper(lambda x: x)(value) == result
+
+
+def test_math_wrap_domain_error():
+    assert math_wrapper(math.log)(-1) == NUM_ERROR
 
 
 def test_load_functions():

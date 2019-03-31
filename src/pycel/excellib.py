@@ -24,7 +24,6 @@ from pycel.excelutil import (
     is_leap_year,
     is_number,
     list_like,
-    math_wrap,
     MAX_COL,
     MAX_ROW,
     NA_ERROR,
@@ -32,6 +31,8 @@ from pycel.excelutil import (
     PyCelException,
     VALUE_ERROR,
 )
+
+from pycel.lib.function_helpers import math_wrapper
 
 
 def _numerics(*args, no_bools=False):
@@ -541,7 +542,7 @@ def roundup_unwrapped(number, num_digits):
     return float(Decimal(repr(number)).quantize(quant, rounding=ROUND_UP))
 
 
-roundup = math_wrap(roundup_unwrapped)
+roundup = math_wrapper(roundup_unwrapped)
 
 
 def row(ref):
@@ -650,7 +651,7 @@ def xatan2(value1, value2):
         return value2
 
     # swap arguments
-    return math_wrap(atan2)(value2, value1)
+    return math_wrapper(atan2)(value2, value1)
 
 
 def xlen(value):
@@ -665,9 +666,9 @@ def xlen(value):
 
 def xlog(value):
     if list_like(value):
-        return [math_wrap(log)(x) for x in flatten(value)]
+        return [math_wrapper(log)(x) for x in flatten(value)]
     else:
-        return math_wrap(log)(value)
+        return math_wrapper(log)(value)
 
 
 def xmax(*args):

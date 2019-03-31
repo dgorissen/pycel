@@ -1,4 +1,3 @@
-import math
 import os
 import pickle
 from collections import namedtuple
@@ -25,7 +24,6 @@ from pycel.excelutil import (
     list_like,
     MAX_COL,
     MAX_ROW,
-    math_wrap,
     NUM_ERROR,
     normalize_year,
     OPERATORS,
@@ -509,23 +507,6 @@ def test_coerce_to_number():
 )
 def test_coerce_to_string(value, result):
     assert coerce_to_string(value) == result
-
-
-@pytest.mark.parametrize(
-    'value, result', (
-        (1, 1),
-        (DIV0, DIV0),
-        (None, 0),
-        ('1.1', 1.1),
-        ('xyzzy', VALUE_ERROR),
-    )
-)
-def test_math_wrap(value, result):
-    assert math_wrap(lambda x: x)(value) == result
-
-
-def test_math_wrap_domain_error():
-    assert math_wrap(math.log)(-1) == NUM_ERROR
 
 
 def test_get_linest_degree():

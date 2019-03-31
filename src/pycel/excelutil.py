@@ -909,27 +909,6 @@ def coerce_to_string(value):
         return value
 
 
-def math_wrap(bare_func):
-    """wrapper for functions that take numbers to handle errors"""
-
-    def func(*args):
-        # this is a bit of a ::HACK:: to quickly address the most common cases
-        # for reasonable math function parameters
-        for arg in args:
-            if arg in ERROR_CODES:
-                return arg
-        if not (is_number(args[0]) or args[0] in (None, EMPTY)):
-            return VALUE_ERROR
-        try:
-            return bare_func(*(0 if a in (None, EMPTY)
-                               else coerce_to_number(a) for a in args))
-        except ValueError as exc:
-            if "math domain error" in str(exc):
-                return NUM_ERROR
-            raise  # pragma: no cover
-    return func
-
-
 def is_leap_year(year):
     if not is_number(year):
         raise TypeError("%s must be a number" % str(year))
