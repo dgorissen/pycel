@@ -21,6 +21,7 @@ from pycel.excelutil import (
     PyCelException,
     uniqueify,
 )
+from pycel.lib.function_helpers import load_functions
 from pycel.lib.function_info import func_status_msg
 
 
@@ -847,20 +848,7 @@ class ExcelFormula:
             compiled, names = excel_formula.compiled_python
 
             # load the needed names
-            not_found = set()
-            for name in names:
-                if name not in name_space:
-                    funcs = ((getattr(module, name, None), module)
-                             for module in modules)
-                    func, module = next(
-                        (f for f in funcs if f[0] is not None), (None, None))
-                    if func is None:
-                        not_found.add(name)
-                    else:
-                        if module.__name__ == 'math':
-                            name_space[name] = math_wrap(func)
-                        else:
-                            name_space[name] = func
+            not_found = load_functions(names, name_space, modules)
 
             # exec the code to define the lambda
             exec(compiled, name_space, name_space)
