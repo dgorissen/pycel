@@ -243,6 +243,22 @@ def test_unquote_sheetname(sheet_name):
     assert sheet_name == unquote_sheetname(quote_sheetname(sheet_name))
 
 
+@pytest.mark.parametrize(
+    'sheet_name',
+    [
+        u'In Dusseldorf',
+        u'My-Sheet',
+        u"Demande d'autorisation",
+        "1sheet",
+        ".sheet",
+        '"',
+    ]
+)
+def test_quoted_address(sheet_name):
+    addr = AddressCell('A1', sheet=sheet_name)
+    assert addr.quoted_address == '{}!A1'.format(quote_sheetname(sheet_name))
+
+
 def test_split_sheetname():
 
     assert ('', 'B1') == split_sheetname('B1')

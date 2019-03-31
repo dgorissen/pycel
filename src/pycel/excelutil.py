@@ -8,7 +8,8 @@ import numpy as np
 from openpyxl.formula.tokenizer import Tokenizer
 from openpyxl.utils import (
     get_column_letter,
-    range_boundaries as openpyxl_range_boundaries
+    quote_sheetname,
+    range_boundaries as openpyxl_range_boundaries,
 )
 
 
@@ -103,8 +104,28 @@ class PyCelException(Exception):
     """Base class for PyCel errors"""
 
 
+class AddressMixin:
+
+    def __str__(self):
+        return self.address
+
+    @property
+    def has_sheet(self):
+        """Does the address have a sheet?"""
+        return bool(self.sheet)
+
+    @property
+    def quoted_address(self):
+        """requote the sheetname if going to include in formulas"""
+        return "{}!{}".format(quote_sheetname(self.sheet), self.coordinate)
+
+    @property
+    def sort_key(self):
+        return self.sheet, self.col_idx, self.row
+
+
 class AddressRange(collections.namedtuple(
-        'Address', 'address sheet start end coordinate')):
+        'Address', 'address sheet start end coordinate'), AddressMixin):
     """ Helper class for constructing, validating and accessing Range Addresses
 
     **Tuple Attributes:**
@@ -174,9 +195,6 @@ class AddressRange(collections.namedtuple(
             cls, format_str.format(sheet, coordinate),
             sheet, start, end, coordinate)
 
-    def __str__(self):
-        return self.address
-
     def __add__(self, other):
         """Assumes rectangular only"""
         other = AddressRange.create(other)
@@ -232,15 +250,6 @@ class AddressRange(collections.namedtuple(
         return self._size
 
     @property
-    def has_sheet(self):
-        """Does the address have a sheet?"""
-        return bool(self.sheet)
-
-    @property
-    def sort_key(self):
-        return self.sheet, self.start.col_idx, self.start.row
-
-    @property
     def rows(self):
         """Get each address for every cell, yields one row at a time."""
         col_range = self.start.col_idx, self.end.col_idx + 1
@@ -292,7 +301,7 @@ class AddressRange(collections.namedtuple(
 
 
 class AddressCell(collections.namedtuple(
-        'AddressCell', 'address sheet col_idx row coordinate')):
+        'AddressCell', 'address sheet col_idx row coordinate'), AddressMixin):
     """ Helper class for constructing, validating and accessing Cell Addresses
 
     **Tuple Attributes:**
@@ -358,9 +367,6 @@ class AddressCell(collections.namedtuple(
             cls, format_str.format(sheet, coordinate),
             sheet, col_idx, row, coordinate)
 
-    def __str__(self):
-        return self.address
-
     # Is this address a range?
     is_range = False
 
@@ -368,15 +374,6 @@ class AddressCell(collections.namedtuple(
     is_bounded_range = False
 
     size = AddressSize(1, 1)
-
-    @property
-    def has_sheet(self):
-        """Does the address have a sheet?"""
-        return bool(self.sheet)
-
-    @property
-    def sort_key(self):
-        return self.sheet, self.col_idx, self.row
 
     @property
     def column(self):
