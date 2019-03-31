@@ -19,6 +19,7 @@ from pycel.excelutil import (
     flatten,
     get_linest_degree,
     get_max_days_in_month,
+    in_array_formula_context,
     is_leap_year,
     is_number,
     list_like,
@@ -567,6 +568,56 @@ def test_get_linest_degree():
     assert (4, 3) == get_linest_degree(Cell(Excel('CDEFG', '5')))
     assert (4, 2) == get_linest_degree(Cell(Excel('DEFGH', '5')))
     assert (4, 1) == get_linest_degree(Cell(Excel('EFGHI', '5')))
+
+
+def test_in_array_formula_context():
+
+    assert not in_array_formula_context
+    with in_array_formula_context('A1'):
+        assert in_array_formula_context
+
+    def return_in_context():
+        return in_array_formula_context
+
+    assert not return_in_context()
+    with in_array_formula_context('A1'):
+        assert return_in_context()
+
+    assert not return_in_context()
+    try:
+        with in_array_formula_context('A1'):
+            assert return_in_context()
+            raise PyCelException
+    except PyCelException:
+        pass
+    assert not return_in_context()
+
+
+@pytest.mark.parametrize(
+    'address, value, result', (
+        (None, 1, 1),
+        (None, ((1, 2), (3, 4)), ((1, 2), (3, 4))),
+        ('A1', 1, ((1,),)),
+        ('A1', ((1, 2), (3, 4)), ((1, 2), (3, 4))),
+
+        ('A1:B1', 2, ((2, 2),)),
+        ('A1:A2', 3, ((3, ), (3, ))),
+        ('A1:B2', 4, ((4, 4), (4, 4),)),
+
+        ('A1:B1', ((1, 2),), ((1, 2),)),
+        ('A1:B2', ((1, 2),), ((1, 2), (1, 2),)),
+
+        ('A1:A2', ((1, ), (3, )), ((1, ), (3, ))),
+        ('A1:B2', ((1, ), (3, )), ((1, 1), (3, 3))),
+
+        ('A1:B1', ((1, 2), (3, 4)), ((1, 2), (3, 4))),
+    )
+)
+def test_array_formula_context_expand(address, value, result):
+    if address is not None:
+        address = AddressRange(address, sheet='s')
+    with in_array_formula_context(address):
+        assert in_array_formula_context.expand(value) == result
 
 
 def test_flatten():

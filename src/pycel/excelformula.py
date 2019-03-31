@@ -15,6 +15,7 @@ from pycel.excelutil import (
     EMPTY,
     ERROR_CODES,
     get_linest_degree,
+    in_array_formula_context,
     math_wrap,
     NAME_ERROR,
     PyCelException,
@@ -867,7 +868,7 @@ class ExcelFormula:
             del name_space['lambdas']
             return not_found
 
-        def eval_func(excel_formula):
+        def eval_func(excel_formula, cse_array_address=None):
             """ Call the compiled lambda to evaluate the cell """
 
             if excel_formula.compiled_lambda is None:
@@ -879,7 +880,9 @@ class ExcelFormula:
                         func_status_msg(f)[1] for f in sorted(missing))
 
             try:
-                ret_val = excel_formula.compiled_lambda()
+                with in_array_formula_context(cse_array_address):
+                    ret_val = in_array_formula_context.expand(
+                        excel_formula.compiled_lambda())
 
             except NameError:
                 error_logger('error', excel_formula.python_code,

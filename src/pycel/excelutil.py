@@ -3,6 +3,7 @@ import collections
 import datetime as dt
 import operator
 import re
+import threading
 
 import numpy as np
 from openpyxl.formula.tokenizer import Tokenizer
@@ -784,6 +785,64 @@ def get_linest_degree(cell):
     # if degree is zero -> only one linest formula
     # linear regression -> degree should be one
     return max(degree, 1), coef
+
+
+class _ArrayFormulaContext:
+    """ When evaluating array like data, need to know the context
+        that the result will end up in
+    """
+    ns = threading.local()
+
+    def __init__(self):
+        self.ns.in_array_context = False
+        self.ns.ctx_addresses = []
+        self.ns._ctx_address = None
+
+    def __bool__(self):
+        return bool(self.ctx_address)
+
+    def __call__(self, address):
+        self.ns._ctx_address = address
+        return self
+
+    def __enter__(self):
+        self.ns.ctx_addresses.append(self.ns._ctx_address)
+        self.ns._ctx_address = None
+        self.ns.in_array_context = True
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.ns.ctx_addresses.pop()
+
+    @property
+    def ctx_address(self):
+        return self.ns.ctx_addresses and self.ns.ctx_addresses[-1]
+
+    def expand(self, result):
+        """Expand an answer to fill a range"""
+        ctx_address = self.ctx_address
+        if ctx_address is not None:
+
+            if list_like(result):
+                # results are either scalar or rectangular array
+                assert list_like(result[0])
+                result_size = AddressSize(len(result), len(result[0]))
+            else:
+                result_size = AddressSize(1, 1)
+                result = ((result, ), )
+
+            # if result is one col wide and target is wider, then expand columns
+            ctx_size = ctx_address.size
+            if result_size.width == 1 and ctx_size.width != 1:
+                result = tuple(r * ctx_size.width for r in result)
+
+            # if result is one row high and target is taller, then expand rows
+            if result_size.height == 1 and ctx_size.height != 1:
+                result *= ctx_size.height
+
+        return result
+
+
+in_array_formula_context = _ArrayFormulaContext()
 
 
 def flatten(data, coerce=lambda x: x):
