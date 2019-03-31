@@ -76,11 +76,11 @@ def test_average():
 @pytest.mark.parametrize(
     'address, expected', (
         ('L45', 12),
-        ('B:E', (2, 3, 4, 5)),
+        ('B:E', ((2, 3, 4, 5), )),
         ('4:7', None),
-        ('D1:E1', (4, 5)),
-        ('D1:D2', (4, )),
-        ('D1:E2', (4, 5)),
+        ('D1:E1', ((4, 5), )),
+        ('D1:D2', ((4, ), )),
+        ('D1:E2', ((4, 5), )),
         (DIV0, DIV0),
         (NUM_ERROR, NUM_ERROR),
         (VALUE_ERROR, VALUE_ERROR),
@@ -318,6 +318,7 @@ class TestIndex:
     """
     test_data = [[0, 1], [2, 3]]
     test_data_col = [[0], [2]]
+    test_data_row = [[0, 1]]
 
     def test_array(self):
 
@@ -338,22 +339,25 @@ class TestIndex:
         assert (1, 3) == index(tuple(TestIndex.test_data), None, 2)
 
     def test_no_column_on_vector(self):
-        assert 2 == index(TestIndex.test_data[1], 1)
-        assert 3 == index(TestIndex.test_data[1], 2)
+        assert [0, 1] == index(TestIndex.test_data_row, 1)
+        assert 0 == index(TestIndex.test_data_col, 1)
+        assert 2 == index(TestIndex.test_data_col, 2)
 
     def test_column_on_vector(self):
-        assert 2 == index(TestIndex.test_data[1], 1, 1)
-        assert 3 == index(TestIndex.test_data[1], 1, 2)
+        assert [0, 2] == index(TestIndex.test_data_col, None, 1)
+        assert 0 == index(TestIndex.test_data_row, None, 1)
+        assert 1 == index(TestIndex.test_data_row, None, 2)
 
     def test_out_of_range(self):
-        assert NA_ERROR == index(TestIndex.test_data[1], 2, 2)
-        assert NA_ERROR == index(TestIndex.test_data[1], 1, 3)
+        assert NA_ERROR == index(TestIndex.test_data_row, 2, 2)
+        assert NA_ERROR == index(TestIndex.test_data_col, 1, 3)
         assert NA_ERROR == index(TestIndex.test_data, None)
 
     def test_error_inputs(self):
         assert NA_ERROR == index(NA_ERROR, 1)
         assert NA_ERROR == index(TestIndex.test_data, NA_ERROR, 1)
         assert NA_ERROR == index(TestIndex.test_data, 1, NA_ERROR)
+        assert VALUE_ERROR == index(None, 1, 1)
 
     def test_np_ndarray(self):
         test_data = np.asarray(self.test_data)
@@ -694,9 +698,9 @@ def test_roundup(number, digits, result):
     'address, expected', (
         ('L45', 45),
         ('B:E', None),
-        ('4:7', (4, 5, 6, 7)),
-        ('D1:E1', (1, )),
-        ('D1:D2', (1, 2)),
+        ('4:7', ((4,), (5,), (6,), (7,))),
+        ('D1:E1', ((1,), )),
+        ('D1:D2', ((1,), (2,))),
         (DIV0, DIV0),
         (NUM_ERROR, NUM_ERROR),
         (VALUE_ERROR, VALUE_ERROR),

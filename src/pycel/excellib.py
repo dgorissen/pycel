@@ -67,7 +67,7 @@ def column(ref):
         if ref.end.col_idx == 0:
             return range(1, MAX_COL + 1)
         else:
-            return tuple(range(ref.start.col_idx, ref.end.col_idx + 1))
+            return (tuple(range(ref.start.col_idx, ref.end.col_idx + 1)), )
     else:
         return ref.col_idx
 
@@ -247,36 +247,37 @@ def index(array, row_num, col_num=None, rows=None, cols=None):
     if col_num in ERROR_CODES:
         return col_num
 
+    if not list_like(array) or not list_like(array[0]):
+        return VALUE_ERROR
+
     try:
-        if list_like(array[0]):
-            if rows or cols:
-                # when we get array formulas out of the worksheet we expand
-                # them into an index call.  If we have rows and cols then
-                # this is the size of the original range.  Excel will expand
-                # a vector to fill the rectangle.
-                if 1 == len(array) and row_num <= rows:
-                    row_num = 1
-                if 1 == len(array[0]) and col_num <= cols:
-                    col_num = 1
+        if rows or cols:
+            # when we get array formulas out of the worksheet we expand
+            # them into an index call.  If we have rows and cols then
+            # this is the size of the original range.  Excel will expand
+            # a vector to fill the rectangle.
+            if 1 == len(array) and row_num <= rows:
+                row_num = 1
+            if 1 == len(array[0]) and col_num <= cols:
+                col_num = 1
 
-            # rectangular array
-            if None not in (row_num, col_num):
-                return array[row_num - 1][col_num - 1]
+        # rectangular array
+        if None not in (row_num, col_num):
+            return array[row_num - 1][col_num - 1]
 
-            elif row_num is not None:
+        elif row_num is not None:
+            if len(array[0]) == 1:
+                return array[row_num - 1][0]
+            else:
                 return array[row_num - 1]
 
-            elif col_num is not None:
-                if isinstance(array, np.ndarray):
-                    return array[:, col_num - 1]
-                else:
-                    return type(array)(row[col_num - 1] for row in array)
-
-        elif col_num in (1, None):
-            return array[row_num - 1]
-
-        elif row_num == 1:
-            return array[col_num - 1]
+        elif col_num is not None:
+            if len(array) == 1:
+                return array[0][col_num - 1]
+            elif isinstance(array, np.ndarray):
+                return array[:, col_num - 1]
+            else:
+                return type(array)(row[col_num - 1] for row in array)
 
     except IndexError:
         pass
@@ -561,7 +562,7 @@ def row(ref):
         if ref.end.row == 0:
             return range(1, MAX_ROW + 1)
         else:
-            return tuple(range(ref.start.row, ref.end.row + 1))
+            return tuple((c, ) for c in range(ref.start.row, ref.end.row + 1))
     else:
         return ref.row
 

@@ -719,16 +719,16 @@ def test_column():
     eval_ctx = ExcelFormula.build_eval_context(None, None)
 
     assert 12 == eval_ctx(ExcelFormula('=COLUMN(L45)'))
-    assert (2, 3, 4, 5) == eval_ctx(ExcelFormula('=COLUMN(B:E)'))
+    assert ((2, 3, 4, 5), ) == eval_ctx(ExcelFormula('=COLUMN(B:E)'))
     assert 1 == next(iter(eval_ctx(ExcelFormula('=COLUMN(4:7)'))))
-    assert (4, 5) == eval_ctx(ExcelFormula('=COLUMN(D1:E1)'))
-    assert (4, ) == eval_ctx(ExcelFormula('=COLUMN(D1:D2)'))
-    assert (4, 5) == eval_ctx(ExcelFormula('=COLUMN(D1:E2)'))
+    assert ((4, 5), ) == eval_ctx(ExcelFormula('=COLUMN(D1:E1)'))
+    assert ((4, ), ) == eval_ctx(ExcelFormula('=COLUMN(D1:D2)'))
+    assert ((4, 5), ) == eval_ctx(ExcelFormula('=COLUMN(D1:E2)'))
 
     cell = ATestCell('B', 3)
     assert 2 == eval_ctx(ExcelFormula('=COLUMN()', cell=cell))
 
-    assert (2, 3, 4, 5) == eval_ctx(ExcelFormula('=COLUMN(B6:D7 C7:E7)'))
+    assert ((2, 3, 4, 5), ) == eval_ctx(ExcelFormula('=COLUMN(B6:D7 C7:E7)'))
 
 
 def test_row():
@@ -736,15 +736,15 @@ def test_row():
 
     assert 45 == eval_ctx(ExcelFormula('=ROW(L45)'))
     assert 1 == next(iter(eval_ctx(ExcelFormula('=ROW(B:E)'))))
-    assert (4, 5, 6, 7) == eval_ctx(ExcelFormula('=ROW(4:7)'))
-    assert (1, ) == eval_ctx(ExcelFormula('=ROW(D1:E1)'))
-    assert (1, 2) == eval_ctx(ExcelFormula('=ROW(D1:D2)'))
-    assert (1, 2) == eval_ctx(ExcelFormula('=ROW(D1:E2)'))
+    assert ((4,), (5,), (6,), (7,)) == eval_ctx(ExcelFormula('=ROW(4:7)'))
+    assert ((1,), ) == eval_ctx(ExcelFormula('=ROW(D1:E1)'))
+    assert ((1,), (2,)) == eval_ctx(ExcelFormula('=ROW(D1:D2)'))
+    assert ((1,), (2,)) == eval_ctx(ExcelFormula('=ROW(D1:E2)'))
 
     cell = ATestCell('B', 3)
     assert 3 == eval_ctx(ExcelFormula('=ROW()', cell=cell))
 
-    assert (6, 7) == eval_ctx(ExcelFormula('=ROW(B6:D7 C7:E7)'))
+    assert ((6,), (7,)) == eval_ctx(ExcelFormula('=ROW(B6:D7 C7:E7)'))
 
 
 @pytest.mark.parametrize(
