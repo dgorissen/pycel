@@ -32,7 +32,7 @@ class ExcelCompiler:
 
     def __init__(self, filename=None, excel=None):
 
-        self.eval = None
+        self._eval = None
 
         if excel:
             # if we are running as an excel addin, this gets passed to us
@@ -67,7 +67,7 @@ class ExcelCompiler:
     def __getstate__(self):
         # code objects are not serializable
         state = dict(self.__dict__)
-        for to_remove in 'eval excel log graph_todos range_todos'.split():
+        for to_remove in '_eval excel log graph_todos range_todos'.split():
             if to_remove in state:    # pragma: no branch
                 state[to_remove] = None
         return state
@@ -95,6 +95,13 @@ class ExcelCompiler:
     def hash_matches(self):
         current_hash = self._compute_excel_file_md5_digest
         return self._excel_file_md5_digest == current_hash
+
+    @property
+    def eval(self):
+        if self._eval is None:
+            self._eval = ExcelFormula.build_eval_context(
+                self._evaluate, self._evaluate_range, self.log)
+        return self._eval
 
     @classmethod
     def _filename_has_extension(cls, filename):
@@ -636,9 +643,6 @@ class ExcelCompiler:
             elif cell.python_code:
                 self.log.debug(
                     "Evaluating: {}, {}".format(cell.address, cell.python_code))
-                if self.eval is None:
-                    self.eval = ExcelFormula.build_eval_context(
-                        self._evaluate, self._evaluate_range, self.log)
                 value = self.eval(cell.formula)
                 self.log.info("Cell %s evaluated to '%s' (%s)" % (
                     cell.address, value, type(value).__name__))
