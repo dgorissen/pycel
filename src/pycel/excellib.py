@@ -234,7 +234,7 @@ def hlookup(lookup_value, table_array, row_index_num, range_lookup=True):
         return result_idx
 
 
-def index(array, row_num, col_num=None, rows=None, cols=None):
+def index(array, row_num, col_num=None):
     # Excel reference: https://support.office.com/en-us/article/
     #   index-function-a5dcf0dd-996d-40a4-a822-b56b061328bd
 
@@ -242,33 +242,31 @@ def index(array, row_num, col_num=None, rows=None, cols=None):
         return VALUE_ERROR
 
     try:
-        if rows or cols:
-            # when we get array formulas out of the worksheet we expand
-            # them into an index call.  If we have rows and cols then
-            # this is the size of the original range.  Excel will expand
-            # a vector to fill the rectangle.
-            if 1 == len(array) and row_num <= rows:
-                row_num = 1
-            if 1 == len(array[0]) and col_num <= cols:
-                col_num = 1
-
         # rectangular array
-        if None not in (row_num, col_num):
+        if row_num and col_num:
             return array[row_num - 1][col_num - 1]
 
-        elif row_num is not None:
+        elif row_num:
             if len(array[0]) == 1:
                 return array[row_num - 1][0]
+            elif len(array) == 1:
+                return array[0][row_num - 1]
+            elif isinstance(array, np.ndarray):
+                return array[row_num - 1, :]
             else:
-                return array[row_num - 1]
+                return (tuple(array[row_num - 1]),)
 
-        elif col_num is not None:
+        elif col_num:
             if len(array) == 1:
                 return array[0][col_num - 1]
+            elif len(array[0]) == 1:
+                return array[col_num - 1][0]
             elif isinstance(array, np.ndarray):
-                return array[:, col_num - 1]
+                result = array[:, col_num - 1]
+                result.shape = result.shape + (1,)
+                return result
             else:
-                return type(array)(row[col_num - 1] for row in array)
+                return tuple((r[col_num - 1], ) for r in array)
 
     except IndexError:
         pass

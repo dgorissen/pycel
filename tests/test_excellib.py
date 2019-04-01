@@ -318,72 +318,67 @@ class TestIndex:
     INDEX returns the #REF! error value.
 
     """
-    test_data = [[0, 1], [2, 3]]
-    test_data_col = [[0], [2]]
-    test_data_row = [[0, 1]]
+    test_data = ((0, 1), (2, 3))
+    test_data_col = ((0,), (2,))
+    test_data_row = ((0, 1),)
+    test_data_np = np.asarray(test_data)
 
-    def test_array(self):
+    @staticmethod
+    @pytest.mark.parametrize(
+        'data, row_num, col_num, expected', (
+            (test_data, 1, 1, 0),
+            (test_data, 1, 2, 1),
+            (test_data, 2, 1, 2),
+            (test_data, 2, 2, 3),
 
-        assert 0 == index(TestIndex.test_data, 1, 1)
-        assert 1 == index(TestIndex.test_data, 1, 2)
-        assert 2 == index(TestIndex.test_data, 2, 1)
-        assert 3 == index(TestIndex.test_data, 2, 2)
+            # no col given
+            (test_data, 1, None, ((0, 1),)),
+            (test_data, 2, None, ((2, 3),)),
+            (test_data_col, 1, None, 0),
+            (test_data_col, 2, None, 2),
+            (test_data_row, 1, None, 0),
+            (test_data_row, 2, None, 1),
 
-    def test_no_column_on_matrix(self):
-        assert [0, 1] == index(TestIndex.test_data, 1)
-        assert [2, 3] == index(TestIndex.test_data, 2)
+            # no row given
+            (test_data, None, 1, ((0,), (2,))),
+            (test_data, None, 2, ((1,), (3,))),
+            (test_data_col, None, 1, 0),
+            (test_data_col, None, 2, 2),
+            (test_data_row, None, 1, 0),
+            (test_data_row, None, 2, 1),
 
-    def test_column_on_matrix(self):
-        assert [0, 2] == index(TestIndex.test_data, None, 1)
-        assert [1, 3] == index(TestIndex.test_data, None, 2)
+            # OOR
+            (test_data_row, 2, 2, NA_ERROR),
+            (test_data_col, 1, 3, NA_ERROR),
+            (test_data, None, None, NA_ERROR),
 
-        assert (0, 2) == index(tuple(TestIndex.test_data), None, 1)
-        assert (1, 3) == index(tuple(TestIndex.test_data), None, 2)
+            # numpy
+            (test_data_np, 1, 1, 0),
+            (test_data_np, 1, 2, 1),
+            (test_data_np, 2, 1, 2),
+            (test_data_np, 2, 2, 3),
 
-    def test_no_column_on_vector(self):
-        assert [0, 1] == index(TestIndex.test_data_row, 1)
-        assert 0 == index(TestIndex.test_data_col, 1)
-        assert 2 == index(TestIndex.test_data_col, 2)
+            (test_data_np, 1, None, np.array(((0, 1),))),
+            (test_data_np, 2, None, np.array(((2, 3),))),
 
-    def test_column_on_vector(self):
-        assert [0, 2] == index(TestIndex.test_data_col, None, 1)
-        assert 0 == index(TestIndex.test_data_row, None, 1)
-        assert 1 == index(TestIndex.test_data_row, None, 2)
+            (test_data_np, None, 1, np.array(((0,), (2,)))),
+            (test_data_np, None, 2, np.array(((1,), (3,)))),
+        )
+    )
+    def test_index(data, row_num, col_num, expected):
+        result = index(data, row_num, col_num)
+        if isinstance(expected, np.ndarray):
+            assert (result == expected).all()
+        else:
+            assert result == expected
 
-    def test_out_of_range(self):
-        assert NA_ERROR == index(TestIndex.test_data_row, 2, 2)
-        assert NA_ERROR == index(TestIndex.test_data_col, 1, 3)
-        assert NA_ERROR == index(TestIndex.test_data, None)
-
-    def test_error_inputs(self):
+    @staticmethod
+    def test_index_error_inputs():
         index_f = error_string_wrapper(index)
         assert NA_ERROR == index_f(NA_ERROR, 1)
         assert NA_ERROR == index_f(TestIndex.test_data, NA_ERROR, 1)
         assert NA_ERROR == index_f(TestIndex.test_data, 1, NA_ERROR)
         assert VALUE_ERROR == index_f(None, 1, 1)
-
-    def test_np_ndarray(self):
-        test_data = np.asarray(self.test_data)
-
-        assert 0 == index(test_data, 1, 1)
-        assert 1 == index(test_data, 1, 2)
-        assert 2 == index(test_data, 2, 1)
-        assert 3 == index(test_data, 2, 2)
-
-        assert [0, 1] == list(index(test_data, 1))
-        assert [2, 3] == list(index(test_data, 2))
-
-        assert [0, 2] == list(index(test_data, None, 1))
-        assert [1, 3] == list(index(test_data, None, 2))
-
-    def test_extended_data(self):
-        assert 0 == index([TestIndex.test_data[0]], 1, 1, 2, 2)
-        assert 1 == index([TestIndex.test_data[0]], 1, 2, 2, 2)
-        assert 2 == index([TestIndex.test_data[1]], 2, 1, 2, 2)
-        assert 3 == index([TestIndex.test_data[1]], 2, 2, 2, 2)
-
-        assert 0 == index(TestIndex.test_data_col, 1, 1, 2, 2)
-        assert 3 == index([TestIndex.test_data[1]], 2, 2, 2, 2)
 
 
 class TestIsNa:
