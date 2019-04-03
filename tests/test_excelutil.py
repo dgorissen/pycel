@@ -1000,6 +1000,7 @@ def test_excel_cmp(lval, op, rval, result):
         ('', 'USub', '2', -2),
         ('', 'USub', 'X', VALUE_ERROR),
         (None, 'USub', 'X', VALUE_ERROR),
+        ('', 'USub', None, 0),
 
         (5, 'Eq', 5, True),
         (5, 'Eq', 2, False),

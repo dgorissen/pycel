@@ -1193,7 +1193,8 @@ def build_operator_operand_fixup(capture_error_state):
             if left_op in (None, EMPTY) and is_number(right_op):
                 left_op = 0
 
-            if right_op in (None, EMPTY) and is_number(left_op):
+            if right_op in (None, EMPTY) and (
+                    op.startswith('U') or is_number(left_op)):
                 right_op = 0
 
             if not (is_number(left_op) and is_number(right_op) or
