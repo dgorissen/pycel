@@ -817,8 +817,8 @@ class _ArrayFormulaContext:
     def ctx_address(self):
         return self.ns.ctx_addresses and self.ns.ctx_addresses[-1]
 
-    def expand(self, result):
-        """Expand an answer to fill a range"""
+    def fit_to_range(self, result):
+        """Expand/Contract an answer to fill a range"""
         ctx_address = self.ctx_address
         if ctx_address is not None:
 
@@ -830,14 +830,23 @@ class _ArrayFormulaContext:
                 result_size = AddressSize(1, 1)
                 result = ((result, ), )
 
-            # if result is one col wide and target is wider, then expand columns
             ctx_size = ctx_address.size
+
+            # if result is one col wide and target is wider, then expand columns
             if result_size.width == 1 and ctx_size.width != 1:
                 result = tuple(r * ctx_size.width for r in result)
+
+            # if result is wider than target, trim it
+            elif result_size.width > ctx_size.width:
+                result = tuple(row[:ctx_size.width] for row in result)
 
             # if result is one row high and target is taller, then expand rows
             if result_size.height == 1 and ctx_size.height != 1:
                 result *= ctx_size.height
+
+            # if result is taller than target, trim it
+            elif result_size.height > ctx_size.height:
+                result = result[:ctx_size.height]
 
         return result
 

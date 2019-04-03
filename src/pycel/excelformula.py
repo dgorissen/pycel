@@ -868,7 +868,7 @@ class ExcelFormula:
 
             try:
                 with in_array_formula_context(cse_array_address):
-                    ret_val = in_array_formula_context.expand(
+                    ret_val = in_array_formula_context.fit_to_range(
                         excel_formula.compiled_lambda())
 
             except NameError:

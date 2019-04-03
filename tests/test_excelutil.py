@@ -576,10 +576,11 @@ def test_in_array_formula_context():
 
 @pytest.mark.parametrize(
     'address, value, result', (
+        ('A1:A2', 3, ((3, ), (3, ))),
         (None, 1, 1),
         (None, ((1, 2), (3, 4)), ((1, 2), (3, 4))),
         ('A1', 1, ((1,),)),
-        ('A1', ((1, 2), (3, 4)), ((1, 2), (3, 4))),
+        ('A1', ((1, 2), (3, 4)), ((1,),)),
 
         ('A1:B1', 2, ((2, 2),)),
         ('A1:A2', 3, ((3, ), (3, ))),
@@ -591,14 +592,15 @@ def test_in_array_formula_context():
         ('A1:A2', ((1, ), (3, )), ((1, ), (3, ))),
         ('A1:B2', ((1, ), (3, )), ((1, 1), (3, 3))),
 
-        ('A1:B1', ((1, 2), (3, 4)), ((1, 2), (3, 4))),
+        ('A1:B1', ((1, 2), (3, 4)), ((1, 2),)),
+        ('A1:A2', ((1, 2), (3, 4)), ((1, ), (3, ),)),
     )
 )
-def test_array_formula_context_expand(address, value, result):
+def test_array_formula_context_fit_to_range(address, value, result):
     if address is not None:
         address = AddressRange(address, sheet='s')
     with in_array_formula_context(address):
-        assert in_array_formula_context.expand(value) == result
+        assert in_array_formula_context.fit_to_range(value) == result
 
 
 def test_flatten():
