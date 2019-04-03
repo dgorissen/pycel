@@ -90,7 +90,12 @@ class _OpxRange(ExcelWrapper.RangeData):
             if not formula.startswith('='):
                 return ''
 
+            elif formula.startswith('={') and formula[-1] == '}':
+                # This is not in a CSE Array Context
+                return '=index({},1,1)'.format(formula[1:])
+
             elif formula.startswith(ARRAY_FORMULA_NAME):
+                # These are CSE Array formulas as encoded from sheet
                 params = formula[len(ARRAY_FORMULA_NAME) + 1:-1].rsplit(',', 4)
                 start_row = cell.row - int(params[1]) + 1
                 start_col_idx = cell.col_idx - int(params[2]) + 1

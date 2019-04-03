@@ -2,6 +2,7 @@ import datetime as dt
 import pytest
 
 from pycel.excelutil import AddressRange
+from pycel.excelwrapper import ARRAY_FORMULA_FORMAT, _OpxRange
 
 
 def test_connect(unconnected_excel):
@@ -212,3 +213,29 @@ def test_get_entire_rows_columns(excel, result_range, expected_range):
     result = excel.get_range(result_range).values
     expected = excel.get_range(expected_range).values
     assert result == expected
+
+
+@pytest.mark.parametrize(
+    'value, formula',
+    (
+        (None, ""),
+        ("xyzzy", ""),
+        ("=xyzzy", "=xyzzy"),
+        ("={1,2;3,4}", "=index({1,2;3,4},1,1)"),
+        (ARRAY_FORMULA_FORMAT % ('xyzzy', 1, 1, 2, 2), "=index('s'!E3:F4,1,1)"),
+        (ARRAY_FORMULA_FORMAT % ('xyzzy', 1, 2, 2, 2), "=index('s'!D3:E4,1,2)"),
+        (ARRAY_FORMULA_FORMAT % ('xyzzy', 2, 1, 2, 2), "=index('s'!E2:F3,2,1)"),
+        (ARRAY_FORMULA_FORMAT % ('xyzzy', 2, 2, 2, 2), "=index('s'!D2:E3,2,2)"),
+    )
+)
+def test_cell_to_formula(value, formula):
+    """"""
+    from unittest import mock
+    parent = mock.Mock()
+    parent.title = 's'
+    cell = mock.Mock()
+    cell.value = value
+    cell.row = 3
+    cell.col_idx = 5
+    cell.parent = parent
+    assert _OpxRange.cell_to_formula(cell) == formula
