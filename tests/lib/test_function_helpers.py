@@ -1,4 +1,3 @@
-from unittest import mock
 import importlib
 import math
 import pytest
@@ -7,10 +6,12 @@ import pytest
 from pycel.excelutil import DIV0, NUM_ERROR, VALUE_ERROR
 
 from pycel.lib.function_helpers import (
+    apply_meta,
     cse_array_wrapper,
     error_string_wrapper,
+    excel_helper,
+    excel_math_func,
     load_functions,
-    math_wrapper,
 )
 
 
@@ -51,10 +52,6 @@ def test_error_string_wrapper(arg_nums, f_args, result):
     def f_test(*args):
         return 'args: {}'.format(args)
 
-    esf_name = 'pycel.lib.function_helpers.error_string_functions'
-    with mock.patch(esf_name, {'f_test': arg_nums}):
-        assert error_string_wrapper(f_test)(*f_args) == result
-
     assert error_string_wrapper(f_test, arg_nums)(*f_args) == result
 
 
@@ -68,11 +65,21 @@ def test_error_string_wrapper(arg_nums, f_args, result):
     )
 )
 def test_math_wrap(value, result):
-    assert math_wrapper(lambda x: x)(value) == result
+    assert apply_meta(excel_math_func(lambda x: x))[0](value) == result
 
 
 def test_math_wrap_domain_error():
-    assert math_wrapper(math.log)(-1) == NUM_ERROR
+    func = apply_meta(excel_math_func(lambda x: math.log(x)))[0]
+    assert func(-1) == NUM_ERROR
+
+
+def test_apply_meta_nothing_active():
+
+    def a_test_func(x):
+        return x
+
+    func = apply_meta(excel_helper(err_str_params=None)(a_test_func))[0]
+    assert func == a_test_func
 
 
 def test_load_functions():
@@ -102,5 +109,6 @@ def test_load_functions():
     assert namespace['x_if'](0, 'Y', 'N') == 'N'
     assert namespace['x_if'](((0, 1),), 'Y', 'N') == (('N', 'Y'),)
 
-    missing = load_functions(['index'], namespace, modules)
-    assert namespace['index'](DIV0, 1, 1) == DIV0
+    missing = load_functions(['xlog'], namespace, modules)
+    assert not missing
+    assert namespace['xlog'](DIV0) == DIV0

@@ -13,6 +13,7 @@ from pycel.excelutil import (
     coerce_to_string,
     criteria_parser,
     date_from_int,
+    EMPTY,
     ExcelCmp,
     find_corresponding_index,
     flatten,
@@ -476,22 +477,36 @@ def test_extended_range_boundaries_errors(address_string):
         range_boundaries(address_string, cell)
 
 
-def test_coerce_to_number():
-    assert 1 == coerce_to_number(1)
-    assert 1.0 == coerce_to_number(1.0)
-
-    assert coerce_to_number(None) is None
-
-    assert 1 == coerce_to_number('1')
-    assert isinstance(coerce_to_number('1'), int)
-
-    assert 1 == coerce_to_number('1.')
-    assert isinstance(coerce_to_number('1.'), float)
-
-    assert 'xyzzy' == coerce_to_number('xyzzy')
-
-    with pytest.raises(ZeroDivisionError):
-        coerce_to_number(DIV0)
+@pytest.mark.parametrize(
+    'value, expected, expected_type, convert_all', (
+        (1, 1, int, False),
+        (1.0, 1.0, int, False),
+        (None, None, type(None), False),
+        ('1', 1, int, False),
+        ('1.', 1.0, float, False),
+        ('xyzzy', 'xyzzy', str, False),
+        (DIV0, DIV0, str, False),
+        ('TRUE', 'TRUE', str, False),
+        ('FALSE', 'FALSE', str, False),
+        (EMPTY, EMPTY, str, False),
+        ((('TRUE',), ), 'TRUE', str, False),
+        (1, 1, int, True),
+        (1.0, 1.0, int, True),
+        (None, 0, int, True),
+        ('1', 1, int, True),
+        ('1.', 1.0, float, True),
+        ('xyzzy', 'xyzzy', str, True),
+        (DIV0, DIV0, str, True),
+        ('TRUE', 1, int, True),
+        ('FALSE', 0, int, True),
+        (EMPTY, 0, int, True),
+        ((('TRUE',), ), 1, int, True),
+    )
+)
+def test_coerce_to_number(value, expected, expected_type, convert_all):
+    result = coerce_to_number(value, convert_all=convert_all)
+    assert result == expected
+    assert isinstance(result, expected_type)
 
 
 @pytest.mark.parametrize(
@@ -1118,8 +1133,9 @@ def test_excel_operator_operand_fixup(left_op, op, right_op, expected):
 
     if expected == VALUE_ERROR:
         if expected == VALUE_ERROR and VALUE_ERROR not in (left_op, right_op):
-            assert [(True, 'Values: {} {} {}'.format(left_op, op, right_op))
-                    ] == error_messages
+            assert [(True, 'Values: {} {} {}'.format(
+                coerce_to_number(left_op), op, right_op))
+            ] == error_messages
 
     elif expected == DIV0 and DIV0 not in (left_op, right_op):
         assert [(True, 'Values: {} {} {}'.format(left_op, op, right_op))

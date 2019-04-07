@@ -864,7 +864,7 @@ def flatten(data, coerce=lambda x: x):
     if isinstance(data, collections.Iterable) and not isinstance(
             data, (str, AddressRange, AddressCell)):
         for item in data:
-            yield from flatten(coerce(item))
+            yield from flatten(item, coerce=coerce)
     else:
         yield coerce(data)
 
@@ -882,18 +882,25 @@ def is_number(value):
         return False
 
 
-def coerce_to_number(value, raise_div0=True):
+def coerce_to_number(value, convert_all=False):
+    if value is None and convert_all:
+        return 0
+
     if not isinstance(value, str):
         if isinstance(value, int):
-            return value
+            return int(value) if convert_all else value
         if is_number(value) and int(value) == float(value):
             return int(value)
+        if isinstance(value, tuple) and isinstance(value[0], tuple):
+            return coerce_to_number(value[0][0], convert_all)
         return value
 
+    # True and False strings become numbers
+    if convert_all and value.upper() in ('TRUE', 'FALSE', EMPTY):
+        return int(len(value) == 4)
+
     try:
-        if value == DIV0 and raise_div0:
-            return 1 / 0
-        elif '.' not in value:
+        if '.' not in value:
             return int(value)
     except (ValueError, TypeError):
         pass

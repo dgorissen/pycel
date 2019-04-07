@@ -671,8 +671,8 @@ def test_empty_cell_logic_op():
         (-3, '=-sum(1, +2)'),
         (1, '=+sum(-1, 2)'),
         (1, '=-sum(1, -2)'),
-        (-1, '=+sum(+1, "-2")'),
-        (-3, '=-sum(1, "+2")'),
+        (1, '=+sum(+1, "-2")'),
+        (-1, '=-sum(1, "+2")'),
     )
 )
 def test_unary_ops(expected, formula):
@@ -683,7 +683,7 @@ def test_unary_ops(expected, formula):
 def test_numerics_type_coercion():
     eval_ctx = ExcelFormula.build_eval_context(lambda x: 3.0, None)
     assert 7 == eval_ctx(ExcelFormula('=1+2+"4"'))
-    assert 7 == eval_ctx(ExcelFormula('=sum(1, 2, "4")'))
+    assert 3 == eval_ctx(ExcelFormula('=sum(1, 2, "4")'))
 
     assert '3A' == eval_ctx(ExcelFormula('=3&"A"'))
     assert '3A' == eval_ctx(ExcelFormula('=3.0&"A"'))

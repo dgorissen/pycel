@@ -3,6 +3,7 @@ Python equivalents of excel logical functions (bools)
 """
 
 from pycel.excelutil import flatten, ERROR_CODES, VALUE_ERROR
+from pycel.lib.function_helpers import excel_helper
 
 
 def _clean_logical(test):
@@ -53,6 +54,7 @@ def x_and(*args):
         return all(values)
 
 
+@excel_helper(cse_params=0)
 def x_if(test, true_value, false_value=0):
     # Excel reference: https://support.office.com/en-us/article/
     #   IF-function-69AED7C9-4E8A-4755-A9BC-AA8BBFF73BE2
@@ -66,6 +68,7 @@ def x_if(test, true_value, false_value=0):
         return true_value if test else false_value
 
 
+@excel_helper(cse_params=0, err_str_params=None)
 def iferror(arg, value_if_error):
     # Excel reference: https://support.office.com/en-us/article/
     #   IFERROR-function-C526FD07-CAEB-47B8-8BB6-63F3E417F611

@@ -1,8 +1,10 @@
 import datetime as dt
 import math
+import sys
 
 import numpy as np
 import pytest
+import pycel.excellib
 from pycel.excellib import (
     # ::TODO:: finish test cases for remainder of functions
     _numerics,
@@ -30,7 +32,6 @@ from pycel.excellib import (
     row,
     sumif,
     sumifs,
-    value as lib_value,
     vlookup,
     xatan2,
     xlog,
@@ -52,17 +53,25 @@ from pycel.excelutil import (
     VALUE_ERROR,
 )
 
-from pycel.lib.function_helpers import error_string_wrapper
+from pycel.lib.function_helpers import apply_meta, error_string_wrapper
+
+
+# dynamic load the lib functions from excellib and apply metadata
+this_module = sys.modules[__name__]
+for name in dir(pycel.excellib):
+    obj = getattr(pycel.excellib, name)
+    if callable(obj) and getattr(this_module, name, None) == obj:
+        setattr(this_module, name, apply_meta(obj)[0])
 
 
 def test_numerics():
-    assert (1, 3, 2, 3.1) == _numerics(1, '3', 2.0, pytest, 3.1, 'x')
-    assert (1, 2, 3.1) == _numerics((1, '3', 2.0, pytest, 3.1, 'x'))
+    assert (1, 2, 3.1) == _numerics(1, '3', 2.0, pytest, 3.1, 'x')
+    assert (1, 2, 3.1) == _numerics((1, '3', (2.0, pytest, 3.1), 'x'))
 
 
 def test_average():
-    assert 2.25 == average(1, '3', 2.0, pytest, 3, 'x')
-    assert 2 == average((1, '3', 2.0, pytest, 3, 'x'))
+    assert 2 == average(1, '3', 2.0, pytest, 3, 'x')
+    assert 2 == average((1, '3', (2.0, pytest, 3), 'x'))
 
     assert -0.1 == average((-0.1, None, 'x', True))
 
@@ -783,12 +792,6 @@ class TestSumIfs:
         assert 7 == sumifs([1, 2, 3, 4, 5],
                            [1, 2, 3, 4, 5], ">=3",
                            [1, 2, 3, 4, 5], "<=4")
-
-
-def test_value():
-    assert 0.123 == lib_value('.123')
-    assert 123 == lib_value('123')
-    assert isinstance(lib_value('123'), int)
 
 
 @pytest.mark.parametrize(

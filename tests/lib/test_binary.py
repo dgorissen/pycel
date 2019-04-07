@@ -8,8 +8,8 @@ MAX_BASE_16 = binary._SIZE_MASK[16]
 
 
 def compare_result(expected, result):
-    expected = coerce_to_number(expected, raise_div0=False)
-    result = coerce_to_number(result, raise_div0=False)
+    expected = coerce_to_number(expected)
+    result = coerce_to_number(result)
     if isinstance(expected, (int, float)) and isinstance(result, (int, float)):
         return pytest.approx(expected) == result
     else:

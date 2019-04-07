@@ -32,12 +32,12 @@ from pycel.excelutil import (
     VALUE_ERROR,
 )
 
-from pycel.lib.function_helpers import math_wrapper
+from pycel.lib.function_helpers import excel_helper, math_wrapper
 
 
 def _numerics(*args, no_bools=False):
     # ignore non numeric cells
-    args = tuple(flatten(args, lambda x: coerce_to_number(x, raise_div0=False)))
+    args = tuple(flatten(args))
     error = next((x for x in args if x in ERROR_CODES), None)
     if error is not None:
         # return the first error in the list
@@ -200,6 +200,7 @@ def date(year, month, day):
     return result
 
 
+@excel_helper(cse_params=0)
 def hlookup(lookup_value, table_array, row_index_num, range_lookup=True):
     """ Horizontal Lookup
 
@@ -312,6 +313,7 @@ def linest(Y, X, const=True, degree=1):  # pragma: no cover  ::TODO::
     return coefs
 
 
+@excel_helper(cse_params=0)
 def lookup(lookup_value, lookup_array, result_range=None):
     """
     There are two ways to use LOOKUP: Vector form and Array form
@@ -594,14 +596,7 @@ def sumifs(sum_range, *args):
     return sum(_numerics(sum_range[idx] for idx in indices))
 
 
-def value(text):
-    # make the distinction for naca numbers
-    if '.' in text:
-        return float(text)
-    else:
-        return int(text)
-
-
+@excel_helper(cse_params=0)
 def vlookup(lookup_value, table_array, col_index_num, range_lookup=True):
     """ Vertical Lookup
 
