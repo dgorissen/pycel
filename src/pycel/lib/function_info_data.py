@@ -474,7 +474,7 @@ function_info = (
     FunctionInfo('XIRR', 'Financial', ''),
     FunctionInfo('XNPV', 'Financial', ''),
     FunctionInfo('XOR', 'Logical', 'Excel 2013'),
-    FunctionInfo('YEAR', 'Date and time', ''),
+    FunctionInfo('YEAR', 'Date and time', 'Excel 2007'),
     FunctionInfo('YEARFRAC', 'Date and time', ''),
     FunctionInfo('YIELD', 'Financial', ''),
     FunctionInfo('YIELDDISC', 'Financial', ''),

@@ -224,6 +224,19 @@ def eomonth(start_date, months):
     return res
 
 
+def year(serial_number):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   year-function-c64f017a-1354-490d-981f-578e8ec8d3b9
+    if not is_number(serial_number):
+        return TypeError('#VALUE!', 'start_date %s must be a number' % str(serial_number))
+    if serial_number < 0:
+        return TypeError('#VALUE!', 'start_date %s must be positive' % str(serial_number))
+
+    y1, m1, d1 = date_from_int(serial_number)
+
+    return y1
+
+
 def hlookup(lookup_value, table_array, row_index_num, range_lookup=True):
     """ Horizontal Lookup
 
