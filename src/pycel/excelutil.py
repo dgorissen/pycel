@@ -930,6 +930,13 @@ def date_from_int(datestamp):
     return date.year, date.month, date.day
 
 
+def int_from_date(date):
+    temp = dt.date(1899, 12, 30)    # Note, not 31st Dec but 30th!
+    delta = date - temp
+
+    return float(delta.days) + (float(delta.seconds) / 86400)
+
+
 def build_wildcard_re(lookup_value):
     regex = QUESTION_MARK_RE.sub('.', STAR_RE.sub('.*', lookup_value))
     if regex != lookup_value:

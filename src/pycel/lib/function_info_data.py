@@ -146,7 +146,7 @@ function_info = (
     FunctionInfo('EDATE', 'Date and time', ''),
     FunctionInfo('EFFECT', 'Financial', ''),
     FunctionInfo('ENCODEURL', 'Web', 'Excel 2013'),
-    FunctionInfo('EOMONTH', 'Date and time', ''),
+    FunctionInfo('EOMONTH', 'Date and time', 'Excel 2010'),
     FunctionInfo('ERF', 'Engineering', ''),
     FunctionInfo('ERF.PRECISE', 'Engineering', 'Excel 2010'),
     FunctionInfo('ERFC', 'Engineering', ''),

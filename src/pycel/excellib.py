@@ -18,6 +18,7 @@ from pycel.excelutil import (
     coerce_to_number,
     coerce_to_string,
     date_from_int,
+    int_from_date,
     DIV0,
     ERROR_CODES,
     ExcelCmp,
@@ -218,7 +219,7 @@ def eomonth(start_date, months):
     y2 = end_date_d.year
     m2 = end_date_d.month
     d2 = monthrange(y2, m2)[1]
-    res = int(excel_date(datetime.date(y2, m2, d2)))
+    res = int(int_from_date(datetime.date(y2, m2, d2)))
 
     return res
 
