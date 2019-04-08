@@ -4,3 +4,4 @@ numpy
 openpyxl>=2.6.0
 pydot
 ruamel.yaml
+python-dateutil

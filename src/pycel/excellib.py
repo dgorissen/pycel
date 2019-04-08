@@ -8,6 +8,8 @@ from collections import Counter
 from datetime import datetime
 from decimal import Decimal, ROUND_HALF_UP, ROUND_UP
 from math import atan2, log
+from calendar import monthrange
+from dateutil.relativedelta import relativedelta
 
 import numpy as np
 from pycel.excelutil import (
@@ -197,6 +199,28 @@ def date(year, month, day):
     if result <= 0:
         raise ArithmeticError("Date result is negative")
     return result
+
+
+def eomonth(start_date, months):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   eomonth-function-7314ffa1-2bc9-4005-9d66-f49db127d628
+    if not is_number(start_date):
+        return TypeError('#VALUE!', 'start_date %s must be a number' % str(start_date))
+    if start_date < 0:
+        return TypeError('#VALUE!', 'start_date %s must be positive' % str(start_date))
+
+    if not is_number(months):
+        return TypeError('#VALUE!', 'months %s must be a number' % str(months))
+
+    y1, m1, d1 = date_from_int(start_date)
+    start_date_d = datetime.date(year=y1, month=m1, day=d1)
+    end_date_d = start_date_d + relativedelta(months=months)
+    y2 = end_date_d.year
+    m2 = end_date_d.month
+    d2 = monthrange(y2, m2)[1]
+    res = int(excel_date(datetime.date(y2, m2, d2)))
+
+    return res
 
 
 def hlookup(lookup_value, table_array, row_index_num, range_lookup=True):
