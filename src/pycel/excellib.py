@@ -237,6 +237,19 @@ def year(serial_number):
     return y1
 
 
+def month(serial_number):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   month-function-579a2881-199b-48b2-ab90-ddba0eba86e8
+    if not is_number(serial_number):
+        return TypeError('start_date %s must be a number' % str(serial_number))
+    if serial_number < 0:
+        return TypeError('start_date %s must be positive' % str(serial_number))
+
+    y1, m1, d1 = date_from_int(serial_number)
+
+    return m1
+
+
 def hlookup(lookup_value, table_array, row_index_num, range_lookup=True):
     """ Horizontal Lookup
 
