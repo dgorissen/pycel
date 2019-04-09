@@ -263,6 +263,9 @@ def index(array, row_num, col_num=None, rows=None, cols=None):
             if None not in (row_num, col_num):
                 return array[row_num - 1][col_num - 1]
 
+            if col_num is None and row_num is not None and len(array) == 1: #special case for row array with row number
+                return array[0][row_num - 1] # use row number as a column number
+
             elif row_num is not None:
                 return array[row_num - 1]
 
