@@ -1134,7 +1134,7 @@ def test_excel_operator_operand_fixup(left_op, op, right_op, expected):
     if expected == VALUE_ERROR:
         if expected == VALUE_ERROR and VALUE_ERROR not in (left_op, right_op):
             assert [(True, 'Values: {} {} {}'.format(
-                coerce_to_number(left_op), op, right_op))
+                coerce_to_number(left_op, convert_all=True), op, right_op))
             ] == error_messages
 
     elif expected == DIV0 and DIV0 not in (left_op, right_op):

@@ -204,29 +204,17 @@ class TestCountIfs:
 
 class TestDate:
 
-    def test_year_must_be_integer(self):
-        with pytest.raises(TypeError):
-            date('2016', 1, 1)
-
-    def test_month_must_be_integer(self):
-        with pytest.raises(TypeError):
-            date(2016, '1', 1)
-
-    def test_day_must_be_integer(self):
-        with pytest.raises(TypeError):
-            date(2016, 1, '1')
+    def test_values_can_str(self):
+        assert date('2016', 1, 1) == date(2016, '1', 1) == date(2016, 1, '1')
 
     def test_year_must_be_positive(self):
-        with pytest.raises(ValueError):
-            date(-1, 1, 1)
+        assert NUM_ERROR == date(-1, 1, 1)
 
     def test_year_must_have_less_than_10000(self):
-        with pytest.raises(ValueError):
-            date(10000, 1, 1)
+        assert NUM_ERROR == date(10000, 1, 1)
 
     def test_result_must_be_positive(self):
-        with pytest.raises(ArithmeticError):
-            date(1900, 1, -1)
+        assert NUM_ERROR == date(1900, 1, -1)
 
     def test_not_stricly_positive_month_substracts(self):
         assert date(2009, -1, 1) == date(2008, 11, 1)
@@ -287,6 +275,7 @@ def test_floor(number, significance, result):
         ('D', 3, 'X', True),
         ('D', 3, NA_ERROR, False),
         ('D', 3, 'X', -1),
+        ((('D', 'A'),), 3, ((NA_ERROR, 'Z'), ), False),
     )
 )
 def test_hlookup(lkup, col_idx, result, approx):
@@ -298,21 +287,21 @@ def test_hlookup(lkup, col_idx, result, approx):
     assert result == hlookup(lkup, table, col_idx, approx)
 
 
-def test_hlookup_vlookup_error():
-    assert NA_ERROR == hlookup(1, 1, 1, 1)
-    assert NA_ERROR == vlookup(1, 1, 1, 1)
-
-    with pytest.raises(NotImplementedError, match='Array Formulas'):
-        hlookup((1, 2), ((1, 2), (3, 4)), 1, 1)
-
-    with pytest.raises(NotImplementedError, match='Array Formulas'):
-        hlookup(1, ((1, 2), (3, 4)), (1, 2), 1)
-
-    with pytest.raises(NotImplementedError, match='Array Formulas'):
-        vlookup((1, 2), ((1, 2), (3, 4)), 1, 1)
-
-    with pytest.raises(NotImplementedError, match='Array Formulas'):
-        vlookup(1, ((1, 2), (3, 4)), (1, 2), 1)
+@pytest.mark.parametrize(
+    'values, expected', (
+        ((1, 1, 1, 1), NA_ERROR),
+        ((1, ((1, 2), (3, 4)), 1, 1), 1),
+        ((REF_ERROR, ((1, 2), (3, 4)), 1, 1), REF_ERROR),
+        ((1, REF_ERROR, 1, 1), REF_ERROR),
+        ((1, ((1, 2), (3, 4)), REF_ERROR, 1), REF_ERROR),
+        ((1, ((1, 2), (3, 4)), 1, REF_ERROR), REF_ERROR),
+        ((1, ((1, 2), (3, 4)), 0, 1), VALUE_ERROR),
+        ((1, ((1, 2), (3, 4)), 3, 1), REF_ERROR),
+    )
+)
+def test_hlookup_vlookup_error(values, expected):
+    assert hlookup(*values) == expected
+    assert vlookup(*values) == expected
 
 
 def test_is_text():
@@ -484,9 +473,9 @@ def test_log(expected, value):
     assert log(value) == expected
 
 
-lookup_vector = 'b', 'c', 'd'
-lookup_result = 1, 2, 3
-lookup_rows = lookup_vector, lookup_result
+lookup_vector = (('b', 'c', 'd'), )
+lookup_result = ((1, 2, 3), )
+lookup_rows = lookup_vector[0], lookup_result[0]
 lookup_columns = tuple(zip(*lookup_rows))
 
 
@@ -502,9 +491,11 @@ lookup_columns = tuple(zip(*lookup_rows))
     )
 )
 def test_lookup(lookup_value, result1, result2):
-
     assert result1 == lookup(lookup_value, lookup_vector)
+    assert result1 == lookup(lookup_value, tuple(zip(*lookup_vector)))
     assert result2 == lookup(lookup_value, lookup_vector, lookup_result)
+    assert result2 == lookup(lookup_value, tuple(zip(*lookup_vector)),
+                             tuple(zip(*lookup_result)))
     assert result2 == lookup(lookup_value, lookup_rows)
     assert result2 == lookup(lookup_value, lookup_columns)
 
@@ -728,7 +719,12 @@ def test_npv(data, expected):
         ((1, 0), 1),
         ((1, 2), 1),
         ((2, 1), 2),
+        ((2, -1), 0.5),
+        ((-2, 1), -2),
         ((0.1, 0.1), 0.1 ** 0.1),
+        ((True, 1), 1),
+        (('x', 1), VALUE_ERROR),
+        ((1, 'x'), VALUE_ERROR),
         ((NA_ERROR, 1), NA_ERROR),
         ((1, NA_ERROR), NA_ERROR),
         ((1, DIV0), DIV0),
@@ -910,6 +906,7 @@ def test_trunc(number, num_digits, result):
         ('D', 3, 'X', True),
         ('D', 3, NA_ERROR, False),
         ('D', 3, 'X', -1),
+        ((('D', 'A'),), 3, ((NA_ERROR, 'Z'),), False),
     )
 )
 def test_vlookup(lkup, col_idx, result, approx):
@@ -1050,24 +1047,19 @@ def test_xsum():
 class TestYearfrac:
 
     def test_start_date_must_be_number(self):
-        with pytest.raises(TypeError):
-            yearfrac('not a number', 1)
+        assert VALUE_ERROR == yearfrac('not a number', 1)
 
     def test_end_date_must_be_number(self):
-        with pytest.raises(TypeError):
-            yearfrac(1, 'not a number')
+        assert VALUE_ERROR == yearfrac(1, 'not a number')
 
     def test_start_date_must_be_positive(self):
-        with pytest.raises(ValueError):
-            yearfrac(-1, 0)
+        assert NUM_ERROR == yearfrac(-1, 0)
 
     def test_end_date_must_be_positive(self):
-        with pytest.raises(ValueError):
-            yearfrac(0, -1)
+        assert NUM_ERROR == yearfrac(0, -1)
 
     def test_basis_must_be_between_0_and_4(self):
-        with pytest.raises(ValueError):
-            yearfrac(1, 2, 5)
+        assert NUM_ERROR == yearfrac(1, 2, 5)
 
     def test_yearfrac_basis_0(self):
         assert 7.30277777777778 == pytest.approx(
@@ -1095,13 +1087,13 @@ class TestYearfrac:
 
     def test_yearfrac_basis_1_sub_year(self):
         assert 11 / 365 == pytest.approx(
-            yearfrac(date(2015, 4, 20), date(2015, 5, 1), basis=1))
+            yearfrac(date(2015, 4, 20), date(2015, 5, 1), 1))
 
         assert 11 / 366 == pytest.approx(
-            yearfrac(date(2016, 4, 20), date(2016, 5, 1), basis=1))
+            yearfrac(date(2016, 4, 20), date(2016, 5, 1), 1))
 
         assert 316 / 366 == pytest.approx(
-            yearfrac(date(2016, 2, 20), date(2017, 1, 1), basis=1))
+            yearfrac(date(2016, 2, 20), date(2017, 1, 1), 1))
 
         assert 61 / 366 == pytest.approx(
-            yearfrac(date(2015, 12, 31), date(2016, 3, 1), basis=1))
+            yearfrac(date(2015, 12, 31), date(2016, 3, 1), 1))

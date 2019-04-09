@@ -1204,15 +1204,8 @@ def build_operator_operand_fixup(capture_error_state):
                 right_op = str(coerce_to_number(right_op))
 
         else:
-            left_op = coerce_to_number(left_op)
-            right_op = coerce_to_number(right_op)
-
-            if left_op in (None, EMPTY) and is_number(right_op):
-                left_op = 0
-
-            if right_op in (None, EMPTY) and (
-                    op.startswith('U') or is_number(left_op)):
-                right_op = 0
+            left_op = coerce_to_number(left_op, convert_all=True)
+            right_op = coerce_to_number(right_op, convert_all=True)
 
             if not (is_number(left_op) and is_number(right_op) or
                     isinstance(left_op, AddressRange) and
@@ -1221,16 +1214,6 @@ def build_operator_operand_fixup(capture_error_state):
                     capture_error_state(
                         True, 'Values: {} {} {}'.format(left_op, op, right_op))
                     return VALUE_ERROR
-
-            if isinstance(left_op, bool):
-                left_op = (str(left_op).upper()
-                           if not is_number(right_op)
-                           else int(left_op))
-
-            if isinstance(right_op, bool):
-                right_op = (str(right_op).upper()
-                            if not is_number(left_op)
-                            else int(right_op))
 
         try:
             if op == 'USub':

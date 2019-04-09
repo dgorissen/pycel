@@ -13,7 +13,6 @@ import numpy as np
 from pycel.excelutil import (
     assert_list_like,
     build_wildcard_re,
-    coerce_to_number,
     coerce_to_string,
     date_from_int,
     DIV0,
@@ -35,13 +34,13 @@ from pycel.excelutil import (
 )
 
 from pycel.lib.function_helpers import (
+    excel_func,
     excel_helper,
     excel_math_func,
-    math_wrapper,
 )
 
 
-def _numerics(*args, no_bools=False):
+def _numerics(*args, keep_bools=False):
     # ignore non numeric cells
     args = tuple(flatten(args))
     error = next((x for x in args if x in ERROR_CODES), None)
@@ -49,13 +48,13 @@ def _numerics(*args, no_bools=False):
         # return the first error in the list
         return error
     else:
-        if no_bools:
+        if not keep_bools:
             args = (a for a in args if not isinstance(a, bool))
         return tuple(x for x in args if isinstance(x, (int, float)))
 
 
 def average(*args):
-    data = _numerics(*args, no_bools=True)
+    data = _numerics(*args)
 
     # A returned string is an error code
     if isinstance(data, str):
@@ -66,9 +65,10 @@ def average(*args):
         return sum(data) / len(data)
 
 
+@excel_helper()
 def column(ref):
-    if ref in ERROR_CODES:
-        return ref
+    # Excel reference: https://support.office.com/en-us/article/
+    #   COLUMN-function-44E8C754-711C-4DF3-9DA4-47A55042554B
 
     if ref.is_range:
         if ref.end.col_idx == 0:
@@ -174,23 +174,13 @@ def countifs(*args):
         return float('inf')
 
 
+@excel_helper(number_params=-1)
 def date(year, month, day):
     # Excel reference: https://support.office.com/en-us/article/
     #   DATE-function-e36c0c8c-4104-49da-ab83-82328b832349
 
-    # ::TODO:: error handling
-
-    if not isinstance(year, int):
-        raise TypeError("%s is not an integer" % year)
-
-    if not isinstance(month, int):
-        raise TypeError("%s is not an integer" % month)
-
-    if not isinstance(day, int):
-        raise TypeError("%s is not an integer" % day)
-
     if not (0 <= year <= 9999):
-        raise ValueError("Year '%s' must be between 1 and 9999" % year)
+        return NUM_ERROR
 
     if year < 1900:
         year += 1900
@@ -202,7 +192,7 @@ def date(year, month, day):
     result = (datetime(year, month, day) - date_0).days + 2
 
     if result <= 0:
-        raise ArithmeticError("Date result is negative")
+        return NUM_ERROR
     return result
 
 
@@ -222,7 +212,7 @@ def floor(number, significance):
     return significance * int(number / significance)
 
 
-@excel_helper(cse_params=0)
+@excel_helper(cse_params=0, bool_params=3, number_params=2)
 def hlookup(lookup_value, table_array, row_index_num, range_lookup=True):
     """ Horizontal Lookup
 
@@ -237,9 +227,6 @@ def hlookup(lookup_value, table_array, row_index_num, range_lookup=True):
 
     if not list_like(table_array):
         return NA_ERROR
-
-    if list_like(lookup_value) or list_like(row_index_num):
-        raise NotImplementedError('Array Formulas not implemented')
 
     if row_index_num <= 0:
         return VALUE_ERROR
@@ -257,6 +244,7 @@ def hlookup(lookup_value, table_array, row_index_num, range_lookup=True):
         return result_idx
 
 
+@excel_helper(number_params=(1, 2))
 def index(array, row_num, col_num=None):
     # Excel reference: https://support.office.com/en-us/article/
     #   index-function-a5dcf0dd-996d-40a4-a822-b56b061328bd
@@ -298,7 +286,7 @@ def index(array, row_num, col_num=None):
 
 
 def istext(arg):
-    return isinstance(arg, str)
+    return isinstance(arg, str) and arg not in ERROR_CODES
 
 
 def isNa(arg):
@@ -371,30 +359,35 @@ def lookup(lookup_value, lookup_array, result_range=None):
         return NA_ERROR
 
     height = len(lookup_array)
+    width = len(lookup_array[0])
 
-    if list_like(lookup_array[0]):
+    # match across the largest dimension
+    if width <= height:
+        match_idx = match(lookup_value, tuple(i[0] for i in lookup_array))
+        result = tuple(i[-1] for i in lookup_array)
+    else:
+        match_idx = match(lookup_value, lookup_array[0])
+        result = lookup_array[-1]
+
+    if len(lookup_array) > 1 and len(lookup_array[0]) > 1:
         # rectangular array
         assert result_range is None
-        width = len(lookup_array[0])
 
-        # match across the largest dimension
-        if width <= height:
-            match_idx = match(lookup_value, tuple(i[0] for i in lookup_array))
-            result_range = tuple(i[-1] for i in lookup_array)
+    elif result_range:
+        if len(result_range) > len(result_range[0]):
+            result = tuple(i[0] for i in result_range)
         else:
-            match_idx = match(lookup_value, lookup_array[0])
-            result_range = lookup_array[-1]
-    else:
-        match_idx = match(lookup_value, lookup_array)
-        result_range = result_range or lookup_array
+            result = result_range[0]
 
     if isinstance(match_idx, int):
-        return result_range[match_idx - 1]
+        return result[match_idx - 1]
+
     else:
         # error string
         return match_idx
 
 
+@excel_helper(cse_params=0, number_params=2)
 def match(lookup_value, lookup_array, match_type=1):
     # Excel reference: https://support.office.com/en-us/article/
     #   MATCH-function-E8DFFD45-C762-47D6-BF89-533F4A37673A
@@ -420,9 +413,6 @@ def match(lookup_value, lookup_array, match_type=1):
     :param match_type: The number -1, 0, or 1.
     :return: #N/A if not found, or relative position in `lookup_array`
     """
-    if lookup_value in ERROR_CODES:
-        return lookup_value
-
     lookup_value = ExcelCmp(lookup_value)
 
     if match_type == 1:
@@ -470,22 +460,10 @@ def match(lookup_value, lookup_array, match_type=1):
     return result[0]
 
 
+@excel_helper(cse_params=0, number_params=(1, 2))
 def mid(text, start_num, num_chars):
     # Excel reference: https://support.office.com/en-us/article/
     #   MID-MIDB-functions-d5f9e25c-d7d6-472e-b568-4ecb12433028
-
-    if text in ERROR_CODES:
-        return text
-    if start_num in ERROR_CODES:
-        return start_num
-    if num_chars in ERROR_CODES:
-        return num_chars
-
-    start_num = coerce_to_number(start_num)
-    num_chars = coerce_to_number(num_chars)
-
-    if not is_number(start_num) or not is_number(num_chars):
-        return VALUE_ERROR
 
     if start_num < 1 or num_chars < 0:
         return VALUE_ERROR
@@ -495,46 +473,30 @@ def mid(text, start_num, num_chars):
     return str(text)[start_num:start_num + int(num_chars)]
 
 
+@excel_math_func
 def mod(number, divisor):
     # Excel reference: https://support.office.com/en-us/article/
     #   MOD-function-9b6cd169-b6ee-406a-a97b-edf2a9dc24f3
-    if number in ERROR_CODES:
-        return number
-    if divisor in ERROR_CODES:
-        return divisor
-
-    number, divisor = coerce_to_number(number), coerce_to_number(divisor)
-
-    if divisor in (0, None):
+    if divisor == 0:
         return DIV0
-
-    if not is_number(number) or not is_number(divisor):
-        return VALUE_ERROR
 
     return number % divisor
 
 
+@excel_math_func
 def npv(*args):
     # Excel reference: https://support.office.com/en-us/article/
     #   NPV-function-8672CB67-2576-4D07-B67B-AC28ACF2A568
-
-    for arg in args:
-        if arg in ERROR_CODES:
-            return arg
 
     rate = args[0] + 1
     cashflow = args[1:]
     return sum([float(x) * rate ** -i for i, x in enumerate(cashflow, start=1)])
 
 
+@excel_math_func
 def power(number, power):
     # Excel reference: https://support.office.com/en-us/article/
     #   POWER-function-D3F2908B-56F4-4C3F-895A-07FB519C362A
-
-    for arg in (number, power):
-        if arg in ERROR_CODES:
-            return arg
-
     if number == power == 0:
         # Really excel?  What were you thinking?
         return NA_ERROR
@@ -542,49 +504,32 @@ def power(number, power):
     return number ** power
 
 
+@excel_helper(cse_params=0, number_params=1)
 def right(text, num_chars=1):
     # Excel reference:  https://support.office.com/en-us/article/
     #   RIGHT-RIGHTB-functions-240267EE-9AFA-4639-A02B-F19E1786CF2F
 
-    if text in ERROR_CODES:
-        return text
-    if num_chars in ERROR_CODES:
-        return num_chars
-
-    num_chars = coerce_to_number(num_chars)
-
-    if not is_number(num_chars) or num_chars < 0:
+    if num_chars < 0:
         return VALUE_ERROR
-
-    if num_chars == 0:
+    elif num_chars == 0:
         return ''
     else:
         return str(text)[-int(num_chars):]
 
 
-def roundup_unwrapped(number, num_digits):
+@excel_math_func
+def roundup(number, num_digits):
     # Excel reference: https://support.office.com/en-us/article/
     #   ROUNDUP-function-F8BC9B23-E795-47DB-8703-DB171D0C42A7
-
-    number, num_digits = coerce_to_number(number), coerce_to_number(num_digits)
-
-    if not is_number(number) or not is_number(num_digits):
-        return VALUE_ERROR
-
-    if isinstance(number, bool):
-        number = int(number)
-
+    num_digits = int(num_digits)
     quant = Decimal('1E{}{}'.format('+-'[num_digits >= 0], abs(num_digits)))
     return float(Decimal(repr(number)).quantize(quant, rounding=ROUND_UP))
 
 
-roundup = math_wrapper(roundup_unwrapped)
-
-
+@excel_helper()
 def row(ref):
-    if ref in ERROR_CODES:
-        return ref
-
+    # Excel reference: https://support.office.com/en-us/article/
+    #   ROW-function-3A63B74A-C4D0-4093-B49A-E76EB49A6D8D
     if ref.is_range:
         if ref.end.row == 0:
             return range(1, MAX_ROW + 1)
@@ -629,7 +574,7 @@ def sumifs(sum_range, *args):
     max_idx = len(sum_range)
     indices = tuple(idx for idx, cnt in index_counts.items()
                     if cnt == ifs_count and idx < max_idx)
-    return sum(_numerics(sum_range[idx] for idx in indices))
+    return sum(_numerics((sum_range[idx] for idx in indices), keep_bools=True))
 
 
 @excel_math_func
@@ -640,7 +585,7 @@ def trunc(number, num_digits=0):
     return int(number * factor) / factor
 
 
-@excel_helper(cse_params=0)
+@excel_helper(cse_params=0, bool_params=3, number_params=2)
 def vlookup(lookup_value, table_array, col_index_num, range_lookup=True):
     """ Vertical Lookup
 
@@ -655,9 +600,6 @@ def vlookup(lookup_value, table_array, col_index_num, range_lookup=True):
 
     if not list_like(table_array):
         return NA_ERROR
-
-    if list_like(lookup_value) or list_like(col_index_num):
-        raise NotImplementedError('Array Formulas not implemented')
 
     if col_index_num <= 0:
         return '#VALUE!'
@@ -685,17 +627,13 @@ def x_abs(value1):
     return abs(value1)
 
 
-def xatan2(value1, value2):
+@excel_math_func
+def xatan2(x_num, y_num):
     # Excel reference: https://support.office.com/en-us/article/
     #   ATAN2-function-C04592AB-B9E3-4908-B428-C96B3A565033
-    if value1 in ERROR_CODES:
-        return value1
-
-    if value2 in ERROR_CODES:
-        return value2
 
     # swap arguments
-    return math_wrapper(math.atan2)(value2, value1)
+    return math.atan2(y_num, x_num)
 
 
 @excel_math_func
@@ -705,18 +643,16 @@ def x_int(value1):
     return math.floor(value1)
 
 
-def xlen(value):
-    if value in ERROR_CODES:
-        return value
-
-    if value is None:
+@excel_func
+def xlen(arg):
+    if arg is None:
         return 0
     else:
-        return len(str(value))
+        return len(str(arg))
 
 
 def xmax(*args):
-    data = _numerics(*args, no_bools=True)
+    data = _numerics(*args)
 
     # A returned string is an error code
     if isinstance(data, str):
@@ -730,7 +666,7 @@ def xmax(*args):
 
 
 def xmin(*args):
-    data = _numerics(*args, no_bools=True)
+    data = _numerics(*args)
 
     # A returned string is an error code
     if isinstance(data, str):
@@ -762,7 +698,7 @@ def x_round(number, num_digits=0):
 
 
 def xsum(*args):
-    data = _numerics(*args, no_bools=True)
+    data = _numerics(*args)
     if isinstance(data, str):
         return data
 
@@ -770,6 +706,7 @@ def xsum(*args):
     return sum(data)
 
 
+@excel_math_func
 def yearfrac(start_date, end_date, basis=0):
     # Excel reference: https://support.office.com/en-us/article/
     #   YEARFRAC-function-3844141e-c76d-4143-82b6-208454ddc6a8
@@ -797,14 +734,8 @@ def yearfrac(start_date, end_date, basis=0):
 
         return delta / denom
 
-    if not is_number(start_date):
-        raise TypeError("start_date %s must be a number" % str(start_date))
-    if not is_number(end_date):
-        raise TypeError("end_date %s must be number" % str(end_date))
-    if start_date < 0:
-        raise ValueError("start_date %s must be positive" % str(start_date))
-    if end_date < 0:
-        raise ValueError("end_date %s must be positive" % str(end_date))
+    if start_date < 0 or end_date < 0:
+        return NUM_ERROR
 
     if start_date > end_date:  # switch dates if start_date > end_date
         start_date, end_date = end_date, start_date
@@ -836,6 +767,6 @@ def yearfrac(start_date, end_date, basis=0):
         result = day_count / 360
 
     else:
-        raise ValueError("basis: %d must be 0, 1, 2, 3 or 4" % basis)
+        return NUM_ERROR
 
     return result
