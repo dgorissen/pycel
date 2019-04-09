@@ -5,7 +5,7 @@ import itertools as it
 
 from bisect import bisect_right
 from collections import Counter
-from datetime import datetime
+import datetime
 from decimal import Decimal, ROUND_HALF_UP, ROUND_UP
 from math import atan2, log
 from calendar import monthrange
@@ -194,8 +194,8 @@ def date(year, month, day):
     # taking into account negative month and day values
     year, month, day = normalize_year(year, month, day)
 
-    date_0 = datetime(1900, 1, 1)
-    result = (datetime(year, month, day) - date_0).days + 2
+    date_0 = datetime.datetime(1900, 1, 1)
+    result = (datetime.datetime(year, month, day) - date_0).days + 2
 
     if result <= 0:
         raise ArithmeticError("Date result is negative")
