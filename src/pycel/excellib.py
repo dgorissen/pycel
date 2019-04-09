@@ -206,12 +206,12 @@ def eomonth(start_date, months):
     # Excel reference: https://support.office.com/en-us/article/
     #   eomonth-function-7314ffa1-2bc9-4005-9d66-f49db127d628
     if not is_number(start_date):
-        return TypeError('#VALUE!', 'start_date %s must be a number' % str(start_date))
+        return TypeError('start_date %s must be a number' % str(start_date))
     if start_date < 0:
-        return TypeError('#VALUE!', 'start_date %s must be positive' % str(start_date))
+        return TypeError('start_date %s must be positive' % str(start_date))
 
     if not is_number(months):
-        return TypeError('#VALUE!', 'months %s must be a number' % str(months))
+        return TypeError('months %s must be a number' % str(months))
 
     y1, m1, d1 = date_from_int(start_date)
     start_date_d = datetime.date(year=y1, month=m1, day=d1)
@@ -228,9 +228,9 @@ def year(serial_number):
     # Excel reference: https://support.office.com/en-us/article/
     #   year-function-c64f017a-1354-490d-981f-578e8ec8d3b9
     if not is_number(serial_number):
-        return TypeError('#VALUE!', 'start_date %s must be a number' % str(serial_number))
+        return TypeError('start_date %s must be a number' % str(serial_number))
     if serial_number < 0:
-        return TypeError('#VALUE!', 'start_date %s must be positive' % str(serial_number))
+        return TypeError('start_date %s must be positive' % str(serial_number))
 
     y1, m1, d1 = date_from_int(serial_number)
 
