@@ -6,7 +6,6 @@ import numpy as np
 import pytest
 import pycel.excellib
 from pycel.excellib import (
-    # ::TODO:: finish test cases for remainder of functions
     _numerics,
     average,
     column,
@@ -21,6 +20,7 @@ from pycel.excellib import (
     index,
     isNa,
     istext,
+    # ::TODO:: finish test cases for remainder of functions
     # linest,
     ln,
     log,
@@ -37,11 +37,13 @@ from pycel.excellib import (
     sumifs,
     trunc,
     vlookup,
+    x_abs,
     xatan2,
+    x_int,
     xlen,
     xmax,
     xmin,
-    xround,
+    x_round,
     xsum,
     yearfrac,
 )
@@ -86,6 +88,20 @@ def test_average():
 
     assert DIV0 == average(DIV0)
     assert DIV0 == average((2, DIV0))
+
+
+@pytest.mark.parametrize(
+    'value, expected', (
+        (1, 1),
+        (-2, 2),
+        (((2, -3, 4, -5), ), ((2, 3, 4, 5), )),
+        (DIV0, DIV0),
+        (NUM_ERROR, NUM_ERROR),
+        (VALUE_ERROR, VALUE_ERROR),
+    )
+)
+def test_x_abs(value, expected):
+    assert x_abs(value) == expected
 
 
 @pytest.mark.parametrize(
@@ -921,6 +937,21 @@ def test_xatan2(param1, param2, result):
 
 
 @pytest.mark.parametrize(
+    'value, expected', (
+        (1, 1),
+        (1.2, 1),
+        (-1.2, -2),
+        (((2.1, -3.9, 4.6, -5.3),), ((2, -4, 4, -6),)),
+        (DIV0, DIV0),
+        (NUM_ERROR, NUM_ERROR),
+        (VALUE_ERROR, VALUE_ERROR),
+    )
+)
+def test_x_int(value, expected):
+    assert x_int(value) == expected
+
+
+@pytest.mark.parametrize(
     'param, result', (
         ('A', 1),
         ('BB', 2),
@@ -976,9 +1007,9 @@ def test_xmin():
         (12345.6789, 4),
     )
 )
-def test_xround(result, digits):
-    assert result == xround(12345.6789, digits)
-    assert result == xround(12345.6789, digits + (-0.9 if digits < 0 else 0.9))
+def test_x_round(result, digits):
+    assert result == x_round(12345.6789, digits)
+    assert result == x_round(12345.6789, digits + (-0.9 if digits < 0 else 0.9))
 
 
 @pytest.mark.parametrize(
@@ -992,28 +1023,15 @@ def test_xround(result, digits):
         (-50.55, -2, -100),
         (DIV0, 1, DIV0),
         (1, DIV0, DIV0),
+        ('er', 1, VALUE_ERROR),
+        (2.323, 'ze', VALUE_ERROR),
+        (2.675, 2, 2.68),
+        (2352.67, -2, 2400),
+        ("2352.67", "-2", 2400),
     )
 )
-def test_xround2(number, digits, result):
-    assert result == xround(number, digits)
-
-
-class TestXRound:
-
-    def test_nb_must_be_number(self):
-        assert VALUE_ERROR == xround('er', 1)
-
-    def test_nb_digits_must_be_number(self):
-        assert VALUE_ERROR == xround(2.323, 'ze')
-
-    def test_positive_number_of_digits(self):
-        assert 2.68 == xround(2.675, 2)
-
-    def test_negative_number_of_digits(self):
-        assert 2400 == xround(2352.67, -2)
-
-    def test_coerce_from_string(self):
-        assert 2400 == xround("2352.67", "-2")
+def test_x_round2(number, digits, result):
+    assert result == x_round(number, digits)
 
 
 def test_xsum():

@@ -20,7 +20,7 @@ from pycel.excelutil import (
     PyCelException,
     uniqueify,
 )
-from pycel.lib.function_helpers import load_functions, math_wrapper
+from pycel.lib.function_helpers import load_functions
 from pycel.lib.function_info import func_status_msg
 
 
@@ -337,16 +337,18 @@ class FunctionNode(ASTNode):
 
     # dict of excel equivalent functions
     func_map = {
+        "abs": "x_abs",
         "and": "x_and",
         "atan2": "xatan2",
         "gammaln": "lgamma",
         "if": "x_if",
+        "int": "x_int",
         "len": "xlen",
         "max": "xmax",
         "not": "x_not",
         "or": "x_or",
         "min": "xmin",
-        "round": "xround",
+        "round": "x_round",
         "sum": "xsum",
         "xor": "x_xor",
     }
@@ -830,10 +832,6 @@ class ExcelFormula:
             name_space['_R_'] = evaluate_range
             name_space['_REF_'] = AddressRange.create
             name_space['pi'] = math.pi
-
-            for name in ('int', 'abs', 'round'):
-                name_space[name] = math_wrapper(
-                    globals()['__builtins__'][name])
 
             # function to fixup the operands
             name_space['excel_operator_operand_fixup'] = \

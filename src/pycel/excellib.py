@@ -678,6 +678,13 @@ def vlookup(lookup_value, table_array, col_index_num, range_lookup=True):
         return result_idx
 
 
+@excel_math_func
+def x_abs(value1):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   ABS-function-3420200F-5628-4E8C-99DA-C99D7C87713C
+    return abs(value1)
+
+
 def xatan2(value1, value2):
     # Excel reference: https://support.office.com/en-us/article/
     #   ATAN2-function-C04592AB-B9E3-4908-B428-C96B3A565033
@@ -689,6 +696,13 @@ def xatan2(value1, value2):
 
     # swap arguments
     return math_wrapper(math.atan2)(value2, value1)
+
+
+@excel_math_func
+def x_int(value1):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   INT-function-A6C4AF9E-356D-4369-AB6A-CB1FD9D343EF
+    return math.floor(value1)
 
 
 def xlen(value):
@@ -729,18 +743,10 @@ def xmin(*args):
         return min(data)
 
 
-def xround(number, num_digits=0):
+@excel_math_func
+def x_round(number, num_digits=0):
     # Excel reference: https://support.office.com/en-us/article/
     #   ROUND-function-c018c5d8-40fb-4053-90b1-b3e7f61a213c
-
-    if number in ERROR_CODES:
-        return number
-    if num_digits in ERROR_CODES:
-        return num_digits
-
-    number, num_digits = coerce_to_number(number), coerce_to_number(num_digits)
-    if not is_number(number) or not is_number(num_digits):
-        return VALUE_ERROR
 
     num_digits = int(num_digits)
     if num_digits >= 0:  # round to the right side of the point
