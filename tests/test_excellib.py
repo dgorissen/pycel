@@ -51,6 +51,7 @@ from pycel.excelutil import (
     NAME_ERROR,
     NUM_ERROR,
     PyCelException,
+    REF_ERROR,
     VALUE_ERROR,
 )
 
@@ -240,7 +241,7 @@ class TestDate:
         ('A', 1, 'A', True),
         ('A', 2, 1, True),
         ('A', 3, 'Z', True),
-        ('A', 4, '#REF!', True),
+        ('A', 4, REF_ERROR, True),
         ('B', 1, 'B', True),
         ('C', 1, 'C', True),
         ('B', 2, 2, True),
@@ -847,7 +848,7 @@ class TestSumIfs:
         ('A', 1, 'A', True),
         ('A', 2, 1, True),
         ('A', 3, 'Z', True),
-        ('A', 4, '#REF!', True),
+        ('A', 4, REF_ERROR, True),
         ('B', 1, 'B', True),
         ('C', 1, 'C', True),
         ('B', 2, 2, True),

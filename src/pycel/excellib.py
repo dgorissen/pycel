@@ -29,6 +29,7 @@ from pycel.excelutil import (
     NA_ERROR,
     normalize_year,
     PyCelException,
+    REF_ERROR,
     VALUE_ERROR,
 )
 
@@ -224,10 +225,10 @@ def hlookup(lookup_value, table_array, row_index_num, range_lookup=True):
         raise NotImplementedError('Array Formulas not implemented')
 
     if row_index_num <= 0:
-        return '#VALUE!'
+        return VALUE_ERROR
 
     if row_index_num > len(table_array[0]):
-        return '#REF!'
+        return REF_ERROR
 
     result_idx = match(
         lookup_value, table_array[0], match_type=bool(range_lookup))
@@ -637,7 +638,7 @@ def vlookup(lookup_value, table_array, col_index_num, range_lookup=True):
         return '#VALUE!'
 
     if col_index_num > len(table_array[0]):
-        return '#REF!'
+        return REF_ERROR
 
     result_idx = match(
         lookup_value,
