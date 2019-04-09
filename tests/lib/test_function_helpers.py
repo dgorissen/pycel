@@ -109,6 +109,6 @@ def test_load_functions():
     assert namespace['x_if'](0, 'Y', 'N') == 'N'
     assert namespace['x_if'](((0, 1),), 'Y', 'N') == (('N', 'Y'),)
 
-    missing = load_functions(['xlog'], namespace, modules)
+    missing = load_functions(['log'], namespace, modules)
     assert not missing
-    assert namespace['xlog'](DIV0) == DIV0
+    assert namespace['log'](DIV0) == DIV0

@@ -7,7 +7,7 @@ from bisect import bisect_right
 from collections import Counter
 from datetime import datetime
 from decimal import Decimal, ROUND_HALF_UP, ROUND_UP
-from math import atan2, log
+import math
 
 import numpy as np
 from pycel.excelutil import (
@@ -32,7 +32,11 @@ from pycel.excelutil import (
     VALUE_ERROR,
 )
 
-from pycel.lib.function_helpers import excel_helper, math_wrapper
+from pycel.lib.function_helpers import (
+    excel_helper,
+    excel_math_func,
+    math_wrapper,
+)
 
 
 def _numerics(*args, no_bools=False):
@@ -311,6 +315,20 @@ def linest(Y, X, const=True, degree=1):  # pragma: no cover  ::TODO::
     coefs, residuals, rank, sing_vals = np.linalg.lstsq(A, Y, rcond=None)
 
     return coefs
+
+
+@excel_math_func
+def ln(arg):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   LN-function-81FE1ED7-DAC9-4ACD-BA1D-07A142C6118F
+    return math.log(arg)
+
+
+@excel_math_func
+def log(number, base=10):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   LOG-function-4E82F196-1CA9-4747-8FB0-6C4A3ABB3280
+    return math.log(number, base)
 
 
 @excel_helper(cse_params=0)
@@ -644,7 +662,7 @@ def xatan2(value1, value2):
         return value2
 
     # swap arguments
-    return math_wrapper(atan2)(value2, value1)
+    return math_wrapper(math.atan2)(value2, value1)
 
 
 def xlen(value):
@@ -655,13 +673,6 @@ def xlen(value):
         return 0
     else:
         return len(str(value))
-
-
-def xlog(value):
-    if list_like(value):
-        return [math_wrapper(log)(x) for x in flatten(value)]
-    else:
-        return math_wrapper(log)(value)
 
 
 def xmax(*args):

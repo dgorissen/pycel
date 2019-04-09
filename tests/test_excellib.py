@@ -21,6 +21,8 @@ from pycel.excellib import (
     isNa,
     istext,
     # linest,
+    ln,
+    log,
     lookup,
     match,
     mid,
@@ -34,7 +36,6 @@ from pycel.excellib import (
     sumifs,
     vlookup,
     xatan2,
-    xlog,
     xlen,
     xmax,
     xmin,
@@ -398,6 +399,52 @@ class TestIsNa:
 
     def test_isNa_true(self):
         assert isNa('x + 1')
+
+
+@pytest.mark.parametrize(
+    'expected, value',
+    (
+        (math.log(5), 5),
+        (math.log(2), 2),
+        (NUM_ERROR, None),
+        (VALUE_ERROR, VALUE_ERROR),
+        (DIV0, DIV0),
+        (math.log(5), 5),
+        (((math.log(5), math.log(6)), ), ((5, 6), )),
+        (((math.log(5), math.log(6)), ), ((5, 6), )),
+        # (((math.log(5), math.log(6)), ), np.array(((5, 6), ))),
+        (NUM_ERROR, None),
+        (VALUE_ERROR, VALUE_ERROR),
+        (((math.log(2), VALUE_ERROR), ), ((2, VALUE_ERROR), )),
+        (DIV0, DIV0),
+        (((math.log(2), DIV0), ), ((2, DIV0), )),
+    )
+)
+def test_ln(expected, value):
+    assert ln(value) == expected
+
+
+@pytest.mark.parametrize(
+    'expected, value',
+    (
+        (math.log(5, 10), 5),
+        (math.log(2, 10), 2),
+        (NUM_ERROR, None),
+        (VALUE_ERROR, VALUE_ERROR),
+        (DIV0, DIV0),
+        (math.log(5, 10), 5),
+        (((math.log(5, 10), math.log(6, 10)), ), ((5, 6), )),
+        (((math.log(5, 10), math.log(6, 10)), ), ((5, 6), )),
+        # (((math.log(5), math.log(6)), ), np.array(((5, 6), ))),
+        (NUM_ERROR, None),
+        (VALUE_ERROR, VALUE_ERROR),
+        (((math.log(2, 10), VALUE_ERROR), ), ((2, VALUE_ERROR), )),
+        (DIV0, DIV0),
+        (((math.log(2, 10), DIV0), ), ((2, DIV0), )),
+    )
+)
+def test_log(expected, value):
+    assert log(value) == expected
 
 
 lookup_vector = 'b', 'c', 'd'
@@ -850,20 +897,6 @@ def test_xatan2(param1, param2, result):
 )
 def test_xlen(param, result):
     assert xlen(param) == result
-
-
-def test_xlog():
-    assert math.log(5) == xlog(5)
-    assert [math.log(5), math.log(6)] == xlog([5, 6])
-    assert [math.log(5), math.log(6)] == xlog((5, 6))
-    assert [math.log(5), math.log(6)] == xlog(np.array([5, 6]))
-
-    assert NUM_ERROR == xlog(None)
-    assert VALUE_ERROR == xlog(VALUE_ERROR)
-    assert [math.log(2), VALUE_ERROR] == xlog((2, VALUE_ERROR))
-
-    assert DIV0 == xlog(DIV0)
-    assert [math.log(2), DIV0] == xlog((2, DIV0))
 
 
 def test_xmax():
