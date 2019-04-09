@@ -298,7 +298,7 @@ function_info = (
     FunctionInfo('MODE', 'Compatibility', ''),
     FunctionInfo('MODE.MULT', 'Statistical', 'Excel 2010'),
     FunctionInfo('MODE.SNGL', 'Statistical', 'Excel 2010'),
-    FunctionInfo('MONTH', 'Date and time', ''),
+    FunctionInfo('MONTH', 'Date and time', 'Excel 2007'),
     FunctionInfo('MROUND', 'Math and trigonometry', ''),
     FunctionInfo('MULTINOMIAL', 'Math and trigonometry', ''),
     FunctionInfo('MUNIT', 'Math and trigonometry', 'Excel 2013'),
