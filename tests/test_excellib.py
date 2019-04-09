@@ -16,6 +16,7 @@ from pycel.excellib import (
     countif,
     countifs,
     date,
+    floor,
     hlookup,
     index,
     isNa,
@@ -34,6 +35,7 @@ from pycel.excellib import (
     row,
     sumif,
     sumifs,
+    trunc,
     vlookup,
     xatan2,
     xlen,
@@ -233,6 +235,24 @@ class TestDate:
         assert (dt.datetime(1900, 1, 1) - zero).days == date(0, 1, 1)
         assert (dt.datetime(1900 + 1899, 1, 1) - zero).days == date(1899, 1, 1)
         assert (dt.datetime(1900 + 1899, 1, 1) - zero).days == date(1899, 1, 1)
+
+
+@pytest.mark.parametrize(
+    'number, significance, result', (
+        (2.5, 1, 2),
+        (2.5, 2, 2),
+        (2.5, 3, 0),
+        (-2.5, -1, -2),
+        (-2.5, -2, -2),
+        (-2.5, -3, 0),
+        (0, 0, 0),
+        (-2.5, 0, DIV0),
+        (-1, 1, NUM_ERROR),
+        (1, -1, NUM_ERROR),
+    )
+)
+def test_floor(number, significance, result):
+    assert floor(number, significance) == result
 
 
 @pytest.mark.parametrize(
@@ -840,6 +860,22 @@ class TestSumIfs:
         assert 7 == sumifs([1, 2, 3, 4, 5],
                            [1, 2, 3, 4, 5], ">=3",
                            [1, 2, 3, 4, 5], "<=4")
+
+
+@pytest.mark.parametrize(
+    'number, num_digits, result', (
+        (2.5, -1, 0),
+        (2.5, 0, 2),
+        (2.5, 1, 2.5),
+        (-2.5, -1, 0),
+        (-2.5, 0, -2),
+        (-2.5, 1, -2.5),
+        (NUM_ERROR, 1, NUM_ERROR),
+        (1, NUM_ERROR, NUM_ERROR),
+    )
+)
+def test_trunc(number, num_digits, result):
+    assert trunc(number, num_digits) == result
 
 
 @pytest.mark.parametrize(

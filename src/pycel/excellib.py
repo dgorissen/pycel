@@ -27,6 +27,7 @@ from pycel.excelutil import (
     MAX_COL,
     MAX_ROW,
     NA_ERROR,
+    NUM_ERROR,
     normalize_year,
     PyCelException,
     REF_ERROR,
@@ -203,6 +204,22 @@ def date(year, month, day):
     if result <= 0:
         raise ArithmeticError("Date result is negative")
     return result
+
+
+@excel_math_func
+def floor(number, significance):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   FLOOR-function-14BB497C-24F2-4E04-B327-B0B4DE5A8886
+    if significance < 0 < number or number < 0 < significance:
+        return NUM_ERROR
+
+    if number == 0:
+        return 0
+
+    if significance == 0:
+        return DIV0
+
+    return significance * int(number / significance)
 
 
 @excel_helper(cse_params=0)
@@ -613,6 +630,14 @@ def sumifs(sum_range, *args):
     indices = tuple(idx for idx, cnt in index_counts.items()
                     if cnt == ifs_count and idx < max_idx)
     return sum(_numerics(sum_range[idx] for idx in indices))
+
+
+@excel_math_func
+def trunc(number, num_digits=0):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   TRUNC-function-8B86A64C-3127-43DB-BA14-AA5CEB292721
+    factor = 10 ** int(num_digits)
+    return int(number * factor) / factor
 
 
 @excel_helper(cse_params=0)
