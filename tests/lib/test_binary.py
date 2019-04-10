@@ -1,6 +1,6 @@
 import pytest
 from pycel.lib import binary
-from pycel.excelutil import coerce_to_number
+from pycel.excelutil import coerce_to_number, ERROR_CODES
 
 MAX_BASE_2 = binary._SIZE_MASK[2]
 MAX_BASE_8 = binary._SIZE_MASK[8]
@@ -51,8 +51,7 @@ def test_base2dec(value, base, expected):
     assert compare_result(expected, mapped[base](value))
 
 
-@pytest.mark.parametrize('value', (
-    '#VALUE!', '#N/A', '#DIV/0!', '#NAME?', '#NULL!', '#NUM!', '#REF!'))
+@pytest.mark.parametrize('value', tuple(ERROR_CODES))
 def test_base2dec_errors(value):
     for base in (2, 8, 16):
         assert compare_result(value, binary._base2dec(value, base))
@@ -102,8 +101,7 @@ def test_dec2base_places(value, base, places, expected):
                           binary._dec2base(value, base=base, places=places))
 
 
-@pytest.mark.parametrize('value', (
-    '#VALUE!', '#N/A', '#DIV/0!', '#NAME?', '#NULL!', '#NUM!', '#REF!'))
+@pytest.mark.parametrize('value', tuple(ERROR_CODES))
 def test_dec2base_errors(value):
     for base in (2, 8, 16):
         assert compare_result(value, binary._dec2base(value, base=base))
@@ -173,8 +171,7 @@ def test_base2base_all_bases(value, expected):
                         value, base_in=base_in, base_out=base_out))
 
 
-@pytest.mark.parametrize('value', (
-    '#VALUE!', '#N/A', '#DIV/0!', '#NAME?', '#NULL!', '#NUM!', '#REF!'))
+@pytest.mark.parametrize('value', tuple(ERROR_CODES))
 def test_base2base_errors(value):
     for base_in in (2, 8, 16):
         for base_out in (2, 8, 16):
