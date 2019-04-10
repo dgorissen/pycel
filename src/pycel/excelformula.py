@@ -343,7 +343,7 @@ class FunctionNode(ASTNode):
         "gammaln": "lgamma",
         "if": "x_if",
         "int": "x_int",
-        "len": "xlen",
+        "len": "x_len",
         "max": "xmax",
         "not": "x_not",
         "or": "x_or",

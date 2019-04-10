@@ -644,11 +644,8 @@ def x_int(value1):
 
 
 @excel_func
-def xlen(arg):
-    if arg is None:
-        return 0
-    else:
-        return len(str(arg))
+def x_len(arg):
+    return 0 if arg is None else len(str(arg))
 
 
 def xmax(*args):

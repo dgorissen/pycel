@@ -40,7 +40,7 @@ from pycel.excellib import (
     x_abs,
     xatan2,
     x_int,
-    xlen,
+    x_len,
     xmax,
     xmin,
     x_round,
@@ -960,8 +960,8 @@ def test_x_int(value, expected):
         (DIV0, DIV0),
     )
 )
-def test_xlen(param, result):
-    assert xlen(param) == result
+def test_x_len(param, result):
+    assert x_len(param) == result
 
 
 def test_xmax():
