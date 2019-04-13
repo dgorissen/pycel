@@ -235,7 +235,6 @@ class OperatorNode(ASTNode):
         "^": "**",
         "=": "==",
         "<>": "!=",
-        " ": "+"  # range intersection
     }
 
     @property
@@ -259,6 +258,9 @@ class OperatorNode(ASTNode):
 
         if op == '%':
             ss = '{} / 100'.format(args[0].emit)
+        elif op == ' ':
+            # range intersection
+            ss = '_R_("{}") & _R_("{}")'.format(*args)
         else:
             if op != ',':
                 op = ' ' + op
@@ -921,6 +923,8 @@ class ExcelFormula:
             def visit_BinOp(self, node):
                 """ change the BinOP node to a function node """
                 node = ast.NodeTransformer.generic_visit(self, node)
+                if isinstance(node.op, ast.BitAnd) and self.is_addr_and(node):
+                    return node
                 return self.replace_op(node, node.left, node.op, node.right)
 
             def visit_UnaryOp(self, node):
@@ -941,6 +945,14 @@ class ExcelFormula:
                     lineno=node.lineno,
                     col_offset=node.col_offset,
                 )
+
+            def is_addr_and(self, node):
+                # reference intersection does not get fixup
+                return (isinstance(node.left, ast.Call) and
+                        node.left.func.id == '_REF_' and
+                        isinstance(node.right, ast.Call) and
+                        node.right.func.id == '_REF_'
+                        )
 
         # modify the ast tree to convert Compare and BinOp to Call
         tree = ast.fix_missing_locations(OperatorWrapper().visit(tree))

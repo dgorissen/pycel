@@ -44,7 +44,7 @@ range_inputs = [
     FormulaTest(
         '=SUM(B5:B15 A7:D7)',
         'B5:B15|A7:D7| |SUM',
-        'xsum(_R_("B5:B15") + _R_("A7:D7"))'),
+        'xsum(_R_("B5:B15") & _R_("A7:D7"))'),
     FormulaTest(
         '=SUM((A:A,1:1))',
         'A:A|1:1|,|SUM',
@@ -52,7 +52,7 @@ range_inputs = [
     FormulaTest(
         '=SUM((A:A A1:B1))',
         'A:A|A1:B1| |SUM',
-        'xsum(_R_("A:A") + _R_("A1:B1"))'),
+        'xsum(_R_("A:A") & _R_("A1:B1"))'),
     FormulaTest(
         '=SUM(D9:D11,E9:E11,F9:F11)',
         'D9:D11|E9:E11|F9:F11|SUM',
@@ -79,7 +79,7 @@ basic_inputs = [
     FormulaTest(
         '=SUM((A:A 1:1))',
         'A:A|1:1| |SUM',
-        'xsum(_R_("A:A") + _R_("1:1"))'),
+        'xsum(_R_("A:A") & _R_("1:1"))'),
     FormulaTest(
         '=A1',
         'A1',
@@ -321,7 +321,7 @@ reference_inputs = [
     FormulaTest(
         '=ROW(B53:D54 C54:E54)',
         'B53:D54|C54:E54| |ROW',
-        'row(_REF_("B53:D54") + _REF_("C54:E54"))'),
+        'row(_REF_("B53:D54") & _REF_("C54:E54"))'),
     FormulaTest(
         '=COLUMN(L45)',
         'L45|COLUMN',
@@ -728,7 +728,7 @@ def test_column():
     cell = ATestCell('B', 3)
     assert 2 == eval_ctx(ExcelFormula('=COLUMN()', cell=cell))
 
-    assert ((2, 3, 4, 5), ) == eval_ctx(ExcelFormula('=COLUMN(B6:D7 C7:E7)'))
+    assert ((3, 4), ) == eval_ctx(ExcelFormula('=COLUMN(B6:D9 C7:E8)'))
 
 
 def test_row():
@@ -744,7 +744,7 @@ def test_row():
     cell = ATestCell('B', 3)
     assert 3 == eval_ctx(ExcelFormula('=ROW()', cell=cell))
 
-    assert ((6,), (7,)) == eval_ctx(ExcelFormula('=ROW(B6:D7 C7:E7)'))
+    assert ((7,), (8,)) == eval_ctx(ExcelFormula('=ROW(B6:D9 C7:E8)'))
 
 
 @pytest.mark.parametrize(

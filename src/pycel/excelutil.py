@@ -178,6 +178,9 @@ class AddressRange(collections.namedtuple(
                 raise ValueError("Mismatched sheets '{}' and '{}'".format(
                     address, sheet))
 
+        elif address is None:
+            return None
+
         else:
             assert (isinstance(address, tuple) and
                     4 == len(address) and
@@ -197,7 +200,7 @@ class AddressRange(collections.namedtuple(
             cls, format_str.format(sheet, coordinate),
             sheet, start, end, coordinate)
 
-    def __add__(self, other):
+    def __or__(self, other):
         """Assumes rectangular only"""
         other = AddressRange.create(other)
         min_col_idx = min(self.col_idx, other.col_idx)
@@ -209,6 +212,23 @@ class AddressRange(collections.namedtuple(
                       other.row + other.size.height) - 1
 
         return AddressRange((min_col_idx, min_row, max_col_idx, max_row))
+
+    def __and__(self, other):
+        """Assumes rectangular only"""
+        other = AddressRange.create(other)
+        min_col_idx = max(self.col_idx, other.col_idx)
+        min_row = max(self.row, other.row)
+
+        max_col_idx = min(self.col_idx + self.size.width,
+                          other.col_idx + other.size.width) - 1
+        max_row = min(self.row + self.size.height,
+                      other.row + other.size.height) - 1
+        if max_col_idx < min_col_idx or max_row < min_row:
+            return None
+        elif max_col_idx == min_col_idx and max_row == min_row:
+            return AddressCell((min_col_idx, min_row, max_col_idx, max_row))
+        else:
+            return AddressRange((min_col_idx, min_row, max_col_idx, max_row))
 
     def __contains__(self, address):
         address = AddressCell(address)

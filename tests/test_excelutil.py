@@ -89,6 +89,34 @@ def test_address_range_errors():
 
 @pytest.mark.parametrize(
     'left, right, result', (
+        ('a1:b2', 'b1:c3', 'b1:b2'),
+        ('a1:d5', 'b3', 'b3'),
+        ('d4:e5', 'c3', None),
+        ('d4:e5', 'd3', None),
+        ('d4:e5', 'e3', None),
+        ('d4:e5', 'f3', None),
+        ('d4:e5', 'c4', None),
+        ('d4:e5', 'd4', 'd4'),
+        ('d4:e5', 'e4', 'e4'),
+        ('d4:e5', 'f4', None),
+        ('d4:e5', 'c5', None),
+        ('d4:e5', 'd5', 'd5'),
+        ('d4:e5', 'e5', 'e5'),
+        ('d4:e5', 'f5', None),
+        ('d4:e5', 'c6', None),
+        ('d4:e5', 'd6', None),
+        ('d4:e5', 'e6', None),
+        ('d4:e5', 'f6', None),
+        ('c4:e5', 'd1', None),
+        ('c4:e6', 'a5', None),
+    )
+)
+def test_address_range_and(left, right, result):
+    assert AddressRange(left) & AddressRange(right) == AddressRange(result)
+
+
+@pytest.mark.parametrize(
+    'left, right, result', (
         ('a1:b2', 'b1:c3', 'a1:c3'),
         ('a1:b2', 'd5', 'a1:d5'),
         ('a1:d5', 'b3', 'a1:d5'),
@@ -99,8 +127,8 @@ def test_address_range_errors():
         ('c4:e6', 'j5', 'c4:j6'),
     )
 )
-def test_address_range_add(left, right, result):
-    assert AddressRange(left) + AddressRange(right) == AddressRange(result)
+def test_address_range_or(left, right, result):
+    assert AddressRange(left) | AddressRange(right) == AddressRange(result)
 
 
 @pytest.mark.parametrize(
