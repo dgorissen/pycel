@@ -2,8 +2,8 @@ import ast
 import logging
 import marshal
 import math
-import re
 import sys
+import tokenize as tk
 
 import openpyxl.formula.tokenizer as tokenizer
 from networkx.classes.digraph import DiGraph
@@ -24,7 +24,7 @@ from pycel.lib.function_helpers import load_functions
 from pycel.lib.function_info import func_status_msg
 
 
-EVAL_REGEX = re.compile(r'(_C_|_R_)(\([^)]*\))')
+ADDR_FUNCS_NAMES = '_R_', '_C_', '_REF_'
 
 
 class FormulaParserError(PyCelException):
@@ -547,10 +547,15 @@ class ExcelFormula:
         if self._needed_addresses is None:
             # get all the cells/ranges this formula refers to, and remove dupes
             if self.python_code:
-                self._needed_addresses = uniqueify(
-                    AddressRange(eval_call[1][2:-2])
-                    for eval_call in EVAL_REGEX.findall(self.python_code)
-                )
+                code = iter((self.python_code.encode(),))
+                tokens = tuple(tk.tokenize(lambda: next(code)))
+                addrs = []
+                for i, t in enumerate(tokens):
+                    if t.type == 1 and t.string in ADDR_FUNCS_NAMES and (
+                            tokens[i + 1].string == '(' and
+                            tokens[i + 3].string == ')'):
+                        addrs.append(AddressRange(tokens[i + 2].string[1:-1]))
+                self._needed_addresses = uniqueify(addrs)
             else:
                 self._needed_addresses = ()
 

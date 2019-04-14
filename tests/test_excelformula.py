@@ -13,7 +13,7 @@ from pycel.excelformula import (
     Token,
     UnknownFunction,
 )
-from pycel.excelutil import DIV0, NAME_ERROR, VALUE_ERROR
+from pycel.excelutil import AddressCell, DIV0, NAME_ERROR, VALUE_ERROR
 from test_excelutil import ATestCell
 
 
@@ -515,6 +515,10 @@ def test_needed_addresses():
     assert needed == sorted(x.address for x in excel_formula.needed_addresses)
 
     assert () == ExcelFormula('').needed_addresses
+
+    excel_formula = ExcelFormula('_REF_(_R_("S!A1"))',
+                                 formula_is_python_code=True)
+    assert excel_formula.needed_addresses == (AddressCell('S!A1'), )
 
 
 @pytest.mark.parametrize(
