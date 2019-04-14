@@ -234,7 +234,7 @@ def hlookup(lookup_value, table_array, row_index_num, range_lookup=True):
     if row_index_num > len(table_array[0]):
         return REF_ERROR
 
-    result_idx = match(
+    result_idx = _match(
         lookup_value, table_array[0], match_type=bool(range_lookup))
 
     if isinstance(result_idx, int):
@@ -363,10 +363,10 @@ def lookup(lookup_value, lookup_array, result_range=None):
 
     # match across the largest dimension
     if width <= height:
-        match_idx = match(lookup_value, tuple(i[0] for i in lookup_array))
+        match_idx = _match(lookup_value, tuple(i[0] for i in lookup_array))
         result = tuple(i[-1] for i in lookup_array)
     else:
-        match_idx = match(lookup_value, lookup_array[0])
+        match_idx = _match(lookup_value, lookup_array[0])
         result = lookup_array[-1]
 
     if len(lookup_array) > 1 and len(lookup_array[0]) > 1:
@@ -389,6 +389,15 @@ def lookup(lookup_value, lookup_array, result_range=None):
 
 @excel_helper(cse_params=0, number_params=2)
 def match(lookup_value, lookup_array, match_type=1):
+    if len(lookup_array) == 1:
+        lookup_array = lookup_array[0]
+    else:
+        lookup_array = tuple(row[0] for row in lookup_array)
+
+    return _match(lookup_value, lookup_array, match_type)
+
+
+def _match(lookup_value, lookup_array, match_type=1):
     # Excel reference: https://support.office.com/en-us/article/
     #   MATCH-function-E8DFFD45-C762-47D6-BF89-533F4A37673A
 
@@ -501,7 +510,10 @@ def power(number, power):
         # Really excel?  What were you thinking?
         return NA_ERROR
 
-    return number ** power
+    try:
+        return number ** power
+    except ZeroDivisionError:
+        return DIV0
 
 
 @excel_helper(cse_params=0, number_params=1)
@@ -607,7 +619,7 @@ def vlookup(lookup_value, table_array, col_index_num, range_lookup=True):
     if col_index_num > len(table_array[0]):
         return REF_ERROR
 
-    result_idx = match(
+    result_idx = _match(
         lookup_value,
         [row[0] for row in table_array],
         match_type=bool(range_lookup)

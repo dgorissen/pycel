@@ -1,4 +1,3 @@
-import datetime as dt
 import pytest
 
 from pycel.excelutil import AddressRange
@@ -194,10 +193,9 @@ def test_array_formulas(excel, address, values, formula):
 
 
 def test_get_datetimes(excel):
-    result = excel.get_range("datetime!A1:B12").values
+    result = excel.get_range("datetime!A1:B13").values
     for row in result:
-        if isinstance(row[1], (dt.date, dt.datetime)):
-            assert row[0] == row[1]
+        assert row[0] == row[1]
 
 
 @pytest.mark.parametrize(

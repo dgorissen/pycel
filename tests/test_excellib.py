@@ -26,6 +26,7 @@ from pycel.excellib import (
     log,
     lookup,
     match,
+    _match,
     mid,
     mod,
     npv,
@@ -506,6 +507,7 @@ def test_lookup_error():
 
 @pytest.mark.parametrize(
     'lookup_value, lookup_array, match_type, result', (
+        (DIV0, [1, 2, 3], -1, DIV0),
         (0, [1, 3.3, 5], 1, NA_ERROR),
         (1, [1, 3.3, 5], 1, 1),
         (2, [1, 3.3, 5], 1, 1),
@@ -541,7 +543,10 @@ def test_lookup_error():
     )
 )
 def test_match(lookup_value, lookup_array, match_type, result):
-    assert result == match(lookup_value, lookup_array, match_type)
+    lookup_row = (tuple(lookup_array), )
+    lookup_col = tuple((i, ) for i in lookup_array)
+    assert result == match(lookup_value, lookup_row, match_type)
+    assert result == match(lookup_value, lookup_col, match_type)
 
 
 @pytest.mark.parametrize(
@@ -636,13 +641,13 @@ def test_match(lookup_value, lookup_array, match_type, result):
 )
 def test_match_crazy_order(
         lookup_array, lookup_value, result1, result0, resultm1):
-    assert result0 == match(lookup_value, lookup_array, 0)
-    assert resultm1 == match(lookup_value, lookup_array, -1)
-    if result1 != match(lookup_value, lookup_array, 1):
+    assert result0 == _match(lookup_value, lookup_array, 0)
+    assert resultm1 == _match(lookup_value, lookup_array, -1)
+    if result1 != _match(lookup_value, lookup_array, 1):
         lookup_array = [ExcelCmp(x) for x in lookup_array]
         if sorted(lookup_array) == lookup_array:
             # only complain on failures for mode 0 when array is sorted
-            assert result1 == match(lookup_value, lookup_array, 1)
+            assert result1 == _match(lookup_value, lookup_array, 1)
 
 
 class TestMid:
@@ -727,6 +732,7 @@ def test_npv(data, expected):
         ((1, 'x'), VALUE_ERROR),
         ((NA_ERROR, 1), NA_ERROR),
         ((1, NA_ERROR), NA_ERROR),
+        ((0, -1), DIV0),
         ((1, DIV0), DIV0),
         ((DIV0, 1), DIV0),
         ((NA_ERROR, DIV0), NA_ERROR),
