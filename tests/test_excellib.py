@@ -1,6 +1,5 @@
 import datetime as dt
 import math
-import sys
 
 import numpy as np
 import pytest
@@ -60,15 +59,11 @@ from pycel.excelutil import (
     VALUE_ERROR,
 )
 
-from pycel.lib.function_helpers import apply_meta, error_string_wrapper
+from pycel.lib.function_helpers import error_string_wrapper, load_to_test_module
 
 
 # dynamic load the lib functions from excellib and apply metadata
-this_module = sys.modules[__name__]
-for name in dir(pycel.excellib):
-    obj = getattr(pycel.excellib, name)
-    if callable(obj) and getattr(this_module, name, None) == obj:
-        setattr(this_module, name, apply_meta(obj)[0])
+load_to_test_module(pycel.excellib, __name__)
 
 
 def test_numerics():

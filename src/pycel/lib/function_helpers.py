@@ -1,5 +1,6 @@
 import collections
 import functools
+import sys
 
 from pycel.excelutil import (
     coerce_to_number,
@@ -224,3 +225,12 @@ def load_functions(names, name_space, modules):
                 name_space[name] = func
 
     return not_found
+
+
+def load_to_test_module(load_from, load_to_name):
+    # dynamic load the lib functions from 'load_from' and apply metadata
+    load_to = sys.modules[load_to_name]
+    for name in dir(load_from):
+        obj = getattr(load_from, name)
+        if callable(obj) and getattr(load_to, name, None) == obj:
+            setattr(load_to, name, apply_meta(obj)[0])
