@@ -525,8 +525,8 @@ class ExcelCompiler:
                 exc_str = str(exc)
                 exc_str_split = exc_str.split('\n')
 
-                if 'has not been implemented' in exc_str:
-                    exc_str_key = exc_str.split('has not been implemented')[0]
+                if 'is not implemented' in exc_str:
+                    exc_str_key = exc_str.split('is not implemented')[0]
                     exc_str_key = exc_str_key.strip().rsplit(' ', 1)[1].upper()
                     not_implemented = True
 
@@ -592,6 +592,7 @@ class ExcelCompiler:
             self.cell_map[str(excel_range.address)] = a_range
             return a_range
 
+        self.log.debug('_make_cells: {}'.format(address))
         excel_data = self.excel.get_range(address)
         if address.is_range:
             if excel_data.address != address:

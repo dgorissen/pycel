@@ -476,13 +476,13 @@ def test_structured_ref(excel_compiler):
 
 @pytest.mark.parametrize(
     'msg, formula', (
-        ("Function XYZZY has not been implemented. "
+        ("Function XYZZY is not implemented. "
          "XYZZY is not a known Excel function", '=xyzzy()'),
-        ("Function PLUGH has not been implemented. "
+        ("Function PLUGH is not implemented. "
          "PLUGH is not a known Excel function\n"
-         "Function XYZZY has not been implemented. "
+         "Function XYZZY is not implemented. "
          "XYZZY is not a known Excel function", '=xyzzy() + plugh()'),
-        ('Function ARABIC has not been implemented. '
+        ('Function ARABIC is not implemented. '
          'ARABIC is in the "Math and trigonometry" group, '
          'and was introduced in Excel 2013',
          '=ARABIC()'),

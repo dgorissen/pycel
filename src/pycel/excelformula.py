@@ -865,7 +865,7 @@ class ExcelFormula:
             if excel_formula.compiled_lambda is None:
                 missing = load_function(excel_formula, locals())
                 if missing:
-                    msg_fmt = 'Function {} has not been implemented. '
+                    msg_fmt = 'Function {} is not implemented. '
                     excel_formula.msg = '\n'.join(
                         msg_fmt.format(f.upper()) +
                         func_status_msg(f)[1] for f in sorted(missing))
