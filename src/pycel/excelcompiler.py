@@ -702,6 +702,9 @@ class ExcelCompiler:
         if not seed.has_sheet:
             seed = AddressRange(seed, sheet=self.excel.get_active_sheet_name())
 
+        if '[' in seed.sheet:
+            raise NotImplementedError('Linked SheetNames')
+
         if seed.address in self.cell_map:
             # already did this cell/range
             return

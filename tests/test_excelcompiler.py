@@ -199,6 +199,9 @@ def test_gen_graph(excel_compiler):
     with pytest.raises(ValueError, match='Unknown seed'):
         excel_compiler._gen_graph(None)
 
+    with pytest.raises(NotImplementedError, match='Linked SheetNames'):
+        excel_compiler._gen_graph('=[Filename.xlsx]Sheetname!A1')
+
 
 def test_value_tree_str(excel_compiler):
     out_address = 'trim-range!B2'
