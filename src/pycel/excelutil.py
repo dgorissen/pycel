@@ -21,6 +21,7 @@ VALUE_ERROR = '#VALUE!'
 NUM_ERROR = '#NUM!'
 NA_ERROR = '#N/A'
 NAME_ERROR = "#NAME?"
+NULL_ERROR = "#NULL!"
 REF_ERROR = "#REF!"
 
 R1C1_ROW_RE_STR = r"R(\[-?\d+\]|\d+)?"
@@ -211,7 +212,8 @@ class AddressRange(collections.namedtuple(
         max_row = max(self.row + self.size.height,
                       other.row + other.size.height) - 1
 
-        return AddressRange((min_col_idx, min_row, max_col_idx, max_row))
+        return AddressRange((min_col_idx, min_row, max_col_idx, max_row),
+                            sheet=self.sheet)
 
     def __and__(self, other):
         """Assumes rectangular only"""
@@ -226,9 +228,11 @@ class AddressRange(collections.namedtuple(
         if max_col_idx < min_col_idx or max_row < min_row:
             return None
         elif max_col_idx == min_col_idx and max_row == min_row:
-            return AddressCell((min_col_idx, min_row, max_col_idx, max_row))
+            return AddressCell((min_col_idx, min_row, max_col_idx, max_row),
+                               sheet=self.sheet)
         else:
-            return AddressRange((min_col_idx, min_row, max_col_idx, max_row))
+            return AddressRange((min_col_idx, min_row, max_col_idx, max_row),
+                                sheet=self.sheet)
 
     def __contains__(self, address):
         address = AddressCell(address)
@@ -468,8 +472,9 @@ def split_sheetname(address, sheet=''):
     sh = ''
     if '!' in address:
         sh, address_part = address.split('!', maxsplit=1)
-        assert '!' not in address_part, \
-            "Only rectangular formulas are supported {}".format(address)
+        if '!' in address_part:
+            raise NotImplementedError(
+                "Non-rectangular formulas: {}".format(address))
         sh = unquote_sheetname(sh)
         address = address_part
 
@@ -651,7 +656,7 @@ def range_boundaries(address, cell=None, sheet=None):
         return openpyxl_range_boundaries(name_addr[0]), name_addr[1]
 
     if len(address.split(':')) > 2:
-        raise NotImplementedError("Multiple Colon Ranges not implemented")
+        raise NotImplementedError("Multiple Colon Ranges: {}".format(address))
 
     raise ValueError(
         "{0} is not a valid coordinate or range".format(address))
@@ -861,6 +866,11 @@ class _ArrayFormulaContext:
             elif result_size.width > ctx_size.width:
                 result = tuple(row[:ctx_size.width] for row in result)
 
+            # if result is narrower than target, fill w/ NA
+            elif result_size.width < ctx_size.width:
+                fill = (NA_ERROR, ) * (ctx_size.width - result_size.width)
+                result = tuple(row + fill for row in result)
+
             # if result is one row high and target is taller, then expand rows
             if result_size.height == 1 and ctx_size.height != 1:
                 result *= ctx_size.height
@@ -868,6 +878,11 @@ class _ArrayFormulaContext:
             # if result is taller than target, trim it
             elif result_size.height > ctx_size.height:
                 result = result[:ctx_size.height]
+
+            # if result is shorter than target, fill w/ NA
+            elif result_size.height < ctx_size.height:
+                fill = ((NA_ERROR, ) * ctx_size.width, )
+                result += fill * (ctx_size.height - result_size.height)
 
         return result
 

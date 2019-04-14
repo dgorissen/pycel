@@ -300,6 +300,9 @@ def test_split_sheetname():
     with pytest.raises(ValueError):
         split_sheetname('sh!B1', sheet='shx')
 
+    with pytest.raises(NotImplementedError):
+        split_sheetname('sh!B1:C2:sh2!B1:C2')
+
 
 def test_address_cell_enum():
     assert ('B1', '', 2, 1, 'B1') == AddressCell('B1')
@@ -637,6 +640,9 @@ def test_in_array_formula_context():
 
         ('A1:B1', ((1, 2), (3, 4)), ((1, 2),)),
         ('A1:A2', ((1, 2), (3, 4)), ((1, ), (3, ),)),
+
+        ('A1:C3', ((1, 2), (3, 4)),
+         ((1, 2, '#N/A'), (3, 4, '#N/A'), ('#N/A', '#N/A', '#N/A'))),
     )
 )
 def test_array_formula_context_fit_to_range(address, value, result):
