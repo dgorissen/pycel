@@ -12,6 +12,7 @@ from pycel.excelutil import (
     AddressRange,
     flatten,
     list_like,
+    NULL_ERROR,
     VALUE_ERROR,
 )
 from pycel.excelwrapper import ExcelOpxWrapper
@@ -584,8 +585,8 @@ class ExcelCompiler:
             return a_cell
 
         def build_range(excel_range):
-            a_range = _CellRange(excel_range)
-            for addr in a_range:
+            a_range = _CellRange(excel_range, excel=self.excel)
+            for addr in a_range.needed_addresses:
                 if addr.address not in self.cell_map:
                     self._make_cells(addr)
 
@@ -599,7 +600,8 @@ class ExcelCompiler:
                 # if the actual data returned is not the same as the address
                 # given, then use a reference
                 self.cell_map[str(address)] = _Cell(
-                    address, formula=REF_FORMAT.format(excel_data.address))
+                    address, formula=REF_FORMAT.format(excel_data.address),
+                    excel=self.excel)
 
             self.range_todos.append(str(excel_data.address))
             new_node = build_range(excel_data)
@@ -612,6 +614,9 @@ class ExcelCompiler:
 
     def _evaluate_range(self, address):
         """Evaluate a range"""
+        if address == 'None':
+            return NULL_ERROR
+
         cell_range = self.cell_map.get(address)
         if cell_range is None:
             # we don't save the _CellRange values in the text format files
@@ -620,13 +625,18 @@ class ExcelCompiler:
             cell_range = self.cell_map[address]
 
         if cell_range.value is None:
-            self.log.debug("Evaluating: {}".format(cell_range.address))
-            addresses = cell_range.addresses
-
-            data = tuple(
-                tuple(self._evaluate(addr.address) for addr in row)
-                for row in addresses
-            )
+            self.log.debug("Evaluating: {}, {}".format(
+                cell_range.address, cell_range.python_code))
+            if cell_range.formula is None:
+                data = tuple(
+                    tuple(self._evaluate(addr.address) for addr in row)
+                    for row in cell_range.addresses
+                )
+            else:
+                # CSE Array Formula
+                data = self.eval(cell_range.formula, cell_range.address)
+                self.log.info("Range %s evaluated to '%s'" % (
+                    cell_range.address, data))
 
             cell_range.value = data
 
@@ -746,13 +756,40 @@ class ExcelCompiler:
         )
 
 
-class _CellRange:
+class _CellBase:
+
+    def __init__(self, address=None, formula='', excel=None):
+        formula_is_python_code = excel is None or isinstance(
+            excel, _CompiledImporter)
+        self.formula = formula and ExcelFormula(
+            formula, cell=self,
+            formula_is_python_code=formula_is_python_code) or None
+
+        if isinstance(excel, _CompiledImporter):
+            excel = None
+        self.excel = excel
+        self.address = AddressRange(address)
+
+    @property
+    def sheet(self):
+        return self.address.sheet
+
+    @property
+    def python_code(self):
+        return self.formula and self.formula.python_code
+
+
+class _CellRange(_CellBase):
     # TODO: only supports rectangular ranges
 
     serialize = False
 
-    def __init__(self, data):
-        self.address = AddressRange(data.address)
+    def __init__(self, data, excel=None):
+        formula = None
+        if data.formula:
+            assert data.formula.startswith('={') and data.formula[-1] == '}'
+            formula = '=' + data.formula[2:-1]
+        super().__init__(address=data.address, formula=formula, excel=excel)
         if not self.address.sheet:
             raise ValueError("Must pass in a sheet: {}".format(self.address))
 
@@ -775,14 +812,10 @@ class _CellRange:
 
     @property
     def needed_addresses(self):
-        return iter(self)
-
-    @property
-    def sheet(self):
-        return self.address.sheet
+        return self.formula and self.formula.needed_addresses or iter(self)
 
 
-class _Cell:
+class _Cell(_CellBase):
     ctr = 0
     serialize = True
 
@@ -792,13 +825,8 @@ class _Cell:
         return cls.ctr
 
     def __init__(self, address, value=None, formula='', excel=None):
-        self.address = address
-        if isinstance(excel, _CompiledImporter):
-            excel = None
+        super().__init__(address=address, formula=formula, excel=excel)
 
-        self.excel = excel
-        self.formula = formula and ExcelFormula(
-            formula, cell=self, formula_is_python_code=(excel is None)) or None
         self.value = value
 
         # every cell has a unique id
@@ -817,14 +845,6 @@ class _Cell:
     @property
     def needed_addresses(self):
         return self.formula and self.formula.needed_addresses or ()
-
-    @property
-    def sheet(self):
-        return self.address.sheet
-
-    @property
-    def python_code(self):
-        return self.formula and self.formula.python_code
 
 
 class _CompiledImporter:

@@ -260,7 +260,10 @@ class OperatorNode(ASTNode):
             ss = '{} / 100'.format(args[0].emit)
         elif op == ' ':
             # range intersection
-            ss = '_R_("{}") & _R_("{}")'.format(*args)
+            ss = '_R_' + ('(str({} & {}))'.format(args[0].emit, args[1].emit)
+                          .replace('_R_', '_REF_')
+                          .replace('_C_', '_REF_')
+                          )
         else:
             if op != ',':
                 op = ' ' + op
@@ -372,6 +375,8 @@ class FunctionNode(ASTNode):
     def emit(self):
         func = self.value.lower().strip('(')
 
+        if func[0] == func[-1] == '_':
+            func = func.upper()
         if func.startswith('_xlfn.'):
             func = func[6:]
         func = func.replace('.', '_')
@@ -402,11 +407,7 @@ class FunctionNode(ASTNode):
         return "False"
 
     def func_array(self):
-        if len(self.children) == 1:
-            return '[{}]'.format(self.children[0].emit)
-        else:
-            # multiple rows
-            return '[{}]'.format(self.comma_join_emit('[{}]'))
+        return '({},)'.format(self.comma_join_emit('({},)'))
 
     def func_arrayrow(self):
         # simply create a list
@@ -438,23 +439,22 @@ class FunctionNode(ASTNode):
 
     func_linestmario = func_linest
 
-    def func_row(self):
-        assert len(self.children) <= 1
+    @property
+    def _build_reference(self):
         if len(self.children) == 0:
             address = '_REF_("{}")'.format(self.cell.address)
         else:
             address = self.children[0].emit
             address = address.replace('_R_', '_REF_').replace('_C_', '_REF_')
-        return 'row({})'.format(address)
+            if address.startswith('_REF_(str('):
+                address = address[10:-2]
+        return address
+
+    def func_row(self):
+        return 'row({})'.format(self._build_reference)
 
     def func_column(self):
-        assert len(self.children) <= 1
-        if len(self.children) == 0:
-            address = '_REF_("{}")'.format(self.cell.address)
-        else:
-            address = self.children[0].emit
-            address = address.replace('_R_', '_REF_').replace('_C_', '_REF_')
-        return 'column({})'.format(address)
+        return 'column({})'.format(self._build_reference)
 
     SUBTOTAL_FUNCS = {
         1: 'average',

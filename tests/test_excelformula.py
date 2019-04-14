@@ -44,7 +44,7 @@ range_inputs = [
     FormulaTest(
         '=SUM(B5:B15 A7:D7)',
         'B5:B15|A7:D7| |SUM',
-        'xsum(_R_("B5:B15") & _R_("A7:D7"))'),
+        'xsum(_R_(str(_REF_("B5:B15") & _REF_("A7:D7"))))'),
     FormulaTest(
         '=SUM((A:A,1:1))',
         'A:A|1:1|,|SUM',
@@ -52,7 +52,7 @@ range_inputs = [
     FormulaTest(
         '=SUM((A:A A1:B1))',
         'A:A|A1:B1| |SUM',
-        'xsum(_R_("A:A") & _R_("A1:B1"))'),
+        'xsum(_R_(str(_REF_("A:A") & _REF_("A1:B1"))))'),
     FormulaTest(
         '=SUM(D9:D11,E9:E11,F9:F11)',
         'D9:D11|E9:E11|F9:F11|SUM',
@@ -64,7 +64,19 @@ range_inputs = [
     FormulaTest(
         '={SUM(B2:D2*B3:D3)}',
         'B2:D2|B3:D3|*|SUM|ARRAYROW|ARRAY',
-        '[xsum(_R_("B2:D2") * _R_("B3:D3"))]'),
+        '((xsum(_R_("B2:D2") * _R_("B3:D3")),),)'),
+    FormulaTest(
+        '=RIGHT({"A","B"},A2:B2)',
+        '"A"|"B"|ARRAYROW|ARRAY|A2:B2|RIGHT',
+        'right((("A", "B",),), _R_("A2:B2"))'),
+    FormulaTest(
+        '=LEFT({"A";"B"},B1:B2)',
+        '"A"|ARRAYROW|"B"|ARRAYROW|ARRAY|B1:B2|LEFT',
+        'left((("A",), ("B",),), _R_("B1:B2"))'),
+    FormulaTest(
+        '=MID({"A","B";"C","D"},A1:B2)',
+        '"A"|"B"|ARRAYROW|"C"|"D"|ARRAYROW|ARRAY|A1:B2|MID',
+        'mid((("A", "B",), ("C", "D",),), _R_("A1:B2"))'),
     FormulaTest(
         '=SUM(123 + SUM(456) + (45<6))+456+789',
         '123|456|SUM|+|45|6|<|+|SUM|456|+|789|+',
@@ -79,7 +91,7 @@ basic_inputs = [
     FormulaTest(
         '=SUM((A:A 1:1))',
         'A:A|1:1| |SUM',
-        'xsum(_R_("A:A") & _R_("1:1"))'),
+        'xsum(_R_(str(_REF_("A:A") & _REF_("1:1"))))'),
     FormulaTest(
         '=A1',
         'A1',
@@ -184,7 +196,7 @@ if_inputs = [
         '   "  more ""test"" text"',
         '"a"|"a"|"b"|ARRAYROW|"c"|#N/A|ARRAYROW|1|-|TRUE|ARRAYROW|ARRAY|=|'
         '"yes"|"no"|IF|"  more ""test"" text"|&',
-        'x_if("a" == [["a", "b"], ["c", "#N/A"], [-1, True]], "yes", "no")'
+        'x_if("a" == (("a", "b",), ("c", "#N/A",), (-1, True,),), "yes", "no")'
         ' & "  more \\"test\\" text"'),
     FormulaTest(
         '=IF(R13C3>DATE(2002,1,6),0,IF(ISERROR(R[41]C[2]),0,IF(R13C3>=R[41]C[2]'

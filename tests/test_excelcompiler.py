@@ -6,7 +6,7 @@ from unittest import mock
 import pytest
 from pycel.excelcompiler import _Cell, _CellRange, ExcelCompiler
 from pycel.excelformula import FormulaParserError, UnknownFunction
-from pycel.excelutil import AddressCell, AddressRange, flatten
+from pycel.excelutil import AddressCell, AddressRange, flatten, NULL_ERROR
 from pycel.excelwrapper import ExcelWrapper
 
 
@@ -400,12 +400,12 @@ def test_compile_error_message_line_number(excel_compiler):
 def test_init_cell_address_error(excel):
     with pytest.raises(ValueError):
         _CellRange(ExcelWrapper.RangeData(
-            AddressCell('A1'), (('', ),), ((0, ),)))
+            AddressCell('A1'), '', ((0, ),)))
 
 
 def test_cell_range_repr(excel):
     cell_range = _CellRange(ExcelWrapper.RangeData(
-        AddressRange('sheet!A1:B1'), (('', ''),), ((0, 0),)))
+        AddressRange('sheet!A1:B1'), '', ((0, 0),)))
     assert 'sheet!A1:B1' == repr(cell_range)
 
 
@@ -523,3 +523,15 @@ def test_evaluate_exceptions(fixture_dir):
     result = excel_compiler.validate_calcs(address)
     assert 'exceptions' in result
     assert len(result['exceptions']) == 1
+
+
+def test_evaluate_empty_intersection(fixture_dir):
+    excel_compiler = ExcelCompiler.from_file(
+        os.path.join(fixture_dir, 'fixture.xlsx.yml'))
+
+    address = AddressCell('s!A1')
+    excel_compiler.cell_map[str(address)] = _Cell(
+        address, None, '=_R_(str(_REF_("s!A1:A2") & _REF_("s!B1:B2")))',
+        excel_compiler.excel
+    )
+    assert excel_compiler.evaluate(address) == NULL_ERROR
