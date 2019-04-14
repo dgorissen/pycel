@@ -41,14 +41,14 @@ from pycel.excelutil import DIV0
 
 class ATestCell:
 
-    def __init__(self, col, row, sheet='', excel=None):
+    def __init__(self, col, row, sheet='', excel=None, value=None):
         self.row = row
         self.col = col
         self.col_idx = column_index_from_string(col)
         self.sheet = sheet
         self.excel = excel
-        self.address = AddressCell(
-            '{}{}'.format(col, row), sheet=sheet)
+        self.address = AddressCell('{}{}'.format(col, row), sheet=sheet)
+        self.value = value
 
 
 def test_address_range():

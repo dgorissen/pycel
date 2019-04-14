@@ -72,9 +72,13 @@ class _OpxRange(ExcelWrapper.RangeData):
         value = cells[0][0].value
         if isinstance(value, str) and value.startswith(ARRAY_FORMULA_NAME):
             # if this range refers to a CSE Array Formula, get the formula
-            front = cells[0][0].value.rsplit(',', 4)[0]
-            if all(c.value and c.value.startswith(front)
-                   for c in flatten(cells)):
+            front, *args = cells[0][0].value[:-1].rsplit(',', 4)
+
+            # if this range corresponds to the top left of a CSE Array formula
+            if (args[0] == args[1] == '1') and all(
+                    c.value and c.value.startswith(front)
+                    for c in flatten(cells)):
+                # apply formula to the range
                 formula = '={%s}' % front[len(ARRAY_FORMULA_NAME) + 1:]
 
         values = tuple(tuple(cell.value for cell in row)

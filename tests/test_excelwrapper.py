@@ -3,6 +3,7 @@ import pytest
 
 from pycel.excelutil import AddressRange
 from pycel.excelwrapper import ARRAY_FORMULA_FORMAT, _OpxRange
+from test_excelutil import ATestCell
 
 
 def test_connect(unconnected_excel):
@@ -213,6 +214,20 @@ def test_get_entire_rows_columns(excel, result_range, expected_range):
     result = excel.get_range(result_range).values
     expected = excel.get_range(expected_range).values
     assert result == expected
+
+
+@pytest.mark.parametrize(
+    'value, formula',
+    (
+        (ARRAY_FORMULA_FORMAT % ('xyzzy', 1, 1, 2, 2), '={xyzzy}'),
+        (ARRAY_FORMULA_FORMAT % ('xyzzy', 1, 2, 2, 2), None),
+        (ARRAY_FORMULA_FORMAT % ('xyzzy', 2, 1, 2, 2), None),
+        (ARRAY_FORMULA_FORMAT % ('xyzzy', 2, 2, 2, 2), None),
+    )
+)
+def test_cell_to_formulax(value, formula):
+    cells = ((ATestCell('A', 1, value=value), ), )
+    assert _OpxRange(cells, cells, '').formula == formula
 
 
 @pytest.mark.parametrize(
