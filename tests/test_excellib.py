@@ -7,6 +7,7 @@ import pycel.excellib
 from pycel.excellib import (
     _numerics,
     average,
+    ceiling,
     column,
     concat,
     concatenate,
@@ -98,6 +99,26 @@ def test_average():
 )
 def test_x_abs(value, expected):
     assert x_abs(value) == expected
+
+
+@pytest.mark.parametrize(
+    'number, significance, result', (
+        (2.5, 1, 3),
+        (2.5, 2, 4),
+        (2.5, 3, 3),
+        (-2.5, -1, -3),
+        (-2.5, -2, -4),
+        (-2.5, -3, -3),
+        (-2.5, 1, -2),
+        (-2.5, 2, -2),
+        (-2.5, 3, 0),
+        (0, 0, 0),
+        (-2.5, 0, DIV0),
+        (1, -1, NUM_ERROR),
+    )
+)
+def test_ceiling(number, significance, result):
+    assert ceiling(number, significance) == result
 
 
 @pytest.mark.parametrize(

@@ -65,6 +65,25 @@ def average(*args):
         return sum(data) / len(data)
 
 
+@excel_math_func
+def ceiling(number, significance):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   CEILING-function-0A5CD7C8-0720-4F0A-BD2C-C943E510899F
+    if significance < 0 < number:
+        return NUM_ERROR
+
+    if number == 0:
+        return 0
+
+    if significance == 0:
+        return DIV0
+
+    if number < 0 < significance:
+        return significance * int(number / significance)
+    else:
+        return significance * math.ceil(number / significance)
+
+
 @excel_helper()
 def column(ref):
     # Excel reference: https://support.office.com/en-us/article/
