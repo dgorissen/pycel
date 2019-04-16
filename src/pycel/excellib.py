@@ -317,6 +317,11 @@ def isNa(arg):
         return True
 
 
+@excel_helper(cse_params=0)
+def isnumber(value):
+    return isinstance(value, (int, float))
+
+
 def linest(Y, X, const=True, degree=1):  # pragma: no cover  ::TODO::
     if isinstance(const, str):
         const = (const.lower() == "true")

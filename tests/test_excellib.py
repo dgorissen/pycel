@@ -19,6 +19,7 @@ from pycel.excellib import (
     hlookup,
     index,
     isNa,
+    isnumber,
     istext,
     # ::TODO:: finish test cases for remainder of functions
     # linest,
@@ -320,6 +321,22 @@ def test_hlookup(lkup, col_idx, result, approx):
 def test_hlookup_vlookup_error(values, expected):
     assert hlookup(*values) == expected
     assert vlookup(*values) == expected
+
+
+@pytest.mark.parametrize(
+    'value, expected', (
+        (0, True),
+        (1, True),
+        (1.0, True),
+        (-1, True),
+        ('a', False),
+        (((1, NA_ERROR), ('2', 3)), ((True, NA_ERROR), (False, True))),
+        (NA_ERROR, NA_ERROR),
+        (VALUE_ERROR, VALUE_ERROR),
+    )
+)
+def test_isnumber(value, expected):
+    assert isnumber(value) == expected
 
 
 def test_is_text():
