@@ -36,6 +36,7 @@ from pycel.excellib import (
     row,
     sumif,
     sumifs,
+    sumproduct,
     trunc,
     vlookup,
     x_abs,
@@ -894,6 +895,19 @@ class TestSumIfs:
         assert 7 == sumifs([1, 2, 3, 4, 5],
                            [1, 2, 3, 4, 5], ">=3",
                            [1, 2, 3, 4, 5], "<=4")
+
+
+@pytest.mark.parametrize(
+    'args, result', (
+        ((((1, 2), (3, 4)), ((1, 3), (2, 4))), 29),
+        ((((3, 4), (8, 6), (1, 9)), ((2, 7), (6, 7), (5, 3))), 156),
+        ((((1, NAME_ERROR), (3, 4)), ((1, 3), (2, 4))), NAME_ERROR),
+        ((((1, 2), (3, 4)), ((1, 3), (NAME_ERROR, 4))), NAME_ERROR),
+        ((((1, 2, 3), (3, 4, 6)), ((1, 3), (2, 4))), VALUE_ERROR),
+    )
+)
+def test_sumproduct(args, result):
+    assert sumproduct(*args) == result
 
 
 @pytest.mark.parametrize(

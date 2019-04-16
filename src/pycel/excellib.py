@@ -608,6 +608,31 @@ def sumifs(sum_range, *args):
     return sum(_numerics((sum_range[idx] for idx in indices), keep_bools=True))
 
 
+def sumproduct(*args):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   SUMPRODUCT-function-16753E75-9F68-4874-94AC-4D2145A2FD2E
+
+    # verify array sizes match
+    sizes = set()
+    for arg in args:
+        assert isinstance(arg, tuple), isinstance(arg[0], tuple)
+        sizes.add((len(arg), len(arg[0])))
+    if len(sizes) != 1:
+        return VALUE_ERROR
+
+    # find any errors
+    error = next((i for arg in args for a_row in arg for i in a_row
+                  if i in ERROR_CODES), None)
+    if error:
+        return error
+
+    # put the values into numpy vectors
+    values = tuple(np.array(arg).ravel() for arg in args)
+
+    # return the sum product
+    return np.sum(np.prod(values, axis=0))
+
+
 @excel_math_func
 def trunc(number, num_digits=0):
     # Excel reference: https://support.office.com/en-us/article/
