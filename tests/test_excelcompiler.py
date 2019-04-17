@@ -299,7 +299,7 @@ def test_validate_calcs(excel_compiler, capsys):
 
 
 def test_validate_calcs_all_cells(basic_ws):
-    formula_cells = basic_ws._formula_cells
+    formula_cells = basic_ws.formula_cells('Sheet1')
     expected = {
         AddressCell('Sheet1!B2'),
         AddressCell('Sheet1!C2'),
@@ -321,6 +321,9 @@ def test_validate_calcs_excel_compiler(excel_compiler):
     errors = excel_compiler.validate_calcs('Sheet1!B1')
     msg = json.dumps(errors, indent=2)
     assert msg == '{}'
+
+    # Missing sheets returns empty tuple
+    assert len(excel_compiler.formula_cells('JUNK-Sheet!B1')) == 0
 
 
 def test_evaluate_entire_row_column(excel_compiler):

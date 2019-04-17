@@ -1,5 +1,6 @@
 import collections
 import hashlib
+import itertools as it
 import json
 import logging
 import os
@@ -63,7 +64,7 @@ class ExcelCompiler:
         self.range_todos = []
 
         self.extra_data = None
-        self._formula_cells_list = None
+        self._formula_cells_dict = {}
 
     def __getstate__(self):
         # code objects are not serializable
@@ -460,13 +461,15 @@ class ExcelCompiler:
         for addr in cells_to_remove:
             del self.cell_map[addr]
 
-    def validate_calcs(self, output_addrs=None):
+    def validate_calcs(self, output_addrs=None, sheet=None, verify_tree=True):
         """For each address, calc the value, and verify that it matches
 
         This is a debugging tool which will show which cells evaluate
         differently than they do for excel.
 
         :param output_addrs: The cells to evaluate from (defaults to all)
+        :param sheet: The sheet to evaluate from (defaults to all)
+        :param verify_tree: Follow the tree to any precedent nodes
         :return: dict of addresses with good/bad values that failed to verify
         """
         def close_enough(val1, val2):
@@ -480,7 +483,8 @@ class ExcelCompiler:
         Mismatch = collections.namedtuple('Mismatch', 'original calced formula')
 
         if output_addrs is None:
-            to_verify = self._formula_cells
+            to_verify = list(self.formula_cells(sheet))
+            print('Found {} formulas to evaluate'.format(len(to_verify)))
         elif list_like(output_addrs):
             to_verify = [AddressCell(addr) for addr in flatten(output_addrs)]
         else:
@@ -490,6 +494,8 @@ class ExcelCompiler:
         failed = {}
         while to_verify:
             addr = to_verify.pop()
+            if len(to_verify) % 100 == 0:
+                print("{} formulas left to process".format(len(to_verify)))
             try:
                 self._gen_graph(addr)
                 cell = self.cell_map[addr.address]
@@ -503,8 +509,8 @@ class ExcelCompiler:
                     cell.value = None
                     self._evaluate(addr.address)
 
-                    # pragma: no branch
-                    if not close_enough(original_value, cell.value):
+                    if not (original_value is None or
+                            close_enough(original_value, cell.value)):
                         failed.setdefault('mismatch', {})[str(addr)] = Mismatch(
                             original_value, cell.value,
                             cell.formula.base_formula)
@@ -517,9 +523,10 @@ class ExcelCompiler:
                         self._evaluate(cell.address.address)
 
                 verified.add(addr)
-                for addr in cell.needed_addresses:
-                    if addr not in verified:  # pragma: no branch
-                        to_verify.append(addr)
+                if verify_tree:  # pragma: no branch
+                    for addr in cell.needed_addresses:
+                        if addr not in verified:  # pragma: no branch
+                            to_verify.append(addr)
             except Exception as exc:
                 cell = self.cell_map.get(addr.address, None)
                 formula = cell and cell.formula.base_formula
@@ -549,20 +556,26 @@ class ExcelCompiler:
 
         return failed
 
-    @property
-    def _formula_cells(self):
+    def formula_cells(self, sheet=None):
         """Iterate all cells and find cells with formulas"""
+        if sheet is None:
+            return list(it.chain.from_iterable(
+                self.formula_cells(sheet.title)
+                for sheet in self.excel.workbook))
 
-        if self._formula_cells_list is None:
-            self._formula_cells_list = [
-                AddressCell.create(cell.coordinate, ws.title)
-                for ws in self.excel.workbook
-                for row in ws.iter_rows()
-                for cell in row
-                if isinstance(getattr(cell, 'value', None), str) and
-                cell.value.startswith('=')
-            ]
-        return self._formula_cells_list
+        if sheet not in self._formula_cells_dict:
+            if sheet in self.excel.workbook:
+                self._formula_cells_dict[sheet] = tuple(
+                    AddressCell.create(cell.coordinate, sheet)
+                    for row in self.excel.workbook[sheet].iter_rows()
+                    for cell in row
+                    if isinstance(getattr(cell, 'value', None), str) and
+                    cell.value.startswith('=')
+                )
+            else:
+                self._formula_cells_dict[sheet] = tuple()
+
+        return self._formula_cells_dict[sheet]
 
     def _make_cells(self, address):
         """Given an AddressRange or AddressCell generate compiler Cells"""

@@ -313,6 +313,8 @@ class RangeNode(OperandNode):
                     table_name = excel.table_name_containing(self.cell.address)
 
             if not table_name:
+                logging.getLogger('pycel').warning(
+                    'Table Name not found: {}'.format(addr_str))
                 return '"{}"'.format(NAME_ERROR)
 
             addr_str = '{}{}'.format(table_name, addr_str)
