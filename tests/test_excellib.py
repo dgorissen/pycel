@@ -19,7 +19,8 @@ from pycel.excellib import (
     floor,
     hlookup,
     index,
-    isNa,
+    iserror,
+    isna,
     isnumber,
     istext,
     # ::TODO:: finish test cases for remainder of functions
@@ -345,28 +346,6 @@ def test_hlookup_vlookup_error(values, expected):
     assert vlookup(*values) == expected
 
 
-@pytest.mark.parametrize(
-    'value, expected', (
-        (0, True),
-        (1, True),
-        (1.0, True),
-        (-1, True),
-        ('a', False),
-        (((1, NA_ERROR), ('2', 3)), ((True, NA_ERROR), (False, True))),
-        (NA_ERROR, NA_ERROR),
-        (VALUE_ERROR, VALUE_ERROR),
-    )
-)
-def test_isnumber(value, expected):
-    assert isnumber(value) == expected
-
-
-def test_is_text():
-    assert istext('a')
-    assert not istext(1)
-    assert not istext(None)
-
-
 class TestIndex:
     """
     Description
@@ -474,14 +453,68 @@ class TestIndex:
         assert VALUE_ERROR == index_f(None, 1, 1)
 
 
-class TestIsNa:
-    # This function might need more solid testing
+@pytest.mark.parametrize(
+    'value, expected', (
+        (0, False),
+        (1, False),
+        (1.0, False),
+        (-1, False),
+        ('a', False),
+        (((1, NA_ERROR), ('2', DIV0)), ((False, True), (False, True))),
+        (NUM_ERROR, True),
+        (REF_ERROR, True),
+    )
+)
+def test_iserror(value, expected):
+    assert iserror(value) == expected
 
-    def test_isNa_false(self):
-        assert not isNa('2 + 1')
 
-    def test_isNa_true(self):
-        assert isNa('x + 1')
+@pytest.mark.parametrize(
+    'value, expected', (
+        (0, False),
+        (1, False),
+        (1.0, False),
+        (-1, False),
+        ('a', False),
+        (((1, NA_ERROR), ('2', 3)), ((False, True), (False, False))),
+        (NA_ERROR, True),
+        (VALUE_ERROR, False),
+    )
+)
+def test_isna(value, expected):
+    assert isna(value) == expected
+
+
+@pytest.mark.parametrize(
+    'value, expected', (
+        (0, True),
+        (1, True),
+        (1.0, True),
+        (-1, True),
+        ('a', False),
+        (((1, NA_ERROR), ('2', 3)), ((True, False), (False, True))),
+        (NA_ERROR, False),
+        (VALUE_ERROR, False),
+    )
+)
+def test_isnumber(value, expected):
+    assert isnumber(value) == expected
+
+
+@pytest.mark.parametrize(
+    'value, expected', (
+        ('a', True),
+        (1, False),
+        (1.0, False),
+        (None, False),
+        (DIV0, False),
+        (((1, NA_ERROR), ('2', 3)), ((False, False), (True, False))),
+        (NA_ERROR, False),
+        (VALUE_ERROR, False),
+    )
+)
+def test_istext(value, expected):
+    assert istext(value) == expected
 
 
 @pytest.mark.parametrize(

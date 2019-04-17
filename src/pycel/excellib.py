@@ -317,21 +317,32 @@ def index(array, row_num, col_num=None):
     return NA_ERROR
 
 
+@excel_helper(cse_params=0, err_str_params=None)
+def iserror(value):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   IFERROR-function-C526FD07-CAEB-47B8-8BB6-63F3E417F611
+    return isinstance(value, str) and value in ERROR_CODES or (
+        isinstance(value, tuple))
+
+
+@excel_helper(cse_params=0, err_str_params=None)
 def istext(arg):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   is-functions-0f2d7971-6019-40a0-a171-f2d869135665
     return isinstance(arg, str) and arg not in ERROR_CODES
 
 
-def isNa(arg):
-    # This function might need more solid testing
-    try:
-        eval(arg)
-        return False
-    except Exception:
-        return True
+@excel_helper(cse_params=0, err_str_params=None)
+def isna(value):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   is-functions-0f2d7971-6019-40a0-a171-f2d869135665
+    return value == NA_ERROR or isinstance(value, tuple)
 
 
-@excel_helper(cse_params=0)
+@excel_helper(cse_params=0, err_str_params=None)
 def isnumber(value):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   is-functions-0f2d7971-6019-40a0-a171-f2d869135665
     return isinstance(value, (int, float))
 
 
