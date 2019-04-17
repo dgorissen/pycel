@@ -74,8 +74,10 @@ def scrape_function_list():  # pragma: no cover
         f.write("FunctionInfo = collections.namedtuple(\n")
         f.write("    'FunctionInfo', 'name category version uri')\n\n")
         f.write('function_info = (\n')
-        for row in rows_data:
-            f.write("    FunctionInfo('{}', '{}', '{}', '{}'),\n".format(*row))
+        for row_data in rows_data:
+            for name in row_data[0].split(','):
+                f.write("    FunctionInfo('{}', '{}', '{}', '{}'),\n".format(
+                    name.strip().rstrip('s'), *row_data[1:]))
         f.write(')\n')
 
 
