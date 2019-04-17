@@ -346,6 +346,16 @@ def isnumber(value):
     return isinstance(value, (int, float))
 
 
+@excel_helper(cse_params=(0, 1), number_params=1)
+def left(text, num_chars=1):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   LEFT-LEFTB-functions-9203D2D2-7960-479B-84C6-1EA52B99640C
+    if num_chars < 0:
+        return VALUE_ERROR
+    else:
+        return str(text)[:int(num_chars)]
+
+
 def linest(Y, X, const=True, degree=1):  # pragma: no cover  ::TODO::
     if isinstance(const, str):
         const = (const.lower() == "true")
@@ -564,7 +574,7 @@ def power(number, power):
         return DIV0
 
 
-@excel_helper(cse_params=0, number_params=1)
+@excel_helper(cse_params=(0, 1), number_params=1)
 def right(text, num_chars=1):
     # Excel reference:  https://support.office.com/en-us/article/
     #   RIGHT-RIGHTB-functions-240267EE-9AFA-4639-A02B-F19E1786CF2F

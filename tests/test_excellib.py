@@ -23,6 +23,7 @@ from pycel.excellib import (
     isna,
     isnumber,
     istext,
+    left,
     # ::TODO:: finish test cases for remainder of functions
     # linest,
     ln,
@@ -515,6 +516,27 @@ def test_isnumber(value, expected):
 )
 def test_istext(value, expected):
     assert istext(value) == expected
+
+
+@pytest.mark.parametrize(
+    'text, num_chars, expected', (
+        ('abcd', 5, 'abcd'),
+        ('abcd', 4, 'abcd'),
+        ('abcd', 3, 'abc'),
+        ('abcd', 2, 'ab'),
+        ('abcd', 1, 'a'),
+        ('abcd', 0, ''),
+
+        (1.234, 3, '1.2'),
+
+        ('abcd', -1, VALUE_ERROR),
+        ('abcd', 'x', VALUE_ERROR),
+        (DIV0, 1, DIV0),
+        ('abcd', NAME_ERROR, NAME_ERROR),
+    )
+)
+def test_left(text, num_chars, expected):
+    assert left(text, num_chars) == expected
 
 
 @pytest.mark.parametrize(
