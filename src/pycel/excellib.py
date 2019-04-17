@@ -215,6 +215,19 @@ def date(year, month, day):
     return result
 
 
+@excel_helper(cse_params=(0, 1, 2), number_params=2)
+def find(find_text, within_text, start_num=1):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   FIND-FINDB-functions-C7912941-AF2A-4BDF-A553-D0D89B0A0628
+    find_text = coerce_to_string(find_text)
+    within_text = coerce_to_string(within_text)
+    found = within_text.find(find_text, start_num - 1)
+    if found == -1:
+        return VALUE_ERROR
+    else:
+        return found + 1
+
+
 @excel_math_func
 def floor(number, significance):
     # Excel reference: https://support.office.com/en-us/article/

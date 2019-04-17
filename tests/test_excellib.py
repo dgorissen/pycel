@@ -15,6 +15,7 @@ from pycel.excellib import (
     countif,
     countifs,
     date,
+    find,
     floor,
     hlookup,
     index,
@@ -258,6 +259,27 @@ class TestDate:
         assert (dt.datetime(1900, 1, 1) - zero).days == date(0, 1, 1)
         assert (dt.datetime(1900 + 1899, 1, 1) - zero).days == date(1899, 1, 1)
         assert (dt.datetime(1900 + 1899, 1, 1) - zero).days == date(1899, 1, 1)
+
+
+@pytest.mark.parametrize(
+    'to_find, find_in, result', (
+        (2, 2.5, 1),
+        ('.', 2.5, 2),
+        (5, 2.5, 3),
+        ('2', 2.5, 1),
+        ('.', 2.5, 2),
+        ('5', 2.5, 3),
+        ('2', '2.5', 1),
+        ('.', '2.5', 2),
+        ('T', True, 1),
+        ('U', True, 3),
+        ('u', True, VALUE_ERROR),
+        (DIV0, 'x' + DIV0, DIV0),
+        ('V', DIV0, DIV0),
+    )
+)
+def test_find(to_find, find_in, result):
+    assert find(to_find, find_in) == result
 
 
 @pytest.mark.parametrize(
