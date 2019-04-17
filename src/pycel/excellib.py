@@ -617,6 +617,11 @@ def sumproduct(*args):
     # Excel reference: https://support.office.com/en-us/article/
     #   SUMPRODUCT-function-16753E75-9F68-4874-94AC-4D2145A2FD2E
 
+    # find any errors
+    error = next((i for i in flatten(args) if i in ERROR_CODES), None)
+    if error:
+        return error
+
     # verify array sizes match
     sizes = set()
     for arg in args:
@@ -625,14 +630,10 @@ def sumproduct(*args):
     if len(sizes) != 1:
         return VALUE_ERROR
 
-    # find any errors
-    error = next((i for arg in args for a_row in arg for i in a_row
-                  if i in ERROR_CODES), None)
-    if error:
-        return error
-
     # put the values into numpy vectors
-    values = tuple(np.array(arg).ravel() for arg in args)
+    values = np.array(tuple(tuple(
+        x if isinstance(x, (float, int)) and not isinstance(x, bool) else 0
+        for x in flatten(arg)) for arg in args))
 
     # return the sum product
     return np.sum(np.prod(values, axis=0))
