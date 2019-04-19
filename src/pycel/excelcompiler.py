@@ -414,17 +414,31 @@ class ExcelCompiler:
                     needed_cells.add(child_addr)
                     walk_dependents(child_cell)
 
-        try:
-            for addr in input_addrs:
+        missing_dependants = set()
+        for addr in input_addrs:
+            try:
                 if addr in self.cell_map:
                     walk_dependents(self.cell_map[addr])
+                    msg = ''
                 else:
-                    self.log.warning(
-                        'Address {} not found in cell_map'.format(addr))
-        except nx.exception.NetworkXError as exc:
-            if AddressRange(addr) not in output_addrs:
-                raise ValueError('{}: which usually means no outputs '
-                                 'are dependant on it.'.format(exc))
+                    msg = ('warning',
+                           'Address {} not found in cell_map'.format(addr))
+            except nx.exception.NetworkXError as exc:
+                if AddressRange(addr) not in output_addrs:
+                    msg = 'error', '{}: which usually means no outputs ' \
+                                   'are dependant on it.'.format(exc)
+                else:
+                    msg = 'warning', str(exc)
+            if msg:
+                missing_dependants.add((addr, *msg))
+        if missing_dependants:
+            for addr, level, msg in missing_dependants:
+                getattr(self.log, level)("Input address {}: {}".format(
+                    addr, msg
+                ))
+        if any(m[1] != 'warning' for m in missing_dependants):
+            raise ValueError('\n' + '\n'.join(
+                map(str, sorted(missing_dependants, key=lambda x: x[2]))))
 
         # even unconnected output addresses are needed
         for addr in output_addrs:
