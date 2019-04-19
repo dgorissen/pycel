@@ -368,7 +368,7 @@ class AddressCell(collections.namedtuple(
                 return address
 
             elif not address.sheet:
-                row, col_idx, coordinate = address[2:5]
+                col_idx, row, coordinate = address[2:5]
 
             else:
                 raise ValueError("Mismatched sheets '{}' and '{}'".format(

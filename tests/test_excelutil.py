@@ -163,7 +163,7 @@ def test_has_sheet():
     assert AddressRange('Sheet1!a1:b2').has_sheet
     assert not AddressRange('a1:b2').has_sheet
 
-    assert AddressCell('sh!a1') == AddressRange(AddressRange('a1'), sheet='sh')
+    assert AddressCell('sh!A2') == AddressRange(AddressRange('A2'), sheet='sh')
 
     with pytest.raises(ValueError, match='Mismatched sheets'):
         AddressRange(AddressRange('shx!a1'), sheet='sh')
@@ -283,8 +283,8 @@ def test_unquote_sheetname(sheet_name):
     ]
 )
 def test_quoted_address(sheet_name):
-    addr = AddressCell('A1', sheet=sheet_name)
-    assert addr.quoted_address == '{}!A1'.format(quote_sheetname(sheet_name))
+    addr = AddressCell('A2', sheet=sheet_name)
+    assert addr.quoted_address == '{}!A2'.format(quote_sheetname(sheet_name))
 
 
 def test_split_sheetname():
