@@ -3,5 +3,6 @@ flake8-import-order
 pytest
 pytest-cov
 pytest-flake8
+restructuredtext-lint
 tox
 tox-travis
