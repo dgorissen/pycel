@@ -662,8 +662,8 @@ class ExcelCompiler:
             else:
                 # CSE Array Formula
                 data = self.eval(cell_range.formula, cell_range.address)
-                self.log.info("Range %s evaluated to '%s'" % (
-                    cell_range.address, data))
+            self.log.info("Range %s evaluated to '%s'" % (
+                cell_range.address, data))
 
             cell_range.value = data
 
