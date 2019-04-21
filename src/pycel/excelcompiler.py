@@ -728,7 +728,7 @@ class ExcelCompiler:
         if not isinstance(seed, (AddressRange, AddressCell)):
             if isinstance(seed, str):
                 seed = AddressRange(seed)
-            elif isinstance(seed, collections.Iterable):
+            elif isinstance(seed, collections.abc.Iterable):
                 for s in seed:
                     self._gen_graph(s, recursed=True)
                 self._process_gen_graph()

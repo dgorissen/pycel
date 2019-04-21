@@ -91,7 +91,7 @@ def convert_params_indices(f, param_indices):
         code = getattr(f, '__code__', None)
         return set(range(getattr(code, 'co_argcount', 0))) or ALL_ARG_INDICES
 
-    elif not isinstance(param_indices, collections.Iterable):
+    elif not isinstance(param_indices, collections.abc.Iterable):
         assert param_indices >= 0
         return {int(param_indices)}
 

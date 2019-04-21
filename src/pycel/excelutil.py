@@ -897,7 +897,7 @@ def flatten(data, coerce=lambda x: x):
     :param coerce: apply coercion to top level, but not to sub ranges
     :return: flattened (coerced) items
     """
-    if isinstance(data, collections.Iterable) and not isinstance(
+    if isinstance(data, collections.abc.Iterable) and not isinstance(
             data, (str, AddressRange, AddressCell)):
         for item in data:
             yield from flatten(item, coerce=coerce)
@@ -1105,7 +1105,7 @@ def find_corresponding_index_generator(rng, criteria):
 
 def list_like(data):
     return (not isinstance(data, (str, AddressRange, AddressCell)) and
-            isinstance(data, collections.Iterable))
+            isinstance(data, collections.abc.Iterable))
 
 
 def assert_list_like(data):
