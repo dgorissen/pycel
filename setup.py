@@ -27,7 +27,7 @@ exec(open('src/pycel/version.py').read())
 
 # Create long description from README.rst and docs/source/CHANGES.rst.
 # PYPI page will contain complete changelog.
-long_description = u'{}\n\n\nChanges\n=======\n\n\n{}'.format(
+long_description = u'{}\n\n\nChange Log\n==========\n\n\n{}'.format(
     open('README.rst', 'r', encoding='utf-8').read(),
     open('CHANGES.rst', 'r', encoding='utf-8').read()
 )
