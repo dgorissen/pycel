@@ -258,7 +258,7 @@ def test_trim_cells_range(excel_compiler):
     excel_compiler = ExcelCompiler._from_text(excel_compiler.filename)
     assert old_value == excel_compiler.evaluate(output_addrs[0])
 
-    excel_compiler.set_value(input_addrs[0], [5, 6])
+    excel_compiler.set_value(input_addrs[0], [5, 6], set_as_range=True)
     assert old_value - 1 == excel_compiler.evaluate(output_addrs[0])
 
     excel_compiler.set_value(input_addrs[0], [4, 6])

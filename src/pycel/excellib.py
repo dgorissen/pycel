@@ -155,42 +155,13 @@ def countifs(*args):
         raise PyCelException('excellib.countifs() must have a '
                              'pair number of arguments, here %d' % len(args))
 
-    if len(args):
-        # find indexes that match first layer of countif
-        indexes = find_corresponding_index(args[0], args[1])
+    index_counts = Counter(it.chain.from_iterable(
+        find_corresponding_index(rng, criteria)
+        for rng, criteria in zip(args[0::2], args[1::2])))
 
-        # get only ranges
-        remaining_ranges = [elem for i, elem in enumerate(args[2:])
-                            if i % 2 == 0]
-
-        # get only criteria
-        remaining_criteria = [elem for i, elem in enumerate(args[2:])
-                              if i % 2 == 1]
-
-        filtered_remaining_ranges = []
-
-        # filter items in remaining_ranges that match valid indexes
-        # from first countif layer
-        for rng in remaining_ranges:
-            filtered_remaining_range = []
-
-            for index, item in enumerate(rng):
-                if index in indexes:
-                    filtered_remaining_range.append(item)
-
-            filtered_remaining_ranges.append(filtered_remaining_range)
-
-        new_tuple = ()
-
-        # rebuild the tuple that will be the argument of next layer
-        for index, rng in enumerate(filtered_remaining_ranges):
-            new_tuple += (rng, remaining_criteria[index])
-
-        # only consider the minimum number across all layer responses
-        return min(countifs(*new_tuple), len(indexes))
-
-    else:
-        return float('inf')
+    ifs_count = len(args) // 2
+    return len(tuple(idx for idx, cnt in index_counts.items()
+                     if cnt == ifs_count))
 
 
 @excel_helper(number_params=-1)
@@ -613,6 +584,14 @@ def sumif(rng, criteria, sum_range=None):
     # Excel reference: https://support.office.com/en-us/article/
     #   SUMIF-function-169b8c99-c05c-4483-a712-1697a653039b
 
+    # WARNING:
+    # - The following is not currently implemented:
+    #  The sum_range argument does not have to be the same size and shape as
+    #  the range argument. The actual cells that are added are determined by
+    #  using the upper leftmost cell in the sum_range argument as the
+    #  beginning cell, and then including cells that correspond in size and
+    #  shape to the range argument.
+
     if sum_range is None:
         sum_range = rng
     return sumifs(sum_range, rng, criteria)
@@ -622,18 +601,15 @@ def sumifs(sum_range, *args):
     # Excel reference: https://support.office.com/en-us/article/
     #   SUMIFS-function-C9E748F5-7EA7-455D-9406-611CEBCE642B
 
-    # WARNING:
-    # - The following is not currently implemented:
-    #  The sum_range argument does not have to be the same size and shape as
-    #  the range argument. The actual cells that are added are determined by
-    #  using the upper leftmost cell in the sum_range argument as the
-    #  beginning cell, and then including cells that correspond in size and
-    #  shape to the range argument.
-
     assert_list_like(sum_range)
 
     assert len(args) and len(args) % 2 == 0, \
         'Must have paired criteria and ranges'
+
+    size = len(sum_range), len(sum_range[0])
+    for rng in args[0::2]:
+        assert size == (len(rng), len(rng[0])), \
+            "Size mismatch criteria range, sum range"
 
     # count the number of times a particular cell matches the criteria
     index_counts = Counter(it.chain.from_iterable(
@@ -641,10 +617,10 @@ def sumifs(sum_range, *args):
         for rng, criteria in zip(args[0::2], args[1::2])))
 
     ifs_count = len(args) // 2
-    max_idx = len(sum_range)
     indices = tuple(idx for idx, cnt in index_counts.items()
-                    if cnt == ifs_count and idx < max_idx)
-    return sum(_numerics((sum_range[idx] for idx in indices), keep_bools=True))
+                    if cnt == ifs_count)
+    return sum(_numerics(
+        (sum_range[r][c] for r, c in indices), keep_bools=True))
 
 
 def sumproduct(*args):

@@ -1100,7 +1100,8 @@ def find_corresponding_index_generator(rng, criteria):
     check = criteria_parser(criteria)
 
     assert_list_like(rng)
-    return (index for index, item in enumerate(rng) if check(item))
+    return ((r, c) for r, row in enumerate(rng)
+            for c, item in enumerate(row) if check(item))
 
 
 def list_like(data):

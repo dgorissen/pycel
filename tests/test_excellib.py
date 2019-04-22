@@ -189,39 +189,40 @@ class TestCount:
 class TestCountIf:
 
     def test_countif_strictly_superior(self):
-        assert 3 == countif([7, 25, 13, 25], '>10')
+        assert 3 == countif(((7, 25, 13, 25), ), '>10')
 
     def test_countif_strictly_inferior(self):
-        assert 1 == countif([7, 25, 13, 25], '<10')
+        assert 1 == countif(((7, 25, 13, 25), ), '<10')
 
     def test_countif_superior(self):
-        assert 3 == countif([7, 10, 13, 25], '>=10')
+        assert 3 == countif(((7, 10, 13, 25), ), '>=10')
 
     def test_countif_inferior(self):
-        assert 2 == countif([7, 10, 13, 25], '<=10')
+        assert 2 == countif(((7, 10, 13, 25), ), '<=10')
 
     def test_countif_different(self):
-        assert 3 == countif([7, 10, 13, 25], '<>10')
+        assert 3 == countif(((7, 10, 13, 25), ), '<>10')
 
     def test_countif_with_string_equality(self):
-        assert 2 == countif([7, 'e', 13, 'e'], 'e')
+        assert 2 == countif(((7, 'e', 13, 'e'), ), 'e')
 
     def test_countif_with_string_inequality(self):
-        assert 1 == countif([7, 'e', 13, 'f'], '>e')
+        assert 1 == countif(((7, 'e', 13, 'f'), ), '>e')
 
     def test_countif_regular(self):
-        assert 2 == countif([7, 25, 13, 25], 25)
+        assert 2 == countif(((7, 25, 13, 25), ), 25)
 
 
 class TestCountIfs:
     # more tests might be welcomed
 
     def test_countifs_regular(self):
-        assert 1 == countifs([7, 25, 13, 25], 25, [100, 102, 201, 20], ">100")
+        assert 1 == countifs(((7, 25, 13, 25), ), 25,
+                             ((100, 102, 201, 20), ), ">100")
 
     def test_countifs_odd_args_len(self):
         with pytest.raises(PyCelException):
-            countifs([7, 25, 13, 25], 25, [100, 102, 201, 20])
+            countifs(((7, 25, 13, 25), ), 25, ((100, 102, 201, 20), ))
 
 
 class TestDate:
@@ -934,19 +935,22 @@ class TestSumIf:
             sumif(12, 12, 12)
 
     def test_regular_with_number_criteria(self):
-        assert 6 == sumif([1, 1, 2, 2, 2], 2)
+        assert 6 == sumif(((1, 1, 2, 2, 2), ), 2)
 
     def test_regular_with_string_criteria(self):
-        assert 12 == sumif([1, 2, 3, 4, 5], ">=3")
+        assert 12 == sumif(((1, 2, 3, 4, 5), ), ">=3")
 
     def test_sum_range(self):
-        assert 668 == sumif([1, 2, 3, 4, 5], ">=3", [100, 123, 12, 23, 633])
+        assert 668 == sumif(((1, 2, 3, 4, 5), ), ">=3",
+                            ((100, 123, 12, 23, 633), ))
 
     def test_sum_range_with_more_indexes(self):
-        assert 668 == sumif([1, 2, 3, 4, 5], ">=3", [100, 123, 12, 23, 633, 1])
+        with pytest.raises(AssertionError):
+            sumif(((1, 2, 3, 4, 5),), ">=3", ((100, 123, 12, 23, 633, 1), ))
 
     def test_sum_range_with_less_indexes(self):
-        assert 35 == sumif([1, 2, 3, 4, 5], ">=3", [100, 123, 12, 23])
+        with pytest.raises(AssertionError):
+            sumif(((1, 2, 3, 4, 5), ), ">=3", ((100, 123, 12, 23), ))
 
     def test_sum_range_not_list(self):
         with pytest.raises(TypeError):
@@ -964,31 +968,30 @@ class TestSumIfs:
             sumifs(12, 12, 12)
 
     def test_regular_with_number_criteria(self):
-        assert 6 == sumifs([1, 1, 2, 2, 2], [1, 1, 2, 2, 2], 2)
+        assert 6 == sumifs(((1, 1, 2, 2, 2), ), ((1, 1, 2, 2, 2), ), 2)
 
     def test_regular_with_string_criteria(self):
-        assert 12 == sumifs([1, 2, 3, 4, 5], [1, 2, 3, 4, 5], ">=3")
+        assert 12 == sumifs(((1, 2, 3, 4, 5), ), ((1, 2, 3, 4, 5), ), ">=3")
 
     def test_sum_range(self):
-        assert 668 == sumifs([100, 123, 12, 23, 633], [1, 2, 3, 4, 5], ">=3")
+        assert 668 == sumifs(((100, 123, 12, 23, 633), ),
+                             ((1, 2, 3, 4, 5), ), ">=3")
 
-    def test_sum_range_with_more_indexes(self):
-        assert 668 == sumifs([100, 123, 12, 23, 633, 1], [1, 2, 3, 4, 5], ">=3")
-
-    def test_sum_range_with_less_indexes(self):
-        assert 35 == sumifs([100, 123, 12, 23], [1, 2, 3, 4, 5], ">=3")
+    def test_sum_range_rect(self):
+        assert 35 == sumifs(((100, 123), (12, 23)), ((1, 2), (3, 4)), ">=3")
 
     def test_sum_range_with_empty(self):
-        assert 35 == sumifs([100, 123, 12, 23, None], [1, 2, 3, 4, 5], ">=3")
+        assert 35 == sumifs(((100, 123, 12, 23, None), ),
+                            ((1, 2, 3, 4, 5), ), ">=3")
 
     def test_sum_range_not_list(self):
         with pytest.raises(TypeError):
-            sumifs('JUNK', [], [], )
+            sumifs('JUNK', ((), ), ((), ), )
 
     def test_multiple_criteria(self):
-        assert 7 == sumifs([1, 2, 3, 4, 5],
-                           [1, 2, 3, 4, 5], ">=3",
-                           [1, 2, 3, 4, 5], "<=4")
+        assert 7 == sumifs(((1, 2, 3, 4, 5), ),
+                           ((1, 2, 3, 4, 5), ), ">=3",
+                           ((1, 2, 3, 4, 5), ), "<=4")
 
 
 @pytest.mark.parametrize(

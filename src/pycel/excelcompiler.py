@@ -326,16 +326,18 @@ class ExcelCompiler:
         nx.draw_networkx_labels(self.dep_graph, pos)
         plt.show()
 
-    def set_value(self, address, value):
+    def set_value(self, address, value, set_as_range=False):
         """ Set the value of one or more cells or ranges
 
         :param address: `str`, `AddressRange`, `AddressCell` or a tuple, list
             or an iterable of these three
         :param value: value to set.  This can be a value or a tuple/list
             which matches the shapes needed for the given address/addresses
+        :param set_as_range: With a single range address and a list like value,
+            set to true to set the entire rnage to the inserted list.
         """
 
-        if list_like(value):
+        if list_like(value) and not set_as_range:
             value = tuple(flatten(value))
             if list_like(address):
                 address = (AddressCell(addr) for addr in flatten(address))
@@ -350,6 +352,10 @@ class ExcelCompiler:
         elif address not in self.cell_map:
             address = AddressRange.create(address).address
             assert address in self.cell_map
+
+        if set_as_range and list_like(value) and not (
+                value and list_like(value[0])):
+            value = (value, )
 
         cell_or_range = self.cell_map[address]
 
