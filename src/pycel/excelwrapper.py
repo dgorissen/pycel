@@ -10,7 +10,7 @@ import os
 from unittest import mock
 
 from openpyxl import load_workbook
-from openpyxl.cell.cell import Cell
+from openpyxl.cell.cell import Cell, MergedCell
 from openpyxl.cell.read_only import EMPTY_CELL
 from openpyxl.utils import datetime as opxl_dt
 from pycel.excelutil import AddressCell, AddressRange, flatten
@@ -243,7 +243,7 @@ class ExcelOpxWrapper(ExcelWrapper):
                     sheet=address.sheet)
 
             cells = sheet[address.coordinate]
-            if isinstance(cells, Cell):
+            if isinstance(cells, (Cell, MergedCell)):
                 cell = cells
                 cell_dataonly = sheet_dataonly[address.coordinate]
                 return _OpxCell(cell, cell_dataonly, address)
