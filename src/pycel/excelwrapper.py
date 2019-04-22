@@ -13,7 +13,7 @@ from openpyxl import load_workbook
 from openpyxl.cell.cell import Cell
 from openpyxl.cell.read_only import EMPTY_CELL
 from openpyxl.utils import datetime as opxl_dt
-from pycel.excelutil import AddressCell, AddressRange, flatten, MAX_ROW
+from pycel.excelutil import AddressCell, AddressRange, flatten
 
 ARRAY_FORMULA_NAME = '=CSE_INDEX'
 ARRAY_FORMULA_FORMAT = '{}(%s,%s,%s,%s,%s)'.format(ARRAY_FORMULA_NAME)
@@ -207,18 +207,6 @@ class ExcelOpxWrapper(ExcelWrapper):
                             ws[addr.coordinate] = ARRAY_FORMULA_FORMAT % (
                                 formula[1:], i, j, *ref_addr.size)
 
-        # ::HACK:: this is only needed because openpyxl does not define
-        # iter_cols for read only workbooks
-        def _iter_cols(self, min_col=None, max_col=None, min_row=None,
-                       max_row=None, values_only=False):
-            # In the case of lookup for something like C:D, openpyxl
-            # attempts to use iter_cols() which is not defined for read_only
-            yield from zip(*self.iter_rows(min_col=min_col, max_col=max_col))
-
-        import types
-        for sheet in self.workbook_dataonly:
-            sheet.iter_cols = types.MethodType(_iter_cols, sheet)
-
     def set_sheet(self, s):
         self.workbook.active = self.workbook.index(self.workbook[s])
         self.workbook_dataonly.active = self.workbook_dataonly.index(
@@ -248,6 +236,12 @@ class ExcelOpxWrapper(ExcelWrapper):
                         self.from_excel):
             # work around type coercion to datetime that causes some issues
 
+            if address.is_range and not address.is_bounded_range:
+                # bound the address range to the data in the spreadsheet
+                address = address & AddressRange(
+                    (1, 1, sheet_dataonly.max_column, sheet_dataonly.max_row),
+                    sheet=address.sheet)
+
             cells = sheet[address.coordinate]
             if isinstance(cells, Cell):
                 cell = cells
@@ -256,24 +250,6 @@ class ExcelOpxWrapper(ExcelWrapper):
 
             else:
                 cells_dataonly = sheet_dataonly[address.coordinate]
-                addr_size = address.size
-
-                if 1 in addr_size:
-                    if cells_dataonly \
-                            and not isinstance(cells_dataonly[0], tuple):
-                        # openpyxl returns a one dimensional structure for some
-                        if addr_size.width == 1:
-                            cells = tuple((c,) for c in cells)
-                            cells_dataonly = tuple(
-                                (c,) for c in cells_dataonly)
-                        else:
-                            cells = (cells,)
-                            cells_dataonly = (cells_dataonly,)
-
-                elif addr_size.height == MAX_ROW:
-                    # openpyxl does iter_cols, we need to transpose
-                    cells = tuple(zip(*cells))
-                    cells_dataonly = tuple(zip(*cells_dataonly))
 
                 if len(cells) != len(cells_dataonly):
                     # The read_only version of openpyxl worksheet has the
@@ -285,22 +261,6 @@ class ExcelOpxWrapper(ExcelWrapper):
                     empty_rows = (empty_row, ) * (
                         len(cells) - len(cells_dataonly))
                     cells_dataonly += empty_rows
-
-                # full range column or row addresses, trim the address
-                if len(cells) < addr_size.height or \
-                        len(cells[0]) < addr_size.width:
-                    start_col = address.start.column or 'A'
-                    start_row = address.start.row or 1
-                    start_addr = AddressCell(
-                        start_col + str(start_row), sheet=address.sheet)
-
-                    stop_addr = start_addr.address_at_offset(
-                        len(cells) - 1, len(cells[0]) - 1)
-
-                    address = AddressRange((
-                        start_addr.col_idx, start_addr.row,
-                        stop_addr.col_idx, stop_addr.row),
-                        sheet=address.sheet)
 
                 return _OpxRange(cells, cells_dataonly, address)
 

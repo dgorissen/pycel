@@ -718,7 +718,14 @@ class ExcelCompiler:
             if address.address not in self.cell_map:
                 self._gen_graph(address.address)
 
-        return self._evaluate(str(address))
+        result = self._evaluate(str(address))
+        if isinstance(result, tuple):
+            # trim excess dimensions
+            if len(result[0]) == 1:
+                result = tuple(row[0] for row in result)
+            if len(result) == 1:
+                result = result[0]
+        return result
 
     def _gen_graph(self, seed, recursed=False):
         """Given a starting point (e.g., A6, or A3:B7) on a particular sheet,

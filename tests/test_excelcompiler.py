@@ -6,7 +6,13 @@ from unittest import mock
 import pytest
 from pycel.excelcompiler import _Cell, _CellRange, ExcelCompiler
 from pycel.excelformula import FormulaParserError, UnknownFunction
-from pycel.excelutil import AddressCell, AddressRange, flatten, NULL_ERROR
+from pycel.excelutil import (
+    AddressCell,
+    AddressRange,
+    flatten,
+    list_like,
+    NULL_ERROR,
+)
 from pycel.excelwrapper import ExcelWrapper
 
 
@@ -328,25 +334,57 @@ def test_validate_calcs_excel_compiler(excel_compiler):
 
 def test_evaluate_entire_row_column(excel_compiler):
 
+    value = excel_compiler.evaluate(AddressRange('Sheet1!A:A'))
+    expected = excel_compiler.evaluate(AddressRange('Sheet1!A1:A18'))
+    assert value == expected
+    assert len(value) == 18
+    assert not list_like(value[0])
+
+    value = excel_compiler.evaluate(AddressRange('Sheet1!1:1'))
+    expected = excel_compiler.evaluate(AddressRange('Sheet1!A1:D1'))
+    assert value == expected
+    assert len(value) == 4
+    assert not list_like(value[0])
+
     value = excel_compiler.evaluate(AddressRange('Sheet1!A:B'))
     expected = excel_compiler.evaluate(AddressRange('Sheet1!A1:B18'))
     assert value == expected
+    assert len(value) == 18
+    assert len(value[0]) == 2
 
     value = excel_compiler.evaluate(AddressRange('Sheet1!1:2'))
     expected = excel_compiler.evaluate(AddressRange('Sheet1!A1:D2'))
     assert value == expected
+    assert len(value) == 2
+    assert len(value[0]) == 4
 
     # now from the text based file
     excel_compiler._to_text()
     text_excel_compiler = ExcelCompiler._from_text(excel_compiler.filename)
 
+    value = text_excel_compiler.evaluate(AddressRange('Sheet1!A:A'))
+    expected = text_excel_compiler.evaluate(AddressRange('Sheet1!A1:A18'))
+    assert value == expected
+    assert len(value) == 18
+    assert not list_like(value[0])
+
+    value = text_excel_compiler.evaluate(AddressRange('Sheet1!1:1'))
+    expected = text_excel_compiler.evaluate(AddressRange('Sheet1!A1:D1'))
+    assert value == expected
+    assert len(value) == 4
+    assert not list_like(value[0])
+
     value = text_excel_compiler.evaluate(AddressRange('Sheet1!A:B'))
     expected = text_excel_compiler.evaluate(AddressRange('Sheet1!A1:B18'))
+    assert len(value) == 18
+    assert len(value[0]) == 2
     assert value == expected
 
     value = text_excel_compiler.evaluate(AddressRange('Sheet1!1:2'))
     expected = text_excel_compiler.evaluate(AddressRange('Sheet1!A1:D2'))
     assert value == expected
+    assert len(value) == 2
+    assert len(value[0]) == 4
 
 
 def test_trim_cells_warn_address_not_found(excel_compiler):
