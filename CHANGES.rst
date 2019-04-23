@@ -1,3 +1,13 @@
+1.0b12 (2019-04-22)
+===================
+
+Changes
+-------
+* Add library plugin support
+* Improve evaluate of unbounded row/col (ie: A:B)
+* Fix some regressions from 1.0b11
+
+
 1.0b11 (2019-04-21)
 ===================
 
