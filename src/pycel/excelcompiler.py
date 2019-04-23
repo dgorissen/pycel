@@ -32,7 +32,13 @@ class ExcelCompiler:
 
     save_file_extensions = ('pkl', 'pickle', 'yml', 'yaml', 'json')
 
-    def __init__(self, filename=None, excel=None):
+    def __init__(self, filename=None, excel=None, plugins=None):
+        """ Build a compiler instance to organize the formula for a workbook
+
+        :param filename: Excel filename to load from (xlsx or `to_file`)
+        :param excel: Opened instance of ExcelWrapper
+        :param plugins: module paths for plugin lib functions
+        """
 
         self._eval = None
 
@@ -65,6 +71,7 @@ class ExcelCompiler:
 
         self.extra_data = None
         self._formula_cells_dict = {}
+        self._plugin_modules = plugins
 
     def __getstate__(self):
         # code objects are not serializable
@@ -102,7 +109,8 @@ class ExcelCompiler:
     def eval(self):
         if self._eval is None:
             self._eval = ExcelFormula.build_eval_context(
-                self._evaluate, self._evaluate_range, self.log)
+                self._evaluate, self._evaluate_range,
+                self.log, plugins=self._plugin_modules)
         return self._eval
 
     @classmethod

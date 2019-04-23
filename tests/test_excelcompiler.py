@@ -576,3 +576,41 @@ def test_evaluate_empty_intersection(fixture_dir):
         excel_compiler.excel
     )
     assert excel_compiler.evaluate(address) == NULL_ERROR
+
+
+def test_plugins(excel_compiler):
+
+    input_addrs = ['Sheet1!A11']
+    output_addrs = ['Sheet1!D1']
+    excel_compiler.trim_graph(input_addrs, output_addrs)
+    d1 = -0.022863768173008364
+
+    excel_compiler.recalculate()
+    assert pytest.approx(d1) == excel_compiler.evaluate('Sheet1!D1')
+
+    def calc_and_check():
+        excel_compiler._eval = None
+        excel_compiler.cell_map['Sheet1!D1'].formula.compiled_lambda = None
+        excel_compiler.recalculate()
+        assert pytest.approx(d1) == excel_compiler.evaluate('Sheet1!D1')
+
+    with mock.patch('pycel.excelformula.ExcelFormula.default_modules', ()):
+        with pytest.raises(UnknownFunction):
+            calc_and_check()
+
+    with mock.patch('pycel.excelformula.ExcelFormula.default_modules', ()):
+        excel_compiler._plugin_modules = ('pycel.excellib', )
+        calc_and_check()
+
+    with mock.patch('pycel.excelformula.ExcelFormula.default_modules', ()):
+        excel_compiler._plugin_modules = 'pycel.excellib'
+        calc_and_check()
+
+    with mock.patch('pycel.excelformula.ExcelFormula.default_modules',
+                    ('pycel.excellib', )):
+        excel_compiler._plugin_modules = None
+        calc_and_check()
+
+    with mock.patch('pycel.excelformula.ExcelFormula.default_modules', ()):
+        with pytest.raises(UnknownFunction):
+            calc_and_check()

@@ -817,6 +817,28 @@ def test_subtotal_errors(formula):
         ExcelFormula(formula).ast.emit
 
 
+def test_plugins():
+    with mock.patch('pycel.excelformula.ExcelFormula.default_modules', ()):
+        eval_ctx = ExcelFormula.build_eval_context(None, None)
+        with pytest.raises(UnknownFunction):
+            eval_ctx(ExcelFormula('=sum({1,2,3})'))
+
+    with mock.patch('pycel.excelformula.ExcelFormula.default_modules', ()):
+        eval_ctx = ExcelFormula.build_eval_context(
+            None, None, plugins=('pycel.excellib', ))
+        assert eval_ctx(ExcelFormula('=sum({1,2,3})')) == 6
+
+    with mock.patch('pycel.excelformula.ExcelFormula.default_modules', ()):
+        eval_ctx = ExcelFormula.build_eval_context(
+            None, None, plugins='pycel.excellib')
+        assert eval_ctx(ExcelFormula('=sum({1,2,3})')) == 6
+
+    with mock.patch('pycel.excelformula.ExcelFormula.default_modules',
+                    ('pycel.excellib', )):
+        eval_ctx = ExcelFormula.build_eval_context(None, None)
+        assert eval_ctx(ExcelFormula('=sum({1,2,3})')) == 6
+
+
 def test_unknown_name(empty_eval_context):
     assert NAME_ERROR == empty_eval_context(ExcelFormula('=CE'))
 

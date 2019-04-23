@@ -1,4 +1,5 @@
 import ast
+import importlib
 import logging
 import marshal
 import math
@@ -495,6 +496,13 @@ class FunctionNode(ASTNode):
 class ExcelFormula:
     """Take an Excel formula and compile it to Python code."""
 
+    default_modules = (
+        'pycel.excellib',
+        'pycel.lib.binary',
+        'pycel.lib.logical',
+        'math',
+    )
+
     def __init__(self, formula, cell=None, formula_is_python_code=False):
         if formula_is_python_code:
             self.base_formula = None
@@ -779,7 +787,8 @@ class ExcelFormula:
         return stack[0]
 
     @classmethod
-    def build_eval_context(cls, evaluate, evaluate_range, logger=None):
+    def build_eval_context(cls, evaluate, evaluate_range,
+                           logger=None, plugins=None):
         """eval with namespace management.  Will auto import needed functions
 
         Used like:
@@ -788,18 +797,19 @@ class ExcelFormula:
 
         :param evaluate: a function to evaluate a cell address
         :param evaluate_range: a function to evaluate a range address
-        :param logger: a looger to use (defaults to pycel)
+        :param logger: a logger to use (defaults to pycel)
+        :param plugins: module paths for plugin lib functions
         :return: a function to evaluate a compiled expression from build_ast
         """
 
-        import importlib
-
-        modules = (
-            importlib.import_module('pycel.excellib'),
-            importlib.import_module('pycel.lib.binary'),
-            importlib.import_module('pycel.lib.logical'),
-            importlib.import_module('math'),
-        )
+        if plugins is None:
+            modules = ()
+        elif isinstance(plugins, str):
+            modules = (plugins, )
+        else:
+            modules = tuple(plugins)
+        modules = tuple(importlib.import_module(m)
+                        for m in modules + cls.default_modules)
 
         logger = logger or logging.getLogger('pycel')
         error_messages = []
