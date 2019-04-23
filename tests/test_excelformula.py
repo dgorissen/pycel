@@ -20,6 +20,12 @@ from test_excelutil import ATestCell
 FormulaTest = collections.namedtuple('FormulaTest', 'formula rpn python_code')
 
 
+@pytest.fixture(scope='session')
+def empty_eval_context():
+    return ExcelFormula.build_eval_context(
+        None, None, logging.getLogger('pycel_x'))
+
+
 def stringify_rpn(e):
     return "|".join([str(x) for x in e])
 
@@ -616,12 +622,15 @@ def test_init_from_python_code():
     assert excel_formula1.needed_addresses == excel_formula2.needed_addresses
 
 
-def test_string_number_compare():
-    eval_ctx = ExcelFormula.build_eval_context(None, None)
-
-    assert 1 == eval_ctx(ExcelFormula('=(1=1.0)+("1"=1)+(1="1")'))
-    assert 1 == eval_ctx(ExcelFormula('=("1"="1") + ("x"=1)'))
-    assert 'b' == eval_ctx(ExcelFormula('=if("x"<>"x", "a", "b")'))
+@pytest.mark.parametrize(
+    'formula, result', (
+        ('=(1=1.0)+("1"=1)+(1="1")', 1),
+        ('=("1"="1") + ("x"=1)', 1),
+        ('=if("x"<>"x", "a", "b")', 'b'),
+    )
+)
+def test_string_number_compare(formula, result, empty_eval_context):
+    assert empty_eval_context(ExcelFormula(formula)) == result
 
 
 @pytest.mark.parametrize(
@@ -664,10 +673,15 @@ def test_bool_funcs(formula, result):
     assert eval_ctx(ExcelFormula(formula)) == result
 
 
-def test_empty_cell_logic_op():
+@pytest.mark.parametrize(
+    'formula, result', (
+        ('=(A1=0) + (A1=1)', 1),
+        ('=(A1<0)+(A1<=0)+(A1=0)+(A1>=0)+(A1>0)', 3),
+    )
+)
+def test_empty_cell_logic_op(formula, result):
     eval_ctx = ExcelFormula.build_eval_context(lambda x: None, None)
-    assert 1 == eval_ctx(ExcelFormula('=(A1=0) + (A1=1)'))
-    assert 3 == eval_ctx(ExcelFormula('=(A1<0)+(A1<=0)+(A1=0)+(A1>=0)+(A1>0)'))
+    assert eval_ctx(ExcelFormula(formula)) == result
 
 
 @pytest.mark.parametrize(
@@ -691,76 +705,83 @@ def test_empty_cell_logic_op():
         (-1, '=-sum(1, "+2")'),
     )
 )
-def test_unary_ops(expected, formula):
-    eval_ctx = ExcelFormula.build_eval_context(None, None)
-    assert expected == eval_ctx(ExcelFormula(formula))
+def test_unary_ops(expected, formula, empty_eval_context):
+    assert expected == empty_eval_context(ExcelFormula(formula))
 
 
-def test_numerics_type_coercion():
+@pytest.mark.parametrize(
+    'formula, result', (
+        ('=1+2+"4"', 7),
+        ('=sum(1, 2, "4")', 3),
+        ('=3&"A"', '3A'),
+        ('=3.0&"A"', '3A'),
+        ('=A1&"A"', '3A'),
+    )
+)
+def test_numerics_type_coercion(formula, result):
     eval_ctx = ExcelFormula.build_eval_context(lambda x: 3.0, None)
-    assert 7 == eval_ctx(ExcelFormula('=1+2+"4"'))
-    assert 3 == eval_ctx(ExcelFormula('=sum(1, 2, "4")'))
-
-    assert '3A' == eval_ctx(ExcelFormula('=3&"A"'))
-    assert '3A' == eval_ctx(ExcelFormula('=3.0&"A"'))
-    assert '3A' == eval_ctx(ExcelFormula('=A1&"A"'))
+    assert eval_ctx(ExcelFormula(formula)) == result
 
 
-def test_string_compare():
-    eval_ctx = ExcelFormula.build_eval_context(None, None)
-
-    assert not eval_ctx(ExcelFormula('=1="a"'))
-    assert not eval_ctx(ExcelFormula('=1=2'))
-    assert not eval_ctx(ExcelFormula('="a"="b"'))
-
-    assert eval_ctx(ExcelFormula('=1=1'))
-    assert eval_ctx(ExcelFormula('="A"="a"'))
-    assert eval_ctx(ExcelFormula('="a"="A"'))
-
-
-def test_string_concat():
-    eval_ctx = ExcelFormula.build_eval_context(None, None)
-
-    assert '6A' == eval_ctx(ExcelFormula('=2*3&"A"'))
-
-    assert '1a' == eval_ctx(ExcelFormula('=1&"a"'))
-    assert '12' == eval_ctx(ExcelFormula('="1"&2'))
-    assert 'ab' == eval_ctx(ExcelFormula('="a"&"b"'))
-    assert '11' == eval_ctx(ExcelFormula('=1&1'))
-    assert 'Aa' == eval_ctx(ExcelFormula('="A"&"a"'))
-    assert 'aA' == eval_ctx(ExcelFormula('="a"&"A"'))
+@pytest.mark.parametrize(
+    'formula, result', (
+        ('=1="a"', False),
+        ('=1=2', False),
+        ('="a"="b"', False),
+        ('=1=1', True),
+        ('="A"="a"', True),
+        ('="a"="A"', True),
+    )
+)
+def test_string_compare(formula, result, empty_eval_context):
+    assert empty_eval_context(ExcelFormula(formula)) == result
 
 
-def test_column():
-    eval_ctx = ExcelFormula.build_eval_context(None, None)
+@pytest.mark.parametrize(
+    'formula, result', (
+        ('=2*3&"A"', '6A'),
+        ('=1&"a"', '1a'),
+        ('="1"&2', '12'),
+        ('="a"&"b"', 'ab'),
+        ('=1&1', '11'),
+        ('="A"&"a"', 'Aa'),
+        ('="a"&"A"', 'aA'),
+    )
+)
+def test_string_concat(formula, result, empty_eval_context):
+    assert empty_eval_context(ExcelFormula(formula)) == result
 
-    assert 12 == eval_ctx(ExcelFormula('=COLUMN(L45)'))
-    assert ((2, 3, 4, 5), ) == eval_ctx(ExcelFormula('=COLUMN(B:E)'))
-    assert 1 == next(iter(eval_ctx(ExcelFormula('=COLUMN(4:7)'))))
-    assert ((4, 5), ) == eval_ctx(ExcelFormula('=COLUMN(D1:E1)'))
-    assert ((4, ), ) == eval_ctx(ExcelFormula('=COLUMN(D1:D2)'))
-    assert ((4, 5), ) == eval_ctx(ExcelFormula('=COLUMN(D1:E2)'))
 
-    cell = ATestCell('B', 3)
-    assert 2 == eval_ctx(ExcelFormula('=COLUMN()', cell=cell))
+@pytest.mark.parametrize(
+    'formula, result, cell', (
+        ('=COLUMN(L45)', 12, None),
+        ('=COLUMN(B:E)', ((2, 3, 4, 5),), None),
+        ('=COLUMN(4:7)', range(1, 16385), None),
+        ('=COLUMN(D1:E1)', ((4, 5),), None),
+        ('=COLUMN(D1:D2)', ((4,),), None),
+        ('=COLUMN(D1:E2)', ((4, 5),), None),
+        ('=COLUMN()', 2, ATestCell('B', 3)),
+        ('=COLUMN(B6:D9 C7:E8)', ((3, 4), ), None),
+    )
+)
+def test_column(formula, result, cell, empty_eval_context):
+    assert empty_eval_context(ExcelFormula(formula, cell=cell)) == result
 
-    assert ((3, 4), ) == eval_ctx(ExcelFormula('=COLUMN(B6:D9 C7:E8)'))
 
-
-def test_row():
-    eval_ctx = ExcelFormula.build_eval_context(None, None)
-
-    assert 45 == eval_ctx(ExcelFormula('=ROW(L45)'))
-    assert 1 == next(iter(eval_ctx(ExcelFormula('=ROW(B:E)'))))
-    assert ((4,), (5,), (6,), (7,)) == eval_ctx(ExcelFormula('=ROW(4:7)'))
-    assert ((1,), ) == eval_ctx(ExcelFormula('=ROW(D1:E1)'))
-    assert ((1,), (2,)) == eval_ctx(ExcelFormula('=ROW(D1:D2)'))
-    assert ((1,), (2,)) == eval_ctx(ExcelFormula('=ROW(D1:E2)'))
-
-    cell = ATestCell('B', 3)
-    assert 3 == eval_ctx(ExcelFormula('=ROW()', cell=cell))
-
-    assert ((7,), (8,)) == eval_ctx(ExcelFormula('=ROW(B6:D9 C7:E8)'))
+@pytest.mark.parametrize(
+    'formula, result, cell', (
+        ('=ROW(L45)', 45, None),
+        ('=ROW(B:E)', range(1, 1048577), None),
+        ('=ROW(4:7)', ((4,), (5,), (6,), (7,)), None),
+        ('=ROW(D1:E1)', ((1,), ), None),
+        ('=ROW(D1:D2)', ((1,), (2,)), None),
+        ('=ROW(D1:E2)', ((1,), (2,)), None),
+        ('=ROW()', 3, ATestCell('B', 3)),
+        ('=ROW(B6:D9 C7:E8)', ((7,), (8,)), None),
+    )
+)
+def test_row(formula, result, cell, empty_eval_context):
+    assert empty_eval_context(ExcelFormula(formula, cell=cell)) == result
 
 
 @pytest.mark.parametrize(
@@ -783,34 +804,37 @@ def test_subtotal(formula, result):
     assert ExcelFormula(formula.replace('tal(', 'tal(1')).ast.emit == result
 
 
-def test_subtotal_errors():
+@pytest.mark.parametrize(
+    'formula', (
+        '=subtotal(0)',
+        '=subtotal(12)',
+        '=subtotal(100)',
+        '=subtotal(112)',
+    )
+)
+def test_subtotal_errors(formula):
     with pytest.raises(ValueError):
-        ExcelFormula('=subtotal(0)').ast.emit
-    with pytest.raises(ValueError):
-        ExcelFormula('=subtotal(12)').ast.emit
-    with pytest.raises(ValueError):
-        ExcelFormula('=subtotal(100)').ast.emit
-    with pytest.raises(ValueError):
-        ExcelFormula('=subtotal(112)').ast.emit
+        ExcelFormula(formula).ast.emit
 
 
-def test_unknown_name():
-    eval_ctx = ExcelFormula.build_eval_context(None, None)
-
-    assert NAME_ERROR == eval_ctx(ExcelFormula('=CE'))
+def test_unknown_name(empty_eval_context):
+    assert NAME_ERROR == empty_eval_context(ExcelFormula('=CE'))
 
 
-def test_div_zero():
+@pytest.mark.parametrize(
+    'formula', (
+        '=sum(A1)',
+        '=sum(A1:B2)',
+        '=a1=1',
+        '=a1+"l"',
+        '=1 - (1 / 0)',
+    )
+)
+def test_div_zero(formula):
     eval_ctx = ExcelFormula.build_eval_context(
         lambda x: DIV0, lambda x: [[1, 1], [1, DIV0]],
         logging.getLogger('pycel_x'))
-
-    assert DIV0 == eval_ctx(ExcelFormula('=sum(A1)'))
-    assert DIV0 == eval_ctx(ExcelFormula('=sum(A1:B2)'))
-    assert DIV0 == eval_ctx(ExcelFormula('=a1=1'))
-    assert DIV0 == eval_ctx(ExcelFormula('=a1+"l"'))
-
-    assert DIV0 == eval_ctx(ExcelFormula('=1 - (1 / 0)'))
+    assert eval_ctx(ExcelFormula(formula)) == DIV0
 
 
 def test_error_logging(caplog):
@@ -835,18 +859,22 @@ Values: 1 Div 0"""
     assert message in caplog.records[1].message
 
 
-def test_value_error():
+@pytest.mark.parametrize(
+    'formula, result', (
+        ('=sum(A1)', VALUE_ERROR),
+        ('=sum(A1:B2)', VALUE_ERROR),
+        ('=a1=1', VALUE_ERROR),
+        ('=a1+"l"', VALUE_ERROR),
+        ('=iferror(1+"A",3)', 3),
+        ('=1+"A"', VALUE_ERROR),
+    )
+)
+def test_value_error(formula, result):
     eval_ctx = ExcelFormula.build_eval_context(
         lambda x: VALUE_ERROR, lambda x: [[1, 1], [1, VALUE_ERROR]],
         logging.getLogger('pycel_x'))
 
-    assert VALUE_ERROR == eval_ctx(ExcelFormula('=sum(A1)'))
-    assert VALUE_ERROR == eval_ctx(ExcelFormula('=sum(A1:B2)'))
-    assert VALUE_ERROR == eval_ctx(ExcelFormula('=a1=1'))
-    assert VALUE_ERROR == eval_ctx(ExcelFormula('=a1+"l"'))
-
-    assert 3 == eval_ctx(ExcelFormula('=iferror(1+"A",3)'))
-    assert VALUE_ERROR == eval_ctx(ExcelFormula('=1+"A"'))
+    assert eval_ctx(ExcelFormula(formula)) == result
 
 
 def test_eval_exception():
@@ -858,9 +886,7 @@ def test_eval_exception():
         eval_ctx(ExcelFormula('=a1'))
 
 
-def test_lineno_on_error_reporting():
-    eval_ctx = ExcelFormula.build_eval_context(None, None)
-
+def test_lineno_on_error_reporting(empty_eval_context):
     excel_formula = ExcelFormula('')
     excel_formula._python_code = 'X'
     excel_formula.lineno = 6
@@ -868,7 +894,7 @@ def test_lineno_on_error_reporting():
 
     msg = 'File "a_file", line 6,'
     with pytest.raises(UnknownFunction, match=msg):
-        eval_ctx(excel_formula)
+        empty_eval_context(excel_formula)
 
     excel_formula._python_code = '(x)'
     excel_formula._compiled_python = None
@@ -877,7 +903,7 @@ def test_lineno_on_error_reporting():
     excel_formula.lineno = 60
 
     with pytest.raises(UnknownFunction, match='File "a_file", line 60,'):
-        eval_ctx(excel_formula)
+        empty_eval_context(excel_formula)
 
 
 @pytest.mark.parametrize(
@@ -894,18 +920,15 @@ def test_lineno_on_error_reporting():
          '=ARABIC()'),
     )
 )
-def test_unknown_function(msg, formula):
-    eval_ctx = ExcelFormula.build_eval_context(
-        lambda x: None, lambda x: None, logging.getLogger('pycel_x'))
-
+def test_unknown_function(msg, formula, empty_eval_context):
     compiled = ExcelFormula(formula)
 
     with pytest.raises(UnknownFunction, match=msg):
-        eval_ctx(compiled)
+        empty_eval_context(compiled)
 
     # second time is needed to test cached msg
     with pytest.raises(UnknownFunction, match=msg):
-        eval_ctx(compiled)
+        empty_eval_context(compiled)
 
 
 if __name__ == '__main__':
