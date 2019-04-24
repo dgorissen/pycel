@@ -7,13 +7,12 @@ from bisect import bisect_right
 from collections import Counter
 from datetime import datetime
 from decimal import Decimal, ROUND_HALF_UP, ROUND_UP
-from math import atan2, log
+import math
 
 import numpy as np
 from pycel.excelutil import (
     assert_list_like,
     build_wildcard_re,
-    coerce_to_number,
     coerce_to_string,
     date_from_int,
     DIV0,
@@ -24,31 +23,38 @@ from pycel.excelutil import (
     is_leap_year,
     is_number,
     list_like,
-    math_wrap,
     MAX_COL,
     MAX_ROW,
     NA_ERROR,
+    NUM_ERROR,
     normalize_year,
     PyCelException,
+    REF_ERROR,
     VALUE_ERROR,
 )
 
+from pycel.lib.function_helpers import (
+    excel_func,
+    excel_helper,
+    excel_math_func,
+)
 
-def _numerics(*args, no_bools=False):
+
+def _numerics(*args, keep_bools=False):
     # ignore non numeric cells
-    args = tuple(flatten(args, lambda x: coerce_to_number(x, raise_div0=False)))
+    args = tuple(flatten(args))
     error = next((x for x in args if x in ERROR_CODES), None)
     if error is not None:
         # return the first error in the list
         return error
     else:
-        if no_bools:
+        if not keep_bools:
             args = (a for a in args if not isinstance(a, bool))
         return tuple(x for x in args if isinstance(x, (int, float)))
 
 
 def average(*args):
-    data = _numerics(*args, no_bools=True)
+    data = _numerics(*args)
 
     # A returned string is an error code
     if isinstance(data, str):
@@ -59,15 +65,35 @@ def average(*args):
         return sum(data) / len(data)
 
 
+@excel_math_func
+def ceiling(number, significance):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   CEILING-function-0A5CD7C8-0720-4F0A-BD2C-C943E510899F
+    if significance < 0 < number:
+        return NUM_ERROR
+
+    if number == 0:
+        return 0
+
+    if significance == 0:
+        return DIV0
+
+    if number < 0 < significance:
+        return significance * int(number / significance)
+    else:
+        return significance * math.ceil(number / significance)
+
+
+@excel_helper()
 def column(ref):
-    if ref in ERROR_CODES:
-        return ref
+    # Excel reference: https://support.office.com/en-us/article/
+    #   COLUMN-function-44E8C754-711C-4DF3-9DA4-47A55042554B
 
     if ref.is_range:
         if ref.end.col_idx == 0:
             return range(1, MAX_COL + 1)
         else:
-            return tuple(range(ref.start.col_idx, ref.end.col_idx + 1))
+            return (tuple(range(ref.start.col_idx, ref.end.col_idx + 1)), )
     else:
         return ref.col_idx
 
@@ -129,61 +155,22 @@ def countifs(*args):
         raise PyCelException('excellib.countifs() must have a '
                              'pair number of arguments, here %d' % len(args))
 
-    if len(args):
-        # find indexes that match first layer of countif
-        indexes = find_corresponding_index(args[0], args[1])
+    index_counts = Counter(it.chain.from_iterable(
+        find_corresponding_index(rng, criteria)
+        for rng, criteria in zip(args[0::2], args[1::2])))
 
-        # get only ranges
-        remaining_ranges = [elem for i, elem in enumerate(args[2:])
-                            if i % 2 == 0]
-
-        # get only criteria
-        remaining_criteria = [elem for i, elem in enumerate(args[2:])
-                              if i % 2 == 1]
-
-        filtered_remaining_ranges = []
-
-        # filter items in remaining_ranges that match valid indexes
-        # from first countif layer
-        for rng in remaining_ranges:
-            filtered_remaining_range = []
-
-            for index, item in enumerate(rng):
-                if index in indexes:
-                    filtered_remaining_range.append(item)
-
-            filtered_remaining_ranges.append(filtered_remaining_range)
-
-        new_tuple = ()
-
-        # rebuild the tuple that will be the argument of next layer
-        for index, rng in enumerate(filtered_remaining_ranges):
-            new_tuple += (rng, remaining_criteria[index])
-
-        # only consider the minimum number across all layer responses
-        return min(countifs(*new_tuple), len(indexes))
-
-    else:
-        return float('inf')
+    ifs_count = len(args) // 2
+    return len(tuple(idx for idx, cnt in index_counts.items()
+                     if cnt == ifs_count))
 
 
+@excel_helper(number_params=-1)
 def date(year, month, day):
     # Excel reference: https://support.office.com/en-us/article/
     #   DATE-function-e36c0c8c-4104-49da-ab83-82328b832349
 
-    # ::TODO:: error handling
-
-    if not isinstance(year, int):
-        raise TypeError("%s is not an integer" % year)
-
-    if not isinstance(month, int):
-        raise TypeError("%s is not an integer" % month)
-
-    if not isinstance(day, int):
-        raise TypeError("%s is not an integer" % day)
-
     if not (0 <= year <= 9999):
-        raise ValueError("Year '%s' must be between 1 and 9999" % year)
+        return NUM_ERROR
 
     if year < 1900:
         year += 1900
@@ -195,10 +182,40 @@ def date(year, month, day):
     result = (datetime(year, month, day) - date_0).days + 2
 
     if result <= 0:
-        raise ArithmeticError("Date result is negative")
+        return NUM_ERROR
     return result
 
 
+@excel_helper(cse_params=(0, 1, 2), number_params=2)
+def find(find_text, within_text, start_num=1):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   FIND-FINDB-functions-C7912941-AF2A-4BDF-A553-D0D89B0A0628
+    find_text = coerce_to_string(find_text)
+    within_text = coerce_to_string(within_text)
+    found = within_text.find(find_text, start_num - 1)
+    if found == -1:
+        return VALUE_ERROR
+    else:
+        return found + 1
+
+
+@excel_math_func
+def floor(number, significance):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   FLOOR-function-14BB497C-24F2-4E04-B327-B0B4DE5A8886
+    if significance < 0 < number or number < 0 < significance:
+        return NUM_ERROR
+
+    if number == 0:
+        return 0
+
+    if significance == 0:
+        return DIV0
+
+    return significance * int(number / significance)
+
+
+@excel_helper(cse_params=0, bool_params=3, number_params=2)
 def hlookup(lookup_value, table_array, row_index_num, range_lookup=True):
     """ Horizontal Lookup
 
@@ -214,16 +231,13 @@ def hlookup(lookup_value, table_array, row_index_num, range_lookup=True):
     if not list_like(table_array):
         return NA_ERROR
 
-    if list_like(lookup_value) or list_like(row_index_num):
-        raise NotImplementedError('Array Formulas not implemented')
-
     if row_index_num <= 0:
-        return '#VALUE!'
+        return VALUE_ERROR
 
     if row_index_num > len(table_array[0]):
-        return '#REF!'
+        return REF_ERROR
 
-    result_idx = match(
+    result_idx = _match(
         lookup_value, table_array[0], match_type=bool(range_lookup))
 
     if isinstance(result_idx, int):
@@ -233,50 +247,40 @@ def hlookup(lookup_value, table_array, row_index_num, range_lookup=True):
         return result_idx
 
 
-def index(array, row_num, col_num=None, rows=None, cols=None):
+@excel_helper(number_params=(1, 2))
+def index(array, row_num, col_num=None):
     # Excel reference: https://support.office.com/en-us/article/
     #   index-function-a5dcf0dd-996d-40a4-a822-b56b061328bd
 
-    # A returned string is an error code
-    if isinstance(array, str):
-        return array
-
-    if row_num in ERROR_CODES:
-        return row_num
-
-    if col_num in ERROR_CODES:
-        return col_num
+    if not list_like(array) or not list_like(array[0]):
+        return VALUE_ERROR
 
     try:
-        if list_like(array[0]):
-            if rows or cols:
-                # when we get array formulas out of the worksheet we expand
-                # them into an index call.  If we have rows and cols then
-                # this is the size of the original range.  Excel will expand
-                # a vector to fill the rectangle.
-                if 1 == len(array) and row_num <= rows:
-                    row_num = 1
-                if 1 == len(array[0]) and col_num <= cols:
-                    col_num = 1
+        # rectangular array
+        if row_num and col_num:
+            return array[row_num - 1][col_num - 1]
 
-            # rectangular array
-            if None not in (row_num, col_num):
-                return array[row_num - 1][col_num - 1]
+        elif row_num:
+            if len(array[0]) == 1:
+                return array[row_num - 1][0]
+            elif len(array) == 1:
+                return array[0][row_num - 1]
+            elif isinstance(array, np.ndarray):
+                return array[row_num - 1, :]
+            else:
+                return (tuple(array[row_num - 1]),)
 
-            elif row_num is not None:
-                return array[row_num - 1]
-
-            elif col_num is not None:
-                if isinstance(array, np.ndarray):
-                    return array[:, col_num - 1]
-                else:
-                    return type(array)(row[col_num - 1] for row in array)
-
-        elif col_num in (1, None):
-            return array[row_num - 1]
-
-        elif row_num == 1:
-            return array[col_num - 1]
+        elif col_num:
+            if len(array) == 1:
+                return array[0][col_num - 1]
+            elif len(array[0]) == 1:
+                return array[col_num - 1][0]
+            elif isinstance(array, np.ndarray):
+                result = array[:, col_num - 1]
+                result.shape = result.shape + (1,)
+                return result
+            else:
+                return tuple((r[col_num - 1], ) for r in array)
 
     except IndexError:
         pass
@@ -284,17 +288,43 @@ def index(array, row_num, col_num=None, rows=None, cols=None):
     return NA_ERROR
 
 
+@excel_helper(cse_params=0, err_str_params=None)
+def iserror(value):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   IFERROR-function-C526FD07-CAEB-47B8-8BB6-63F3E417F611
+    return isinstance(value, str) and value in ERROR_CODES or (
+        isinstance(value, tuple))
+
+
+@excel_helper(cse_params=0, err_str_params=None)
 def istext(arg):
-    return isinstance(arg, str)
+    # Excel reference: https://support.office.com/en-us/article/
+    #   is-functions-0f2d7971-6019-40a0-a171-f2d869135665
+    return isinstance(arg, str) and arg not in ERROR_CODES
 
 
-def isNa(arg):
-    # This function might need more solid testing
-    try:
-        eval(arg)
-        return False
-    except Exception:
-        return True
+@excel_helper(cse_params=0, err_str_params=None)
+def isna(value):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   is-functions-0f2d7971-6019-40a0-a171-f2d869135665
+    return value == NA_ERROR or isinstance(value, tuple)
+
+
+@excel_helper(cse_params=0, err_str_params=None)
+def isnumber(value):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   is-functions-0f2d7971-6019-40a0-a171-f2d869135665
+    return isinstance(value, (int, float))
+
+
+@excel_helper(cse_params=(0, 1), number_params=1)
+def left(text, num_chars=1):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   LEFT-LEFTB-functions-9203D2D2-7960-479B-84C6-1EA52B99640C
+    if num_chars < 0:
+        return VALUE_ERROR
+    else:
+        return str(text)[:int(num_chars)]
 
 
 def linest(Y, X, const=True, degree=1):  # pragma: no cover  ::TODO::
@@ -322,6 +352,21 @@ def linest(Y, X, const=True, degree=1):  # pragma: no cover  ::TODO::
     return coefs
 
 
+@excel_math_func
+def ln(arg):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   LN-function-81FE1ED7-DAC9-4ACD-BA1D-07A142C6118F
+    return math.log(arg)
+
+
+@excel_math_func
+def log(number, base=10):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   LOG-function-4E82F196-1CA9-4747-8FB0-6C4A3ABB3280
+    return math.log(number, base)
+
+
+@excel_helper(cse_params=0)
 def lookup(lookup_value, lookup_array, result_range=None):
     """
     There are two ways to use LOOKUP: Vector form and Array form
@@ -343,31 +388,45 @@ def lookup(lookup_value, lookup_array, result_range=None):
         return NA_ERROR
 
     height = len(lookup_array)
+    width = len(lookup_array[0])
 
-    if list_like(lookup_array[0]):
+    # match across the largest dimension
+    if width <= height:
+        match_idx = _match(lookup_value, tuple(i[0] for i in lookup_array))
+        result = tuple(i[-1] for i in lookup_array)
+    else:
+        match_idx = _match(lookup_value, lookup_array[0])
+        result = lookup_array[-1]
+
+    if len(lookup_array) > 1 and len(lookup_array[0]) > 1:
         # rectangular array
         assert result_range is None
-        width = len(lookup_array[0])
 
-        # match across the largest dimension
-        if width <= height:
-            match_idx = match(lookup_value, tuple(i[0] for i in lookup_array))
-            result_range = tuple(i[-1] for i in lookup_array)
+    elif result_range:
+        if len(result_range) > len(result_range[0]):
+            result = tuple(i[0] for i in result_range)
         else:
-            match_idx = match(lookup_value, lookup_array[0])
-            result_range = lookup_array[-1]
-    else:
-        match_idx = match(lookup_value, lookup_array)
-        result_range = result_range or lookup_array
+            result = result_range[0]
 
     if isinstance(match_idx, int):
-        return result_range[match_idx - 1]
+        return result[match_idx - 1]
+
     else:
         # error string
         return match_idx
 
 
+@excel_helper(cse_params=0, number_params=2)
 def match(lookup_value, lookup_array, match_type=1):
+    if len(lookup_array) == 1:
+        lookup_array = lookup_array[0]
+    else:
+        lookup_array = tuple(row[0] for row in lookup_array)
+
+    return _match(lookup_value, lookup_array, match_type)
+
+
+def _match(lookup_value, lookup_array, match_type=1):
     # Excel reference: https://support.office.com/en-us/article/
     #   MATCH-function-E8DFFD45-C762-47D6-BF89-533F4A37673A
 
@@ -392,9 +451,6 @@ def match(lookup_value, lookup_array, match_type=1):
     :param match_type: The number -1, 0, or 1.
     :return: #N/A if not found, or relative position in `lookup_array`
     """
-    if lookup_value in ERROR_CODES:
-        return lookup_value
-
     lookup_value = ExcelCmp(lookup_value)
 
     if match_type == 1:
@@ -442,22 +498,10 @@ def match(lookup_value, lookup_array, match_type=1):
     return result[0]
 
 
+@excel_helper(cse_params=0, number_params=(1, 2))
 def mid(text, start_num, num_chars):
     # Excel reference: https://support.office.com/en-us/article/
     #   MID-MIDB-functions-d5f9e25c-d7d6-472e-b568-4ecb12433028
-
-    if text in ERROR_CODES:
-        return text
-    if start_num in ERROR_CODES:
-        return start_num
-    if num_chars in ERROR_CODES:
-        return num_chars
-
-    start_num = coerce_to_number(start_num)
-    num_chars = coerce_to_number(num_chars)
-
-    if not is_number(start_num) or not is_number(num_chars):
-        return VALUE_ERROR
 
     if start_num < 1 or num_chars < 0:
         return VALUE_ERROR
@@ -467,101 +511,71 @@ def mid(text, start_num, num_chars):
     return str(text)[start_num:start_num + int(num_chars)]
 
 
+@excel_math_func
 def mod(number, divisor):
     # Excel reference: https://support.office.com/en-us/article/
     #   MOD-function-9b6cd169-b6ee-406a-a97b-edf2a9dc24f3
-    if number in ERROR_CODES:
-        return number
-    if divisor in ERROR_CODES:
-        return divisor
-
-    number, divisor = coerce_to_number(number), coerce_to_number(divisor)
-
-    if divisor in (0, None):
+    if divisor == 0:
         return DIV0
-
-    if not is_number(number) or not is_number(divisor):
-        return VALUE_ERROR
 
     return number % divisor
 
 
+@excel_math_func
 def npv(*args):
     # Excel reference: https://support.office.com/en-us/article/
     #   NPV-function-8672CB67-2576-4D07-B67B-AC28ACF2A568
-
-    for arg in args:
-        if arg in ERROR_CODES:
-            return arg
 
     rate = args[0] + 1
     cashflow = args[1:]
     return sum([float(x) * rate ** -i for i, x in enumerate(cashflow, start=1)])
 
 
+@excel_math_func
 def power(number, power):
     # Excel reference: https://support.office.com/en-us/article/
     #   POWER-function-D3F2908B-56F4-4C3F-895A-07FB519C362A
-
-    for arg in (number, power):
-        if arg in ERROR_CODES:
-            return arg
-
     if number == power == 0:
         # Really excel?  What were you thinking?
         return NA_ERROR
 
-    return number ** power
+    try:
+        return number ** power
+    except ZeroDivisionError:
+        return DIV0
 
 
+@excel_helper(cse_params=(0, 1), number_params=1)
 def right(text, num_chars=1):
     # Excel reference:  https://support.office.com/en-us/article/
     #   RIGHT-RIGHTB-functions-240267EE-9AFA-4639-A02B-F19E1786CF2F
 
-    if text in ERROR_CODES:
-        return text
-    if num_chars in ERROR_CODES:
-        return num_chars
-
-    num_chars = coerce_to_number(num_chars)
-
-    if not is_number(num_chars) or num_chars < 0:
+    if num_chars < 0:
         return VALUE_ERROR
-
-    if num_chars == 0:
+    elif num_chars == 0:
         return ''
     else:
         return str(text)[-int(num_chars):]
 
 
-def roundup_unwrapped(number, num_digits):
+@excel_math_func
+def roundup(number, num_digits):
     # Excel reference: https://support.office.com/en-us/article/
     #   ROUNDUP-function-F8BC9B23-E795-47DB-8703-DB171D0C42A7
-
-    number, num_digits = coerce_to_number(number), coerce_to_number(num_digits)
-
-    if not is_number(number) or not is_number(num_digits):
-        return VALUE_ERROR
-
-    if isinstance(number, bool):
-        number = int(number)
-
+    num_digits = int(num_digits)
     quant = Decimal('1E{}{}'.format('+-'[num_digits >= 0], abs(num_digits)))
     return float(Decimal(repr(number)).quantize(quant, rounding=ROUND_UP))
 
 
-roundup = math_wrap(roundup_unwrapped)
-
-
+@excel_helper()
 def row(ref):
-    if ref in ERROR_CODES:
-        return ref
-
+    # Excel reference: https://support.office.com/en-us/article/
+    #   ROW-function-3A63B74A-C4D0-4093-B49A-E76EB49A6D8D
     if ref.is_range:
         if ref.end.row == 0:
             return range(1, MAX_ROW + 1)
         else:
-            return tuple(range(ref.start.row, ref.end.row + 1))
+            return tuple((c, ) for c in range(ref.start.row, ref.end.row + 1))
     else:
         return ref.row
 
@@ -569,6 +583,14 @@ def row(ref):
 def sumif(rng, criteria, sum_range=None):
     # Excel reference: https://support.office.com/en-us/article/
     #   SUMIF-function-169b8c99-c05c-4483-a712-1697a653039b
+
+    # WARNING:
+    # - The following is not currently implemented:
+    #  The sum_range argument does not have to be the same size and shape as
+    #  the range argument. The actual cells that are added are determined by
+    #  using the upper leftmost cell in the sum_range argument as the
+    #  beginning cell, and then including cells that correspond in size and
+    #  shape to the range argument.
 
     if sum_range is None:
         sum_range = rng
@@ -579,18 +601,15 @@ def sumifs(sum_range, *args):
     # Excel reference: https://support.office.com/en-us/article/
     #   SUMIFS-function-C9E748F5-7EA7-455D-9406-611CEBCE642B
 
-    # WARNING:
-    # - The following is not currently implemented:
-    #  The sum_range argument does not have to be the same size and shape as
-    #  the range argument. The actual cells that are added are determined by
-    #  using the upper leftmost cell in the sum_range argument as the
-    #  beginning cell, and then including cells that correspond in size and
-    #  shape to the range argument.
-
     assert_list_like(sum_range)
 
     assert len(args) and len(args) % 2 == 0, \
         'Must have paired criteria and ranges'
+
+    size = len(sum_range), len(sum_range[0])
+    for rng in args[0::2]:
+        assert size == (len(rng), len(rng[0])), \
+            "Size mismatch criteria range, sum range"
 
     # count the number of times a particular cell matches the criteria
     index_counts = Counter(it.chain.from_iterable(
@@ -598,20 +617,47 @@ def sumifs(sum_range, *args):
         for rng, criteria in zip(args[0::2], args[1::2])))
 
     ifs_count = len(args) // 2
-    max_idx = len(sum_range)
     indices = tuple(idx for idx, cnt in index_counts.items()
-                    if cnt == ifs_count and idx < max_idx)
-    return sum(_numerics(sum_range[idx] for idx in indices))
+                    if cnt == ifs_count)
+    return sum(_numerics(
+        (sum_range[r][c] for r, c in indices), keep_bools=True))
 
 
-def value(text):
-    # make the distinction for naca numbers
-    if '.' in text:
-        return float(text)
-    else:
-        return int(text)
+def sumproduct(*args):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   SUMPRODUCT-function-16753E75-9F68-4874-94AC-4D2145A2FD2E
+
+    # find any errors
+    error = next((i for i in flatten(args) if i in ERROR_CODES), None)
+    if error:
+        return error
+
+    # verify array sizes match
+    sizes = set()
+    for arg in args:
+        assert isinstance(arg, tuple), isinstance(arg[0], tuple)
+        sizes.add((len(arg), len(arg[0])))
+    if len(sizes) != 1:
+        return VALUE_ERROR
+
+    # put the values into numpy vectors
+    values = np.array(tuple(tuple(
+        x if isinstance(x, (float, int)) and not isinstance(x, bool) else 0
+        for x in flatten(arg)) for arg in args))
+
+    # return the sum product
+    return np.sum(np.prod(values, axis=0))
 
 
+@excel_math_func
+def trunc(number, num_digits=0):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   TRUNC-function-8B86A64C-3127-43DB-BA14-AA5CEB292721
+    factor = 10 ** int(num_digits)
+    return int(number * factor) / factor
+
+
+@excel_helper(cse_params=0, bool_params=3, number_params=2)
 def vlookup(lookup_value, table_array, col_index_num, range_lookup=True):
     """ Vertical Lookup
 
@@ -627,16 +673,13 @@ def vlookup(lookup_value, table_array, col_index_num, range_lookup=True):
     if not list_like(table_array):
         return NA_ERROR
 
-    if list_like(lookup_value) or list_like(col_index_num):
-        raise NotImplementedError('Array Formulas not implemented')
-
     if col_index_num <= 0:
         return '#VALUE!'
 
     if col_index_num > len(table_array[0]):
-        return '#REF!'
+        return REF_ERROR
 
-    result_idx = match(
+    result_idx = _match(
         lookup_value,
         [row[0] for row in table_array],
         match_type=bool(range_lookup)
@@ -649,38 +692,36 @@ def vlookup(lookup_value, table_array, col_index_num, range_lookup=True):
         return result_idx
 
 
-def xatan2(value1, value2):
+@excel_math_func
+def x_abs(value1):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   ABS-function-3420200F-5628-4E8C-99DA-C99D7C87713C
+    return abs(value1)
+
+
+@excel_math_func
+def xatan2(x_num, y_num):
     # Excel reference: https://support.office.com/en-us/article/
     #   ATAN2-function-C04592AB-B9E3-4908-B428-C96B3A565033
-    if value1 in ERROR_CODES:
-        return value1
-
-    if value2 in ERROR_CODES:
-        return value2
 
     # swap arguments
-    return math_wrap(atan2)(value2, value1)
+    return math.atan2(y_num, x_num)
 
 
-def xlen(value):
-    if value in ERROR_CODES:
-        return value
-
-    if value is None:
-        return 0
-    else:
-        return len(str(value))
+@excel_math_func
+def x_int(value1):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   INT-function-A6C4AF9E-356D-4369-AB6A-CB1FD9D343EF
+    return math.floor(value1)
 
 
-def xlog(value):
-    if list_like(value):
-        return [math_wrap(log)(x) for x in flatten(value)]
-    else:
-        return math_wrap(log)(value)
+@excel_func
+def x_len(arg):
+    return 0 if arg is None else len(str(arg))
 
 
 def xmax(*args):
-    data = _numerics(*args, no_bools=True)
+    data = _numerics(*args)
 
     # A returned string is an error code
     if isinstance(data, str):
@@ -694,7 +735,7 @@ def xmax(*args):
 
 
 def xmin(*args):
-    data = _numerics(*args, no_bools=True)
+    data = _numerics(*args)
 
     # A returned string is an error code
     if isinstance(data, str):
@@ -707,18 +748,10 @@ def xmin(*args):
         return min(data)
 
 
-def xround(number, num_digits=0):
+@excel_math_func
+def x_round(number, num_digits=0):
     # Excel reference: https://support.office.com/en-us/article/
     #   ROUND-function-c018c5d8-40fb-4053-90b1-b3e7f61a213c
-
-    if number in ERROR_CODES:
-        return number
-    if num_digits in ERROR_CODES:
-        return num_digits
-
-    number, num_digits = coerce_to_number(number), coerce_to_number(num_digits)
-    if not is_number(number) or not is_number(num_digits):
-        return VALUE_ERROR
 
     num_digits = int(num_digits)
     if num_digits >= 0:  # round to the right side of the point
@@ -734,7 +767,7 @@ def xround(number, num_digits=0):
 
 
 def xsum(*args):
-    data = _numerics(*args, no_bools=True)
+    data = _numerics(*args)
     if isinstance(data, str):
         return data
 
@@ -742,6 +775,7 @@ def xsum(*args):
     return sum(data)
 
 
+@excel_math_func
 def yearfrac(start_date, end_date, basis=0):
     # Excel reference: https://support.office.com/en-us/article/
     #   YEARFRAC-function-3844141e-c76d-4143-82b6-208454ddc6a8
@@ -769,14 +803,8 @@ def yearfrac(start_date, end_date, basis=0):
 
         return delta / denom
 
-    if not is_number(start_date):
-        raise TypeError("start_date %s must be a number" % str(start_date))
-    if not is_number(end_date):
-        raise TypeError("end_date %s must be number" % str(end_date))
-    if start_date < 0:
-        raise ValueError("start_date %s must be positive" % str(start_date))
-    if end_date < 0:
-        raise ValueError("end_date %s must be positive" % str(end_date))
+    if start_date < 0 or end_date < 0:
+        return NUM_ERROR
 
     if start_date > end_date:  # switch dates if start_date > end_date
         start_date, end_date = end_date, start_date
@@ -808,6 +836,6 @@ def yearfrac(start_date, end_date, basis=0):
         result = day_count / 360
 
     else:
-        raise ValueError("basis: %d must be 0, 1, 2, 3 or 4" % basis)
+        return NUM_ERROR
 
     return result

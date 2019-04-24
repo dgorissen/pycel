@@ -1,3 +1,75 @@
+1.0b12 (2019-04-22)
+===================
+
+Changes
+-------
+* Add library plugin support
+* Improve evaluate of unbounded row/col (ie: A:B)
+* Fix some regressions from 1.0b11
+
+
+1.0b11 (2019-04-21)
+===================
+
+Major Changes
+-------------
+
+* Refactored ExcelWrapper, ExcelFormula & ExcelCompiler to allow...
+* Added considerable extensions to CSE Array Formula Support
+* Refactored function_helpers to add decorators for excelizing library functions
+* Added a dozen new functions
+* Improved various messages and exceptions in validate_calcs() and trim_graph()
+
+Changes
+-------
+
+* Implement LEFT()
+* Implement ISERROR()
+* Implement FIND()
+* Implement ISNUMBER()
+* Implement SUMPRODUCT()
+* Implement CEILING()
+* Implement TRUNC() and FLOOR()
+* Add support for LOG()
+* Improve ABS(), INT() and ROUND()
+
+* Add quoted_address() method to AddressRange and AddressCell
+* Add public interface to get list of formula_cells()
+* Improve Some NotImplementedError() messages
+* Add NotImplementedError for "linked" sheet names
+* Fix function info for paired functions from same line
+* Add reference URL to function info
+* Only build compiler eval context once
+* Address Range Union and Intersection need sheet_name
+
+CSE Array Changes
+-----------------
+
+* Add CSE Array handling to excelformula and excelcompiler
+* Change Row, Column & Index to rectangular arrays only
+* Add in_array_formula_context
+* Add cse_array_wrapper() to allow calling functions in array context
+* Add error_string_wrapper() to check for excel errors
+* Move math_wrap() to function_helpers.
+* Handle Direct CSE Array in cell
+* Reorganize CSE Array Formula handling in excelwrapper
+* For CSE Arrays that are smaller than target fill w/ None
+* Trim oversize array results to fit target range
+* Improve needed addresses parser from python code
+* Improve _coerce_to_number() and _numerics() for CSE arrays
+* Remove formulas from excelwrapper._OpxRange()
+
+Bug Fixes
+---------
+
+* Fix Range Intersection
+* Fix Unary Minus on Empty cell
+* Fix ISNA()
+* Fix AddressCell create from tuple
+* Power(0,-1) now returns DIV0
+* Cleanup index()
+
+
 1.0b8 (2019-03-20)
 ==================
 

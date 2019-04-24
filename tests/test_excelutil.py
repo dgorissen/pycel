@@ -1,4 +1,3 @@
-import math
 import os
 import pickle
 from collections import namedtuple
@@ -14,17 +13,18 @@ from pycel.excelutil import (
     coerce_to_string,
     criteria_parser,
     date_from_int,
+    EMPTY,
     ExcelCmp,
     find_corresponding_index,
     flatten,
     get_linest_degree,
     get_max_days_in_month,
+    in_array_formula_context,
     is_leap_year,
     is_number,
     list_like,
     MAX_COL,
     MAX_ROW,
-    math_wrap,
     NUM_ERROR,
     normalize_year,
     OPERATORS,
@@ -41,14 +41,14 @@ from pycel.excelutil import DIV0
 
 class ATestCell:
 
-    def __init__(self, col, row, sheet='', excel=None):
+    def __init__(self, col, row, sheet='', excel=None, value=None):
         self.row = row
         self.col = col
         self.col_idx = column_index_from_string(col)
         self.sheet = sheet
         self.excel = excel
-        self.address = AddressCell(
-            '{}{}'.format(col, row), sheet=sheet)
+        self.address = AddressCell('{}{}'.format(col, row), sheet=sheet)
+        self.value = value
 
 
 def test_address_range():
@@ -89,6 +89,34 @@ def test_address_range_errors():
 
 @pytest.mark.parametrize(
     'left, right, result', (
+        ('a1:b2', 'b1:c3', 'b1:b2'),
+        ('a1:d5', 'b3', 'b3'),
+        ('d4:e5', 'c3', None),
+        ('d4:e5', 'd3', None),
+        ('d4:e5', 'e3', None),
+        ('d4:e5', 'f3', None),
+        ('d4:e5', 'c4', None),
+        ('d4:e5', 'd4', 'd4'),
+        ('d4:e5', 'e4', 'e4'),
+        ('d4:e5', 'f4', None),
+        ('d4:e5', 'c5', None),
+        ('d4:e5', 'd5', 'd5'),
+        ('d4:e5', 'e5', 'e5'),
+        ('d4:e5', 'f5', None),
+        ('d4:e5', 'c6', None),
+        ('d4:e5', 'd6', None),
+        ('d4:e5', 'e6', None),
+        ('d4:e5', 'f6', None),
+        ('c4:e5', 'd1', None),
+        ('c4:e6', 'a5', None),
+    )
+)
+def test_address_range_and(left, right, result):
+    assert AddressRange(left) & AddressRange(right) == AddressRange(result)
+
+
+@pytest.mark.parametrize(
+    'left, right, result', (
         ('a1:b2', 'b1:c3', 'a1:c3'),
         ('a1:b2', 'd5', 'a1:d5'),
         ('a1:d5', 'b3', 'a1:d5'),
@@ -99,8 +127,8 @@ def test_address_range_errors():
         ('c4:e6', 'j5', 'c4:j6'),
     )
 )
-def test_address_range_add(left, right, result):
-    assert AddressRange(left) + AddressRange(right) == AddressRange(result)
+def test_address_range_or(left, right, result):
+    assert AddressRange(left) | AddressRange(right) == AddressRange(result)
 
 
 @pytest.mark.parametrize(
@@ -135,7 +163,7 @@ def test_has_sheet():
     assert AddressRange('Sheet1!a1:b2').has_sheet
     assert not AddressRange('a1:b2').has_sheet
 
-    assert AddressCell('sh!a1') == AddressRange(AddressRange('a1'), sheet='sh')
+    assert AddressCell('sh!A2') == AddressRange(AddressRange('A2'), sheet='sh')
 
     with pytest.raises(ValueError, match='Mismatched sheets'):
         AddressRange(AddressRange('shx!a1'), sheet='sh')
@@ -243,6 +271,22 @@ def test_unquote_sheetname(sheet_name):
     assert sheet_name == unquote_sheetname(quote_sheetname(sheet_name))
 
 
+@pytest.mark.parametrize(
+    'sheet_name',
+    [
+        u'In Dusseldorf',
+        u'My-Sheet',
+        u"Demande d'autorisation",
+        "1sheet",
+        ".sheet",
+        '"',
+    ]
+)
+def test_quoted_address(sheet_name):
+    addr = AddressCell('A2', sheet=sheet_name)
+    assert addr.quoted_address == '{}!A2'.format(quote_sheetname(sheet_name))
+
+
 def test_split_sheetname():
 
     assert ('', 'B1') == split_sheetname('B1')
@@ -255,6 +299,9 @@ def test_split_sheetname():
 
     with pytest.raises(ValueError):
         split_sheetname('sh!B1', sheet='shx')
+
+    with pytest.raises(NotImplementedError):
+        split_sheetname('sh!B1:C2:sh2!B1:C2')
 
 
 def test_address_cell_enum():
@@ -461,22 +508,36 @@ def test_extended_range_boundaries_errors(address_string):
         range_boundaries(address_string, cell)
 
 
-def test_coerce_to_number():
-    assert 1 == coerce_to_number(1)
-    assert 1.0 == coerce_to_number(1.0)
-
-    assert coerce_to_number(None) is None
-
-    assert 1 == coerce_to_number('1')
-    assert isinstance(coerce_to_number('1'), int)
-
-    assert 1 == coerce_to_number('1.')
-    assert isinstance(coerce_to_number('1.'), float)
-
-    assert 'xyzzy' == coerce_to_number('xyzzy')
-
-    with pytest.raises(ZeroDivisionError):
-        coerce_to_number(DIV0)
+@pytest.mark.parametrize(
+    'value, expected, expected_type, convert_all', (
+        (1, 1, int, False),
+        (1.0, 1.0, int, False),
+        (None, None, type(None), False),
+        ('1', 1, int, False),
+        ('1.', 1.0, float, False),
+        ('xyzzy', 'xyzzy', str, False),
+        (DIV0, DIV0, str, False),
+        ('TRUE', 'TRUE', str, False),
+        ('FALSE', 'FALSE', str, False),
+        (EMPTY, EMPTY, str, False),
+        ((('TRUE',), ), 'TRUE', str, False),
+        (1, 1, int, True),
+        (1.0, 1.0, int, True),
+        (None, 0, int, True),
+        ('1', 1, int, True),
+        ('1.', 1.0, float, True),
+        ('xyzzy', 'xyzzy', str, True),
+        (DIV0, DIV0, str, True),
+        ('TRUE', 1, int, True),
+        ('FALSE', 0, int, True),
+        (EMPTY, 0, int, True),
+        ((('TRUE',), ), 1, int, True),
+    )
+)
+def test_coerce_to_number(value, expected, expected_type, convert_all):
+    result = coerce_to_number(value, convert_all=convert_all)
+    assert result == expected
+    assert isinstance(result, expected_type)
 
 
 @pytest.mark.parametrize(
@@ -492,23 +553,6 @@ def test_coerce_to_number():
 )
 def test_coerce_to_string(value, result):
     assert coerce_to_string(value) == result
-
-
-@pytest.mark.parametrize(
-    'value, result', (
-        (1, 1),
-        (DIV0, DIV0),
-        (None, 0),
-        ('1.1', 1.1),
-        ('xyzzy', VALUE_ERROR),
-    )
-)
-def test_math_wrap(value, result):
-    assert math_wrap(lambda x: x)(value) == result
-
-
-def test_math_wrap_domain_error():
-    assert math_wrap(math.log)(-1) == NUM_ERROR
 
 
 def test_get_linest_degree():
@@ -551,6 +595,61 @@ def test_get_linest_degree():
     assert (4, 3) == get_linest_degree(Cell(Excel('CDEFG', '5')))
     assert (4, 2) == get_linest_degree(Cell(Excel('DEFGH', '5')))
     assert (4, 1) == get_linest_degree(Cell(Excel('EFGHI', '5')))
+
+
+def test_in_array_formula_context():
+
+    assert not in_array_formula_context
+    with in_array_formula_context('A1'):
+        assert in_array_formula_context
+
+    def return_in_context():
+        return in_array_formula_context
+
+    assert not return_in_context()
+    with in_array_formula_context('A1'):
+        assert return_in_context()
+
+    assert not return_in_context()
+    try:
+        with in_array_formula_context('A1'):
+            assert return_in_context()
+            raise PyCelException
+    except PyCelException:
+        pass
+    assert not return_in_context()
+
+
+@pytest.mark.parametrize(
+    'address, value, result', (
+        ('A1:A2', 3, ((3, ), (3, ))),
+        (None, 1, 1),
+        (None, ((1, 2), (3, 4)), ((1, 2), (3, 4))),
+        ('A1', 1, ((1,),)),
+        ('A1', ((1, 2), (3, 4)), ((1,),)),
+
+        ('A1:B1', 2, ((2, 2),)),
+        ('A1:A2', 3, ((3, ), (3, ))),
+        ('A1:B2', 4, ((4, 4), (4, 4),)),
+
+        ('A1:B1', ((1, 2),), ((1, 2),)),
+        ('A1:B2', ((1, 2),), ((1, 2), (1, 2),)),
+
+        ('A1:A2', ((1, ), (3, )), ((1, ), (3, ))),
+        ('A1:B2', ((1, ), (3, )), ((1, 1), (3, 3))),
+
+        ('A1:B1', ((1, 2), (3, 4)), ((1, 2),)),
+        ('A1:A2', ((1, 2), (3, 4)), ((1, ), (3, ),)),
+
+        ('A1:C3', ((1, 2), (3, 4)),
+         ((1, 2, '#N/A'), (3, 4, '#N/A'), ('#N/A', '#N/A', '#N/A'))),
+    )
+)
+def test_array_formula_context_fit_to_range(address, value, result):
+    if address is not None:
+        address = AddressRange(address, sheet='s')
+    with in_array_formula_context(address):
+        assert in_array_formula_context.fit_to_range(value) == result
 
 
 def test_flatten():
@@ -652,22 +751,22 @@ def test_date_from_int():
 
 
 def test_find_corresponding_index():
-    assert (0,) == find_corresponding_index([1, 2, 3], '<2')
-    assert (2,) == find_corresponding_index([1, 2, 3], '>2')
-    assert (0, 2) == find_corresponding_index([1, 2, 3], '<>2')
-    assert (0, 1) == find_corresponding_index([1, 2, 3], '<=2')
-    assert (1, 2) == find_corresponding_index([1, 2, 3], '>=2')
-    assert (1,) == find_corresponding_index([1, 2, 3], '2')
-    assert (1,) == find_corresponding_index(list('ABC'), 'B')
-    assert (1, 2) == find_corresponding_index(list('ABB'), 'B')
-    assert (1, 2) == find_corresponding_index(list('ABB'), '<>A')
-    assert () == find_corresponding_index(list('ABB'), 'D')
+    assert ((0, 0), ) == find_corresponding_index(((1, 2, 3), ), '<2')
+    assert ((0, 2),) == find_corresponding_index(((1, 2, 3), ), '>2')
+    assert ((0, 0), (0, 2)) == find_corresponding_index(((1, 2, 3), ), '<>2')
+    assert ((0, 0), (0, 1)) == find_corresponding_index(((1, 2, 3), ), '<=2')
+    assert ((0, 1), (0, 2)) == find_corresponding_index(((1, 2, 3), ), '>=2')
+    assert ((0, 1),) == find_corresponding_index(((1, 2, 3), ), '2')
+    assert ((0, 1),) == find_corresponding_index((list('ABC'), ), 'B')
+    assert ((0, 1), (0, 2)) == find_corresponding_index((list('ABB'), ), 'B')
+    assert ((0, 1), (0, 2)) == find_corresponding_index((list('ABB'), ), '<>A')
+    assert () == find_corresponding_index((list('ABB'), ), 'D')
 
     with pytest.raises(TypeError):
         find_corresponding_index('ABB', '<B')
 
     with pytest.raises(ValueError):
-        find_corresponding_index(list('ABB'), None)
+        find_corresponding_index((list('ABB'), ), None)
 
 
 @pytest.mark.parametrize(
@@ -952,6 +1051,7 @@ def test_excel_cmp(lval, op, rval, result):
         ('', 'USub', '2', -2),
         ('', 'USub', 'X', VALUE_ERROR),
         (None, 'USub', 'X', VALUE_ERROR),
+        ('', 'USub', None, 0),
 
         (5, 'Eq', 5, True),
         (5, 'Eq', 2, False),
@@ -1067,8 +1167,9 @@ def test_excel_operator_operand_fixup(left_op, op, right_op, expected):
 
     if expected == VALUE_ERROR:
         if expected == VALUE_ERROR and VALUE_ERROR not in (left_op, right_op):
-            assert [(True, 'Values: {} {} {}'.format(left_op, op, right_op))
-                    ] == error_messages
+            assert [(True, 'Values: {} {} {}'.format(
+                coerce_to_number(left_op, convert_all=True), op, right_op))
+            ] == error_messages
 
     elif expected == DIV0 and DIV0 not in (left_op, right_op):
         assert [(True, 'Values: {} {} {}'.format(left_op, op, right_op))

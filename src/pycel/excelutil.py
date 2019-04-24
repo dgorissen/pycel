@@ -3,12 +3,14 @@ import collections
 import datetime as dt
 import operator
 import re
+import threading
 
 import numpy as np
 from openpyxl.formula.tokenizer import Tokenizer
 from openpyxl.utils import (
     get_column_letter,
-    range_boundaries as openpyxl_range_boundaries
+    quote_sheetname,
+    range_boundaries as openpyxl_range_boundaries,
 )
 
 
@@ -19,6 +21,8 @@ VALUE_ERROR = '#VALUE!'
 NUM_ERROR = '#NUM!'
 NA_ERROR = '#N/A'
 NAME_ERROR = "#NAME?"
+NULL_ERROR = "#NULL!"
+REF_ERROR = "#REF!"
 
 R1C1_ROW_RE_STR = r"R(\[-?\d+\]|\d+)?"
 R1C1_COL_RE_STR = r"C(\[-?\d+\]|\d+)?"
@@ -103,8 +107,28 @@ class PyCelException(Exception):
     """Base class for PyCel errors"""
 
 
+class AddressMixin:
+
+    def __str__(self):
+        return self.address
+
+    @property
+    def has_sheet(self):
+        """Does the address have a sheet?"""
+        return bool(self.sheet)
+
+    @property
+    def quoted_address(self):
+        """requote the sheetname if going to include in formulas"""
+        return "{}!{}".format(quote_sheetname(self.sheet), self.coordinate)
+
+    @property
+    def sort_key(self):
+        return self.sheet, self.col_idx, self.row
+
+
 class AddressRange(collections.namedtuple(
-        'Address', 'address sheet start end coordinate')):
+        'Address', 'address sheet start end coordinate'), AddressMixin):
     """ Helper class for constructing, validating and accessing Range Addresses
 
     **Tuple Attributes:**
@@ -155,6 +179,9 @@ class AddressRange(collections.namedtuple(
                 raise ValueError("Mismatched sheets '{}' and '{}'".format(
                     address, sheet))
 
+        elif address is None:
+            return None
+
         else:
             assert (isinstance(address, tuple) and
                     4 == len(address) and
@@ -174,10 +201,7 @@ class AddressRange(collections.namedtuple(
             cls, format_str.format(sheet, coordinate),
             sheet, start, end, coordinate)
 
-    def __str__(self):
-        return self.address
-
-    def __add__(self, other):
+    def __or__(self, other):
         """Assumes rectangular only"""
         other = AddressRange.create(other)
         min_col_idx = min(self.col_idx, other.col_idx)
@@ -188,7 +212,27 @@ class AddressRange(collections.namedtuple(
         max_row = max(self.row + self.size.height,
                       other.row + other.size.height) - 1
 
-        return AddressRange((min_col_idx, min_row, max_col_idx, max_row))
+        return AddressRange((min_col_idx, min_row, max_col_idx, max_row),
+                            sheet=self.sheet)
+
+    def __and__(self, other):
+        """Assumes rectangular only"""
+        other = AddressRange.create(other)
+        min_col_idx = max(self.col_idx, other.col_idx)
+        min_row = max(self.row, other.row)
+
+        max_col_idx = min(self.col_idx + self.size.width,
+                          other.col_idx + other.size.width) - 1
+        max_row = min(self.row + self.size.height,
+                      other.row + other.size.height) - 1
+        if max_col_idx < min_col_idx or max_row < min_row:
+            return None
+        elif max_col_idx == min_col_idx and max_row == min_row:
+            return AddressCell((min_col_idx, min_row, max_col_idx, max_row),
+                               sheet=self.sheet)
+        else:
+            return AddressRange((min_col_idx, min_row, max_col_idx, max_row),
+                                sheet=self.sheet)
 
     def __contains__(self, address):
         address = AddressCell(address)
@@ -230,15 +274,6 @@ class AddressRange(collections.namedtuple(
 
             self._size = AddressSize(height, width)
         return self._size
-
-    @property
-    def has_sheet(self):
-        """Does the address have a sheet?"""
-        return bool(self.sheet)
-
-    @property
-    def sort_key(self):
-        return self.sheet, self.start.col_idx, self.start.row
 
     @property
     def rows(self):
@@ -292,7 +327,7 @@ class AddressRange(collections.namedtuple(
 
 
 class AddressCell(collections.namedtuple(
-        'AddressCell', 'address sheet col_idx row coordinate')):
+        'AddressCell', 'address sheet col_idx row coordinate'), AddressMixin):
     """ Helper class for constructing, validating and accessing Cell Addresses
 
     **Tuple Attributes:**
@@ -333,7 +368,7 @@ class AddressCell(collections.namedtuple(
                 return address
 
             elif not address.sheet:
-                row, col_idx, coordinate = address[2:5]
+                col_idx, row, coordinate = address[2:5]
 
             else:
                 raise ValueError("Mismatched sheets '{}' and '{}'".format(
@@ -358,9 +393,6 @@ class AddressCell(collections.namedtuple(
             cls, format_str.format(sheet, coordinate),
             sheet, col_idx, row, coordinate)
 
-    def __str__(self):
-        return self.address
-
     # Is this address a range?
     is_range = False
 
@@ -368,15 +400,6 @@ class AddressCell(collections.namedtuple(
     is_bounded_range = False
 
     size = AddressSize(1, 1)
-
-    @property
-    def has_sheet(self):
-        """Does the address have a sheet?"""
-        return bool(self.sheet)
-
-    @property
-    def sort_key(self):
-        return self.sheet, self.col_idx, self.row
 
     @property
     def column(self):
@@ -449,8 +472,9 @@ def split_sheetname(address, sheet=''):
     sh = ''
     if '!' in address:
         sh, address_part = address.split('!', maxsplit=1)
-        assert '!' not in address_part, \
-            "Only rectangular formulas are supported {}".format(address)
+        if '!' in address_part:
+            raise NotImplementedError(
+                "Non-rectangular formulas: {}".format(address))
         sh = unquote_sheetname(sh)
         address = address_part
 
@@ -632,7 +656,7 @@ def range_boundaries(address, cell=None, sheet=None):
         return openpyxl_range_boundaries(name_addr[0]), name_addr[1]
 
     if len(address.split(':')) > 2:
-        raise NotImplementedError("Multiple Colon Ranges not implemented")
+        raise NotImplementedError("Multiple Colon Ranges: {}".format(address))
 
     raise ValueError(
         "{0} is not a valid coordinate or range".format(address))
@@ -789,6 +813,83 @@ def get_linest_degree(cell):
     return max(degree, 1), coef
 
 
+class _ArrayFormulaContext:
+    """ When evaluating array like data, need to know the context
+        that the result will end up in
+    """
+    ns = threading.local()
+
+    def __init__(self):
+        self.ns.in_array_context = False
+        self.ns.ctx_addresses = []
+        self.ns._ctx_address = None
+
+    def __bool__(self):
+        return bool(self.ctx_address)
+
+    def __call__(self, address):
+        self.ns._ctx_address = address
+        return self
+
+    def __enter__(self):
+        self.ns.ctx_addresses.append(self.ns._ctx_address)
+        self.ns._ctx_address = None
+        self.ns.in_array_context = True
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.ns.ctx_addresses.pop()
+
+    @property
+    def ctx_address(self):
+        return self.ns.ctx_addresses and self.ns.ctx_addresses[-1]
+
+    def fit_to_range(self, result):
+        """Expand/Contract an answer to fill a range"""
+        ctx_address = self.ctx_address
+        if ctx_address is not None:
+
+            if list_like(result):
+                # results are either scalar or rectangular array
+                assert list_like(result[0])
+                result_size = AddressSize(len(result), len(result[0]))
+            else:
+                result_size = AddressSize(1, 1)
+                result = ((result, ), )
+
+            ctx_size = ctx_address.size
+
+            # if result is one col wide and target is wider, then expand columns
+            if result_size.width == 1 and ctx_size.width != 1:
+                result = tuple(r * ctx_size.width for r in result)
+
+            # if result is wider than target, trim it
+            elif result_size.width > ctx_size.width:
+                result = tuple(row[:ctx_size.width] for row in result)
+
+            # if result is narrower than target, fill w/ NA
+            elif result_size.width < ctx_size.width:
+                fill = (NA_ERROR, ) * (ctx_size.width - result_size.width)
+                result = tuple(row + fill for row in result)
+
+            # if result is one row high and target is taller, then expand rows
+            if result_size.height == 1 and ctx_size.height != 1:
+                result *= ctx_size.height
+
+            # if result is taller than target, trim it
+            elif result_size.height > ctx_size.height:
+                result = result[:ctx_size.height]
+
+            # if result is shorter than target, fill w/ NA
+            elif result_size.height < ctx_size.height:
+                fill = ((NA_ERROR, ) * ctx_size.width, )
+                result += fill * (ctx_size.height - result_size.height)
+
+        return result
+
+
+in_array_formula_context = _ArrayFormulaContext()
+
+
 def flatten(data, coerce=lambda x: x):
     """ flatten items, converting top level items as needed
 
@@ -796,10 +897,10 @@ def flatten(data, coerce=lambda x: x):
     :param coerce: apply coercion to top level, but not to sub ranges
     :return: flattened (coerced) items
     """
-    if isinstance(data, collections.Iterable) and not isinstance(
+    if isinstance(data, collections.abc.Iterable) and not isinstance(
             data, (str, AddressRange, AddressCell)):
         for item in data:
-            yield from flatten(coerce(item))
+            yield from flatten(item, coerce=coerce)
     else:
         yield coerce(data)
 
@@ -817,18 +918,25 @@ def is_number(value):
         return False
 
 
-def coerce_to_number(value, raise_div0=True):
+def coerce_to_number(value, convert_all=False):
+    if value is None and convert_all:
+        return 0
+
     if not isinstance(value, str):
         if isinstance(value, int):
-            return value
+            return int(value) if convert_all else value
         if is_number(value) and int(value) == float(value):
             return int(value)
+        if isinstance(value, tuple) and isinstance(value[0], tuple):
+            return coerce_to_number(value[0][0], convert_all)
         return value
 
+    # True and False strings become numbers
+    if convert_all and value.upper() in ('TRUE', 'FALSE', EMPTY):
+        return int(len(value) == 4)
+
     try:
-        if value == DIV0 and raise_div0:
-            return 1 / 0
-        elif '.' not in value:
+        if '.' not in value:
             return int(value)
     except (ValueError, TypeError):
         pass
@@ -851,27 +959,6 @@ def coerce_to_string(value):
 
     else:
         return value
-
-
-def math_wrap(bare_func):
-    """wrapper for functions that take numbers to handle errors"""
-
-    def func(*args):
-        # this is a bit of a ::HACK:: to quickly address the most common cases
-        # for reasonable math function parameters
-        for arg in args:
-            if arg in ERROR_CODES:
-                return arg
-        if not (is_number(args[0]) or args[0] in (None, EMPTY)):
-            return VALUE_ERROR
-        try:
-            return bare_func(*(0 if a in (None, EMPTY)
-                               else coerce_to_number(a) for a in args))
-        except ValueError as exc:
-            if "math domain error" in str(exc):
-                return NUM_ERROR
-            raise  # pragma: no cover
-    return func
 
 
 def is_leap_year(year):
@@ -1013,12 +1100,13 @@ def find_corresponding_index_generator(rng, criteria):
     check = criteria_parser(criteria)
 
     assert_list_like(rng)
-    return (index for index, item in enumerate(rng) if check(item))
+    return ((r, c) for r, row in enumerate(rng)
+            for c, item in enumerate(row) if check(item))
 
 
 def list_like(data):
     return (not isinstance(data, (str, AddressRange, AddressCell)) and
-            isinstance(data, collections.Iterable))
+            isinstance(data, collections.abc.Iterable))
 
 
 def assert_list_like(data):
@@ -1152,14 +1240,8 @@ def build_operator_operand_fixup(capture_error_state):
                 right_op = str(coerce_to_number(right_op))
 
         else:
-            left_op = coerce_to_number(left_op)
-            right_op = coerce_to_number(right_op)
-
-            if left_op in (None, EMPTY) and is_number(right_op):
-                left_op = 0
-
-            if right_op in (None, EMPTY) and is_number(left_op):
-                right_op = 0
+            left_op = coerce_to_number(left_op, convert_all=True)
+            right_op = coerce_to_number(right_op, convert_all=True)
 
             if not (is_number(left_op) and is_number(right_op) or
                     isinstance(left_op, AddressRange) and
@@ -1168,16 +1250,6 @@ def build_operator_operand_fixup(capture_error_state):
                     capture_error_state(
                         True, 'Values: {} {} {}'.format(left_op, op, right_op))
                     return VALUE_ERROR
-
-            if isinstance(left_op, bool):
-                left_op = (str(left_op).upper()
-                           if not is_number(right_op)
-                           else int(left_op))
-
-            if isinstance(right_op, bool):
-                right_op = (str(right_op).upper()
-                            if not is_number(left_op)
-                            else int(right_op))
 
         try:
             if op == 'USub':

@@ -2,11 +2,12 @@ import pytest
 
 from pycel.excelutil import (
     DIV0,
-    ERROR_CODES,
+    in_array_formula_context,
     NA_ERROR,
     VALUE_ERROR,
 )
 
+import pycel.lib.logical
 from pycel.lib.logical import (
     _clean_logicals,
     iferror,
@@ -16,6 +17,11 @@ from pycel.lib.logical import (
     x_or,
     x_xor,
 )
+
+from pycel.lib.function_helpers import load_to_test_module
+
+# dynamic load the lib functions from excellib and apply metadata
+load_to_test_module(pycel.lib.logical, __name__)
 
 
 @pytest.mark.parametrize(
@@ -54,11 +60,26 @@ def test_x_and(result, test_value):
     assert x_and(*test_value) == result
 
 
-def test_iferror():
-    assert 'A' == iferror('A', 2)
+@pytest.mark.parametrize(
+    'test_value, error_value, result', (
+        ('A', 2, 'A'),
+        ('#NULL!', 2, 2),
+        ('#DIV/0!', 2, 2),
+        ('#VALUE!', 2, 2),
+        ('#REF!', 2, 2),
+        ('#NAME?', 2, 2),
+        ('#NUM!', 2, 2),
+        ('#N/A', 2, 2),
+        (((1, VALUE_ERROR), (VALUE_ERROR, 1)), 2, ((1, 2), (2, 1))),
+    )
+)
+def test_iferror(test_value, error_value, result):
+    if isinstance(test_value, tuple):
+        with in_array_formula_context('A1'):
+            assert iferror(test_value, error_value) == result
+        result = error_value
 
-    for error in ERROR_CODES:
-        assert 2 == iferror(error, 2)
+    assert iferror(test_value, error_value) == result
 
 
 @pytest.mark.parametrize(
@@ -76,6 +97,13 @@ def test_iferror():
         (0, VALUE_ERROR, 1, 1),
         (0, 1, VALUE_ERROR, VALUE_ERROR),
         (1, 1, VALUE_ERROR, 1),
+        (((1, 0), (0, 1)), 1, VALUE_ERROR,
+         ((1, VALUE_ERROR), (VALUE_ERROR, 1))),
+        (((1, 0), (0, 1)), 0, ((1, 2), (3, 4)), ((0, 2), (3, 0))),
+        (((1, 0), (0, 1)), ((1, 2), (3, 4)), 0, ((1, 0), (0, 4))),
+        (((1, 0), (0, 1)), ((1, 2), (3, 4)), ((5, 6), (7, 8)),
+         ((1, 6), (7, 4))),
+        (1, ((1, 2), (3, 4)), ((5, 6), (7, 8)), ((1, 2), (3, 4))),
     )
 )
 def test_x_if(test_value, true_value, false_value, result):

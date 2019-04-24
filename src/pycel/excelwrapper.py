@@ -10,18 +10,19 @@ import os
 from unittest import mock
 
 from openpyxl import load_workbook
-from openpyxl.cell.cell import Cell
+from openpyxl.cell.cell import Cell, MergedCell
 from openpyxl.cell.read_only import EMPTY_CELL
 from openpyxl.utils import datetime as opxl_dt
-from pycel.excelutil import AddressCell, AddressRange, MAX_ROW
+from pycel.excelutil import AddressCell, AddressRange, flatten
 
-ARRAY_FORMULA_FORMAT = '=INDEX(%s,%s,%s,%s,%s)'
+ARRAY_FORMULA_NAME = '=CSE_INDEX'
+ARRAY_FORMULA_FORMAT = '{}(%s,%s,%s,%s,%s)'.format(ARRAY_FORMULA_NAME)
 
 
 class ExcelWrapper:
     __metaclass__ = abc.ABCMeta
 
-    RangeData = collections.namedtuple('RangeData', 'address formulas values')
+    RangeData = collections.namedtuple('RangeData', 'address formula values')
 
     @abc.abstractmethod
     def connect(self):
@@ -40,24 +41,26 @@ class ExcelWrapper:
         """"""
 
     def get_formula_from_range(self, address):
-        f = self.get_range(address).formulas
-        if isinstance(f, (list, tuple)):
-            if any(x for x in f if x[0].startswith("=")):
-                return [x[0] for x in f]
-            else:
-                return None
+        if not isinstance(address, (AddressRange, AddressCell)):
+            address = AddressRange(address)
+        result = self.get_range(address)
+        if isinstance(address, AddressCell):
+            return result.formula if result.formula.startswith("=") else None
         else:
-            return f if f.startswith("=") else None
+            return tuple(tuple(
+                self.get_formula_from_range(a) for a in row
+            ) for row in result.resolve_range)
 
-    def get_formula_or_value(self, name):
-        r = self.get_range(name)
-        if not isinstance(r.formulas, tuple):
-            return r.formulas or r.values
+    def get_formula_or_value(self, address):
+        if not isinstance(address, (AddressRange, AddressCell)):
+            address = AddressRange(address)
+        result = self.get_range(address)
+        if isinstance(address, AddressCell):
+            return result.formula or result.values
         else:
-            return tuple(
-                tuple(f or v for f, v in zip(fs, vs))
-                for fs, vs in zip(r.formulas, r.values)
-            )
+            return tuple(tuple(
+                self.get_formula_or_value(a) for a in row
+            ) for row in result.resolve_range)
 
 
 class _OpxRange(ExcelWrapper.RangeData):
@@ -65,11 +68,22 @@ class _OpxRange(ExcelWrapper.RangeData):
         (Formula & Value)
     """
     def __new__(cls, cells, cells_dataonly, address):
-        formulas = tuple(tuple(cls.cell_to_formula(cell) for cell in row)
-                         for row in cells)
+        formula = None
+        value = cells[0][0].value
+        if isinstance(value, str) and value.startswith(ARRAY_FORMULA_NAME):
+            # if this range refers to a CSE Array Formula, get the formula
+            front, *args = cells[0][0].value[:-1].rsplit(',', 4)
+
+            # if this range corresponds to the top left of a CSE Array formula
+            if (args[0] == args[1] == '1') and all(
+                    c.value and c.value.startswith(front)
+                    for c in flatten(cells)):
+                # apply formula to the range
+                formula = '={%s}' % front[len(ARRAY_FORMULA_NAME) + 1:]
+
         values = tuple(tuple(cell.value for cell in row)
                        for row in cells_dataonly)
-        return ExcelWrapper.RangeData(address, formulas, values)
+        return ExcelWrapper.RangeData.__new__(cls, address, formula, values)
 
     @classmethod
     def cell_to_formula(cls, cell):
@@ -77,7 +91,37 @@ class _OpxRange(ExcelWrapper.RangeData):
             return ''
         else:
             formula = str(cell.value)
-            return formula if formula.startswith('=') else ''
+            if not formula.startswith('='):
+                return ''
+
+            elif formula.startswith('={') and formula[-1] == '}':
+                # This is not in a CSE Array Context
+                return '=index({},1,1)'.format(formula[1:])
+
+            elif formula.startswith(ARRAY_FORMULA_NAME):
+                # These are CSE Array formulas as encoded from sheet
+                params = formula[len(ARRAY_FORMULA_NAME) + 1:-1].rsplit(',', 4)
+                start_row = cell.row - int(params[1]) + 1
+                start_col_idx = cell.col_idx - int(params[2]) + 1
+                end_row = start_row + int(params[3]) - 1
+                end_col_idx = start_col_idx + int(params[4]) - 1
+                cse_range = AddressRange(
+                    (start_col_idx, start_row, end_col_idx, end_row),
+                    sheet=cell.parent.title)
+                return '=index({},{},{})'.format(
+                    cse_range.quoted_address, *params[1:3])
+            else:
+                return formula
+
+    @property
+    def resolve_range(self):
+        return AddressRange(
+            (self.address.start.col_idx,
+             self.address.start.row,
+             self.address.start.col_idx + len(self.values[0]) - 1,
+             self.address.start.row + len(self.values) - 1),
+            sheet=self.address.sheet
+        ).resolve_range
 
 
 class _OpxCell(_OpxRange):
@@ -86,8 +130,8 @@ class _OpxCell(_OpxRange):
     """
     def __new__(cls, cell, cell_dataonly, address):
         assert isinstance(address, AddressCell)
-        return ExcelWrapper.RangeData(
-            address, cls.cell_to_formula(cell), cell_dataonly.value)
+        return ExcelWrapper.RangeData.__new__(
+            cls, address, cls.cell_to_formula(cell), cell_dataonly.value)
 
 
 class ExcelOpxWrapper(ExcelWrapper):
@@ -157,24 +201,11 @@ class ExcelOpxWrapper(ExcelWrapper):
                 ref_addr = AddressRange(props.get('ref'))
 
                 if isinstance(ref_addr, AddressRange):
-                    # Single cell array formulas can be ignored
                     formula = ws[address].value
                     for i, row in enumerate(ref_addr.rows, start=1):
                         for j, addr in enumerate(row, start=1):
                             ws[addr.coordinate] = ARRAY_FORMULA_FORMAT % (
                                 formula[1:], i, j, *ref_addr.size)
-
-        # ::HACK:: this is only needed because openpyxl does not define
-        # iter_cols for read only workbooks
-        def _iter_cols(self, min_col=None, max_col=None, min_row=None,
-                       max_row=None, values_only=False):
-            # In the case of lookup for something like C:D, openpyxl
-            # attempts to use iter_cols() which is not defined for read_only
-            yield from zip(*self.iter_rows(min_col=min_col, max_col=max_col))
-
-        import types
-        for sheet in self.workbook_dataonly:
-            sheet.iter_cols = types.MethodType(_iter_cols, sheet)
 
     def set_sheet(self, s):
         self.workbook.active = self.workbook.index(self.workbook[s])
@@ -205,32 +236,20 @@ class ExcelOpxWrapper(ExcelWrapper):
                         self.from_excel):
             # work around type coercion to datetime that causes some issues
 
+            if address.is_range and not address.is_bounded_range:
+                # bound the address range to the data in the spreadsheet
+                address = address & AddressRange(
+                    (1, 1, sheet_dataonly.max_column, sheet_dataonly.max_row),
+                    sheet=address.sheet)
+
             cells = sheet[address.coordinate]
-            if isinstance(cells, Cell):
+            if isinstance(cells, (Cell, MergedCell)):
                 cell = cells
                 cell_dataonly = sheet_dataonly[address.coordinate]
                 return _OpxCell(cell, cell_dataonly, address)
 
             else:
                 cells_dataonly = sheet_dataonly[address.coordinate]
-                addr_size = address.size
-
-                if 1 in addr_size:
-                    if cells_dataonly \
-                            and not isinstance(cells_dataonly[0], tuple):
-                        # openpyxl returns a one dimensional structure for some
-                        if addr_size.width == 1:
-                            cells = tuple((c,) for c in cells)
-                            cells_dataonly = tuple(
-                                (c,) for c in cells_dataonly)
-                        else:
-                            cells = (cells,)
-                            cells_dataonly = (cells_dataonly,)
-
-                elif addr_size.height == MAX_ROW:
-                    # openpyxl does iter_cols, we need to transpose
-                    cells = tuple(zip(*cells))
-                    cells_dataonly = tuple(zip(*cells_dataonly))
 
                 if len(cells) != len(cells_dataonly):
                     # The read_only version of openpyxl worksheet has the
@@ -242,22 +261,6 @@ class ExcelOpxWrapper(ExcelWrapper):
                     empty_rows = (empty_row, ) * (
                         len(cells) - len(cells_dataonly))
                     cells_dataonly += empty_rows
-
-                # full range column or row addresses, trim the address
-                if len(cells) < addr_size.height or \
-                        len(cells[0]) < addr_size.width:
-                    start_col = address.start.column or 'A'
-                    start_row = address.start.row or 1
-                    start_addr = AddressCell(
-                        start_col + str(start_row), sheet=address.sheet)
-
-                    stop_addr = start_addr.address_at_offset(
-                        len(cells) - 1, len(cells[0]) - 1)
-
-                    address = AddressRange((
-                        start_addr.col_idx, start_addr.row,
-                        stop_addr.col_idx, stop_addr.row),
-                        sheet=address.sheet)
 
                 return _OpxRange(cells, cells_dataonly, address)
 

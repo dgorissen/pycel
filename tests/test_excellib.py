@@ -3,10 +3,11 @@ import math
 
 import numpy as np
 import pytest
+import pycel.excellib
 from pycel.excellib import (
-    # ::TODO:: finish test cases for remainder of functions
     _numerics,
     average,
+    ceiling,
     column,
     concat,
     concatenate,
@@ -14,13 +15,22 @@ from pycel.excellib import (
     countif,
     countifs,
     date,
+    find,
+    floor,
     hlookup,
     index,
-    isNa,
+    iserror,
+    isna,
+    isnumber,
     istext,
+    left,
+    # ::TODO:: finish test cases for remainder of functions
     # linest,
+    ln,
+    log,
     lookup,
     match,
+    _match,
     mid,
     mod,
     npv,
@@ -30,14 +40,16 @@ from pycel.excellib import (
     row,
     sumif,
     sumifs,
-    value as lib_value,
+    sumproduct,
+    trunc,
     vlookup,
+    x_abs,
     xatan2,
-    xlog,
-    xlen,
+    x_int,
+    x_len,
     xmax,
     xmin,
-    xround,
+    x_round,
     xsum,
     yearfrac,
 )
@@ -49,18 +61,25 @@ from pycel.excelutil import (
     NAME_ERROR,
     NUM_ERROR,
     PyCelException,
+    REF_ERROR,
     VALUE_ERROR,
 )
 
+from pycel.lib.function_helpers import error_string_wrapper, load_to_test_module
+
+
+# dynamic load the lib functions from excellib and apply metadata
+load_to_test_module(pycel.excellib, __name__)
+
 
 def test_numerics():
-    assert (1, 3, 2, 3.1) == _numerics(1, '3', 2.0, pytest, 3.1, 'x')
-    assert (1, 2, 3.1) == _numerics((1, '3', 2.0, pytest, 3.1, 'x'))
+    assert (1, 2, 3.1) == _numerics(1, '3', 2.0, pytest, 3.1, 'x')
+    assert (1, 2, 3.1) == _numerics((1, '3', (2.0, pytest, 3.1), 'x'))
 
 
 def test_average():
-    assert 2.25 == average(1, '3', 2.0, pytest, 3, 'x')
-    assert 2 == average((1, '3', 2.0, pytest, 3, 'x'))
+    assert 2 == average(1, '3', 2.0, pytest, 3, 'x')
+    assert 2 == average((1, '3', (2.0, pytest, 3), 'x'))
 
     assert -0.1 == average((-0.1, None, 'x', True))
 
@@ -74,13 +93,47 @@ def test_average():
 
 
 @pytest.mark.parametrize(
+    'value, expected', (
+        (1, 1),
+        (-2, 2),
+        (((2, -3, 4, -5), ), ((2, 3, 4, 5), )),
+        (DIV0, DIV0),
+        (NUM_ERROR, NUM_ERROR),
+        (VALUE_ERROR, VALUE_ERROR),
+    )
+)
+def test_x_abs(value, expected):
+    assert x_abs(value) == expected
+
+
+@pytest.mark.parametrize(
+    'number, significance, result', (
+        (2.5, 1, 3),
+        (2.5, 2, 4),
+        (2.5, 3, 3),
+        (-2.5, -1, -3),
+        (-2.5, -2, -4),
+        (-2.5, -3, -3),
+        (-2.5, 1, -2),
+        (-2.5, 2, -2),
+        (-2.5, 3, 0),
+        (0, 0, 0),
+        (-2.5, 0, DIV0),
+        (1, -1, NUM_ERROR),
+    )
+)
+def test_ceiling(number, significance, result):
+    assert ceiling(number, significance) == result
+
+
+@pytest.mark.parametrize(
     'address, expected', (
         ('L45', 12),
-        ('B:E', (2, 3, 4, 5)),
+        ('B:E', ((2, 3, 4, 5), )),
         ('4:7', None),
-        ('D1:E1', (4, 5)),
-        ('D1:D2', (4, )),
-        ('D1:E2', (4, 5)),
+        ('D1:E1', ((4, 5), )),
+        ('D1:D2', ((4, ), )),
+        ('D1:E2', ((4, 5), )),
         (DIV0, DIV0),
         (NUM_ERROR, NUM_ERROR),
         (VALUE_ERROR, VALUE_ERROR),
@@ -136,66 +189,55 @@ class TestCount:
 class TestCountIf:
 
     def test_countif_strictly_superior(self):
-        assert 3 == countif([7, 25, 13, 25], '>10')
+        assert 3 == countif(((7, 25, 13, 25), ), '>10')
 
     def test_countif_strictly_inferior(self):
-        assert 1 == countif([7, 25, 13, 25], '<10')
+        assert 1 == countif(((7, 25, 13, 25), ), '<10')
 
     def test_countif_superior(self):
-        assert 3 == countif([7, 10, 13, 25], '>=10')
+        assert 3 == countif(((7, 10, 13, 25), ), '>=10')
 
     def test_countif_inferior(self):
-        assert 2 == countif([7, 10, 13, 25], '<=10')
+        assert 2 == countif(((7, 10, 13, 25), ), '<=10')
 
     def test_countif_different(self):
-        assert 3 == countif([7, 10, 13, 25], '<>10')
+        assert 3 == countif(((7, 10, 13, 25), ), '<>10')
 
     def test_countif_with_string_equality(self):
-        assert 2 == countif([7, 'e', 13, 'e'], 'e')
+        assert 2 == countif(((7, 'e', 13, 'e'), ), 'e')
 
     def test_countif_with_string_inequality(self):
-        assert 1 == countif([7, 'e', 13, 'f'], '>e')
+        assert 1 == countif(((7, 'e', 13, 'f'), ), '>e')
 
     def test_countif_regular(self):
-        assert 2 == countif([7, 25, 13, 25], 25)
+        assert 2 == countif(((7, 25, 13, 25), ), 25)
 
 
 class TestCountIfs:
     # more tests might be welcomed
 
     def test_countifs_regular(self):
-        assert 1 == countifs([7, 25, 13, 25], 25, [100, 102, 201, 20], ">100")
+        assert 1 == countifs(((7, 25, 13, 25), ), 25,
+                             ((100, 102, 201, 20), ), ">100")
 
     def test_countifs_odd_args_len(self):
         with pytest.raises(PyCelException):
-            countifs([7, 25, 13, 25], 25, [100, 102, 201, 20])
+            countifs(((7, 25, 13, 25), ), 25, ((100, 102, 201, 20), ))
 
 
 class TestDate:
 
-    def test_year_must_be_integer(self):
-        with pytest.raises(TypeError):
-            date('2016', 1, 1)
-
-    def test_month_must_be_integer(self):
-        with pytest.raises(TypeError):
-            date(2016, '1', 1)
-
-    def test_day_must_be_integer(self):
-        with pytest.raises(TypeError):
-            date(2016, 1, '1')
+    def test_values_can_str(self):
+        assert date('2016', 1, 1) == date(2016, '1', 1) == date(2016, 1, '1')
 
     def test_year_must_be_positive(self):
-        with pytest.raises(ValueError):
-            date(-1, 1, 1)
+        assert NUM_ERROR == date(-1, 1, 1)
 
     def test_year_must_have_less_than_10000(self):
-        with pytest.raises(ValueError):
-            date(10000, 1, 1)
+        assert NUM_ERROR == date(10000, 1, 1)
 
     def test_result_must_be_positive(self):
-        with pytest.raises(ArithmeticError):
-            date(1900, 1, -1)
+        assert NUM_ERROR == date(1900, 1, -1)
 
     def test_not_stricly_positive_month_substracts(self):
         assert date(2009, -1, 1) == date(2008, 11, 1)
@@ -223,12 +265,51 @@ class TestDate:
 
 
 @pytest.mark.parametrize(
+    'to_find, find_in, result', (
+        (2, 2.5, 1),
+        ('.', 2.5, 2),
+        (5, 2.5, 3),
+        ('2', 2.5, 1),
+        ('.', 2.5, 2),
+        ('5', 2.5, 3),
+        ('2', '2.5', 1),
+        ('.', '2.5', 2),
+        ('T', True, 1),
+        ('U', True, 3),
+        ('u', True, VALUE_ERROR),
+        (DIV0, 'x' + DIV0, DIV0),
+        ('V', DIV0, DIV0),
+    )
+)
+def test_find(to_find, find_in, result):
+    assert find(to_find, find_in) == result
+
+
+@pytest.mark.parametrize(
+    'number, significance, result', (
+        (2.5, 1, 2),
+        (2.5, 2, 2),
+        (2.5, 3, 0),
+        (-2.5, -1, -2),
+        (-2.5, -2, -2),
+        (-2.5, -3, 0),
+        (0, 0, 0),
+        (-2.5, 0, DIV0),
+        (-1, 1, NUM_ERROR),
+        (1, -1, NUM_ERROR),
+    )
+)
+def test_floor(number, significance, result):
+    assert floor(number, significance) == result
+
+
+@pytest.mark.parametrize(
     'lkup, col_idx, result, approx', (
         ('A', 0, VALUE_ERROR, True),
         ('A', 1, 'A', True),
         ('A', 2, 1, True),
         ('A', 3, 'Z', True),
-        ('A', 4, '#REF!', True),
+        ('A', 4, REF_ERROR, True),
         ('B', 1, 'B', True),
         ('C', 1, 'C', True),
         ('B', 2, 2, True),
@@ -238,6 +319,7 @@ class TestDate:
         ('D', 3, 'X', True),
         ('D', 3, NA_ERROR, False),
         ('D', 3, 'X', -1),
+        ((('D', 'A'),), 3, ((NA_ERROR, 'Z'), ), False),
     )
 )
 def test_hlookup(lkup, col_idx, result, approx):
@@ -249,27 +331,21 @@ def test_hlookup(lkup, col_idx, result, approx):
     assert result == hlookup(lkup, table, col_idx, approx)
 
 
-def test_hlookup_vlookup_error():
-    assert NA_ERROR == hlookup(1, 1, 1, 1)
-    assert NA_ERROR == vlookup(1, 1, 1, 1)
-
-    with pytest.raises(NotImplementedError, match='Array Formulas'):
-        hlookup((1, 2), ((1, 2), (3, 4)), 1, 1)
-
-    with pytest.raises(NotImplementedError, match='Array Formulas'):
-        hlookup(1, ((1, 2), (3, 4)), (1, 2), 1)
-
-    with pytest.raises(NotImplementedError, match='Array Formulas'):
-        vlookup((1, 2), ((1, 2), (3, 4)), 1, 1)
-
-    with pytest.raises(NotImplementedError, match='Array Formulas'):
-        vlookup(1, ((1, 2), (3, 4)), (1, 2), 1)
-
-
-def test_is_text():
-    assert istext('a')
-    assert not istext(1)
-    assert not istext(None)
+@pytest.mark.parametrize(
+    'values, expected', (
+        ((1, 1, 1, 1), NA_ERROR),
+        ((1, ((1, 2), (3, 4)), 1, 1), 1),
+        ((REF_ERROR, ((1, 2), (3, 4)), 1, 1), REF_ERROR),
+        ((1, REF_ERROR, 1, 1), REF_ERROR),
+        ((1, ((1, 2), (3, 4)), REF_ERROR, 1), REF_ERROR),
+        ((1, ((1, 2), (3, 4)), 1, REF_ERROR), REF_ERROR),
+        ((1, ((1, 2), (3, 4)), 0, 1), VALUE_ERROR),
+        ((1, ((1, 2), (3, 4)), 3, 1), REF_ERROR),
+    )
+)
+def test_hlookup_vlookup_error(values, expected):
+    assert hlookup(*values) == expected
+    assert vlookup(*values) == expected
 
 
 class TestIndex:
@@ -316,82 +392,203 @@ class TestIndex:
     INDEX returns the #REF! error value.
 
     """
-    test_data = [[0, 1], [2, 3]]
-    test_data_col = [[0], [2]]
+    test_data = ((0, 1), (2, 3))
+    test_data_col = ((0,), (2,))
+    test_data_row = ((0, 1),)
+    test_data_np = np.asarray(test_data)
 
-    def test_array(self):
+    @staticmethod
+    @pytest.mark.parametrize(
+        'data, row_num, col_num, expected', (
+            (test_data, 1, 1, 0),
+            (test_data, 1, 2, 1),
+            (test_data, 2, 1, 2),
+            (test_data, 2, 2, 3),
 
-        assert 0 == index(TestIndex.test_data, 1, 1)
-        assert 1 == index(TestIndex.test_data, 1, 2)
-        assert 2 == index(TestIndex.test_data, 2, 1)
-        assert 3 == index(TestIndex.test_data, 2, 2)
+            # no col given
+            (test_data, 1, None, ((0, 1),)),
+            (test_data, 2, None, ((2, 3),)),
+            (test_data_col, 1, None, 0),
+            (test_data_col, 2, None, 2),
+            (test_data_row, 1, None, 0),
+            (test_data_row, 2, None, 1),
 
-    def test_no_column_on_matrix(self):
-        assert [0, 1] == index(TestIndex.test_data, 1)
-        assert [2, 3] == index(TestIndex.test_data, 2)
+            # no row given
+            (test_data, None, 1, ((0,), (2,))),
+            (test_data, None, 2, ((1,), (3,))),
+            (test_data_col, None, 1, 0),
+            (test_data_col, None, 2, 2),
+            (test_data_row, None, 1, 0),
+            (test_data_row, None, 2, 1),
 
-    def test_column_on_matrix(self):
-        assert [0, 2] == index(TestIndex.test_data, None, 1)
-        assert [1, 3] == index(TestIndex.test_data, None, 2)
+            # OOR
+            (test_data_row, 2, 2, NA_ERROR),
+            (test_data_col, 1, 3, NA_ERROR),
+            (test_data, None, None, NA_ERROR),
 
-        assert (0, 2) == index(tuple(TestIndex.test_data), None, 1)
-        assert (1, 3) == index(tuple(TestIndex.test_data), None, 2)
+            # numpy
+            (test_data_np, 1, 1, 0),
+            (test_data_np, 1, 2, 1),
+            (test_data_np, 2, 1, 2),
+            (test_data_np, 2, 2, 3),
 
-    def test_no_column_on_vector(self):
-        assert 2 == index(TestIndex.test_data[1], 1)
-        assert 3 == index(TestIndex.test_data[1], 2)
+            (test_data_np, 1, None, np.array(((0, 1),))),
+            (test_data_np, 2, None, np.array(((2, 3),))),
 
-    def test_column_on_vector(self):
-        assert 2 == index(TestIndex.test_data[1], 1, 1)
-        assert 3 == index(TestIndex.test_data[1], 1, 2)
+            (test_data_np, None, 1, np.array(((0,), (2,)))),
+            (test_data_np, None, 2, np.array(((1,), (3,)))),
+        )
+    )
+    def test_index(data, row_num, col_num, expected):
+        result = index(data, row_num, col_num)
+        if isinstance(expected, np.ndarray):
+            assert (result == expected).all()
+        else:
+            assert result == expected
 
-    def test_out_of_range(self):
-        assert NA_ERROR == index(TestIndex.test_data[1], 2, 2)
-        assert NA_ERROR == index(TestIndex.test_data[1], 1, 3)
-        assert NA_ERROR == index(TestIndex.test_data, None)
-
-    def test_error_inputs(self):
-        assert NA_ERROR == index(NA_ERROR, 1)
-        assert NA_ERROR == index(TestIndex.test_data, NA_ERROR, 1)
-        assert NA_ERROR == index(TestIndex.test_data, 1, NA_ERROR)
-
-    def test_np_ndarray(self):
-        test_data = np.asarray(self.test_data)
-
-        assert 0 == index(test_data, 1, 1)
-        assert 1 == index(test_data, 1, 2)
-        assert 2 == index(test_data, 2, 1)
-        assert 3 == index(test_data, 2, 2)
-
-        assert [0, 1] == list(index(test_data, 1))
-        assert [2, 3] == list(index(test_data, 2))
-
-        assert [0, 2] == list(index(test_data, None, 1))
-        assert [1, 3] == list(index(test_data, None, 2))
-
-    def test_extended_data(self):
-        assert 0 == index([TestIndex.test_data[0]], 1, 1, 2, 2)
-        assert 1 == index([TestIndex.test_data[0]], 1, 2, 2, 2)
-        assert 2 == index([TestIndex.test_data[1]], 2, 1, 2, 2)
-        assert 3 == index([TestIndex.test_data[1]], 2, 2, 2, 2)
-
-        assert 0 == index(TestIndex.test_data_col, 1, 1, 2, 2)
-        assert 3 == index([TestIndex.test_data[1]], 2, 2, 2, 2)
-
-
-class TestIsNa:
-    # This function might need more solid testing
-
-    def test_isNa_false(self):
-        assert not isNa('2 + 1')
-
-    def test_isNa_true(self):
-        assert isNa('x + 1')
+    @staticmethod
+    def test_index_error_inputs():
+        index_f = error_string_wrapper(index)
+        assert NA_ERROR == index_f(NA_ERROR, 1)
+        assert NA_ERROR == index_f(TestIndex.test_data, NA_ERROR, 1)
+        assert NA_ERROR == index_f(TestIndex.test_data, 1, NA_ERROR)
+        assert VALUE_ERROR == index_f(None, 1, 1)
 
 
-lookup_vector = 'b', 'c', 'd'
-lookup_result = 1, 2, 3
-lookup_rows = lookup_vector, lookup_result
+@pytest.mark.parametrize(
+    'value, expected', (
+        (0, False),
+        (1, False),
+        (1.0, False),
+        (-1, False),
+        ('a', False),
+        (((1, NA_ERROR), ('2', DIV0)), ((False, True), (False, True))),
+        (NUM_ERROR, True),
+        (REF_ERROR, True),
+    )
+)
+def test_iserror(value, expected):
+    assert iserror(value) == expected
+
+
+@pytest.mark.parametrize(
+    'value, expected', (
+        (0, False),
+        (1, False),
+        (1.0, False),
+        (-1, False),
+        ('a', False),
+        (((1, NA_ERROR), ('2', 3)), ((False, True), (False, False))),
+        (NA_ERROR, True),
+        (VALUE_ERROR, False),
+    )
+)
+def test_isna(value, expected):
+    assert isna(value) == expected
+
+
+@pytest.mark.parametrize(
+    'value, expected', (
+        (0, True),
+        (1, True),
+        (1.0, True),
+        (-1, True),
+        ('a', False),
+        (((1, NA_ERROR), ('2', 3)), ((True, False), (False, True))),
+        (NA_ERROR, False),
+        (VALUE_ERROR, False),
+    )
+)
+def test_isnumber(value, expected):
+    assert isnumber(value) == expected
+
+
+@pytest.mark.parametrize(
+    'value, expected', (
+        ('a', True),
+        (1, False),
+        (1.0, False),
+        (None, False),
+        (DIV0, False),
+        (((1, NA_ERROR), ('2', 3)), ((False, False), (True, False))),
+        (NA_ERROR, False),
+        (VALUE_ERROR, False),
+    )
+)
+def test_istext(value, expected):
+    assert istext(value) == expected
+
+
+@pytest.mark.parametrize(
+    'text, num_chars, expected', (
+        ('abcd', 5, 'abcd'),
+        ('abcd', 4, 'abcd'),
+        ('abcd', 3, 'abc'),
+        ('abcd', 2, 'ab'),
+        ('abcd', 1, 'a'),
+        ('abcd', 0, ''),
+
+        (1.234, 3, '1.2'),
+
+        ('abcd', -1, VALUE_ERROR),
+        ('abcd', 'x', VALUE_ERROR),
+        (DIV0, 1, DIV0),
+        ('abcd', NAME_ERROR, NAME_ERROR),
+    )
+)
+def test_left(text, num_chars, expected):
+    assert left(text, num_chars) == expected
+
+
+@pytest.mark.parametrize(
+    'expected, value',
+    (
+        (math.log(5), 5),
+        (math.log(2), 2),
+        (NUM_ERROR, None),
+        (VALUE_ERROR, VALUE_ERROR),
+        (DIV0, DIV0),
+        (math.log(5), 5),
+        (((math.log(5), math.log(6)), ), ((5, 6), )),
+        (((math.log(5), math.log(6)), ), ((5, 6), )),
+        # (((math.log(5), math.log(6)), ), np.array(((5, 6), ))),
+        (NUM_ERROR, None),
+        (VALUE_ERROR, VALUE_ERROR),
+        (((math.log(2), VALUE_ERROR), ), ((2, VALUE_ERROR), )),
+        (DIV0, DIV0),
+        (((math.log(2), DIV0), ), ((2, DIV0), )),
+    )
+)
+def test_ln(expected, value):
+    assert ln(value) == expected
+
+
+@pytest.mark.parametrize(
+    'expected, value',
+    (
+        (math.log(5, 10), 5),
+        (math.log(2, 10), 2),
+        (NUM_ERROR, None),
+        (VALUE_ERROR, VALUE_ERROR),
+        (DIV0, DIV0),
+        (math.log(5, 10), 5),
+        (((math.log(5, 10), math.log(6, 10)), ), ((5, 6), )),
+        (((math.log(5, 10), math.log(6, 10)), ), ((5, 6), )),
+        # (((math.log(5), math.log(6)), ), np.array(((5, 6), ))),
+        (NUM_ERROR, None),
+        (VALUE_ERROR, VALUE_ERROR),
+        (((math.log(2, 10), VALUE_ERROR), ), ((2, VALUE_ERROR), )),
+        (DIV0, DIV0),
+        (((math.log(2, 10), DIV0), ), ((2, DIV0), )),
+    )
+)
+def test_log(expected, value):
+    assert log(value) == expected
+
+
+lookup_vector = (('b', 'c', 'd'), )
+lookup_result = ((1, 2, 3), )
+lookup_rows = lookup_vector[0], lookup_result[0]
 lookup_columns = tuple(zip(*lookup_rows))
 
 
@@ -407,9 +604,11 @@ lookup_columns = tuple(zip(*lookup_rows))
     )
 )
 def test_lookup(lookup_value, result1, result2):
-
     assert result1 == lookup(lookup_value, lookup_vector)
+    assert result1 == lookup(lookup_value, tuple(zip(*lookup_vector)))
     assert result2 == lookup(lookup_value, lookup_vector, lookup_result)
+    assert result2 == lookup(lookup_value, tuple(zip(*lookup_vector)),
+                             tuple(zip(*lookup_result)))
     assert result2 == lookup(lookup_value, lookup_rows)
     assert result2 == lookup(lookup_value, lookup_columns)
 
@@ -420,6 +619,7 @@ def test_lookup_error():
 
 @pytest.mark.parametrize(
     'lookup_value, lookup_array, match_type, result', (
+        (DIV0, [1, 2, 3], -1, DIV0),
         (0, [1, 3.3, 5], 1, NA_ERROR),
         (1, [1, 3.3, 5], 1, 1),
         (2, [1, 3.3, 5], 1, 1),
@@ -455,7 +655,10 @@ def test_lookup_error():
     )
 )
 def test_match(lookup_value, lookup_array, match_type, result):
-    assert result == match(lookup_value, lookup_array, match_type)
+    lookup_row = (tuple(lookup_array), )
+    lookup_col = tuple((i, ) for i in lookup_array)
+    assert result == match(lookup_value, lookup_row, match_type)
+    assert result == match(lookup_value, lookup_col, match_type)
 
 
 @pytest.mark.parametrize(
@@ -550,13 +753,13 @@ def test_match(lookup_value, lookup_array, match_type, result):
 )
 def test_match_crazy_order(
         lookup_array, lookup_value, result1, result0, resultm1):
-    assert result0 == match(lookup_value, lookup_array, 0)
-    assert resultm1 == match(lookup_value, lookup_array, -1)
-    if result1 != match(lookup_value, lookup_array, 1):
+    assert result0 == _match(lookup_value, lookup_array, 0)
+    assert resultm1 == _match(lookup_value, lookup_array, -1)
+    if result1 != _match(lookup_value, lookup_array, 1):
         lookup_array = [ExcelCmp(x) for x in lookup_array]
         if sorted(lookup_array) == lookup_array:
             # only complain on failures for mode 0 when array is sorted
-            assert result1 == match(lookup_value, lookup_array, 1)
+            assert result1 == _match(lookup_value, lookup_array, 1)
 
 
 class TestMid:
@@ -633,9 +836,15 @@ def test_npv(data, expected):
         ((1, 0), 1),
         ((1, 2), 1),
         ((2, 1), 2),
+        ((2, -1), 0.5),
+        ((-2, 1), -2),
         ((0.1, 0.1), 0.1 ** 0.1),
+        ((True, 1), 1),
+        (('x', 1), VALUE_ERROR),
+        ((1, 'x'), VALUE_ERROR),
         ((NA_ERROR, 1), NA_ERROR),
         ((1, NA_ERROR), NA_ERROR),
+        ((0, -1), DIV0),
         ((1, DIV0), DIV0),
         ((DIV0, 1), DIV0),
         ((NA_ERROR, DIV0), NA_ERROR),
@@ -694,9 +903,9 @@ def test_roundup(number, digits, result):
     'address, expected', (
         ('L45', 45),
         ('B:E', None),
-        ('4:7', (4, 5, 6, 7)),
-        ('D1:E1', (1, )),
-        ('D1:D2', (1, 2)),
+        ('4:7', ((4,), (5,), (6,), (7,))),
+        ('D1:E1', ((1,), )),
+        ('D1:D2', ((1,), (2,))),
         (DIV0, DIV0),
         (NUM_ERROR, NUM_ERROR),
         (VALUE_ERROR, VALUE_ERROR),
@@ -726,19 +935,22 @@ class TestSumIf:
             sumif(12, 12, 12)
 
     def test_regular_with_number_criteria(self):
-        assert 6 == sumif([1, 1, 2, 2, 2], 2)
+        assert 6 == sumif(((1, 1, 2, 2, 2), ), 2)
 
     def test_regular_with_string_criteria(self):
-        assert 12 == sumif([1, 2, 3, 4, 5], ">=3")
+        assert 12 == sumif(((1, 2, 3, 4, 5), ), ">=3")
 
     def test_sum_range(self):
-        assert 668 == sumif([1, 2, 3, 4, 5], ">=3", [100, 123, 12, 23, 633])
+        assert 668 == sumif(((1, 2, 3, 4, 5), ), ">=3",
+                            ((100, 123, 12, 23, 633), ))
 
     def test_sum_range_with_more_indexes(self):
-        assert 668 == sumif([1, 2, 3, 4, 5], ">=3", [100, 123, 12, 23, 633, 1])
+        with pytest.raises(AssertionError):
+            sumif(((1, 2, 3, 4, 5),), ">=3", ((100, 123, 12, 23, 633, 1), ))
 
     def test_sum_range_with_less_indexes(self):
-        assert 35 == sumif([1, 2, 3, 4, 5], ">=3", [100, 123, 12, 23])
+        with pytest.raises(AssertionError):
+            sumif(((1, 2, 3, 4, 5), ), ">=3", ((100, 123, 12, 23), ))
 
     def test_sum_range_not_list(self):
         with pytest.raises(TypeError):
@@ -756,37 +968,62 @@ class TestSumIfs:
             sumifs(12, 12, 12)
 
     def test_regular_with_number_criteria(self):
-        assert 6 == sumifs([1, 1, 2, 2, 2], [1, 1, 2, 2, 2], 2)
+        assert 6 == sumifs(((1, 1, 2, 2, 2), ), ((1, 1, 2, 2, 2), ), 2)
 
     def test_regular_with_string_criteria(self):
-        assert 12 == sumifs([1, 2, 3, 4, 5], [1, 2, 3, 4, 5], ">=3")
+        assert 12 == sumifs(((1, 2, 3, 4, 5), ), ((1, 2, 3, 4, 5), ), ">=3")
 
     def test_sum_range(self):
-        assert 668 == sumifs([100, 123, 12, 23, 633], [1, 2, 3, 4, 5], ">=3")
+        assert 668 == sumifs(((100, 123, 12, 23, 633), ),
+                             ((1, 2, 3, 4, 5), ), ">=3")
 
-    def test_sum_range_with_more_indexes(self):
-        assert 668 == sumifs([100, 123, 12, 23, 633, 1], [1, 2, 3, 4, 5], ">=3")
-
-    def test_sum_range_with_less_indexes(self):
-        assert 35 == sumifs([100, 123, 12, 23], [1, 2, 3, 4, 5], ">=3")
+    def test_sum_range_rect(self):
+        assert 35 == sumifs(((100, 123), (12, 23)), ((1, 2), (3, 4)), ">=3")
 
     def test_sum_range_with_empty(self):
-        assert 35 == sumifs([100, 123, 12, 23, None], [1, 2, 3, 4, 5], ">=3")
+        assert 35 == sumifs(((100, 123, 12, 23, None), ),
+                            ((1, 2, 3, 4, 5), ), ">=3")
 
     def test_sum_range_not_list(self):
         with pytest.raises(TypeError):
-            sumifs('JUNK', [], [], )
+            sumifs('JUNK', ((), ), ((), ), )
 
     def test_multiple_criteria(self):
-        assert 7 == sumifs([1, 2, 3, 4, 5],
-                           [1, 2, 3, 4, 5], ">=3",
-                           [1, 2, 3, 4, 5], "<=4")
+        assert 7 == sumifs(((1, 2, 3, 4, 5), ),
+                           ((1, 2, 3, 4, 5), ), ">=3",
+                           ((1, 2, 3, 4, 5), ), "<=4")
 
 
-def test_value():
-    assert 0.123 == lib_value('.123')
-    assert 123 == lib_value('123')
-    assert isinstance(lib_value('123'), int)
+@pytest.mark.parametrize(
+    'args, result', (
+        ((((1, 2), (3, 4)), ((1, 3), (2, 4))), 29),
+        ((((3, 4), (8, 6), (1, 9)), ((2, 7), (6, 7), (5, 3))), 156),
+        ((((1, 2), (3, None)), ((1, 3), (2, 4))), 13),
+        ((((1, 2), (3, 4)), ((1, 3), (2, '4'))), 13),
+        ((((1, 2), (3, 4)), ((1, 3), (2, True))), 13),
+        ((((1, NAME_ERROR), (3, 4)), ((1, 3), (2, 4))), NAME_ERROR),
+        ((((1, 2), (3, 4)), ((1, 3), (NAME_ERROR, 4))), NAME_ERROR),
+        ((((1, 2, 3), (3, 4, 6)), ((1, 3), (2, 4))), VALUE_ERROR),
+    )
+)
+def test_sumproduct(args, result):
+    assert sumproduct(*args) == result
+
+
+@pytest.mark.parametrize(
+    'number, num_digits, result', (
+        (2.5, -1, 0),
+        (2.5, 0, 2),
+        (2.5, 1, 2.5),
+        (-2.5, -1, 0),
+        (-2.5, 0, -2),
+        (-2.5, 1, -2.5),
+        (NUM_ERROR, 1, NUM_ERROR),
+        (1, NUM_ERROR, NUM_ERROR),
+    )
+)
+def test_trunc(number, num_digits, result):
+    assert trunc(number, num_digits) == result
 
 
 @pytest.mark.parametrize(
@@ -795,7 +1032,7 @@ def test_value():
         ('A', 1, 'A', True),
         ('A', 2, 1, True),
         ('A', 3, 'Z', True),
-        ('A', 4, '#REF!', True),
+        ('A', 4, REF_ERROR, True),
         ('B', 1, 'B', True),
         ('C', 1, 'C', True),
         ('B', 2, 2, True),
@@ -805,6 +1042,7 @@ def test_value():
         ('D', 3, 'X', True),
         ('D', 3, NA_ERROR, False),
         ('D', 3, 'X', -1),
+        ((('D', 'A'),), 3, ((NA_ERROR, 'Z'),), False),
     )
 )
 def test_vlookup(lkup, col_idx, result, approx):
@@ -832,6 +1070,21 @@ def test_xatan2(param1, param2, result):
 
 
 @pytest.mark.parametrize(
+    'value, expected', (
+        (1, 1),
+        (1.2, 1),
+        (-1.2, -2),
+        (((2.1, -3.9, 4.6, -5.3),), ((2, -4, 4, -6),)),
+        (DIV0, DIV0),
+        (NUM_ERROR, NUM_ERROR),
+        (VALUE_ERROR, VALUE_ERROR),
+    )
+)
+def test_x_int(value, expected):
+    assert x_int(value) == expected
+
+
+@pytest.mark.parametrize(
     'param, result', (
         ('A', 1),
         ('BB', 2),
@@ -843,22 +1096,8 @@ def test_xatan2(param1, param2, result):
         (DIV0, DIV0),
     )
 )
-def test_xlen(param, result):
-    assert xlen(param) == result
-
-
-def test_xlog():
-    assert math.log(5) == xlog(5)
-    assert [math.log(5), math.log(6)] == xlog([5, 6])
-    assert [math.log(5), math.log(6)] == xlog((5, 6))
-    assert [math.log(5), math.log(6)] == xlog(np.array([5, 6]))
-
-    assert NUM_ERROR == xlog(None)
-    assert VALUE_ERROR == xlog(VALUE_ERROR)
-    assert [math.log(2), VALUE_ERROR] == xlog((2, VALUE_ERROR))
-
-    assert DIV0 == xlog(DIV0)
-    assert [math.log(2), DIV0] == xlog((2, DIV0))
+def test_x_len(param, result):
+    assert x_len(param) == result
 
 
 def test_xmax():
@@ -901,9 +1140,9 @@ def test_xmin():
         (12345.6789, 4),
     )
 )
-def test_xround(result, digits):
-    assert result == xround(12345.6789, digits)
-    assert result == xround(12345.6789, digits + (-0.9 if digits < 0 else 0.9))
+def test_x_round(result, digits):
+    assert result == x_round(12345.6789, digits)
+    assert result == x_round(12345.6789, digits + (-0.9 if digits < 0 else 0.9))
 
 
 @pytest.mark.parametrize(
@@ -917,28 +1156,15 @@ def test_xround(result, digits):
         (-50.55, -2, -100),
         (DIV0, 1, DIV0),
         (1, DIV0, DIV0),
+        ('er', 1, VALUE_ERROR),
+        (2.323, 'ze', VALUE_ERROR),
+        (2.675, 2, 2.68),
+        (2352.67, -2, 2400),
+        ("2352.67", "-2", 2400),
     )
 )
-def test_xround2(number, digits, result):
-    assert result == xround(number, digits)
-
-
-class TestXRound:
-
-    def test_nb_must_be_number(self):
-        assert VALUE_ERROR == xround('er', 1)
-
-    def test_nb_digits_must_be_number(self):
-        assert VALUE_ERROR == xround(2.323, 'ze')
-
-    def test_positive_number_of_digits(self):
-        assert 2.68 == xround(2.675, 2)
-
-    def test_negative_number_of_digits(self):
-        assert 2400 == xround(2352.67, -2)
-
-    def test_coerce_from_string(self):
-        assert 2400 == xround("2352.67", "-2")
+def test_x_round2(number, digits, result):
+    assert result == x_round(number, digits)
 
 
 def test_xsum():
@@ -957,24 +1183,19 @@ def test_xsum():
 class TestYearfrac:
 
     def test_start_date_must_be_number(self):
-        with pytest.raises(TypeError):
-            yearfrac('not a number', 1)
+        assert VALUE_ERROR == yearfrac('not a number', 1)
 
     def test_end_date_must_be_number(self):
-        with pytest.raises(TypeError):
-            yearfrac(1, 'not a number')
+        assert VALUE_ERROR == yearfrac(1, 'not a number')
 
     def test_start_date_must_be_positive(self):
-        with pytest.raises(ValueError):
-            yearfrac(-1, 0)
+        assert NUM_ERROR == yearfrac(-1, 0)
 
     def test_end_date_must_be_positive(self):
-        with pytest.raises(ValueError):
-            yearfrac(0, -1)
+        assert NUM_ERROR == yearfrac(0, -1)
 
     def test_basis_must_be_between_0_and_4(self):
-        with pytest.raises(ValueError):
-            yearfrac(1, 2, 5)
+        assert NUM_ERROR == yearfrac(1, 2, 5)
 
     def test_yearfrac_basis_0(self):
         assert 7.30277777777778 == pytest.approx(
@@ -1002,13 +1223,13 @@ class TestYearfrac:
 
     def test_yearfrac_basis_1_sub_year(self):
         assert 11 / 365 == pytest.approx(
-            yearfrac(date(2015, 4, 20), date(2015, 5, 1), basis=1))
+            yearfrac(date(2015, 4, 20), date(2015, 5, 1), 1))
 
         assert 11 / 366 == pytest.approx(
-            yearfrac(date(2016, 4, 20), date(2016, 5, 1), basis=1))
+            yearfrac(date(2016, 4, 20), date(2016, 5, 1), 1))
 
         assert 316 / 366 == pytest.approx(
-            yearfrac(date(2016, 2, 20), date(2017, 1, 1), basis=1))
+            yearfrac(date(2016, 2, 20), date(2017, 1, 1), 1))
 
         assert 61 / 366 == pytest.approx(
-            yearfrac(date(2015, 12, 31), date(2016, 3, 1), basis=1))
+            yearfrac(date(2015, 12, 31), date(2016, 3, 1), 1))

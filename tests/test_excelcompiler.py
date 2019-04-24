@@ -6,7 +6,13 @@ from unittest import mock
 import pytest
 from pycel.excelcompiler import _Cell, _CellRange, ExcelCompiler
 from pycel.excelformula import FormulaParserError, UnknownFunction
-from pycel.excelutil import AddressCell, AddressRange, flatten
+from pycel.excelutil import (
+    AddressCell,
+    AddressRange,
+    flatten,
+    list_like,
+    NULL_ERROR,
+)
 from pycel.excelwrapper import ExcelWrapper
 
 
@@ -199,6 +205,9 @@ def test_gen_graph(excel_compiler):
     with pytest.raises(ValueError, match='Unknown seed'):
         excel_compiler._gen_graph(None)
 
+    with pytest.raises(NotImplementedError, match='Linked SheetNames'):
+        excel_compiler._gen_graph('=[Filename.xlsx]Sheetname!A1')
+
 
 def test_value_tree_str(excel_compiler):
     out_address = 'trim-range!B2'
@@ -249,7 +258,7 @@ def test_trim_cells_range(excel_compiler):
     excel_compiler = ExcelCompiler._from_text(excel_compiler.filename)
     assert old_value == excel_compiler.evaluate(output_addrs[0])
 
-    excel_compiler.set_value(input_addrs[0], [5, 6])
+    excel_compiler.set_value(input_addrs[0], [5, 6], set_as_range=True)
     assert old_value - 1 == excel_compiler.evaluate(output_addrs[0])
 
     excel_compiler.set_value(input_addrs[0], [4, 6])
@@ -296,7 +305,7 @@ def test_validate_calcs(excel_compiler, capsys):
 
 
 def test_validate_calcs_all_cells(basic_ws):
-    formula_cells = basic_ws._formula_cells
+    formula_cells = basic_ws.formula_cells('Sheet1')
     expected = {
         AddressCell('Sheet1!B2'),
         AddressCell('Sheet1!C2'),
@@ -319,28 +328,63 @@ def test_validate_calcs_excel_compiler(excel_compiler):
     msg = json.dumps(errors, indent=2)
     assert msg == '{}'
 
+    # Missing sheets returns empty tuple
+    assert len(excel_compiler.formula_cells('JUNK-Sheet!B1')) == 0
+
 
 def test_evaluate_entire_row_column(excel_compiler):
+
+    value = excel_compiler.evaluate(AddressRange('Sheet1!A:A'))
+    expected = excel_compiler.evaluate(AddressRange('Sheet1!A1:A18'))
+    assert value == expected
+    assert len(value) == 18
+    assert not list_like(value[0])
+
+    value = excel_compiler.evaluate(AddressRange('Sheet1!1:1'))
+    expected = excel_compiler.evaluate(AddressRange('Sheet1!A1:D1'))
+    assert value == expected
+    assert len(value) == 4
+    assert not list_like(value[0])
 
     value = excel_compiler.evaluate(AddressRange('Sheet1!A:B'))
     expected = excel_compiler.evaluate(AddressRange('Sheet1!A1:B18'))
     assert value == expected
+    assert len(value) == 18
+    assert len(value[0]) == 2
 
     value = excel_compiler.evaluate(AddressRange('Sheet1!1:2'))
     expected = excel_compiler.evaluate(AddressRange('Sheet1!A1:D2'))
     assert value == expected
+    assert len(value) == 2
+    assert len(value[0]) == 4
 
     # now from the text based file
     excel_compiler._to_text()
     text_excel_compiler = ExcelCompiler._from_text(excel_compiler.filename)
 
+    value = text_excel_compiler.evaluate(AddressRange('Sheet1!A:A'))
+    expected = text_excel_compiler.evaluate(AddressRange('Sheet1!A1:A18'))
+    assert value == expected
+    assert len(value) == 18
+    assert not list_like(value[0])
+
+    value = text_excel_compiler.evaluate(AddressRange('Sheet1!1:1'))
+    expected = text_excel_compiler.evaluate(AddressRange('Sheet1!A1:D1'))
+    assert value == expected
+    assert len(value) == 4
+    assert not list_like(value[0])
+
     value = text_excel_compiler.evaluate(AddressRange('Sheet1!A:B'))
     expected = text_excel_compiler.evaluate(AddressRange('Sheet1!A1:B18'))
+    assert len(value) == 18
+    assert len(value[0]) == 2
     assert value == expected
 
     value = text_excel_compiler.evaluate(AddressRange('Sheet1!1:2'))
     expected = text_excel_compiler.evaluate(AddressRange('Sheet1!A1:D2'))
     assert value == expected
+    assert len(value) == 2
+    assert len(value[0]) == 4
 
 
 def test_trim_cells_warn_address_not_found(excel_compiler):
@@ -397,12 +441,12 @@ def test_compile_error_message_line_number(excel_compiler):
 def test_init_cell_address_error(excel):
     with pytest.raises(ValueError):
         _CellRange(ExcelWrapper.RangeData(
-            AddressCell('A1'), (('', ),), ((0, ),)))
+            AddressCell('A1'), '', ((0, ),)))
 
 
 def test_cell_range_repr(excel):
     cell_range = _CellRange(ExcelWrapper.RangeData(
-        AddressRange('sheet!A1:B1'), (('', ''),), ((0, 0),)))
+        AddressRange('sheet!A1:B1'), '', ((0, 0),)))
     assert 'sheet!A1:B1' == repr(cell_range)
 
 
@@ -473,13 +517,13 @@ def test_structured_ref(excel_compiler):
 
 @pytest.mark.parametrize(
     'msg, formula', (
-        ("Function XYZZY has not been implemented. "
+        ("Function XYZZY is not implemented. "
          "XYZZY is not a known Excel function", '=xyzzy()'),
-        ("Function PLUGH has not been implemented. "
+        ("Function PLUGH is not implemented. "
          "PLUGH is not a known Excel function\n"
-         "Function XYZZY has not been implemented. "
+         "Function XYZZY is not implemented. "
          "XYZZY is not a known Excel function", '=xyzzy() + plugh()'),
-        ('Function ARABIC has not been implemented. '
+        ('Function ARABIC is not implemented. '
          'ARABIC is in the "Math and trigonometry" group, '
          'and was introduced in Excel 2013',
          '=ARABIC()'),
@@ -520,3 +564,53 @@ def test_evaluate_exceptions(fixture_dir):
     result = excel_compiler.validate_calcs(address)
     assert 'exceptions' in result
     assert len(result['exceptions']) == 1
+
+
+def test_evaluate_empty_intersection(fixture_dir):
+    excel_compiler = ExcelCompiler.from_file(
+        os.path.join(fixture_dir, 'fixture.xlsx.yml'))
+
+    address = AddressCell('s!A1')
+    excel_compiler.cell_map[str(address)] = _Cell(
+        address, None, '=_R_(str(_REF_("s!A1:A2") & _REF_("s!B1:B2")))',
+        excel_compiler.excel
+    )
+    assert excel_compiler.evaluate(address) == NULL_ERROR
+
+
+def test_plugins(excel_compiler):
+
+    input_addrs = ['Sheet1!A11']
+    output_addrs = ['Sheet1!D1']
+    excel_compiler.trim_graph(input_addrs, output_addrs)
+    d1 = -0.022863768173008364
+
+    excel_compiler.recalculate()
+    assert pytest.approx(d1) == excel_compiler.evaluate('Sheet1!D1')
+
+    def calc_and_check():
+        excel_compiler._eval = None
+        excel_compiler.cell_map['Sheet1!D1'].formula.compiled_lambda = None
+        excel_compiler.recalculate()
+        assert pytest.approx(d1) == excel_compiler.evaluate('Sheet1!D1')
+
+    with mock.patch('pycel.excelformula.ExcelFormula.default_modules', ()):
+        with pytest.raises(UnknownFunction):
+            calc_and_check()
+
+    with mock.patch('pycel.excelformula.ExcelFormula.default_modules', ()):
+        excel_compiler._plugin_modules = ('pycel.excellib', )
+        calc_and_check()
+
+    with mock.patch('pycel.excelformula.ExcelFormula.default_modules', ()):
+        excel_compiler._plugin_modules = 'pycel.excellib'
+        calc_and_check()
+
+    with mock.patch('pycel.excelformula.ExcelFormula.default_modules',
+                    ('pycel.excellib', )):
+        excel_compiler._plugin_modules = None
+        calc_and_check()
+
+    with mock.patch('pycel.excelformula.ExcelFormula.default_modules', ()):
+        with pytest.raises(UnknownFunction):
+            calc_and_check()

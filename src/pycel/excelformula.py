@@ -1,9 +1,10 @@
 import ast
+import importlib
 import logging
 import marshal
 import math
-import re
 import sys
+import tokenize as tk
 
 import openpyxl.formula.tokenizer as tokenizer
 from networkx.classes.digraph import DiGraph
@@ -15,15 +16,16 @@ from pycel.excelutil import (
     EMPTY,
     ERROR_CODES,
     get_linest_degree,
-    math_wrap,
+    in_array_formula_context,
     NAME_ERROR,
     PyCelException,
     uniqueify,
 )
+from pycel.lib.function_helpers import load_functions
 from pycel.lib.function_info import func_status_msg
 
 
-EVAL_REGEX = re.compile(r'(_C_|_R_)(\([^)]*\))')
+ADDR_FUNCS_NAMES = '_R_', '_C_', '_REF_'
 
 
 class FormulaParserError(PyCelException):
@@ -234,7 +236,6 @@ class OperatorNode(ASTNode):
         "^": "**",
         "=": "==",
         "<>": "!=",
-        " ": "+"  # range intersection
     }
 
     @property
@@ -258,6 +259,12 @@ class OperatorNode(ASTNode):
 
         if op == '%':
             ss = '{} / 100'.format(args[0].emit)
+        elif op == ' ':
+            # range intersection
+            ss = '_R_' + ('(str({} & {}))'.format(args[0].emit, args[1].emit)
+                          .replace('_R_', '_REF_')
+                          .replace('_C_', '_REF_')
+                          )
         else:
             if op != ',':
                 op = ' ' + op
@@ -307,6 +314,8 @@ class RangeNode(OperandNode):
                     table_name = excel.table_name_containing(self.cell.address)
 
             if not table_name:
+                logging.getLogger('pycel').warning(
+                    'Table Name not found: {}'.format(addr_str))
                 return '"{}"'.format(NAME_ERROR)
 
             addr_str = '{}{}'.format(table_name, addr_str)
@@ -336,17 +345,18 @@ class FunctionNode(ASTNode):
 
     # dict of excel equivalent functions
     func_map = {
+        "abs": "x_abs",
         "and": "x_and",
         "atan2": "xatan2",
         "gammaln": "lgamma",
         "if": "x_if",
-        "len": "xlen",
-        "ln": "xlog",
+        "int": "x_int",
+        "len": "x_len",
         "max": "xmax",
         "not": "x_not",
         "or": "x_or",
         "min": "xmin",
-        "round": "xround",
+        "round": "x_round",
         "sum": "xsum",
         "xor": "x_xor",
     }
@@ -368,6 +378,8 @@ class FunctionNode(ASTNode):
     def emit(self):
         func = self.value.lower().strip('(')
 
+        if func[0] == func[-1] == '_':
+            func = func.upper()
         if func.startswith('_xlfn.'):
             func = func[6:]
         func = func.replace('.', '_')
@@ -398,11 +410,7 @@ class FunctionNode(ASTNode):
         return "False"
 
     def func_array(self):
-        if len(self.children) == 1:
-            return '[{}]'.format(self.children[0].emit)
-        else:
-            # multiple rows
-            return '[{}]'.format(self.comma_join_emit('[{}]'))
+        return '({},)'.format(self.comma_join_emit('({},)'))
 
     def func_arrayrow(self):
         # simply create a list
@@ -434,23 +442,22 @@ class FunctionNode(ASTNode):
 
     func_linestmario = func_linest
 
-    def func_row(self):
-        assert len(self.children) <= 1
+    @property
+    def _build_reference(self):
         if len(self.children) == 0:
             address = '_REF_("{}")'.format(self.cell.address)
         else:
             address = self.children[0].emit
             address = address.replace('_R_', '_REF_').replace('_C_', '_REF_')
-        return 'row({})'.format(address)
+            if address.startswith('_REF_(str('):
+                address = address[10:-2]
+        return address
+
+    def func_row(self):
+        return 'row({})'.format(self._build_reference)
 
     def func_column(self):
-        assert len(self.children) <= 1
-        if len(self.children) == 0:
-            address = '_REF_("{}")'.format(self.cell.address)
-        else:
-            address = self.children[0].emit
-            address = address.replace('_R_', '_REF_').replace('_C_', '_REF_')
-        return 'column({})'.format(address)
+        return 'column({})'.format(self._build_reference)
 
     SUBTOTAL_FUNCS = {
         1: 'average',
@@ -488,6 +495,13 @@ class FunctionNode(ASTNode):
 
 class ExcelFormula:
     """Take an Excel formula and compile it to Python code."""
+
+    default_modules = (
+        'pycel.excellib',
+        'pycel.lib.binary',
+        'pycel.lib.logical',
+        'math',
+    )
 
     def __init__(self, formula, cell=None, formula_is_python_code=False):
         if formula_is_python_code:
@@ -543,10 +557,15 @@ class ExcelFormula:
         if self._needed_addresses is None:
             # get all the cells/ranges this formula refers to, and remove dupes
             if self.python_code:
-                self._needed_addresses = uniqueify(
-                    AddressRange(eval_call[1][2:-2])
-                    for eval_call in EVAL_REGEX.findall(self.python_code)
-                )
+                code = iter((self.python_code.encode(),))
+                tokens = tuple(tk.tokenize(lambda: next(code)))
+                addrs = []
+                for i, t in enumerate(tokens):
+                    if t.type == 1 and t.string in ADDR_FUNCS_NAMES and (
+                            tokens[i + 1].string == '(' and
+                            tokens[i + 3].string == ')'):
+                        addrs.append(AddressRange(tokens[i + 2].string[1:-1]))
+                self._needed_addresses = uniqueify(addrs)
             else:
                 self._needed_addresses = ()
 
@@ -768,7 +787,8 @@ class ExcelFormula:
         return stack[0]
 
     @classmethod
-    def build_eval_context(cls, evaluate, evaluate_range, logger=None):
+    def build_eval_context(cls, evaluate, evaluate_range,
+                           logger=None, plugins=None):
         """eval with namespace management.  Will auto import needed functions
 
         Used like:
@@ -777,18 +797,19 @@ class ExcelFormula:
 
         :param evaluate: a function to evaluate a cell address
         :param evaluate_range: a function to evaluate a range address
-        :param logger: a looger to use (defaults to pycel)
+        :param logger: a logger to use (defaults to pycel)
+        :param plugins: module paths for plugin lib functions
         :return: a function to evaluate a compiled expression from build_ast
         """
 
-        import importlib
-
-        modules = (
-            importlib.import_module('pycel.excellib'),
-            importlib.import_module('pycel.lib.binary'),
-            importlib.import_module('pycel.lib.logical'),
-            importlib.import_module('math'),
-        )
+        if plugins is None:
+            modules = ()
+        elif isinstance(plugins, str):
+            modules = (plugins, )
+        else:
+            modules = tuple(plugins)
+        modules = tuple(importlib.import_module(m)
+                        for m in modules + cls.default_modules)
 
         logger = logger or logging.getLogger('pycel')
         error_messages = []
@@ -831,10 +852,6 @@ class ExcelFormula:
             name_space['_REF_'] = AddressRange.create
             name_space['pi'] = math.pi
 
-            for name in ('int', 'abs', 'round'):
-                name_space[name] = math_wrap(
-                    globals()['__builtins__'][name])
-
             # function to fixup the operands
             name_space['excel_operator_operand_fixup'] = \
                 build_operator_operand_fixup(capture_error_state)
@@ -846,20 +863,7 @@ class ExcelFormula:
             compiled, names = excel_formula.compiled_python
 
             # load the needed names
-            not_found = set()
-            for name in names:
-                if name not in name_space:
-                    funcs = ((getattr(module, name, None), module)
-                             for module in modules)
-                    func, module = next(
-                        (f for f in funcs if f[0] is not None), (None, None))
-                    if func is None:
-                        not_found.add(name)
-                    else:
-                        if module.__name__ == 'math':
-                            name_space[name] = math_wrap(func)
-                        else:
-                            name_space[name] = func
+            not_found = load_functions(names, name_space, modules)
 
             # exec the code to define the lambda
             exec(compiled, name_space, name_space)
@@ -867,19 +871,21 @@ class ExcelFormula:
             del name_space['lambdas']
             return not_found
 
-        def eval_func(excel_formula):
+        def eval_func(excel_formula, cse_array_address=None):
             """ Call the compiled lambda to evaluate the cell """
 
             if excel_formula.compiled_lambda is None:
                 missing = load_function(excel_formula, locals())
                 if missing:
-                    msg_fmt = 'Function {} has not been implemented. '
+                    msg_fmt = 'Function {} is not implemented. '
                     excel_formula.msg = '\n'.join(
                         msg_fmt.format(f.upper()) +
                         func_status_msg(f)[1] for f in sorted(missing))
 
             try:
-                ret_val = excel_formula.compiled_lambda()
+                with in_array_formula_context(cse_array_address):
+                    ret_val = in_array_formula_context.fit_to_range(
+                        excel_formula.compiled_lambda())
 
             except NameError:
                 error_logger('error', excel_formula.python_code,
@@ -934,6 +940,8 @@ class ExcelFormula:
             def visit_BinOp(self, node):
                 """ change the BinOP node to a function node """
                 node = ast.NodeTransformer.generic_visit(self, node)
+                if isinstance(node.op, ast.BitAnd) and self.is_addr_and(node):
+                    return node
                 return self.replace_op(node, node.left, node.op, node.right)
 
             def visit_UnaryOp(self, node):
@@ -954,6 +962,14 @@ class ExcelFormula:
                     lineno=node.lineno,
                     col_offset=node.col_offset,
                 )
+
+            def is_addr_and(self, node):
+                # reference intersection does not get fixup
+                return (isinstance(node.left, ast.Call) and
+                        node.left.func.id == '_REF_' and
+                        isinstance(node.right, ast.Call) and
+                        node.right.func.id == '_REF_'
+                        )
 
         # modify the ast tree to convert Compare and BinOp to Call
         tree = ast.fix_missing_locations(OperatorWrapper().visit(tree))

@@ -1,7 +1,8 @@
-import datetime as dt
 import pytest
 
 from pycel.excelutil import AddressRange
+from pycel.excelwrapper import ARRAY_FORMULA_FORMAT, _OpxRange
+from test_excelutil import ATestCell
 
 
 def test_connect(unconnected_excel):
@@ -24,7 +25,7 @@ def test_set_and_get_active_sheet(excel):
 def test_get_range(excel):
     excel.set_sheet("Sheet2")
     excel_range = excel.get_range('Sheet2!A5:B7')
-    assert sum(map(len, excel_range.formulas)) == 6
+    assert excel_range.formula is None
     assert sum(map(len, excel_range.values)) == 6
 
 
@@ -37,10 +38,10 @@ def test_get_formula_from_range(excel):
     excel.set_sheet("Sheet1")
     formulas = excel.get_formula_from_range("Sheet1!C2:C5")
     assert len(formulas) == 4
-    assert formulas[1] == "=SIN(B3*A3^2)"
+    assert formulas[1][0] == "=SIN(B3*A3^2)"
 
     formulas = excel.get_formula_from_range("Sheet1!C600:C601")
-    assert formulas is None
+    assert formulas == ((None, ), (None, ))
 
     formula = excel.get_formula_from_range("Sheet1!C3")
     assert formula == "=SIN(B3*A3^2)"
@@ -60,27 +61,6 @@ def test_get_formula_from_range(excel):
 )
 def test_get_formula_or_value(excel, address, value):
     assert value == excel.get_formula_or_value(address)
-
-
-def test_get_range_formula(excel):
-    result = excel.get_range("Sheet1!A2:C2").formulas
-    assert (('', '=SUM(A2:A4)', '=SIN(B2*A2^2)'),) == result
-
-    result = excel.get_range("Sheet1!A1:A3").formulas
-    assert (('',), ('',), ('',)) == result
-
-    result = excel.get_range("Sheet1!C2").formulas
-    assert '=SIN(B2*A2^2)' == result
-
-    excel.set_sheet('Sheet1')
-    result = excel.get_range("C2").formulas
-    assert '=SIN(B2*A2^2)' == result
-
-    result = excel.get_range("Sheet1!AA1:AA3").formulas
-    assert (('',), ('',), ('',)) == result
-
-    result = excel.get_range("Sheet1!CC2").formulas
-    assert '' == result
 
 
 @pytest.mark.parametrize(
@@ -174,7 +154,7 @@ def test_table_name_containing(excel, address, table_name):
 
 
 @pytest.mark.parametrize(
-    'address, values, formulas',
+    'address, values, formula',
     [
         ('ArrayForm!H1:I2', ((1, 2), (1, 2)),
          (('=INDEX(COLUMN(A1:B1),1,1,1,2)', '=INDEX(COLUMN(A1:B1),1,2,1,2)'),
@@ -190,65 +170,32 @@ def test_table_name_containing(excel, address, table_name):
           ('=SUM((A7:A13<>"b")*(B7:B13<>"y")*C7:C13)',),
           ('=SUM((A7:A13>"b")*(B7:B13<"z")*(C7:C13+3.5))',))
          ),
-        ('ArrayForm!G16:H17', ((1, 6), (6, 16)),
-         (('=INDEX(A16:B17*D16:E17,1,1,2,2)',
-           '=INDEX(A16:B17*D16:E17,1,2,2,2)'),
-          ('=INDEX(A16:B17*D16:E17,2,1,2,2)',
-           '=INDEX(A16:B17*D16:E17,2,2,2,2)'))
+        ('ArrayForm!G16:H17',
+         ((1, 6), (6, 16)), '={A16:B17*D16:E17}'),
+        ('ArrayForm!E21:F24',
+         ((6, 6), (8, 8), (10, 10), (12, 12)), '={A21:A24+C21:C24}'
          ),
-        ('ArrayForm!E21:F24', ((6, 6), (8, 8), (10, 10), (12, 12)),
-         (('=INDEX(A21:A24+C21:C24,1,1,4,2)',
-           '=INDEX(A21:A24+C21:C24,1,2,4,2)'),
-          ('=INDEX(A21:A24+C21:C24,2,1,4,2)',
-           '=INDEX(A21:A24+C21:C24,2,2,4,2)'),
-          ('=INDEX(A21:A24+C21:C24,3,1,4,2)',
-           '=INDEX(A21:A24+C21:C24,3,2,4,2)'),
-          ('=INDEX(A21:A24+C21:C24,4,1,4,2)',
-           '=INDEX(A21:A24+C21:C24,4,2,4,2)'))
-         ),
-        ('ArrayForm!A32:D33', ((6, 8, 10, 12), (6, 8, 10, 12)),
-         (('=INDEX(A28:D28+A30:D30,1,1,2,4)',
-           '=INDEX(A28:D28+A30:D30,1,2,2,4)',
-           '=INDEX(A28:D28+A30:D30,1,3,2,4)',
-           '=INDEX(A28:D28+A30:D30,1,4,2,4)'),
-          ('=INDEX(A28:D28+A30:D30,2,1,2,4)',
-           '=INDEX(A28:D28+A30:D30,2,2,2,4)',
-           '=INDEX(A28:D28+A30:D30,2,3,2,4)',
-           '=INDEX(A28:D28+A30:D30,2,4,2,4)'))
+        ('ArrayForm!A32:D33',
+         ((6, 8, 10, 12), (6, 8, 10, 12)), '={A28:D28+A30:D30}'
          ),
         ('ArrayForm!F28:I31',
          ((5, 6, 7, 8), (10, 12, 14, 16), (15, 18, 21, 24), (20, 24, 28, 32)),
-         (('=INDEX(A21:A24*A30:D30,1,1,4,4)',
-           '=INDEX(A21:A24*A30:D30,1,2,4,4)',
-           '=INDEX(A21:A24*A30:D30,1,3,4,4)',
-           '=INDEX(A21:A24*A30:D30,1,4,4,4)'),
-          ('=INDEX(A21:A24*A30:D30,2,1,4,4)',
-           '=INDEX(A21:A24*A30:D30,2,2,4,4)',
-           '=INDEX(A21:A24*A30:D30,2,3,4,4)',
-           '=INDEX(A21:A24*A30:D30,2,4,4,4)'),
-          ('=INDEX(A21:A24*A30:D30,3,1,4,4)',
-           '=INDEX(A21:A24*A30:D30,3,2,4,4)',
-           '=INDEX(A21:A24*A30:D30,3,3,4,4)',
-           '=INDEX(A21:A24*A30:D30,3,4,4,4)'),
-          ('=INDEX(A21:A24*A30:D30,4,1,4,4)',
-           '=INDEX(A21:A24*A30:D30,4,2,4,4)',
-           '=INDEX(A21:A24*A30:D30,4,3,4,4)',
-           '=INDEX(A21:A24*A30:D30,4,4,4,4)'))
+         '={A21:A24*A30:D30}',
          ),
     ]
 )
-def test_array_formulas(excel, address, values, formulas):
+def test_array_formulas(excel, address, values, formula):
     result = excel.get_range(address)
     assert result.address == AddressRange(address)
     assert result.values == values
-    assert result.formulas == formulas
+    if result.formula:
+        assert result.formula == formula
 
 
 def test_get_datetimes(excel):
-    result = excel.get_range("datetime!A1:B12").values
+    result = excel.get_range("datetime!A1:B13").values
     for row in result:
-        if isinstance(row[1], (dt.date, dt.datetime)):
-            assert row[0] == row[1]
+        assert row[0] == row[1]
 
 
 @pytest.mark.parametrize(
@@ -265,3 +212,43 @@ def test_get_entire_rows_columns(excel, result_range, expected_range):
     result = excel.get_range(result_range).values
     expected = excel.get_range(expected_range).values
     assert result == expected
+
+
+@pytest.mark.parametrize(
+    'value, formula',
+    (
+        (ARRAY_FORMULA_FORMAT % ('xyzzy', 1, 1, 2, 2), '={xyzzy}'),
+        (ARRAY_FORMULA_FORMAT % ('xyzzy', 1, 2, 2, 2), None),
+        (ARRAY_FORMULA_FORMAT % ('xyzzy', 2, 1, 2, 2), None),
+        (ARRAY_FORMULA_FORMAT % ('xyzzy', 2, 2, 2, 2), None),
+    )
+)
+def test_cell_to_formulax(value, formula):
+    cells = ((ATestCell('A', 1, value=value), ), )
+    assert _OpxRange(cells, cells, '').formula == formula
+
+
+@pytest.mark.parametrize(
+    'value, formula',
+    (
+        (None, ""),
+        ("xyzzy", ""),
+        ("=xyzzy", "=xyzzy"),
+        ("={1,2;3,4}", "=index({1,2;3,4},1,1)"),
+        (ARRAY_FORMULA_FORMAT % ('xyzzy', 1, 1, 2, 2), "=index('s'!E3:F4,1,1)"),
+        (ARRAY_FORMULA_FORMAT % ('xyzzy', 1, 2, 2, 2), "=index('s'!D3:E4,1,2)"),
+        (ARRAY_FORMULA_FORMAT % ('xyzzy', 2, 1, 2, 2), "=index('s'!E2:F3,2,1)"),
+        (ARRAY_FORMULA_FORMAT % ('xyzzy', 2, 2, 2, 2), "=index('s'!D2:E3,2,2)"),
+    )
+)
+def test_cell_to_formula(value, formula):
+    """"""
+    from unittest import mock
+    parent = mock.Mock()
+    parent.title = 's'
+    cell = mock.Mock()
+    cell.value = value
+    cell.row = 3
+    cell.col_idx = 5
+    cell.parent = parent
+    assert _OpxRange.cell_to_formula(cell) == formula
