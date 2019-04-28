@@ -25,7 +25,7 @@ def test_set_and_get_active_sheet(excel):
 def test_get_range(excel):
     excel.set_sheet("Sheet2")
     excel_range = excel.get_range('Sheet2!A5:B7')
-    assert excel_range.formula is None
+    assert excel_range.formula == (('', ''), ('', ''), ('', ''))
     assert sum(map(len, excel_range.values)) == 6
 
 
