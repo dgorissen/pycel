@@ -657,6 +657,18 @@ def trunc(number, num_digits=0):
     return int(number * factor) / factor
 
 
+@excel_helper(cse_params=0)
+def value(text):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   VALUE-function-257D0108-07DC-437D-AE1C-BC2D3953D8C2
+    if isinstance(text, bool):
+        return VALUE_ERROR
+    try:
+        return float(text)
+    except ValueError:
+        return VALUE_ERROR
+
+
 @excel_helper(cse_params=0, bool_params=3, number_params=2)
 def vlookup(lookup_value, table_array, col_index_num, range_lookup=True):
     """ Vertical Lookup
