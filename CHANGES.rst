@@ -1,3 +1,15 @@
+1.0b13 (2019-05-10)
+===================
+
+Changes
+-------
+* Implement VALUE()
+* Improve compile performance reversion from CSE work
+
+Bug Fixes
+---------
+* #54, In normalize_year(), month % 12 can be 0 -> IllegalMonthError
+
 1.0b12 (2019-04-22)
 ===================
 

@@ -42,6 +42,7 @@ from pycel.excellib import (
     sumifs,
     sumproduct,
     trunc,
+    value,
     vlookup,
     x_abs,
     xatan2,
@@ -1024,6 +1025,30 @@ def test_sumproduct(args, result):
 )
 def test_trunc(number, num_digits, result):
     assert trunc(number, num_digits) == result
+
+
+@pytest.mark.parametrize(
+    'param, result', (
+        (0, 0),
+        (2, 2),
+        (2.1, 2.1),
+        (-2.1, -2.1),
+        ('-2.1', -2.1),
+        ('3', 3),
+        ('3.', 3),
+        ('3.0', 3),
+        ('.01', 0.01),
+        ('1E5', 100000),
+        ('X', VALUE_ERROR),
+        ('`1', VALUE_ERROR),
+        (False, VALUE_ERROR),
+        (True, VALUE_ERROR),
+        (NA_ERROR, NA_ERROR),
+        (DIV0, DIV0),
+    )
+)
+def test_value(param, result):
+    assert value(param) == result
 
 
 @pytest.mark.parametrize(

@@ -80,6 +80,9 @@ class _OpxRange(ExcelWrapper.RangeData):
                     for c in flatten(cells)):
                 # apply formula to the range
                 formula = '={%s}' % front[len(ARRAY_FORMULA_NAME) + 1:]
+        else:
+            formula = tuple(tuple(cls.cell_to_formula(cell) for cell in row)
+                            for row in cells)
 
         values = tuple(tuple(cell.value for cell in row)
                        for row in cells_dataonly)

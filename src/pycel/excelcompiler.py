@@ -623,16 +623,24 @@ class ExcelCompiler:
             a_cell = _Cell(excel_cell.address, value=excel_cell.values,
                            formula=excel_cell.formula, excel=self.excel)
             self.cell_map[str(excel_cell.address)] = a_cell
-            return a_cell
+            return [a_cell]
 
         def build_range(excel_range):
             a_range = _CellRange(excel_range, excel=self.excel)
-            for addr in a_range.needed_addresses:
-                if addr.address not in self.cell_map:
-                    self._make_cells(addr)
-
             self.cell_map[str(excel_range.address)] = a_range
-            return a_range
+
+            added = [a_range]
+            if isinstance(excel_range.formula, tuple):
+                for addr, value, formula in a_range.cells_to_build(excel_range):
+                    if addr.address not in self.cell_map:
+                        a_cell = _Cell(addr, value, formula, self.excel)
+                        self.cell_map[addr.address] = a_cell
+                        added.append(a_cell)
+            else:
+                for addr in a_range.needed_addresses:
+                    if addr.address not in self.cell_map:
+                        self._make_cells(addr)
+            return added
 
         self.log.debug('_make_cells: {}'.format(address))
         excel_data = self.excel.get_range(address)
@@ -645,13 +653,14 @@ class ExcelCompiler:
                     excel=self.excel)
 
             self.range_todos.append(str(excel_data.address))
-            new_node = build_range(excel_data)
+            new_nodes = build_range(excel_data)
         else:
-            new_node = build_cell(excel_data)
+            new_nodes = build_cell(excel_data)
 
-        if isinstance(new_node, _CellRange) or new_node.formula:
-            # nodes to analyze: only ranges and formulas have precedents
-            add_node_to_graph(new_node)
+        for new_node in new_nodes:
+            if isinstance(new_node, _CellRange) or new_node.formula:
+                # nodes to analyze: only ranges and formulas have precedents
+                add_node_to_graph(new_node)
 
     def _evaluate_range(self, address):
         """Evaluate a range"""
@@ -834,7 +843,7 @@ class _CellRange(_CellBase):
 
     def __init__(self, data, excel=None):
         formula = None
-        if data.formula:
+        if data.formula and isinstance(data.formula, str):
             assert data.formula.startswith('={') and data.formula[-1] == '}'
             formula = '=' + data.formula[2:-1]
         super().__init__(address=data.address, formula=formula, excel=excel)
@@ -861,6 +870,14 @@ class _CellRange(_CellBase):
     @property
     def needed_addresses(self):
         return self.formula and self.formula.needed_addresses or iter(self)
+
+    def cells_to_build(self, data):
+        assert isinstance(data.formula, tuple)
+        return zip(  # pragma: no branch
+            self,  # address
+            flatten(v for row in data.values for v in row),  # value
+            flatten(f for row in data.formula for f in row)  # formula
+        )
 
 
 class _Cell(_CellBase):
