@@ -1,6 +1,7 @@
 import calendar
 import collections
 import datetime as dt
+import math
 import operator
 import re
 import threading
@@ -981,13 +982,10 @@ def get_max_days_in_month(month, year):
 
 def normalize_year(y, m, d):
     """taking into account negative month and day values"""
-    if m <= 0:
-        y -= int(abs(m) / 12 + 1)
-        m = 12 - (abs(m) % 12)
-        normalize_year(y, m, d)
-    elif m > 12:
-        y += int(m / 12)
-        m = m % 12
+    if not (1 <= m <= 12):
+        y_plus = math.floor((m - 1) / 12)
+        y += y_plus
+        m -= y_plus * 12
 
     if d <= 0:
         d += get_max_days_in_month(m, y)
@@ -1032,7 +1030,7 @@ def criteria_parser(criteria):
     General rules:
 
         Criteria will be coerced to numbers,
-        For equality comparisions, values will be coerced to numbers
+        For equality comparisons, values will be coerced to numbers
         < and > will always be False when comparing strings to numbers
         <> will always be True when comparing strings to numbers
 
