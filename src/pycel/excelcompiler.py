@@ -32,12 +32,14 @@ class ExcelCompiler:
 
     save_file_extensions = ('pkl', 'pickle', 'yml', 'yaml', 'json')
 
-    def __init__(self, filename=None, excel=None, plugins=None):
+    def __init__(self, filename=None, excel=None, plugins=None, max_iterations=None):
         """ Build a compiler instance to organize the formula for a workbook
 
         :param filename: Excel filename to load from (xlsx or `to_file`)
         :param excel: Opened instance of ExcelWrapper
         :param plugins: module paths for plugin lib functions
+        :param max_iterations maximum number of formula iterations allows
+            for formula with circular references
         """
 
         self._eval = None
@@ -72,6 +74,10 @@ class ExcelCompiler:
         self.extra_data = None
         self._formula_cells_dict = {}
         self._plugin_modules = plugins
+
+        # max iteration configuration for evaluating formulas with
+        # circular references
+        self._max_iterations = max_iterations
 
     def __getstate__(self):
         # code objects are not serializable
@@ -402,6 +408,7 @@ class ExcelCompiler:
         for cell in self.cell_map.values():
             if isinstance(cell, _CellRange) or cell.formula:
                 cell.value = None
+                cell.iterations = 0
 
         for cell in self.cell_map.values():
             if isinstance(cell, _CellRange):
@@ -696,12 +703,18 @@ class ExcelCompiler:
         """Evaluate a single cell"""
         cell = self.cell_map[address]
 
+
         # calculate the cell value for formulas and ranges
         if cell.value is None:
             if isinstance(cell, _CellRange):
                 self._evaluate_range(cell.address.address)
 
             elif cell.python_code:
+                if self._max_iterations is not None and \
+                    cell.iterations > self._max_iterations:
+                    cell.value = 0
+                else:
+                    cell.iterations += 1
                 self.log.debug(
                     "Evaluating: {}, {}".format(cell.address, cell.python_code))
                 value = self.eval(cell.formula)
@@ -715,7 +728,7 @@ class ExcelCompiler:
 
         return cell.value
 
-    def evaluate(self, address):
+    def evaluate(self, address, _recursed=False):
         """ evaluate a cell or cells in the spreadsheet
 
         :param address: str, AddressRange, AddressCell or a tuple or list
@@ -729,7 +742,7 @@ class ExcelCompiler:
                     address = tuple(address)
 
                 # process a tuple or list of addresses
-                return type(address)(self.evaluate(c) for c in address)
+                return type(address)(self.evaluate(c, True) for c in address)
 
             address = AddressRange.create(address)
 
@@ -740,6 +753,11 @@ class ExcelCompiler:
 
             if address.address not in self.cell_map:
                 self._gen_graph(address.address)
+
+        if not _recursed:
+            for cell in self.cell_map.values():
+                if isinstance(cell, _CellRange) or cell.formula:
+                    cell.iterations = 0
 
         result = self._evaluate(str(address))
         if isinstance(result, tuple):
@@ -826,6 +844,8 @@ class _CellBase:
             excel = None
         self.excel = excel
         self.address = AddressRange(address)
+
+        self.iterations = 0
 
     @property
     def sheet(self):
