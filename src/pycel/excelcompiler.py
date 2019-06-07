@@ -32,7 +32,8 @@ class ExcelCompiler:
 
     save_file_extensions = ('pkl', 'pickle', 'yml', 'yaml', 'json')
 
-    def __init__(self, filename=None, excel=None, plugins=None, max_iterations=None):
+    def __init__(self, filename=None, excel=None, plugins=None,
+                 max_iterations=None):
         """ Build a compiler instance to organize the formula for a workbook
 
         :param filename: Excel filename to load from (xlsx or `to_file`)
@@ -703,15 +704,14 @@ class ExcelCompiler:
         """Evaluate a single cell"""
         cell = self.cell_map[address]
 
-
         # calculate the cell value for formulas and ranges
         if cell.value is None:
             if isinstance(cell, _CellRange):
                 self._evaluate_range(cell.address.address)
 
             elif cell.python_code:
-                if self._max_iterations is not None and \
-                    cell.iterations > self._max_iterations:
+                if (self._max_iterations is not None and
+                        cell.iterations > self._max_iterations):
                     cell.value = 0
                 else:
                     cell.iterations += 1

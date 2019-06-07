@@ -615,6 +615,7 @@ def test_plugins(excel_compiler):
         with pytest.raises(UnknownFunction):
             calc_and_check()
 
+
 def test_validate_circular_referenced(circular_ws):
     circular_ws.trim_graph(['Sheet1!B3'], ['Sheet1!B2'])
 

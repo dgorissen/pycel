@@ -34,9 +34,11 @@ def fixture_xls_path(fixture_dir, tmpdir):
 def fixture_xls_path_basic(fixture_dir, tmpdir):
     return copy_fixture_xls_path(fixture_dir, tmpdir, 'basic.xlsx')
 
+
 @pytest.fixture('session')
 def fixture_xls_path_circular(fixture_dir, tmpdir):
     return copy_fixture_xls_path(fixture_dir, tmpdir, 'circular.xlsx')
+
 
 @pytest.fixture('session')
 def unconnected_excel(fixture_xls_path):
@@ -62,9 +64,11 @@ def excel(unconnected_excel):
 def basic_ws(fixture_xls_path_basic):
     return ExcelCompiler(fixture_xls_path_basic)
 
+
 @pytest.fixture('session')
 def circular_ws(fixture_xls_path_circular):
     return ExcelCompiler(fixture_xls_path_circular, max_iterations=100)
+
 
 @pytest.fixture
 def excel_compiler(excel):
