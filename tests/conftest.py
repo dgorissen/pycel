@@ -31,11 +31,6 @@ def fixture_xls_path(fixture_dir, tmpdir):
 
 
 @pytest.fixture('session')
-def fixture_xls_path_basic(fixture_dir, tmpdir):
-    return copy_fixture_xls_path(fixture_dir, tmpdir, 'basic.xlsx')
-
-
-@pytest.fixture('session')
 def unconnected_excel(fixture_xls_path):
     import openpyxl.worksheet._reader as orw
     old_warn = orw.warn
@@ -56,8 +51,15 @@ def excel(unconnected_excel):
 
 
 @pytest.fixture('session')
-def basic_ws(fixture_xls_path_basic):
-    return ExcelCompiler(fixture_xls_path_basic)
+def basic_ws(fixture_dir, tmpdir):
+    return ExcelCompiler(
+        copy_fixture_xls_path(fixture_dir, tmpdir, 'basic.xlsx'))
+
+
+@pytest.fixture('session')
+def cond_format_ws(fixture_dir, tmpdir):
+    return ExcelCompiler(
+        copy_fixture_xls_path(fixture_dir, tmpdir, 'cond-format.xlsx'))
 
 
 @pytest.fixture

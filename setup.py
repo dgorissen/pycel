@@ -54,7 +54,7 @@ setup(
     install_requires=[
         'networkx>=2.0',
         'numpy',
-        'openpyxl>=2.6.0',
+        'openpyxl>=2.6.2',
         'ruamel.yaml',
     ],
     python_requires='>=3.5',

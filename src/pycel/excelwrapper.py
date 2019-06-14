@@ -12,6 +12,7 @@ from unittest import mock
 from openpyxl import load_workbook
 from openpyxl.cell.cell import Cell, MergedCell
 from openpyxl.cell.read_only import EMPTY_CELL
+from openpyxl.formula.translate import Translator
 from openpyxl.utils import datetime as opxl_dt
 from pycel.excelutil import AddressCell, AddressRange, flatten
 
@@ -140,6 +141,9 @@ class _OpxCell(_OpxRange):
 class ExcelOpxWrapper(ExcelWrapper):
     """ OpenPyXl implementation for ExcelWrapper interface """
 
+    CfRule = collections.namedtuple(
+        'CfRule', 'formula priority dxf_id dxf stop_if_true')
+
     def __init__(self, filename, app=None):
         super(ExcelWrapper, self).__init__()
 
@@ -188,6 +192,31 @@ class ExcelOpxWrapper(ExcelWrapper):
                     break
 
         return self._table_refs.get(address)
+
+    def conditional_format(self, address):
+        """ Return the conditional formats applicable for this cell """
+        address = AddressCell(address)
+        all_formats = self.workbook[address.sheet].conditional_formatting
+        formats = (cf for cf in all_formats if address.coordinate in cf)
+        rules = []
+        for cf in formats:
+            origin = AddressRange(cf.cells.ranges[0].coord).start
+            row_offset = address.row - origin.row
+            col_offset = address.col_idx - origin.col_idx
+            for rule in cf.rules:
+                if rule.formula:
+                    trans = Translator(
+                        '={}'.format(rule.formula[0]), origin.coordinate)
+                    formula = trans.translate_formula(
+                        row_delta=row_offset, col_delta=col_offset)
+                    rules.append(self.CfRule(
+                        formula=formula,
+                        priority=rule.priority,
+                        dxf_id=rule.dxfId,
+                        dxf=rule.dxf,
+                        stop_if_true=rule.stopIfTrue,
+                    ))
+        return sorted(rules, key=lambda x: x.priority)
 
     def connect(self):
         self.workbook = load_workbook(self.filename)
