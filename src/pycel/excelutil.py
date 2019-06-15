@@ -1264,3 +1264,48 @@ def build_operator_operand_fixup(capture_error_state):
             return VALUE_ERROR
 
     return fixup
+
+
+class _IterativeEvalTracker:
+    """When iteratively evaluating, keep track of which cycle we are on"""
+    ns = threading.local()
+
+    def __init__(self):
+        self.ns.todo = set()
+        self.ns.computed = set()
+        self.ns.iteration_number = 0
+
+    def __call__(self, iterations=100, tolerance=0.001):
+        self.ns.iteration_number = 0
+        self.ns.iterations = iterations
+        self.ns.tolerance = tolerance
+        return self
+
+    @property
+    def tolerance(self):
+        return self.ns.tolerance
+
+    @property
+    def done(self):
+        return (self.ns.iteration_number >= self.ns.iterations or
+                not self.ns.todo)
+
+    def wip(self, cell):
+        """Which cells are currently a Work In Progress"""
+        self.ns.todo.add(cell)
+
+    def calced(self, cell):
+        """Mark which cells have been done this iteration"""
+        self.ns.computed.add(cell)
+
+    def is_calced(self, cell):
+        """Which cells have been done this iteration"""
+        return cell in self.ns.computed
+
+    def inc_iteration_number(self):
+        self.ns.iteration_number += 1
+        self.ns.todo.clear()
+        self.ns.computed.clear()
+
+
+iterative_eval_tracker = _IterativeEvalTracker()

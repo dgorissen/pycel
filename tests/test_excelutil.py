@@ -22,6 +22,7 @@ from pycel.excelutil import (
     in_array_formula_context,
     is_leap_year,
     is_number,
+    iterative_eval_tracker,
     list_like,
     MAX_COL,
     MAX_ROW,
@@ -1191,3 +1192,46 @@ def test_excel_operator_operand_fixup(left_op, op, right_op, expected):
     elif expected == DIV0 and DIV0 not in (left_op, right_op):
         assert [(True, 'Values: {} {} {}'.format(left_op, op, right_op))
                 ] == error_messages
+
+
+def test_iterative_eval_tracker():
+    assert isinstance(iterative_eval_tracker.ns.todo, set)
+
+    # init the tracker
+    iterative_eval_tracker(iterations=100, tolerance=0.001)
+    assert iterative_eval_tracker.ns.iteration_number == 0
+    assert iterative_eval_tracker.ns.iterations == 100
+    assert iterative_eval_tracker.ns.tolerance == 0.001
+    assert iterative_eval_tracker.tolerance == 0.001
+    assert iterative_eval_tracker.done
+
+    # test done if no WIP
+    iterative_eval_tracker.wip(1)
+    assert iterative_eval_tracker.ns.todo == {1}
+    assert not iterative_eval_tracker.done
+    iterative_eval_tracker.inc_iteration_number()
+    assert iterative_eval_tracker.done
+
+    # init the tracker
+    iterative_eval_tracker(iterations=2, tolerance=5)
+    assert iterative_eval_tracker.ns.iteration_number == 0
+    assert iterative_eval_tracker.ns.iterations == 2
+    assert iterative_eval_tracker.ns.tolerance == 5
+
+    # test done if max iters exceeded
+    iterative_eval_tracker.inc_iteration_number()
+    assert iterative_eval_tracker.ns.iteration_number == 1
+    iterative_eval_tracker.wip(1)
+    assert not iterative_eval_tracker.done
+
+    iterative_eval_tracker.inc_iteration_number()
+    assert iterative_eval_tracker.ns.iteration_number == 2
+    iterative_eval_tracker.wip(1)
+    assert iterative_eval_tracker.done
+
+    # check calced / iscalced
+    assert not iterative_eval_tracker.is_calced(1)
+    iterative_eval_tracker.calced(1)
+    assert iterative_eval_tracker.is_calced(1)
+    iterative_eval_tracker.inc_iteration_number()
+    assert not iterative_eval_tracker.is_calced(1)

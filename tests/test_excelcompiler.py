@@ -231,6 +231,29 @@ def test_value_tree_str(excel_compiler):
     assert expected == list(excel_compiler.value_tree_str(out_address))
 
 
+def test_value_tree_str_circular(circular_ws):
+
+    out_address = 'Sheet1!B8'
+    circular_ws.evaluate(out_address)
+
+    expected = [
+        'Sheet1!B8 = -50',
+        ' Sheet1!B1 = 0',
+        '  Sheet1!B2 = 0',
+        '   Sheet1!A2 = 0.2',
+        '   Sheet1!B1 <- cycle',
+        '   Sheet1!B3 = 0',
+        '  Sheet1!B3 <- cycle',
+        ' Sheet1!B6 = 50',
+        '  Sheet1!A5 = 50',
+        '  Sheet1!A6 = 50',
+        '   Sheet1!B6 <- cycle',
+        '  Sheet1!B3 <- cycle',
+        '  Sheet1!B5 = 0.01',
+    ]
+    assert expected == list(circular_ws.value_tree_str(out_address))
+
+
 def test_trim_cells(excel_compiler):
     input_addrs = ['trim-range!D5']
     output_addrs = ['trim-range!B2']
@@ -616,17 +639,77 @@ def test_plugins(excel_compiler):
             calc_and_check()
 
 
-def test_validate_circular_referenced(circular_ws):
-    circular_ws.trim_graph(['Sheet1!B3'], ['Sheet1!B2'])
+@pytest.mark.parametrize(
+    'a2, b3, iters, result', (
+        (0.2, 100, 3, 16.8),
+        (0.2, 100, 4, 16.64),
+        (0.2, 100, 5, 16.672),
+        (0.2, 200, 3, 33.6),
+        (0.2, 200, 4, 33.28),
+        (0.2, 200, 5, 33.344),
+        (0.2, 500, 3, 84),
+        (0.2, 500, 4, 83.2),
+        (0.2, 500, 5, 83.36),
+        (0.1234, 500, 3, 55.025760452),
+    )
+)
+def test_validate_circular_referenced_iters(
+        circular_ws, a2, b3, iters, result):
+    circular_ws.evaluate(['Sheet1!B2', 'Sheet1!B6'], iterations=1)
+    circular_ws.set_value('Sheet1!A2', a2)
+    circular_ws.set_value('Sheet1!B2', 0)
+    circular_ws.set_value('Sheet1!B3', b3)
+    val = circular_ws.evaluate('Sheet1!B2', iterations=iters, tolerance=1e-100)
+    assert val == pytest.approx(result)
 
+
+@pytest.mark.parametrize(
+    'start, inc, tol, result', (
+        (50, 0.1, 0.09, 40),
+        (50, 0.1, 0.1, 49.9),
+        (50, 0.1, 0.11, 49.9),
+    )
+)
+def test_validate_circular_referenced_tol(
+        circular_ws, start, inc, tol, result):
+    circular_ws.evaluate(['Sheet1!B2', 'Sheet1!B6'], iterations=1)
     circular_ws.set_value('Sheet1!B3', 100)
-    assert circular_ws.evaluate('Sheet1!B2') == pytest.approx(16.66666667)
+    circular_ws.set_value('Sheet1!A5', start)
+    circular_ws.set_value('Sheet1!B5', inc)
+    circular_ws.set_value('Sheet1!A6', start)
+    circular_ws.set_value('Sheet1!B6', start)
+    assert circular_ws.evaluate('Sheet1!B6', iterations=100, tolerance=tol
+                                ) == pytest.approx(result)
 
-    circular_ws.set_value('Sheet1!B3', 200)
-    assert circular_ws.evaluate('Sheet1!B2') == pytest.approx(33.33333333)
 
-    circular_ws.set_value('Sheet1!B3', 500)
-    assert circular_ws.evaluate('Sheet1!B2') == pytest.approx(83.33333333)
+def test_validate_circular_referenced(circular_ws):
+    b6_expect = pytest.approx(49.92)
+    b8_expect = pytest.approx(33.41312)
+    circular_ws.evaluate('Sheet1!B8', iterations=1)
 
-    circular_ws.set_value('Sheet1!A2', 0.1234)
-    assert circular_ws.evaluate('Sheet1!B2') == pytest.approx(54.92255652)
+    circular_ws.set_value('Sheet1!B3', 0)
+    b8 = circular_ws.evaluate('Sheet1!B8', iterations=5000, tolerance=1e-20)
+    assert b8 == -50
+    circular_ws.set_value('Sheet1!B3', 100)
+    b8 = circular_ws.evaluate('Sheet1!B8', iterations=5000, tolerance=0.01)
+    assert b8 == b8_expect
+
+    circular_ws.set_value('Sheet1!B3', 0)
+    b6, b8 = circular_ws.evaluate(
+        ['Sheet1!B6', 'Sheet1!B8'], iterations=5000, tolerance=1e-20)
+    assert (b6, b8) == (50, -50)
+    circular_ws.set_value('Sheet1!B3', 100)
+    b6, b8 = circular_ws.evaluate(
+        ['Sheet1!B6', 'Sheet1!B8'], iterations=5000, tolerance=0.01)
+    assert b6 == b6_expect
+    assert b8 == b8_expect
+
+    circular_ws.set_value('Sheet1!B3', 0)
+    b6, b8 = circular_ws.evaluate(
+        ['Sheet1!B6', 'Sheet1!B8'], iterations=5000, tolerance=1e-20)
+    assert (b6, b8) == (50, -50)
+    circular_ws.set_value('Sheet1!B3', 100)
+    b8, b6 = circular_ws.evaluate(
+        ['Sheet1!B8', 'Sheet1!B6'], iterations=5000, tolerance=0.01)
+    assert b6 == b6_expect
+    assert b8 == b8_expect
