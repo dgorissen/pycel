@@ -62,6 +62,13 @@ def cond_format_ws(fixture_dir, tmpdir):
         copy_fixture_xls_path(fixture_dir, tmpdir, 'cond-format.xlsx'))
 
 
+@pytest.fixture()
+def circular_ws(fixture_dir, tmpdir):
+    fixture_xls_path_circular = copy_fixture_xls_path(
+        fixture_dir, tmpdir, 'circular.xlsx')
+    return ExcelCompiler(fixture_xls_path_circular, cycles=True)
+
+
 @pytest.fixture
 def excel_compiler(excel):
     return ExcelCompiler(excel=excel)

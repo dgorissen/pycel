@@ -12,6 +12,7 @@ from pycel.excelutil import (
     AddressCell,
     AddressRange,
     flatten,
+    iterative_eval_tracker,
     list_like,
     NULL_ERROR,
     VALUE_ERROR,
@@ -32,12 +33,13 @@ class ExcelCompiler:
 
     save_file_extensions = ('pkl', 'pickle', 'yml', 'yaml', 'json')
 
-    def __init__(self, filename=None, excel=None, plugins=None):
+    def __init__(self, filename=None, excel=None, plugins=None, cycles=False):
         """ Build a compiler instance to organize the formula for a workbook
 
         :param filename: Excel filename to load from (xlsx or `to_file`)
         :param excel: Opened instance of ExcelWrapper
         :param plugins: module paths for plugin lib functions
+        :param cycles: workbook has calculation cycles
         """
 
         self._eval = None
@@ -73,6 +75,12 @@ class ExcelCompiler:
         self.conditional_formats = {}
         self._formula_cells_dict = {}
         self._plugin_modules = plugins
+
+        # Setup to be able to evaluate circular references
+        self.cycles = cycles
+        self.Cell = _CycleCell if cycles else _Cell
+        self.evaluate = (self._evaluate_iterative if cycles else
+                         self._evaluate_non_iterative)
 
     def __getstate__(self):
         # code objects are not serializable
@@ -111,9 +119,23 @@ class ExcelCompiler:
     @property
     def eval(self):
         if self._eval is None:
-            self._eval = ExcelFormula.build_eval_context(
+            eval_ctx = ExcelFormula.build_eval_context(
                 self._evaluate, self._evaluate_range,
                 self.log, plugins=self._plugin_modules)
+
+            if self.cycles:
+                def _eval(cell, cse_array_address=None):
+                    cell.start_calcs()
+                    return eval_ctx(
+                        cell.formula, cse_array_address=cse_array_address)
+
+            else:
+                def _eval(cell, cse_array_address=None):
+                    return eval_ctx(
+                        cell.formula, cse_array_address=cse_array_address)
+
+            self._eval = _eval
+
         return self._eval
 
     @classmethod
@@ -371,18 +393,18 @@ class ExcelCompiler:
         cell_or_range = self.cell_map[address]
 
         if cell_or_range.value != value:  # pragma: no branch
-            # need to be able to 'set' an empty cell
-            if cell_or_range.value is None:
-                cell_or_range.value = value
+            # need to be able to 'set' an empty cell, set to not None
+            cell_or_range.value = value
 
             # reset the node + its dependencies
-            self._reset(cell_or_range)
+            if not self.cycles:
+                self._reset(cell_or_range)
 
             # set the value
             cell_or_range.value = value
 
     def _reset(self, cell):
-        if cell.value is None:
+        if cell.needs_calc:
             return
         self.log.info("Resetting {}".format(cell.address))
         cell.value = None
@@ -393,12 +415,22 @@ class ExcelCompiler:
                     self._reset(child_cell)
 
     def value_tree_str(self, address, indent=0):
+        iterative_eval_tracker.inc_iteration_number()
+        yield from self._value_tree_str(address)
+
+    def _value_tree_str(self, address, indent=0):
         """Generator which returns a formatted dependency graph"""
         cell = self.cell_map[address]
-        yield "{}{} = {}".format(" " * indent, address, cell.value)
-        for children in sorted(self.dep_graph.predecessors(cell),
-                               key=lambda a: a.address.address):
-            yield from self.value_tree_str(children.address.address, indent + 1)
+
+        if iterative_eval_tracker.is_calced(address):
+            yield "{}{} <- cycle".format(" " * indent, address, cell.value)
+        else:
+            iterative_eval_tracker.calced(address)
+            yield "{}{} = {}".format(" " * indent, address, cell.value)
+            for children in sorted(self.dep_graph.predecessors(cell),
+                                   key=lambda a: a.address.address):
+                yield from self._value_tree_str(
+                    children.address.address, indent + 1)
 
     def recalculate(self):
         """Recalculate all of the known cells"""
@@ -503,13 +535,6 @@ class ExcelCompiler:
         :param verify_tree: Follow the tree to any precedent nodes
         :return: dict of addresses with good/bad values that failed to verify
         """
-        def close_enough(val1, val2):
-            import pytest
-            if isinstance(val1, (int, float)) and \
-                    isinstance(val2, (int, float)):
-                return val2 == pytest.approx(val1)
-            else:
-                return val1 == val2
 
         Mismatch = collections.namedtuple('Mismatch', 'original calced formula')
 
@@ -541,7 +566,7 @@ class ExcelCompiler:
                     self._evaluate(addr.address)
 
                     if not (original_value is None or
-                            close_enough(original_value, cell.value)):
+                            cell.close_enough(original_value)):
                         failed.setdefault('mismatch', {})[str(addr)] = Mismatch(
                             original_value, cell.value,
                             cell.formula.base_formula)
@@ -623,8 +648,8 @@ class ExcelCompiler:
             self.graph_todos.append(node)
 
         def build_cell(excel_cell):
-            a_cell = _Cell(excel_cell.address, value=excel_cell.values,
-                           formula=excel_cell.formula, excel=self.excel)
+            a_cell = self.Cell(excel_cell.address, value=excel_cell.values,
+                               formula=excel_cell.formula, excel=self.excel)
             self.cell_map[str(excel_cell.address)] = a_cell
             return [a_cell]
 
@@ -636,7 +661,7 @@ class ExcelCompiler:
             if isinstance(excel_range.formula, tuple):
                 for addr, value, formula in a_range.cells_to_build(excel_range):
                     if addr.address not in self.cell_map:
-                        a_cell = _Cell(addr, value, formula, self.excel)
+                        a_cell = self.Cell(addr, value, formula, self.excel)
                         self.cell_map[addr.address] = a_cell
                         added.append(a_cell)
             else:
@@ -651,7 +676,7 @@ class ExcelCompiler:
             if excel_data.address != address:
                 # if the actual data returned is not the same as the address
                 # given, then use a reference
-                self.cell_map[str(address)] = _Cell(
+                self.cell_map[str(address)] = self.Cell(
                     address, formula=REF_FORMAT.format(excel_data.address),
                     excel=self.excel)
 
@@ -677,7 +702,7 @@ class ExcelCompiler:
             self._gen_graph(address)
             cell_range = self.cell_map[address]
 
-        if cell_range.value is None:
+        if cell_range.needs_calc:
             self.log.debug("Evaluating: {}, {}".format(
                 cell_range.address, cell_range.python_code))
             if cell_range.formula is None:
@@ -687,7 +712,7 @@ class ExcelCompiler:
                 )
             else:
                 # CSE Array Formula
-                data = self.eval(cell_range.formula, cell_range.address)
+                data = self.eval(cell_range, cell_range.address)
             self.log.info("Range %s evaluated to '%s'" % (
                 cell_range.address, data))
 
@@ -700,14 +725,14 @@ class ExcelCompiler:
         cell = self.cell_map[address]
 
         # calculate the cell value for formulas and ranges
-        if cell.value is None:
+        if cell.needs_calc:
             if isinstance(cell, _CellRange):
                 self._evaluate_range(cell.address.address)
 
             elif cell.python_code:
                 self.log.debug(
                     "Evaluating: {}, {}".format(cell.address, cell.python_code))
-                value = self.eval(cell.formula)
+                value = self.eval(cell)
                 self.log.info("Cell %s evaluated to '%s' (%s)" % (
                     cell.address, value, type(value).__name__))
                 cell.value = VALUE_ERROR if list_like(value) else value
@@ -718,21 +743,21 @@ class ExcelCompiler:
 
         return cell.value
 
-    def evaluate(self, address):
+    def _evaluate_non_iterative(self, address):
         """ evaluate a cell or cells in the spreadsheet
 
         :param address: str, AddressRange, AddressCell or a tuple or list
             or iterable of these three
         :return: evaluated value/values
         """
-
         if str(address) not in self.cell_map:
             if list_like(address):
                 if not isinstance(address, (tuple, list)):
                     address = tuple(address)
 
                 # process a tuple or list of addresses
-                return type(address)(self.evaluate(c) for c in address)
+                return type(address)(
+                    self._evaluate_non_iterative(c) for c in address)
 
             address = AddressRange.create(address)
 
@@ -752,6 +777,27 @@ class ExcelCompiler:
             if len(result) == 1:
                 result = result[0]
         return result
+
+    def _evaluate_iterative(self, address, iterations=100, tolerance=0.001):
+        """ evaluate a cell or cells in a spreadsheet with cycles
+
+        reference: https://support.office.com/en-us/article/
+                    8540bd0f-6e97-4483-bcf7-1b49cd50d123
+
+        :param address: str, AddressRange, AddressCell or a tuple or list
+            or iterable of these three
+        :param iterations: maximum number of iterations to compute
+        :param tolerance: maximum change, if any calculated value changes by
+            more than this, another iteration will be performed
+        :return: evaluated value/values
+        """
+
+        progress_tracker = iterative_eval_tracker(iterations, tolerance)
+        while True:
+            progress_tracker.inc_iteration_number()
+            results = self._evaluate_non_iterative(address)
+            if progress_tracker.done:
+                return results
 
     def _gen_graph(self, seed, recursed=False):
         """Given a starting point (e.g., A6, or A3:B7) on a particular sheet,
@@ -871,6 +917,8 @@ class ExcelCompiler:
 
 class _CellBase:
 
+    value = None
+
     def __init__(self, address=None, formula='', excel=None):
         formula_is_python_code = excel is None or isinstance(
             excel, _CompiledImporter)
@@ -890,6 +938,20 @@ class _CellBase:
     @property
     def python_code(self):
         return self.formula and self.formula.python_code
+
+    @property
+    def needs_calc(self):
+        return self.value is None
+
+    def close_enough(self, value, rel=0.00001, tol=None):
+        if (isinstance(self.value, (int, float)) and self.value and
+                isinstance(value, (int, float)) and value):
+            if tol is not None:
+                return abs(value - self.value) < (1 + rel) * tol
+            else:
+                return 1 - rel < abs(value / self.value) < 1 + rel
+        else:
+            return self.value == value
 
 
 class _CellRange(_CellBase):
@@ -966,6 +1028,59 @@ class _Cell(_CellBase):
     @property
     def needed_addresses(self):
         return self.formula and self.formula.needed_addresses or ()
+
+
+class _CycleCell(_Cell):
+    """Cell which participates in a iterative calculation
+
+    For non iterative (non-cyclic) excel sheets we use reset() (set value
+    to None), then calc anything that is None.  But for iterative (cyclic)
+    excel sheets the inputs to a cell could potentially change anytime, so
+    we need to calc everything all the time.
+
+    While it would be possible to break things done further to cyclic and
+    non-cyclic sections of the graph, and then only iterate on the cyclic
+    sections, implemented here is a simpler algorithm:
+
+    1. Start at the top of eval tree (cell to evaluate)
+    2. Mark the cell in question as being a work in progress (WIP)
+    3. Eval (ie: calc the lambda for) the cell.  The will cause other
+       cells to be evaluated
+    4. If the value of a  cell that is WIP is needed, then we have a loop.
+       Use the previous value, and do not descend any farther on the tree.
+    5. After evaluating a cell, check if the value changed by more that
+       the allowed tolerance, if so note the cell as needing more evals
+    """
+
+    def __init__(self, *args, **kwargs):
+        self._value = None
+        self._prev_value = None
+        self.wip = False
+        super().__init__(*args, **kwargs)
+
+    @property
+    def value(self):
+        if self.wip:
+            return self._prev_value
+        else:
+            return self._value
+
+    @value.setter
+    def value(self, a_value):
+        iterative_eval_tracker.calced(self)
+        self.wip = False
+        self._value = a_value
+        if not self.close_enough(
+                self._prev_value, tol=iterative_eval_tracker.tolerance):
+            iterative_eval_tracker.wip(self)
+
+    def start_calcs(self):
+        self.wip = True
+        self._prev_value = self._value
+
+    @property
+    def needs_calc(self):
+        return not self.wip and not iterative_eval_tracker.is_calced(self)
 
 
 class _CompiledImporter:
