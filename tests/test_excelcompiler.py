@@ -614,3 +614,19 @@ def test_plugins(excel_compiler):
     with mock.patch('pycel.excelformula.ExcelFormula.default_modules', ()):
         with pytest.raises(UnknownFunction):
             calc_and_check()
+
+
+def test_validate_circular_referenced(circular_ws):
+    circular_ws.trim_graph(['Sheet1!B3'], ['Sheet1!B2'])
+
+    circular_ws.set_value('Sheet1!B3', 100)
+    assert circular_ws.evaluate('Sheet1!B2') == pytest.approx(16.66666667)
+
+    circular_ws.set_value('Sheet1!B3', 200)
+    assert circular_ws.evaluate('Sheet1!B2') == pytest.approx(33.33333333)
+
+    circular_ws.set_value('Sheet1!B3', 500)
+    assert circular_ws.evaluate('Sheet1!B2') == pytest.approx(83.33333333)
+
+    circular_ws.set_value('Sheet1!A2', 0.1234)
+    assert circular_ws.evaluate('Sheet1!B2') == pytest.approx(54.92255652)
