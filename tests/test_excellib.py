@@ -11,6 +11,7 @@ from pycel.excellib import (
     column,
     concat,
     concatenate,
+    conditional_format_ids,
     count,
     countif,
     countifs,
@@ -170,6 +171,20 @@ def test_concatenate(args, result):
     assert concatenate(*args) == result
     assert concat(args) == result
     assert concatenate(args) == VALUE_ERROR
+
+
+@pytest.mark.parametrize(
+    'args, result', (
+        (((True, 1, 0), (True, 2, 1), (True, 3, 0)), [1, 2]),
+        (((False, 1, 0), (True, 2, 1), (True, 3, 0)), [2]),
+        (((False, 1, 0), (True, 2, 0), (True, 3, 0)), [2, 3]),
+        (((False, 1, 0), (False, 2, 0), (True, 3, 0)), [3]),
+        (((False, 1, 0), (False, 2, 0), (False, 3, 0)), []),
+        ((), []),
+    )
+)
+def test_conditional_format_ids(args, result):
+    assert conditional_format_ids(*args) == result
 
 
 class TestCount:

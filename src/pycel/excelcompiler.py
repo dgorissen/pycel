@@ -912,7 +912,7 @@ class ExcelCompiler:
             self.cell_map[cf_addr] = a_cell
             self._gen_graph(a_cell.formula.needed_addresses)
 
-        return self.eval(self.cell_map[cf_addr].formula)
+        return self.eval(self.cell_map[cf_addr])
 
 
 class _CellBase:

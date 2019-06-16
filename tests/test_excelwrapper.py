@@ -215,6 +215,21 @@ def test_get_entire_rows_columns(excel, result_range, expected_range):
 
 
 @pytest.mark.parametrize(
+    'address, expecteds',
+    (
+        ('Sheet1!B2', ((1, '=B2=2'), (2, '=B2>1'), (4, '=B2>0'), (5, '=B2<0'))),
+        ('Sheet1!B5', ((1, '=B5=2'), (2, '=B5>1'), (4, '=B5>0'), (5, '=B5<0'))),
+        ('Sheet1!A1', ()),
+    )
+)
+def test_conditional_format(cond_format_ws, address, expecteds):
+    excel = cond_format_ws.excel
+    results = excel.conditional_format(address)
+    for result, expected in zip(results, expecteds):
+        assert (result.priority, result.formula) == expected
+
+
+@pytest.mark.parametrize(
     'value, formula',
     (
         (ARRAY_FORMULA_FORMAT % ('xyzzy', 1, 1, 2, 2), '={xyzzy}'),
