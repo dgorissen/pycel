@@ -147,6 +147,20 @@ def countif(range, criteria):
     return len(valid)
 
 
+def conditional_format_ids(*args):
+    """helper function for getting conditional format ids"""
+    # Excel reference: https://support.office.com/en-us/article/
+    #   E09711A3-48DF-4BCB-B82C-9D8B8B22463D
+
+    results = []
+    for condition, dxf_id, stop_if_true in args:
+        if condition:
+            results.append(dxf_id)
+            if stop_if_true:
+                break
+    return results
+
+
 def countifs(*args):
     # Excel reference: https://support.office.com/en-us/article/
     #   COUNTIFS-function-dda3dc6e-f74e-4aee-88bc-aa8c2a866842

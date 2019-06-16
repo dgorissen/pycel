@@ -1,3 +1,12 @@
+1.0b14 (2019-06-16)
+===================
+
+Changes
+-------
+* Added method to evaluate the conditional format (formulas) for a cell or cells
+* Added ExcelCompiler(..., cycles=True) to allow Excel iterative calculations
+
+
 1.0b13 (2019-05-10)
 ===================
 
@@ -9,6 +18,7 @@ Changes
 Bug Fixes
 ---------
 * #54, In normalize_year(), month % 12 can be 0 -> IllegalMonthError
+
 
 1.0b12 (2019-04-22)
 ===================

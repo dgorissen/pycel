@@ -72,6 +72,7 @@ class ExcelCompiler:
         self.range_todos = []
 
         self.extra_data = None
+        self.conditional_formats = {}
         self._formula_cells_dict = {}
         self._plugin_modules = plugins
 
@@ -84,7 +85,9 @@ class ExcelCompiler:
     def __getstate__(self):
         # code objects are not serializable
         state = dict(self.__dict__)
-        for to_remove in '_eval excel log graph_todos range_todos'.split():
+        to_removes = '_eval excel log graph_todos range_todos ' \
+                     'conditional_formats'.split()
+        for to_remove in to_removes:
             if to_remove in state:    # pragma: no branch
                 state[to_remove] = None
         return state
@@ -857,6 +860,59 @@ class ExcelCompiler:
                 len(self.dep_graph.edges()),
                 len(self.cell_map))
         )
+
+    def eval_conditional_formats(self, address):
+        """Evaluate the conditional format (formulas) for a cell or cells
+
+        returns the conditional format id which is the key for the dict:
+          ExcelCompiler.conditional_formats
+
+        NOTE: conditional_formats are not saved in the persistent formats.
+              If needed they can be hand serialized into "extra_data"
+
+        :param address: str, AddressRange, AddressCell or a tuple or list
+            or iterable of these three
+        :return: evaluated objects ids
+        """
+        if list_like(address):
+            if not isinstance(address, (tuple, list)):
+                address = tuple(address)
+
+            # process a tuple or list of addresses
+            return type(address)(
+                self.eval_conditional_formats(c) for c in address)
+
+        address = AddressRange.create(address)
+
+        # get the sheet if not specified
+        if not address.has_sheet:
+            address = AddressRange(
+                address, sheet=self.excel.get_active_sheet_name())
+
+        if address.is_range:
+            return tuple(tuple(self.eval_conditional_formats(addr)
+                               for addr in row) for row in address.rows)
+
+        cf_addr = str(address).replace('!', '.cf!')
+
+        if cf_addr not in self.cell_map:
+            phony_cell = _Cell(address)
+            formats = self.excel.conditional_format(address)
+            format_strs = []
+            for f in formats:
+                excel_formula = ExcelFormula(f.formula, cell=phony_cell)
+                python_code = excel_formula.python_code
+                format_strs.append('({}, {}, {})'.format(
+                    python_code, f.dxf_id, int(bool(f.stop_if_true))))
+                self.conditional_formats[f.dxf_id] = f.dxf
+
+            python_code = '=conditional_format_ids({})'.format(
+                ', '.join(format_strs))
+            a_cell = _Cell(address, formula=python_code)
+            self.cell_map[cf_addr] = a_cell
+            self._gen_graph(a_cell.formula.needed_addresses)
+
+        return self.eval(self.cell_map[cf_addr])
 
 
 class _CellBase:

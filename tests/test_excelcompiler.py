@@ -410,6 +410,62 @@ def test_evaluate_entire_row_column(excel_compiler):
     assert len(value[0]) == 4
 
 
+def test_evaluate_conditional_formatting(cond_format_ws):
+    cells_addrs = [
+        AddressCell('B2'),
+        AddressCell('Sheet1!B3'),
+        AddressRange('Sheet1!B4:B6'),
+    ]
+    formats = cond_format_ws.eval_conditional_formats(cells_addrs)
+    formats2 = cond_format_ws.eval_conditional_formats((a for a in cells_addrs))
+    assert formats == list(formats2)
+    assert len(formats) == 3
+    assert len(formats[2]) == 3
+
+    # read the spreadsheet from yaml
+    cond_format_ws.to_file(file_types=('yml', ))
+    cond_format_ws_yaml = ExcelCompiler.from_file(
+        cond_format_ws.filename + '.yml')
+    cells_addrs[0] = AddressCell('Sheet1!B2')
+    formats3 = cond_format_ws_yaml.eval_conditional_formats(tuple(cells_addrs))
+    assert formats2 == formats3
+
+    # read the spreadsheet from pickle
+    cond_format_ws.to_file(file_types=('pkl', ))
+    cond_format_ws_pkl = ExcelCompiler.from_file(
+        cond_format_ws.filename + '.pkl')
+    cells_addrs[0] = AddressCell('Sheet1!B2')
+    formats4 = cond_format_ws_pkl.eval_conditional_formats(tuple(cells_addrs))
+    assert formats2 == formats4
+
+    formats.append(formats[2][0][0])
+    formats.append(formats[2][1][0])
+    formats.append(formats[2][2][0])
+    del formats[2]
+
+    color_key = {
+        ('FF006100', 'FFC6EFCE'): 'grn',
+        ('FF9C5700', 'FFFFEB9C'): 'yel',
+        ('FF9C0006', 'FFFFC7CE'): 'red',
+        (None, 'FFFFC7CE'): 'nofont',
+    }
+
+    color_map = {}
+    for idx, dxf in cond_format_ws.conditional_formats.items():
+        color_map[idx] = color_key[
+            dxf.font and dxf.font.color.value, dxf.fill.bgColor.value]
+
+    expected = [
+        ['red'],
+        ['grn', 'yel', 'red'],
+        ['yel', 'red'],
+        ['nofont'],
+        ['yel', 'red'],
+    ]
+    results = [[color_map[x] for x in y] for y in formats]
+    assert results == expected
+
+
 def test_trim_cells_warn_address_not_found(excel_compiler):
     input_addrs = ['trim-range!D5', 'trim-range!H1']
     output_addrs = ['trim-range!B2']
