@@ -24,6 +24,8 @@ REF_START = '=_REF_("'
 REF_END = '")'
 REF_FORMAT = REF_START + '{}' + REF_END
 
+pycel_logger = logging.getLogger('pycel')
+
 
 class ExcelCompiler:
     """Class responsible for taking an Excel spreadsheet and compiling it
@@ -33,13 +35,13 @@ class ExcelCompiler:
 
     save_file_extensions = ('pkl', 'pickle', 'yml', 'yaml', 'json')
 
-    def __init__(self, filename=None, excel=None, plugins=None, cycles=False):
+    def __init__(self, filename=None, excel=None, plugins=None, cycles=None):
         """ Build a compiler instance to organize the formula for a workbook
 
         :param filename: Excel filename to load from (xlsx or `to_file`)
         :param excel: Opened instance of ExcelWrapper
         :param plugins: module paths for plugin lib functions
-        :param cycles: workbook has calculation cycles
+        :param cycles: Override workbook iterative calculation settings
         """
 
         self._eval = None
@@ -59,7 +61,7 @@ class ExcelCompiler:
         # grab a copy of the current hash
         self._excel_file_md5_digest = self._compute_excel_file_md5_digest
 
-        self.log = logging.getLogger('pycel')
+        self.log = pycel_logger
 
         # directed graph for cell dependencies
         self.dep_graph = nx.DiGraph()
@@ -78,8 +80,22 @@ class ExcelCompiler:
 
         # Setup to be able to evaluate circular references
         self.cycles = cycles
-        self.Cell = _CycleCell if cycles else _Cell
-        self.evaluate = (self._evaluate_iterative if cycles else
+        if hasattr(self.excel, 'workbook'):
+            wb_cycles = bool(self.excel.workbook.calculation.iterate)
+            if self.cycles is None:
+                self.cycles = wb_cycles
+            elif wb_cycles != bool(self.cycles):
+                msg = "Initialized with cycles: {}, while workbook says: {}"
+                self.log.warning(msg.format(self.cycles, wb_cycles))
+
+            if self.cycles:
+                self.cycles = dict(
+                    iterations=self.excel.workbook.calculation.iterateCount,
+                    tolerance=self.excel.workbook.calculation.iterateDelta,
+                )
+
+        self.Cell = _CycleCell if self.cycles else _Cell
+        self.evaluate = (self._evaluate_iterative if self.cycles else
                          self._evaluate_non_iterative)
 
     def __getstate__(self):
@@ -94,7 +110,7 @@ class ExcelCompiler:
 
     def __setstate__(self, d):
         self.__dict__.update(d)
-        self.log = logging.getLogger('pycel')
+        self.log = pycel_logger
 
     @staticmethod
     def _compute_file_md5_digest(filename):
@@ -154,6 +170,7 @@ class ExcelCompiler:
                 return a_cell.value
 
         extra_data.update(dict(
+            cycles=self.cycles,
             excel_hash=self._excel_file_md5_digest,
             cell_map=dict(sorted(
                 ((addr, cell_value(cell))
@@ -199,8 +216,10 @@ class ExcelCompiler:
             data = YAML().load(f)
 
         excel = _CompiledImporter(filename, data)
-        excel_compiler = cls(excel=excel)
+        excel_compiler = cls(excel=excel, cycles=data.get('cycles', False))
         excel.compiler = excel_compiler
+        if 'cycles' in data:
+            del data['cycles']
 
         def add_line_numbers(cell_addr, line_number):
             formula = excel_compiler.cell_map[cell_addr].formula
@@ -778,7 +797,7 @@ class ExcelCompiler:
                 result = result[0]
         return result
 
-    def _evaluate_iterative(self, address, iterations=100, tolerance=0.001):
+    def _evaluate_iterative(self, address, iterations=None, tolerance=None):
         """ evaluate a cell or cells in a spreadsheet with cycles
 
         reference: https://support.office.com/en-us/article/
@@ -786,11 +805,16 @@ class ExcelCompiler:
 
         :param address: str, AddressRange, AddressCell or a tuple or list
             or iterable of these three
-        :param iterations: maximum number of iterations to compute
+        :param iterations: maximum number of iterations to compute. If not
+            specified use the value from the workbook.
         :param tolerance: maximum change, if any calculated value changes by
-            more than this, another iteration will be performed
+            more than this, another iteration will be performed. If not
+            specified use the value from the workbook.
         :return: evaluated value/values
         """
+
+        iterations = iterations or self.cycles['iterations']
+        tolerance = tolerance or self.cycles['tolerance']
 
         progress_tracker = iterative_eval_tracker(iterations, tolerance)
         while True:
