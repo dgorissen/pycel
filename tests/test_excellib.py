@@ -7,6 +7,7 @@ import pycel.excellib
 from pycel.excellib import (
     _numerics,
     average,
+    averageifs,
     ceiling,
     column,
     concat,
@@ -62,7 +63,6 @@ from pycel.excelutil import (
     NA_ERROR,
     NAME_ERROR,
     NUM_ERROR,
-    PyCelException,
     REF_ERROR,
     VALUE_ERROR,
 )
@@ -92,6 +92,32 @@ def test_average():
 
     assert DIV0 == average(DIV0)
     assert DIV0 == average((2, DIV0))
+
+
+@pytest.mark.parametrize(
+    'data, result', (
+        ((12, 12), AssertionError),
+        ((12, 12, 12), TypeError),
+        ((((1, 1, 2, 2, 2), ), ((1, 1, 2, 2, 2), ), 2), 2),
+        ((((1, 1, 2, 2, 2), ), ((1, 1, 2, 2, 2), ), 3), DIV0),
+        ((((1, 2, 3, 4, 5), ), ((1, 2, 3, 4, 5), ), ">=3"), 4),
+        ((((100, 123, 12, 23, 634), ),
+          ((1, 2, 3, 4, 5), ), ">=3"), 223),
+        ((((100, 123), (12, 23)), ((1, 2), (3, 4)), ">=3"), 35 / 2),
+        ((((100, 123, 12, 23, None), ),
+          ((1, 2, 3, 4, 5), ), ">=3"), 35 / 2),
+        (('JUNK', ((), ), ((), ), ), TypeError),
+        ((((1, 2, 3, 4, 5), ),
+          ((1, 2, 3, 4, 5), ), ">=3",
+          ((1, 2, 3, 4, 5), ), "<=4"), 7 / 2),
+    )
+)
+def test_averageifs(data, result):
+    if isinstance(result, type(Exception)):
+        with pytest.raises(result):
+            averageifs(*data)
+    else:
+        assert averageifs(*data) == result
 
 
 @pytest.mark.parametrize(
@@ -237,7 +263,7 @@ class TestCountIfs:
                              ((100, 102, 201, 20), ), ">100")
 
     def test_countifs_odd_args_len(self):
-        with pytest.raises(PyCelException):
+        with pytest.raises(AssertionError):
             countifs(((7, 25, 13, 25), ), 25, ((100, 102, 201, 20), ))
 
 
@@ -940,74 +966,51 @@ def test_row(address, expected):
         assert expected == result
 
 
-class TestSumIf:
-
-    def test_range_is_a_list(self):
-        with pytest.raises(TypeError):
-            sumif(12, 12)
-
-    def test_sum_range_is_a_list(self):
-        with pytest.raises(TypeError):
-            sumif(12, 12, 12)
-
-    def test_regular_with_number_criteria(self):
-        assert 6 == sumif(((1, 1, 2, 2, 2), ), 2)
-
-    def test_regular_with_string_criteria(self):
-        assert 12 == sumif(((1, 2, 3, 4, 5), ), ">=3")
-
-    def test_sum_range(self):
-        assert 668 == sumif(((1, 2, 3, 4, 5), ), ">=3",
-                            ((100, 123, 12, 23, 633), ))
-
-    def test_sum_range_with_more_indexes(self):
-        with pytest.raises(AssertionError):
-            sumif(((1, 2, 3, 4, 5),), ">=3", ((100, 123, 12, 23, 633, 1), ))
-
-    def test_sum_range_with_less_indexes(self):
-        with pytest.raises(AssertionError):
-            sumif(((1, 2, 3, 4, 5), ), ">=3", ((100, 123, 12, 23), ))
-
-    def test_sum_range_not_list(self):
-        with pytest.raises(TypeError):
-            sumif([], [], 'JUNK')
+@pytest.mark.parametrize(
+    'data, result', (
+        ((12, 12), TypeError),
+        ((12, 12, 12), TypeError),
+        ((((1, 1, 2, 2, 2), ), 2), 6),
+        ((((1, 2, 3, 4, 5), ), ">=3"), 12),
+        ((((1, 2, 3, 4, 5), ), ">=3",
+          ((100, 123, 12, 23, 633), )), 668),
+        ((((1, 2, 3, 4, 5),), ">=3",
+          ((100, 123, 12, 23, 633, 1),)), AssertionError),
+        ((((1, 2, 3, 4, 5),), ">=3", ((100, 123, 12, 23),)), AssertionError),
+        (([], [], 'JUNK'), TypeError),
+    )
+)
+def test_sumif(data, result):
+    if isinstance(result, type(Exception)):
+        with pytest.raises(result):
+            sumif(*data)
+    else:
+        assert sumif(*data) == result
 
 
-class TestSumIfs:
-
-    def test_range_is_a_list(self):
-        with pytest.raises(TypeError):
-            sumifs(12, 12)
-
-    def test_sum_range_is_a_list(self):
-        with pytest.raises(TypeError):
-            sumifs(12, 12, 12)
-
-    def test_regular_with_number_criteria(self):
-        assert 6 == sumifs(((1, 1, 2, 2, 2), ), ((1, 1, 2, 2, 2), ), 2)
-
-    def test_regular_with_string_criteria(self):
-        assert 12 == sumifs(((1, 2, 3, 4, 5), ), ((1, 2, 3, 4, 5), ), ">=3")
-
-    def test_sum_range(self):
-        assert 668 == sumifs(((100, 123, 12, 23, 633), ),
-                             ((1, 2, 3, 4, 5), ), ">=3")
-
-    def test_sum_range_rect(self):
-        assert 35 == sumifs(((100, 123), (12, 23)), ((1, 2), (3, 4)), ">=3")
-
-    def test_sum_range_with_empty(self):
-        assert 35 == sumifs(((100, 123, 12, 23, None), ),
-                            ((1, 2, 3, 4, 5), ), ">=3")
-
-    def test_sum_range_not_list(self):
-        with pytest.raises(TypeError):
-            sumifs('JUNK', ((), ), ((), ), )
-
-    def test_multiple_criteria(self):
-        assert 7 == sumifs(((1, 2, 3, 4, 5), ),
-                           ((1, 2, 3, 4, 5), ), ">=3",
-                           ((1, 2, 3, 4, 5), ), "<=4")
+@pytest.mark.parametrize(
+    'data, result', (
+        ((12, 12), AssertionError),
+        ((12, 12, 12), TypeError),
+        ((((1, 1, 2, 2, 2), ), ((1, 1, 2, 2, 2), ), 2), 6),
+        ((((1, 2, 3, 4, 5), ), ((1, 2, 3, 4, 5), ), ">=3"), 12),
+        ((((100, 123, 12, 23, 633), ),
+          ((1, 2, 3, 4, 5), ), ">=3"), 668),
+        ((((100, 123), (12, 23)), ((1, 2), (3, 4)), ">=3"), 35),
+        ((((100, 123, 12, 23, None), ),
+          ((1, 2, 3, 4, 5), ), ">=3"), 35),
+        (('JUNK', ((), ), ((), ), ), TypeError),
+        ((((1, 2, 3, 4, 5), ),
+          ((1, 2, 3, 4, 5), ), ">=3",
+          ((1, 2, 3, 4, 5), ), "<=4"), 7),
+    )
+)
+def test_sumifs(data, result):
+    if isinstance(result, type(Exception)):
+        with pytest.raises(result):
+            sumifs(*data)
+    else:
+        assert sumifs(*data) == result
 
 
 @pytest.mark.parametrize(

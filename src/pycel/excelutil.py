@@ -1,6 +1,7 @@
 import calendar
 import collections
 import datetime as dt
+import itertools as it
 import math
 import operator
 import re
@@ -960,6 +961,32 @@ def coerce_to_string(value):
 
     else:
         return value
+
+
+def handle_ifs(args, op_range=None):
+    """generic handler for ifs functions"""
+
+    assert len(args) and len(args) % 2 == 0, \
+        'Must have paired criteria and ranges'
+
+    if op_range is not None:
+        assert_list_like(op_range)
+
+        size = len(op_range), len(op_range[0])
+        for rng in args[0::2]:
+            assert size == (len(rng), len(rng[0])), \
+                "Size mismatch criteria {},{} != {},{}".format(
+                    size[0], size[1], len(rng), len(rng[0]))
+
+    # count the number of times a particular cell matches the criteria
+    index_counts = collections.Counter(it.chain.from_iterable(
+        find_corresponding_index(rng, criteria)
+        for rng, criteria in zip(args[0::2], args[1::2])))
+
+    ifs_count = len(args) // 2
+
+    # if it is true in all cases, return the coordinates
+    return tuple(idx for idx, cnt in index_counts.items() if cnt == ifs_count)
 
 
 def is_leap_year(year):
