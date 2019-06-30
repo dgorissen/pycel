@@ -1,6 +1,6 @@
 matplotlib
 networkx>=2.0
 numpy
-openpyxl>=2.6.0
+openpyxl>=2.6.2
 pydot
 ruamel.yaml

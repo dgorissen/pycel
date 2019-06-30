@@ -1,17 +1,13 @@
 """
 Python equivalents of various excel functions
 """
-import itertools as it
-
 from bisect import bisect_right
-from collections import Counter
 from datetime import datetime
 from decimal import Decimal, ROUND_HALF_UP, ROUND_UP
 import math
 
 import numpy as np
 from pycel.excelutil import (
-    assert_list_like,
     build_wildcard_re,
     coerce_to_string,
     date_from_int,
@@ -20,6 +16,7 @@ from pycel.excelutil import (
     ExcelCmp,
     find_corresponding_index,
     flatten,
+    handle_ifs,
     is_leap_year,
     is_number,
     list_like,
@@ -28,7 +25,6 @@ from pycel.excelutil import (
     NA_ERROR,
     NUM_ERROR,
     normalize_year,
-    PyCelException,
     REF_ERROR,
     VALUE_ERROR,
 )
@@ -63,6 +59,17 @@ def average(*args):
         return DIV0
     else:
         return sum(data) / len(data)
+
+
+def averageifs(average_range, *args):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   AVERAGEIFS-function-48910C45-1FC0-4389-A028-F7C5C3001690
+
+    coords = handle_ifs(args, average_range)
+    data = _numerics((average_range[r][c] for r, c in coords), keep_bools=True)
+    if len(data) == 0:
+        return DIV0
+    return sum(data) / len(data)
 
 
 @excel_math_func
@@ -165,17 +172,7 @@ def countifs(*args):
     # Excel reference: https://support.office.com/en-us/article/
     #   COUNTIFS-function-dda3dc6e-f74e-4aee-88bc-aa8c2a866842
 
-    if len(args) % 2 != 0:
-        raise PyCelException('excellib.countifs() must have a '
-                             'pair number of arguments, here %d' % len(args))
-
-    index_counts = Counter(it.chain.from_iterable(
-        find_corresponding_index(rng, criteria)
-        for rng, criteria in zip(args[0::2], args[1::2])))
-
-    ifs_count = len(args) // 2
-    return len(tuple(idx for idx, cnt in index_counts.items()
-                     if cnt == ifs_count))
+    return len(handle_ifs(args))
 
 
 @excel_helper(number_params=-1)
@@ -615,26 +612,10 @@ def sumifs(sum_range, *args):
     # Excel reference: https://support.office.com/en-us/article/
     #   SUMIFS-function-C9E748F5-7EA7-455D-9406-611CEBCE642B
 
-    assert_list_like(sum_range)
-
-    assert len(args) and len(args) % 2 == 0, \
-        'Must have paired criteria and ranges'
-
-    size = len(sum_range), len(sum_range[0])
-    for rng in args[0::2]:
-        assert size == (len(rng), len(rng[0])), \
-            "Size mismatch criteria range, sum range"
-
-    # count the number of times a particular cell matches the criteria
-    index_counts = Counter(it.chain.from_iterable(
-        find_corresponding_index(rng, criteria)
-        for rng, criteria in zip(args[0::2], args[1::2])))
-
-    ifs_count = len(args) // 2
-    indices = tuple(idx for idx, cnt in index_counts.items()
-                    if cnt == ifs_count)
     return sum(_numerics(
-        (sum_range[r][c] for r, c in indices), keep_bools=True))
+        (sum_range[r][c] for r, c in handle_ifs(args, sum_range)),
+        keep_bools=True
+    ))
 
 
 def sumproduct(*args):

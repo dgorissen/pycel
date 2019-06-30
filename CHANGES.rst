@@ -1,3 +1,16 @@
+1.0b15 (2019-06-30)
+===================
+
+Changes
+-------
+* Implement AVERAGEIFS()
+* Take Iterative Calc Parameter defaults from workbook
+
+Bug Fixes
+---------
+* #60, Binder Notebook Example not Working
+
+
 1.0b14 (2019-06-16)
 ===================
 

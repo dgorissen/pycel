@@ -769,3 +769,35 @@ def test_validate_circular_referenced(circular_ws):
         ['Sheet1!B8', 'Sheet1!B6'], iterations=5000, tolerance=0.01)
     assert b6 == b6_expect
     assert b8 == b8_expect
+
+    # round trip cycle params through text file
+    circular_ws.to_file(file_types='yml')
+    excel_compiler = ExcelCompiler.from_file(circular_ws.filename)
+    excel_compiler.set_value('Sheet1!B3', 0)
+    b6, b8 = excel_compiler.evaluate(
+        ['Sheet1!B6', 'Sheet1!B8'], iterations=5000, tolerance=1e-20)
+    assert (b6, b8) == (50, -50)
+    excel_compiler.set_value('Sheet1!B3', 100)
+    b8, b6 = excel_compiler.evaluate(
+        ['Sheet1!B8', 'Sheet1!B6'], iterations=5000, tolerance=0.01)
+    assert b6 == b6_expect
+    assert b8 == b8_expect
+
+
+def test_circular_mismatch_warning(
+        fixture_xls_path, fixture_xls_path_circular):
+
+    with mock.patch('pycel.excelcompiler.pycel_logger') as log:
+        assert log.warning.call_count == 0
+
+        ExcelCompiler(fixture_xls_path, cycles=False)
+        assert log.warning.call_count == 0
+
+        ExcelCompiler(fixture_xls_path, cycles=True)
+        assert log.warning.call_count == 1
+
+        ExcelCompiler(fixture_xls_path_circular, cycles=False)
+        assert log.warning.call_count == 2
+
+        ExcelCompiler(fixture_xls_path_circular, cycles=True)
+        assert log.warning.call_count == 2

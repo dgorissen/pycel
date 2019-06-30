@@ -31,6 +31,11 @@ def fixture_xls_path(fixture_dir, tmpdir):
 
 
 @pytest.fixture('session')
+def fixture_xls_path_circular(fixture_dir, tmpdir):
+    return copy_fixture_xls_path(fixture_dir, tmpdir, 'circular.xlsx')
+
+
+@pytest.fixture('session')
 def unconnected_excel(fixture_xls_path):
     import openpyxl.worksheet._reader as orw
     old_warn = orw.warn
@@ -62,10 +67,8 @@ def cond_format_ws(fixture_dir, tmpdir):
         copy_fixture_xls_path(fixture_dir, tmpdir, 'cond-format.xlsx'))
 
 
-@pytest.fixture()
-def circular_ws(fixture_dir, tmpdir):
-    fixture_xls_path_circular = copy_fixture_xls_path(
-        fixture_dir, tmpdir, 'circular.xlsx')
+@pytest.fixture
+def circular_ws(fixture_xls_path_circular):
     return ExcelCompiler(fixture_xls_path_circular, cycles=True)
 
 

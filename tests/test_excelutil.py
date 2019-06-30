@@ -19,6 +19,7 @@ from pycel.excelutil import (
     flatten,
     get_linest_degree,
     get_max_days_in_month,
+    handle_ifs,
     in_array_formula_context,
     is_leap_year,
     is_number,
@@ -707,6 +708,36 @@ def test_is_leap_year():
 
     with pytest.raises(TypeError):
         is_leap_year(0)
+
+
+@pytest.mark.parametrize(
+    'data, result', (
+        ((12, 12), TypeError),
+        ((12, 12, 12), AssertionError),
+        ((((1, 1, 2, 2, 2), ), 2), ((0, 2), (0, 3), (0, 4))),
+        ((((1, 2, 3, 4, 5), ), ">=3"), ((0, 2), (0, 3), (0, 4))),
+        ((((1, 2, 3, 4, 5), ), ">=3"), ((0, 2), (0, 3), (0, 4))),
+        ((((1, 2), (3, 4)), ">=3"), ((1, 0), (1, 1))),
+        ((((1, 2, 3, 4, 5), ), ">=3"), ((0, 2), (0, 3), (0, 4))),
+        (('JUNK', ((), ), ((), ), ), AssertionError),
+        ((((1, 2, 3, 4, 5), ), ">=3",
+          ((1, 2, 3, 4, 5), ), "<=4"), ((0, 2), (0, 3))),
+    )
+)
+def test_handle_ifs(data, result):
+    if isinstance(result, type(Exception)):
+        with pytest.raises(result):
+            handle_ifs(data)
+    else:
+        assert tuple(sorted(handle_ifs(data))) == result
+
+
+def test_handle_ifs_op_range_errors():
+    with pytest.raises(TypeError):
+        handle_ifs(((1, ), (1, )), 2)
+
+    with pytest.raises(AssertionError):
+        handle_ifs(((((1, 2), (3, 4)), ">=3")), ((1, ), (1, )))
 
 
 def test_get_max_days_in_month():
