@@ -8,9 +8,12 @@ import math
 
 from pycel.excelutil import (
     date_from_int,
+    ERROR_CODES,
     is_leap_year,
     NUM_ERROR,
     normalize_year,
+    time_from_serialnumber,
+    VALUE_ERROR,
 )
 
 
@@ -28,6 +31,25 @@ def serial_number_wrapper(f):
         if date_serial_number < 0:
             return NUM_ERROR
         return f(date_serial_number, *args, **kwargs)
+    return wrapped
+
+
+def time_value_wrapper(f):
+    """Validations and conversions for date values"""
+    @functools.wraps(f)
+    def wrapped(a_timevalue, *args, **kwargs):
+        if isinstance(a_timevalue, str):
+            try:
+                a_timevalue = float(a_timevalue)
+            except ValueError:
+                a_timevalue = timevalue(a_timevalue)
+            if a_timevalue in ERROR_CODES:
+                return a_timevalue
+        if a_timevalue is None:
+            a_timevalue = 0
+        elif a_timevalue < 0:
+            return NUM_ERROR
+        return f(a_timevalue)
     return wrapped
 
 
@@ -90,9 +112,11 @@ def day(serial_number):
     #   eomonth-function-7314ffa1-2bc9-4005-9d66-f49db127d628
 
 
-# def hour(value):
+@time_value_wrapper
+def hour(serial_number):
     # Excel reference: https://support.office.com/en-us/article/
     #   hour-function-a3afa879-86cb-4339-b1b5-2dd2d7310ac7
+    return time_from_serialnumber(serial_number)[0]
 
 
 # def isoweeknum(value):
@@ -100,9 +124,11 @@ def day(serial_number):
     #   isoweeknum-function-1c2d0afe-d25b-4ab1-8894-8d0520e90e0e
 
 
-# def minute(value):
+@time_value_wrapper
+def minute(serial_number):
     # Excel reference: https://support.office.com/en-us/article/
     #   minute-function-af728df0-05c4-4b07-9eed-a84801a60589
+    return time_from_serialnumber(serial_number)[1]
 
 
 @serial_number_wrapper
@@ -127,9 +153,11 @@ def month(serial_number):
     #   now-function-3337fd29-145a-4347-b2e6-20c904739c46
 
 
-# def second(value):
+@time_value_wrapper
+def second(serial_number):
     # Excel reference: https://support.office.com/en-us/article/
     #   second-function-740d1cfc-553c-4099-b668-80eaa24e8af1
+    return time_from_serialnumber(serial_number)[2]
 
 
 # def time(value):
@@ -137,9 +165,38 @@ def month(serial_number):
     #   time-function-9a5aff99-8f7d-4611-845e-747d0b8d5457
 
 
-# def timevalue(value):
+def timevalue(value):
     # Excel reference: https://support.office.com/en-us/article/
     #   timevalue-function-0b615c12-33d8-4431-bf3d-f3eb6d186645
+    if not isinstance(value, str):
+        return VALUE_ERROR
+
+    if value in ERROR_CODES:
+        return value
+
+    fields = value.lower().replace(':', ' ').split()
+    colons = value.count(':')
+    if colons == 1:
+        fields.insert(2, 0)
+    elif colons != 2:
+        return VALUE_ERROR
+
+    try:
+        time_tuple = list(map(int, fields[:3]))
+        if time_tuple[0] == 12 and len(fields) == 4:
+            time_tuple[0] = 0
+        serial_number = ((
+            time_tuple[0] * 60 + time_tuple[1]) * 60 + time_tuple[2]) / 86400
+    except ValueError:
+        return VALUE_ERROR
+
+    if len(fields) == 4:
+        if fields[3][0] == 'p':
+            serial_number += 0.5
+        elif fields[3][0] != 'a':
+            return VALUE_ERROR
+
+    return serial_number
 
 
 # def today(value):

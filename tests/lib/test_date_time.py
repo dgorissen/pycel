@@ -4,10 +4,12 @@ import pytest
 import pycel.lib.date_time
 from pycel.lib.date_time import (
     date,
-    yearfrac
+    timevalue,
+    yearfrac,
 )
 
 from pycel.excelutil import (
+    DIV0,
     NUM_ERROR,
     VALUE_ERROR,
 )
@@ -57,6 +59,36 @@ class TestDate:
         assert (dt.datetime(1900, 1, 1) - zero).days == date(0, 1, 1)
         assert (dt.datetime(1900 + 1899, 1, 1) - zero).days == date(1899, 1, 1)
         assert (dt.datetime(1900 + 1899, 1, 1) - zero).days == date(1899, 1, 1)
+
+
+@pytest.mark.parametrize(
+    'value, expected', (
+        ('1:00', 1 / 24),
+        ('1:30', 1.5 / 24),
+        ('1:30:30', (1.5 + 1 / 120) / 24),
+        ('2:00', 2 / 24),
+        ('2:00 PM', 14 / 24),
+        ('1:00:00', 1 / 24),
+        ('2:00:00 AM', 2 / 24),
+        ('1:00:00 PM', 13 / 24),
+        ('12:59:59 A', 0.041655093),
+        ('12:XX:59 AM', VALUE_ERROR),
+        (DIV0, DIV0),
+        (VALUE_ERROR, VALUE_ERROR),
+        ('1', VALUE_ERROR),
+        ('1 AM', VALUE_ERROR),
+        ('1:00 ZM', VALUE_ERROR),
+        ('1:00:00 ZM', VALUE_ERROR),
+        (0, VALUE_ERROR),
+        (1.0, VALUE_ERROR),
+        (True, VALUE_ERROR),
+    )
+)
+def test_timevalue(value, expected):
+    if isinstance(expected, str):
+        assert timevalue(value) == expected
+    else:
+        assert timevalue(value) == pytest.approx(expected)
 
 
 class TestYearfrac:
@@ -118,4 +150,4 @@ def test_with_spreadsheet(fixture_xls_copy):
     excel_compiler = ExcelCompiler(fixture_xls_copy('date-time.xlsx'))
 
     failed_cells = excel_compiler.validate_calcs()
-    assert len(failed_cells) == 0
+    assert failed_cells == {}
