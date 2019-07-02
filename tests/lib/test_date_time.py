@@ -11,6 +11,7 @@ from pycel.excelutil import (
     NUM_ERROR,
     VALUE_ERROR,
 )
+from pycel.excelcompiler import ExcelCompiler
 
 from pycel.lib.function_helpers import load_to_test_module
 
@@ -111,3 +112,10 @@ class TestYearfrac:
 
         assert 61 / 366 == pytest.approx(
             yearfrac(date(2015, 12, 31), date(2016, 3, 1), 1))
+
+
+def test_with_spreadsheet(fixture_xls_copy):
+    excel_compiler = ExcelCompiler(fixture_xls_copy('date-time.xlsx'))
+
+    failed_cells = excel_compiler.validate_calcs()
+    assert len(failed_cells) == 0

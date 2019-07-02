@@ -3,6 +3,8 @@ Python equivalents of Date and Time library functions
 """
 
 import datetime as dt
+import functools
+import math
 
 from pycel.excelutil import (
     date_from_int,
@@ -16,6 +18,17 @@ from pycel.lib.function_helpers import (
     excel_helper,
     excel_math_func,
 )
+
+
+def serial_number_wrapper(f):
+    """Validations and conversions for date-time serial numbers"""
+    @functools.wraps(f)
+    @excel_helper(number_params=-1)
+    def wrapped(date_serial_number, *args, **kwargs):
+        if date_serial_number < 0:
+            return NUM_ERROR
+        return f(date_serial_number, *args, **kwargs)
+    return wrapped
 
 
 @excel_helper(number_params=-1)
@@ -50,9 +63,11 @@ def date(year, month_, day):
     #   datevalue-function-df8b07d4-7761-4a93-bc33-b7471bbff252
 
 
-# def day(value):
+@serial_number_wrapper
+def day(serial_number):
     # Excel reference: https://support.office.com/en-us/article/
     #   day-function-8a7d1cbb-6c7d-4ba1-8aea-25c134d03101
+    return date_from_int(math.floor(serial_number))[2]
 
 
 # def days(value):
@@ -90,9 +105,11 @@ def date(year, month_, day):
     #   minute-function-af728df0-05c4-4b07-9eed-a84801a60589
 
 
-# def month(value):
+@serial_number_wrapper
+def month(serial_number):
     # Excel reference: https://support.office.com/en-us/article/
     #   month-function-579a2881-199b-48b2-ab90-ddba0eba86e8
+    return date_from_int(math.floor(serial_number))[1]
 
 
 # def networkdays(value):
@@ -130,9 +147,11 @@ def date(year, month_, day):
     #   today-function-5eb3078d-a82c-4736-8930-2f51a028fdd9
 
 
-# def weekday(serial_number):
+@serial_number_wrapper
+def weekday(serial_number):
     # Excel reference: https://support.office.com/en-us/article/
     #   weekday-function-60e44483-2ed1-439f-8bd0-e404c190949a
+    return (math.floor(serial_number) - 1) % 7 + 1
 
 
 # def weeknum(serial_number, return_Type=1):
@@ -150,9 +169,11 @@ def date(year, month_, day):
     #   workday-intl-function-a378391c-9ba7-4678-8a39-39611a9bf81d
 
 
-# def year(value):
+@serial_number_wrapper
+def year(serial_number):
     # Excel reference: https://support.office.com/en-us/article/
     #   year-function-c64f017a-1354-490d-981f-578e8ec8d3b9
+    return date_from_int(math.floor(serial_number))[0]
 
 
 @excel_math_func
