@@ -1,0 +1,221 @@
+"""
+Python equivalents of Date and Time library functions
+"""
+
+import datetime as dt
+
+from pycel.excelutil import (
+    date_from_int,
+    is_leap_year,
+    NUM_ERROR,
+    normalize_year,
+)
+
+
+from pycel.lib.function_helpers import (
+    excel_helper,
+    excel_math_func,
+)
+
+
+@excel_helper(number_params=-1)
+def date(year, month_, day):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   DATE-function-e36c0c8c-4104-49da-ab83-82328b832349
+
+    if not (0 <= year <= 9999):
+        return NUM_ERROR
+
+    if year < 1900:
+        year += 1900
+
+    # taking into account negative month and day values
+    year, month_, day = normalize_year(year, month_, day)
+
+    date_0 = dt.datetime(1900, 1, 1)
+    result = (dt.datetime(year, month_, day) - date_0).days + 2
+
+    if result <= 0:
+        return NUM_ERROR
+    return result
+
+
+# def datedif(value):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   datedif-function-25dba1a4-2812-480b-84dd-8b32a451b35c
+
+
+# def datevalue(value):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   datevalue-function-df8b07d4-7761-4a93-bc33-b7471bbff252
+
+
+# def day(value):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   day-function-8a7d1cbb-6c7d-4ba1-8aea-25c134d03101
+
+
+# def days(value):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   days-function-57740535-d549-4395-8728-0f07bff0b9df
+
+
+# def days360(value):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   days360-function-b9a509fd-49ef-407e-94df-0cbda5718c2a
+
+
+# def edate(value):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   edate-function-3c920eb2-6e66-44e7-a1f5-753ae47ee4f5
+
+
+# def eomonth(value):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   eomonth-function-7314ffa1-2bc9-4005-9d66-f49db127d628
+
+
+# def hour(value):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   hour-function-a3afa879-86cb-4339-b1b5-2dd2d7310ac7
+
+
+# def isoweeknum(value):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   isoweeknum-function-1c2d0afe-d25b-4ab1-8894-8d0520e90e0e
+
+
+# def minute(value):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   minute-function-af728df0-05c4-4b07-9eed-a84801a60589
+
+
+# def month(value):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   month-function-579a2881-199b-48b2-ab90-ddba0eba86e8
+
+
+# def networkdays(value):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   networkdays-function-48e717bf-a7a3-495f-969e-5005e3eb18e7
+
+
+# def networkdays.intl(value):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   networkdays-intl-function-a9b26239-4f20-46a1-9ab8-4e925bfd5e28
+
+
+# def now(value):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   now-function-3337fd29-145a-4347-b2e6-20c904739c46
+
+
+# def second(value):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   second-function-740d1cfc-553c-4099-b668-80eaa24e8af1
+
+
+# def time(value):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   time-function-9a5aff99-8f7d-4611-845e-747d0b8d5457
+
+
+# def timevalue(value):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   timevalue-function-0b615c12-33d8-4431-bf3d-f3eb6d186645
+
+
+# def today(value):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   today-function-5eb3078d-a82c-4736-8930-2f51a028fdd9
+
+
+# def weekday(serial_number):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   weekday-function-60e44483-2ed1-439f-8bd0-e404c190949a
+
+
+# def weeknum(serial_number, return_Type=1):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   weeknum-function-e5c43a03-b4ab-426c-b411-b18c13c75340
+
+
+# def workday(value):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   workday-function-f764a5b7-05fc-4494-9486-60d494efbf33
+
+
+# def workday.intl(value):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   workday-intl-function-a378391c-9ba7-4678-8a39-39611a9bf81d
+
+
+# def year(value):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   year-function-c64f017a-1354-490d-981f-578e8ec8d3b9
+
+
+@excel_math_func
+def yearfrac(start_date, end_date, basis=0):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   YEARFRAC-function-3844141e-c76d-4143-82b6-208454ddc6a8
+
+    def actual_nb_days_afb_alter(beg, end):
+        # http://svn.finmath.net/finmath%20lib/trunk/src/main/java/net/
+        #   finmath/time/daycount/DayCountConvention_ACT_ACT_YEARFRAC.java
+        delta = date(*end) - date(*beg)
+
+        if delta <= 365:
+            if (is_leap_year(beg[0]) and date(*beg) <= date(beg[0], 2, 29) or
+                is_leap_year(end[0]) and date(*end) >= date(end[0], 2, 29) or
+                    is_leap_year(beg[0]) and is_leap_year(end[0])):
+                denom = 366
+            else:
+                denom = 365
+        else:
+            year_range = range(beg[0], end[0] + 1)
+            nb = 0
+
+            for y in year_range:
+                nb += 366 if is_leap_year(y) else 365
+
+            denom = nb / len(year_range)
+
+        return delta / denom
+
+    if start_date < 0 or end_date < 0:
+        return NUM_ERROR
+
+    if start_date > end_date:  # switch dates if start_date > end_date
+        start_date, end_date = end_date, start_date
+
+    y1, m1, d1 = date_from_int(start_date)
+    y2, m2, d2 = date_from_int(end_date)
+
+    if basis == 0:  # US 30/360
+        d1 = min(d1, 30)
+        d2 = max(d2, 30) if d1 == 30 else d2
+
+        day_count = 360 * (y2 - y1) + 30 * (m2 - m1) + (d2 - d1)
+        result = day_count / 360
+
+    elif basis == 1:  # Actual/actual
+        result = actual_nb_days_afb_alter((y1, m1, d1), (y2, m2, d2))
+
+    elif basis == 2:  # Actual/360
+        result = (end_date - start_date) / 360
+
+    elif basis == 3:  # Actual/365
+        result = (end_date - start_date) / 365
+
+    elif basis == 4:  # Eurobond 30/360
+        d2 = min(d2, 30)
+        d1 = min(d1, 30)
+
+        day_count = 360 * (y2 - y1) + 30 * (m2 - m1) + (d2 - d1)
+        result = day_count / 360
+
+    else:
+        return NUM_ERROR
+
+    return result
