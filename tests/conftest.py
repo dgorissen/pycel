@@ -31,6 +31,11 @@ def fixture_xls_path(fixture_dir, tmpdir):
 
 
 @pytest.fixture('session')
+def serialization_override_path(tmpdir):
+    return os.path.join(str(tmpdir), 'excelcompiler_serialized.yml')
+
+
+@pytest.fixture('session')
 def fixture_xls_path_circular(fixture_dir, tmpdir):
     return copy_fixture_xls_path(fixture_dir, tmpdir, 'circular.xlsx')
 

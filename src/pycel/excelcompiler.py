@@ -177,6 +177,8 @@ class ExcelCompiler:
                  for addr, cell in self.cell_map.items() if cell.serialize),
                 key=lambda x: AddressRange(x[0]).sort_key
             )),
+            # serialize the workbook filename (not the serialization path)
+            filename=self.filename,
         ))
         if not filename:
             filename = self.filename + ('.json' if is_json else '.yml')
@@ -1110,7 +1112,10 @@ class _CycleCell(_Cell):
 class _CompiledImporter:
     """Emulate the excel_wrapper for serialized files"""
     def __init__(self, filename, file_data):
-        self.filename = filename.rsplit('.', maxsplit=1)[0]
+        # take the workbook filename from the deserialized data if available
+        # otherwise the passed in filename
+        self.filename = file_data.get(
+            'filename', filename.rsplit('.', maxsplit=1)[0])
         self.cell_map = file_data['cell_map']
         self.compiler = None
 
