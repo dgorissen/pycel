@@ -27,7 +27,8 @@ NULL_ERROR = "#NULL!"
 REF_ERROR = "#REF!"
 
 DATE_ZERO = dt.datetime(1899, 12, 30)
-MICROSECOND = 1 / 24 / 60 / 60 / 1E6
+SECOND = 1 / 24 / 60 / 60
+MICROSECOND = SECOND / 1E6
 
 R1C1_ROW_RE_STR = r"R(\[-?\d+\]|\d+)?"
 R1C1_COL_RE_STR = r"C(\[-?\d+\]|\d+)?"

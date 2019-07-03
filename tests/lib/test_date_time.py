@@ -4,13 +4,17 @@ import pytest
 import pycel.lib.date_time
 from pycel.lib.date_time import (
     date,
+    now,
     timevalue,
+    today,
     yearfrac,
 )
 
 from pycel.excelutil import (
+    DATE_ZERO,
     DIV0,
     NUM_ERROR,
+    SECOND,
     VALUE_ERROR,
 )
 from pycel.excelcompiler import ExcelCompiler
@@ -89,6 +93,25 @@ def test_timevalue(value, expected):
         assert timevalue(value) == expected
     else:
         assert timevalue(value) == pytest.approx(expected)
+
+
+def test_today_now():
+    before = dt.date.today()
+    a_today = today()
+    after = dt.date.today()
+    assert before <= DATE_ZERO.date() + dt.timedelta(days=a_today) <= after
+
+    before = dt.datetime.now()
+    a_now = now()
+    after = dt.datetime.now()
+
+    days = int(a_now)
+    seconds = int((a_now - days) / SECOND + 1e-6)
+    now_dt = dt.timedelta(days=days, seconds=seconds)
+
+    before -= dt.timedelta(microseconds=before.microsecond)
+    after -= dt.timedelta(microseconds=after.microsecond)
+    assert before <= DATE_ZERO + now_dt <= after
 
 
 class TestYearfrac:

@@ -9,10 +9,12 @@ import math
 from pycel.excelutil import (
     coerce_to_number,
     date_from_int,
+    DATE_ZERO,
     ERROR_CODES,
     is_leap_year,
     NUM_ERROR,
     normalize_year,
+    SECOND,
     time_from_serialnumber,
     VALUE_ERROR,
 )
@@ -68,8 +70,7 @@ def date(year, month_, day):
     # taking into account negative month and day values
     year, month_, day = normalize_year(year, month_, day)
 
-    date_0 = dt.datetime(1900, 1, 1)
-    result = (dt.datetime(year, month_, day) - date_0).days + 2
+    result = (dt.datetime(year, month_, day) - DATE_ZERO).days
 
     if result <= 0:
         return NUM_ERROR
@@ -169,9 +170,11 @@ def month(serial_number):
     #   networkdays-intl-function-a9b26239-4f20-46a1-9ab8-4e925bfd5e28
 
 
-# def now(value):
+def now():
     # Excel reference: https://support.office.com/en-us/article/
     #   now-function-3337fd29-145a-4347-b2e6-20c904739c46
+    delta = dt.datetime.now() - DATE_ZERO
+    return delta.days + delta.seconds * SECOND
 
 
 @time_value_wrapper
@@ -220,9 +223,10 @@ def timevalue(value):
     return serial_number
 
 
-# def today(value):
+def today():
     # Excel reference: https://support.office.com/en-us/article/
     #   today-function-5eb3078d-a82c-4736-8930-2f51a028fdd9
+    return (dt.date.today() - DATE_ZERO.date()).days
 
 
 @serial_number_wrapper
