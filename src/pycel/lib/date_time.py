@@ -7,6 +7,7 @@ import functools
 import math
 
 from pycel.excelutil import (
+    coerce_to_number,
     date_from_int,
     ERROR_CODES,
     is_leap_year,
@@ -26,7 +27,7 @@ from pycel.lib.function_helpers import (
 def serial_number_wrapper(f):
     """Validations and conversions for date-time serial numbers"""
     @functools.wraps(f)
-    @excel_helper(number_params=-1)
+    @excel_helper(number_params=0)
     def wrapped(date_serial_number, *args, **kwargs):
         if date_serial_number < 0:
             return NUM_ERROR
@@ -102,14 +103,34 @@ def day(serial_number):
     #   days360-function-b9a509fd-49ef-407e-94df-0cbda5718c2a
 
 
-# def edate(value):
+@excel_helper(err_str_params=-1)
+def edate(start_date, months):
     # Excel reference: https://support.office.com/en-us/article/
     #   edate-function-3c920eb2-6e66-44e7-a1f5-753ae47ee4f5
+    return months_inc(start_date, months)
 
 
-# def eomonth(value):
+@excel_helper(err_str_params=-1)
+def eomonth(start_date, months):
     # Excel reference: https://support.office.com/en-us/article/
     #   eomonth-function-7314ffa1-2bc9-4005-9d66-f49db127d628
+    return months_inc(start_date, months, eomonth=True)
+
+
+def months_inc(start_date, months, eomonth=False):
+    if isinstance(start_date, bool) or isinstance(months, bool):
+        return VALUE_ERROR
+    start_date = coerce_to_number(start_date, convert_all=True)
+    months = coerce_to_number(months, convert_all=True)
+    if isinstance(start_date, str) or isinstance(months, str):
+        return VALUE_ERROR
+    if start_date < 0:
+        return NUM_ERROR
+    y, m, d = date_from_int(start_date)
+    if eomonth:
+        return date(y, m + months + 1, 1) - 1
+    else:
+        return date(y, m + months, d)
 
 
 @time_value_wrapper
