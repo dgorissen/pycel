@@ -26,6 +26,10 @@ NAME_ERROR = "#NAME?"
 NULL_ERROR = "#NULL!"
 REF_ERROR = "#REF!"
 
+DATE_ZERO = dt.datetime(1899, 12, 30)
+SECOND = 1 / 24 / 60 / 60
+MICROSECOND = SECOND / 1E6
+
 R1C1_ROW_RE_STR = r"R(\[-?\d+\]|\d+)?"
 R1C1_COL_RE_STR = r"C(\[-?\d+\]|\d+)?"
 R1C1_COORD_RE_STR = "(?P<row>{0})?(?P<col>{1})?".format(
@@ -1035,11 +1039,24 @@ def date_from_int(datestamp):
         # excel thinks 1900 is a leap year
         return 1900, 2, 29
 
-    date = dt.datetime(1899, 12, 30) + dt.timedelta(days=datestamp)
+    if datestamp == 0:
+        # excel thinks Jan 1900 starts at day 0
+        return 1900, 1, 0
+
+    date = DATE_ZERO + dt.timedelta(days=datestamp)
     if datestamp < 31 + 29:
         date += dt.timedelta(days=1)
 
     return date.year, date.month, date.day
+
+
+def time_from_serialnumber(serialnumber):
+    at_hours = (serialnumber + MICROSECOND) * 24
+    hours = math.floor(at_hours)
+    at_mins = (at_hours - hours) * 60
+    mins = math.floor(at_mins)
+    secs = (at_mins - mins) * 60
+    return hours % 24, mins, int(round(secs - 1.1E-6, 0))
 
 
 def build_wildcard_re(lookup_value):

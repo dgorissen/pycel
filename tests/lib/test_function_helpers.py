@@ -86,6 +86,7 @@ def test_load_functions():
 
     modules = (
         importlib.import_module('pycel.excellib'),
+        importlib.import_module('pycel.lib.date_time'),
         importlib.import_module('pycel.lib.logical'),
         importlib.import_module('math'),
     )
