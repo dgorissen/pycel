@@ -1,6 +1,7 @@
 import json
 import os
 import shutil
+from ruamel.yaml import YAML
 from unittest import mock
 
 import pytest
@@ -92,6 +93,34 @@ def test_filename_ext(excel_compiler, fixture_xls_path):
     assert os.path.exists(pickle_name)
     assert os.path.exists(yaml_name)
     assert os.path.exists(json_name)
+
+
+def test_deserialize_filename(
+        excel_compiler, fixture_xls_path, serialization_override_path):
+
+    for serialization_filename, expected in (
+        # When the serialization path is different than the workbook path
+        (serialization_override_path, excel_compiler.filename),
+        # When the serialization path is the same as the workbook
+        ('{}.yml'.format(excel_compiler.filename), excel_compiler.filename),
+    ):
+        excel_compiler._to_text(serialization_filename)
+        deserialized = excel_compiler._from_text(serialization_filename)
+        assert expected == deserialized.filename
+
+    # When the serialized data does not contain a filename we should use the
+    # passed in filename to _from_text when de-serializing - for compatibility
+    with open(serialization_override_path, 'r+') as f:
+        # Modify our previously serialized compiler and remove the filename key
+        f.data = YAML().load(f)
+        f.seek(0)
+        f.data.pop('filename')
+        YAML().dump(f.data, f)
+        f.truncate()
+
+    deserialized = excel_compiler._from_text(serialization_override_path)
+    expected = serialization_override_path.rsplit('.')[0]
+    assert expected == deserialized.filename
 
 
 def test_filename_extension_errors(excel_compiler, fixture_xls_path):

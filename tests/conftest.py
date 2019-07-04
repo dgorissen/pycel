@@ -18,6 +18,11 @@ def tmpdir(tmpdir_factory):
     return tmpdir_factory.mktemp('fixtures')
 
 
+@pytest.fixture('session')
+def serialization_override_path(tmpdir):
+    return os.path.join(str(tmpdir), 'excelcompiler_serialized.yml')
+
+
 def copy_fixture_xls_path(fixture_dir, tmpdir, filename):
     src = os.path.join(fixture_dir, filename)
     dst = os.path.join(str(tmpdir), filename)
