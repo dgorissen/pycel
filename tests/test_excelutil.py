@@ -27,6 +27,7 @@ from pycel.excelutil import (
     list_like,
     MAX_COL,
     MAX_ROW,
+    MICROSECOND,
     NUM_ERROR,
     normalize_year,
     OPERATORS,
@@ -34,6 +35,7 @@ from pycel.excelutil import (
     range_boundaries,
     split_sheetname,
     structured_reference_boundaries,
+    time_from_serialnumber,
     uniqueify,
     unquote_sheetname,
     VALUE_ERROR,
@@ -790,13 +792,33 @@ def test_normalize_year(result, value):
     assert normalize_year(*value) == result
 
 
-def test_date_from_int():
-    assert (1900, 1, 1) == date_from_int(1)
-    assert (1900, 1, 31) == date_from_int(31)
-    assert (1900, 2, 29) == date_from_int(60)
-    assert (1900, 3, 1) == date_from_int(61)
+@pytest.mark.parametrize(
+    'result, value', (
+        ((1900, 1, 1), 1),
+        ((1900, 1, 31), 31),
+        ((1900, 2, 29), 60),
+        ((1900, 3, 1), 61),
+        ((2009, 7, 6), 40000),
+    )
+)
+def test_date_from_int(result, value):
+    assert date_from_int(value) == result
 
-    assert (2009, 7, 6) == date_from_int(40000)
+
+@pytest.mark.parametrize(
+    'result, value', (
+        ((0, 0, 0), 1),
+        ((23, 58, 34), 0.999),
+        ((23, 59, 51), 0.9999),
+        ((23, 59, 59), 1 - (MICROSECOND * 1e6)),
+        ((0, 0, 0), 0),
+        ((23, 59, 59), 0 - MICROSECOND * 5e5),
+        ((23, 59, 59), 1 - MICROSECOND * 5e5),
+        ((2, 24, 0), 1.1),
+    )
+)
+def test_time_from_serialnumber(result, value):
+    assert time_from_serialnumber(value) == result
 
 
 def test_find_corresponding_index():

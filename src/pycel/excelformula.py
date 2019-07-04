@@ -499,6 +499,7 @@ class ExcelFormula:
     default_modules = (
         'pycel.excellib',
         'pycel.lib.binary',
+        'pycel.lib.date_time',
         'pycel.lib.logical',
         'math',
     )

@@ -2,7 +2,6 @@
 Python equivalents of various excel functions
 """
 from bisect import bisect_right
-from datetime import datetime
 from decimal import Decimal, ROUND_HALF_UP, ROUND_UP
 import math
 
@@ -10,21 +9,18 @@ import numpy as np
 from pycel.excelutil import (
     build_wildcard_re,
     coerce_to_string,
-    date_from_int,
     DIV0,
     ERROR_CODES,
     ExcelCmp,
     find_corresponding_index,
     flatten,
     handle_ifs,
-    is_leap_year,
     is_number,
     list_like,
     MAX_COL,
     MAX_ROW,
     NA_ERROR,
     NUM_ERROR,
-    normalize_year,
     REF_ERROR,
     VALUE_ERROR,
 )
@@ -173,28 +169,6 @@ def countifs(*args):
     #   COUNTIFS-function-dda3dc6e-f74e-4aee-88bc-aa8c2a866842
 
     return len(handle_ifs(args))
-
-
-@excel_helper(number_params=-1)
-def date(year, month, day):
-    # Excel reference: https://support.office.com/en-us/article/
-    #   DATE-function-e36c0c8c-4104-49da-ab83-82328b832349
-
-    if not (0 <= year <= 9999):
-        return NUM_ERROR
-
-    if year < 1900:
-        year += 1900
-
-    # taking into account negative month and day values
-    year, month, day = normalize_year(year, month, day)
-
-    date_0 = datetime(1900, 1, 1)
-    result = (datetime(year, month, day) - date_0).days + 2
-
-    if result <= 0:
-        return NUM_ERROR
-    return result
 
 
 @excel_helper(cse_params=(0, 1, 2), number_params=2)
@@ -780,69 +754,3 @@ def xsum(*args):
 
     # if no non numeric cells, return zero (is what excel does)
     return sum(data)
-
-
-@excel_math_func
-def yearfrac(start_date, end_date, basis=0):
-    # Excel reference: https://support.office.com/en-us/article/
-    #   YEARFRAC-function-3844141e-c76d-4143-82b6-208454ddc6a8
-
-    def actual_nb_days_afb_alter(beg, end):
-        # http://svn.finmath.net/finmath%20lib/trunk/src/main/java/net/
-        #   finmath/time/daycount/DayCountConvention_ACT_ACT_YEARFRAC.java
-        delta = date(*end) - date(*beg)
-
-        if delta <= 365:
-            if (is_leap_year(beg[0]) and date(*beg) <= date(beg[0], 2, 29) or
-                is_leap_year(end[0]) and date(*end) >= date(end[0], 2, 29) or
-                    is_leap_year(beg[0]) and is_leap_year(end[0])):
-                denom = 366
-            else:
-                denom = 365
-        else:
-            year_range = range(beg[0], end[0] + 1)
-            nb = 0
-
-            for y in year_range:
-                nb += 366 if is_leap_year(y) else 365
-
-            denom = nb / len(year_range)
-
-        return delta / denom
-
-    if start_date < 0 or end_date < 0:
-        return NUM_ERROR
-
-    if start_date > end_date:  # switch dates if start_date > end_date
-        start_date, end_date = end_date, start_date
-
-    y1, m1, d1 = date_from_int(start_date)
-    y2, m2, d2 = date_from_int(end_date)
-
-    if basis == 0:  # US 30/360
-        d1 = min(d1, 30)
-        d2 = max(d2, 30) if d1 == 30 else d2
-
-        day_count = 360 * (y2 - y1) + 30 * (m2 - m1) + (d2 - d1)
-        result = day_count / 360
-
-    elif basis == 1:  # Actual/actual
-        result = actual_nb_days_afb_alter((y1, m1, d1), (y2, m2, d2))
-
-    elif basis == 2:  # Actual/360
-        result = (end_date - start_date) / 360
-
-    elif basis == 3:  # Actual/365
-        result = (end_date - start_date) / 365
-
-    elif basis == 4:  # Eurobond 30/360
-        d2 = min(d2, 30)
-        d1 = min(d1, 30)
-
-        day_count = 360 * (y2 - y1) + 30 * (m2 - m1) + (d2 - d1)
-        result = day_count / 360
-
-    else:
-        return NUM_ERROR
-
-    return result

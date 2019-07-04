@@ -18,6 +18,11 @@ def tmpdir(tmpdir_factory):
     return tmpdir_factory.mktemp('fixtures')
 
 
+@pytest.fixture('session')
+def serialization_override_path(tmpdir):
+    return os.path.join(str(tmpdir), 'excelcompiler_serialized.yml')
+
+
 def copy_fixture_xls_path(fixture_dir, tmpdir, filename):
     src = os.path.join(fixture_dir, filename)
     dst = os.path.join(str(tmpdir), filename)
@@ -26,18 +31,20 @@ def copy_fixture_xls_path(fixture_dir, tmpdir, filename):
 
 
 @pytest.fixture('session')
-def fixture_xls_path(fixture_dir, tmpdir):
-    return copy_fixture_xls_path(fixture_dir, tmpdir, 'excelcompiler.xlsx')
+def fixture_xls_copy(fixture_dir, tmpdir):
+    def wrapped(filename):
+        return copy_fixture_xls_path(fixture_dir, tmpdir, filename)
+    return wrapped
 
 
 @pytest.fixture('session')
-def serialization_override_path(tmpdir):
-    return os.path.join(str(tmpdir), 'excelcompiler_serialized.yml')
+def fixture_xls_path(fixture_xls_copy):
+    return fixture_xls_copy('excelcompiler.xlsx')
 
 
 @pytest.fixture('session')
-def fixture_xls_path_circular(fixture_dir, tmpdir):
-    return copy_fixture_xls_path(fixture_dir, tmpdir, 'circular.xlsx')
+def fixture_xls_path_circular(fixture_xls_copy):
+    return fixture_xls_copy('circular.xlsx')
 
 
 @pytest.fixture('session')
@@ -61,15 +68,13 @@ def excel(unconnected_excel):
 
 
 @pytest.fixture('session')
-def basic_ws(fixture_dir, tmpdir):
-    return ExcelCompiler(
-        copy_fixture_xls_path(fixture_dir, tmpdir, 'basic.xlsx'))
+def basic_ws(fixture_xls_copy):
+    return ExcelCompiler(fixture_xls_copy('basic.xlsx'))
 
 
 @pytest.fixture('session')
-def cond_format_ws(fixture_dir, tmpdir):
-    return ExcelCompiler(
-        copy_fixture_xls_path(fixture_dir, tmpdir, 'cond-format.xlsx'))
+def cond_format_ws(fixture_xls_copy):
+    return ExcelCompiler(fixture_xls_copy('cond-format.xlsx'))
 
 
 @pytest.fixture
