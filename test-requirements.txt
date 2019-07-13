@@ -1,8 +1,8 @@
+tox                    # put this first so it can drive package versions
 codecov
 flake8-import-order
 pytest
 pytest-cov
 pytest-flake8
 restructuredtext-lint
-tox < 3.13.0  #  Dependency conflict introduced in 3.13.0 on travis
 tox-travis
