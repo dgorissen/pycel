@@ -1,7 +1,11 @@
 import pytest
 
 from pycel.excelutil import AddressRange
-from pycel.excelwrapper import ARRAY_FORMULA_FORMAT, _OpxRange
+from pycel.excelwrapper import (
+    ARRAY_FORMULA_FORMAT,
+    ExcelOpxWrapperNoData,
+    _OpxRange
+)
 from test_excelutil import ATestCell
 
 
@@ -61,6 +65,9 @@ def test_get_formula_from_range(excel):
 )
 def test_get_formula_or_value(excel, address, value):
     assert value == excel.get_formula_or_value(address)
+
+    from_opxl = ExcelOpxWrapperNoData(excel.workbook)
+    assert value == from_opxl.get_formula_or_value(address)
 
 
 @pytest.mark.parametrize(

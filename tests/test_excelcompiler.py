@@ -23,6 +23,7 @@ from pycel.excelwrapper import ExcelWrapper
 def test_end_2_end(excel, fixture_xls_path):
     # load & compile the file to a graph, starting from D1
     for excel_compiler in (ExcelCompiler(excel=excel),
+                           ExcelCompiler(excel=excel.workbook),
                            ExcelCompiler(fixture_xls_path)):
 
         # test evaluation
