@@ -288,7 +288,18 @@ def test_unquote_sheetname(sheet_name):
 )
 def test_quoted_address(sheet_name):
     addr = AddressCell('A2', sheet=sheet_name)
-    assert addr.quoted_address == '{}!A2'.format(quote_sheetname(sheet_name))
+    assert addr.quoted_address == '{}!A2'.format(addr.quote_sheet(sheet_name))
+
+
+@pytest.mark.parametrize(
+    'address, expected', (
+        ('s!D2', 's!$D$2'),
+        ('s!D2:F4', 's!$D$2:$F$4'),
+        (AddressRange("D2:F4", sheet='sh 1'), "'sh 1'!$D$2:$F$4"),
+    )
+)
+def test_address_absolute(address, expected):
+    assert AddressRange.create(address).abs_address == expected
 
 
 def test_split_sheetname():

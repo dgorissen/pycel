@@ -257,10 +257,10 @@ def test_cell_to_formulax(value, formula):
         ("xyzzy", ""),
         ("=xyzzy", "=xyzzy"),
         ("={1,2;3,4}", "=index({1,2;3,4},1,1)"),
-        (ARRAY_FORMULA_FORMAT % ('xyzzy', 1, 1, 2, 2), "=index('s'!E3:F4,1,1)"),
-        (ARRAY_FORMULA_FORMAT % ('xyzzy', 1, 2, 2, 2), "=index('s'!D3:E4,1,2)"),
-        (ARRAY_FORMULA_FORMAT % ('xyzzy', 2, 1, 2, 2), "=index('s'!E2:F3,2,1)"),
-        (ARRAY_FORMULA_FORMAT % ('xyzzy', 2, 2, 2, 2), "=index('s'!D2:E3,2,2)"),
+        (ARRAY_FORMULA_FORMAT % ('xyzzy', 1, 1, 2, 2), "=index(s!E3:F4,1,1)"),
+        (ARRAY_FORMULA_FORMAT % ('xyzzy', 1, 2, 2, 2), "=index(s!D3:E4,1,2)"),
+        (ARRAY_FORMULA_FORMAT % ('xyzzy', 2, 1, 2, 2), "=index(s!E2:F3,2,1)"),
+        (ARRAY_FORMULA_FORMAT % ('xyzzy', 2, 2, 2, 2), "=index(s!D2:E3,2,2)"),
     )
 )
 def test_cell_to_formula(value, formula):

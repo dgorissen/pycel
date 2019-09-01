@@ -123,10 +123,20 @@ class AddressMixin:
         """Does the address have a sheet?"""
         return bool(self.sheet)
 
+    @staticmethod
+    def quote_sheet(sheet):
+        if ' ' in sheet:
+            sheet = quote_sheetname(sheet)
+        return sheet
+
     @property
     def quoted_address(self):
         """requote the sheetname if going to include in formulas"""
-        return "{}!{}".format(quote_sheetname(self.sheet), self.coordinate)
+        return "{}!{}".format(self.quote_sheet(self.sheet), self.coordinate)
+
+    @property
+    def abs_address(self):
+        return "{}!{}".format(self.quote_sheet(self.sheet), self.abs_coordinate)
 
     @property
     def sort_key(self):
@@ -254,6 +264,11 @@ class AddressRange(collections.namedtuple(
     def row(self):
         """top row"""
         return self.start.row
+
+    @property
+    def abs_coordinate(self):
+        return '{}:{}'.format(
+            self.start.abs_coordinate, self.end.abs_coordinate)
 
     # Is this address a range?
     is_range = True
@@ -425,6 +440,10 @@ class AddressCell(collections.namedtuple(
         :param inc: integer number of rows to offset by
         """
         return (self.row + inc - 1) % MAX_ROW + 1
+
+    @property
+    def abs_coordinate(self):
+        return '${}${}'.format(self.column, self.row)
 
     def address_at_offset(self, row_inc=0, col_inc=0):
         """ Construct an `AddressCell` offset from the address
