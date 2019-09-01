@@ -7,6 +7,7 @@ from openpyxl.utils import column_index_from_string, quote_sheetname
 from pycel.excelutil import (
     AddressCell,
     AddressRange,
+    AddressMultiAreaRange,
     assert_list_like,
     build_operator_operand_fixup,
     coerce_to_number,
@@ -152,6 +153,7 @@ def test_address_range_contains(a_range, address, expected):
     assert expected == (address in a_range)
     address = AddressCell(address)
     assert expected == (address in a_range)
+    assert address in address
 
 
 def test_is_range():
@@ -371,6 +373,28 @@ def test_resolve_range():
         a('1:2').resolve_range
 
 
+addr_cr = AddressRange.create
+
+
+@pytest.mark.parametrize(
+    'address, string, mar', (
+        (((addr_cr('B1'), ), (addr_cr('B1'), addr_cr('C1'),)),
+         'B1,B1:C1',
+         AddressMultiAreaRange((addr_cr('B1'), addr_cr('B1:C1')))),
+        (((addr_cr('B1'),), (addr_cr('B2'),),
+          (addr_cr('B1'), addr_cr('C1')), (addr_cr('B2'), addr_cr('C2'))),
+         'B1:B2,B1:C2',
+         AddressMultiAreaRange((addr_cr('B1:B2'), addr_cr('B1:C2')))),
+    )
+)
+def test_multi_area_range(address, string, mar):
+    assert address == tuple(mar.resolve_range)
+    assert mar.is_bounded_range
+    assert address[0][0] in mar
+    assert AddressRange('Z99') not in mar
+    assert str(mar) == string
+
+
 @pytest.mark.parametrize(
     'ref, expected', (
         # valid addresses
@@ -521,6 +545,20 @@ def test_extended_range_boundaries_errors(address_string):
 
     with pytest.raises(ValueError, match='not a valid coordinate or range'):
         range_boundaries(address_string, cell)
+
+
+def test_multi_area_ranges(excel):
+    cell = ATestCell('A', 1, excel=excel)
+    from unittest import mock
+    with mock.patch.object(excel, '_defined_names', {
+            'dname': (('$A$1', 's1'), ('$A$3:$A$4', 's2'))}):
+
+        multi_area_range = AddressMultiAreaRange(
+            tuple(AddressRange(addr, sheet=sh))
+            for addr, sh in excel._defined_names['dname'])
+
+        assert (multi_area_range, None) == range_boundaries('dname', cell)
+        assert multi_area_range == AddressRange.create('dname', cell=cell)
 
 
 @pytest.mark.parametrize(

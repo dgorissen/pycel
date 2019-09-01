@@ -457,6 +457,15 @@ def test_table_relative_address():
         assert '_R_("s!A1:A2")' == excel_formula.ast.emit
 
 
+def test_multi_area_ranges(excel):
+    cell = ATestCell('A', 1, excel=excel)
+
+    with mock.patch.object(excel, '_defined_names', {
+            'dname': (('$A$1', 's1'), ('$A$3:$A$4', 's2'))}):
+        excel_formula = ExcelFormula('=sum(dname)', cell=cell)
+        assert excel_formula.ast.emit == 'xsum(_C_("s1!A1"), _R_("s2!A3:A4"))'
+
+
 def test_str():
     excel_formula = ExcelFormula('=E54-E48')
     assert '=E54-E48' == str(excel_formula)

@@ -5,6 +5,8 @@ from ruamel.yaml import YAML
 from unittest import mock
 
 import pytest
+from openpyxl import Workbook
+from openpyxl.workbook.defined_name import DefinedName
 from pycel.excelcompiler import _Cell, _CellRange, ExcelCompiler
 from pycel.excelformula import FormulaParserError, UnknownFunction
 from pycel.excelutil import (
@@ -622,6 +624,30 @@ def test_structured_ref(excel_compiler):
 
     excel_compiler.set_value(input_addrs[0], 11)
     assert 20 == excel_compiler.evaluate(output_addrs[0])
+
+
+def test_multi_area_range_defined_name(fixture_xls_copy):
+
+    wb = Workbook()
+    ws = wb.active
+    ws['A1'] = 1
+    ws['A2'] = 2
+    ws['A3'] = 3
+    ws['A4'] = 4
+    ws['B1'] = '=SUM(A1,A2)'
+    ws['B2'] = '=SUM(_a2,A3)'
+    ws['B3'] = '=SUM(_a1_a3)'
+
+    wb.defined_names.append(
+        DefinedName(name='_a2', attr_text='Sheet!$A$4,Sheet!$A$1:$A$2'))
+    wb.defined_names.append(
+        DefinedName(name='_a1_a3', attr_text='Sheet!$A$1,Sheet!$A$3'))
+    excel_compiler = ExcelCompiler(excel=wb)
+
+    output_addrs = ['Sheet!B1:B3']
+    assert (3, 10, 4) == excel_compiler.evaluate(output_addrs[0])
+    excel_compiler.recalculate()
+    assert (3, 10, 4) == excel_compiler.evaluate(output_addrs[0])
 
 
 @pytest.mark.parametrize(

@@ -314,7 +314,7 @@ class AddressRange(collections.namedtuple(
 
     @property
     def resolve_range(self):
-        """Return nested tuples with AddressCell for each element"""
+        """Return nested tuples with an AddressCell for each element"""
         assert self.is_bounded_range
         return tuple(tuple(row) for row in self.rows)
 
@@ -341,7 +341,9 @@ class AddressRange(collections.namedtuple(
         addr_tuple, sheetname = range_boundaries(
             addr, sheet=sheetname, cell=cell)
 
-        if None in addr_tuple or addr_tuple[0:2] != addr_tuple[2:]:
+        if isinstance(addr_tuple, AddressMultiAreaRange):
+            return addr_tuple
+        elif None in addr_tuple or addr_tuple[0:2] != addr_tuple[2:]:
             return AddressRange(addr_tuple, sheet=sheetname)
         else:
             return AddressCell(addr_tuple, sheet=sheetname)
@@ -414,6 +416,9 @@ class AddressCell(collections.namedtuple(
             cls, format_str.format(sheet, coordinate),
             sheet, col_idx, row, coordinate)
 
+    def __contains__(self, address):
+        return self == AddressCell(address)
+
     # Is this address a range?
     is_range = False
 
@@ -459,7 +464,7 @@ class AddressCell(collections.namedtuple(
 
     @property
     def resolve_range(self):
-        """Return a nested lists with AddressCell for each element"""
+        """Return nested tuples with an AddressCell for each element"""
         return (self, ),
 
     @classmethod
@@ -479,6 +484,31 @@ class AddressCell(collections.namedtuple(
             raise ValueError(
                 "{0} is not a valid coordinate".format(address))
         return addr
+
+
+class AddressMultiAreaRange(tuple):
+    """Multi-Area Address Range"""
+
+    def __str__(self):
+        return ','.join(str(addr) for addr in self)
+
+    def __contains__(self, address):
+        address = AddressCell(address)
+        return any(address in addr for addr in self)
+
+    # Is this address a range?
+    is_range = True
+
+    @property
+    def is_bounded_range(self):
+        """Is this address a bounded range?"""
+        return all(addr.is_bounded_range for addr in self
+                   if isinstance(addr, AddressRange))
+
+    @property
+    def resolve_range(self):
+        """Return nested tuples with an AddressCell for each element"""
+        return it.chain.from_iterable(addr.resolve_range for addr in self)
 
 
 def unquote_sheetname(sheetname):
@@ -678,7 +708,12 @@ def range_boundaries(address, cell=None, sheet=None):
     # Try to see if this is a defined name
     name_addr = cell and cell.excel and cell.excel.defined_names.get(address)
     if name_addr:
-        return openpyxl_range_boundaries(name_addr[0][0]), name_addr[0][1]
+        if len(name_addr) == 1:
+            return openpyxl_range_boundaries(name_addr[0][0]), name_addr[0][1]
+        else:
+            return AddressMultiAreaRange(tuple(
+                AddressRange(range_alias, sheet=worksheet)
+                for range_alias, worksheet in name_addr)), None
 
     if len(address.split(':')) > 2:
         raise NotImplementedError("Multiple Colon Ranges: {}".format(address))
