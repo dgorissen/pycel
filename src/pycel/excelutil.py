@@ -659,7 +659,7 @@ def range_boundaries(address, cell=None, sheet=None):
     # Try to see if this is a defined name
     name_addr = cell and cell.excel and cell.excel.defined_names.get(address)
     if name_addr:
-        return openpyxl_range_boundaries(name_addr[0]), name_addr[1]
+        return openpyxl_range_boundaries(name_addr[0][0]), name_addr[0][1]
 
     if len(address.split(':')) > 2:
         raise NotImplementedError("Multiple Colon Ranges: {}".format(address))

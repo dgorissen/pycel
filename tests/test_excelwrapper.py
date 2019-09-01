@@ -122,7 +122,7 @@ def test_get_range_value(excel):
 
 
 def test_get_defined_names(excel):
-    expected = {'SINUS': ('$C$1:$C$18', 'Sheet1')}
+    expected = {'SINUS': [('$C$1:$C$18', 'Sheet1')]}
     assert expected == excel.defined_names
 
     assert excel.defined_names == excel.defined_names
