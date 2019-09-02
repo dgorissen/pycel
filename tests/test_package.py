@@ -1,11 +1,11 @@
-from distutils.version import LooseVersion
 import os
+from distutils.version import LooseVersion
 from unittest import mock
 
 import pytest
+import restructuredtext_lint
 
 import pycel
-import restructuredtext_lint
 
 
 @pytest.fixture(scope='session')

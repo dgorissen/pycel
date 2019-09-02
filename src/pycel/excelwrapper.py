@@ -14,6 +14,7 @@ from openpyxl.cell.cell import Cell, MergedCell
 from openpyxl.cell.read_only import EMPTY_CELL
 from openpyxl.formula.translate import Translator
 from openpyxl.utils import datetime as opxl_dt
+
 from pycel.excelutil import AddressCell, AddressRange, coerce_to_number, flatten
 
 ARRAY_FORMULA_NAME = '=CSE_INDEX'

@@ -3,8 +3,10 @@ import math
 
 import numpy as np
 import pytest
+
 import pycel.excellib
 from pycel.excellib import (
+    _match,
     _numerics,
     average,
     averageifs,
@@ -31,7 +33,6 @@ from pycel.excellib import (
     log,
     lookup,
     match,
-    _match,
     mid,
     mod,
     npv,
@@ -46,12 +47,12 @@ from pycel.excellib import (
     value,
     vlookup,
     x_abs,
-    xatan2,
     x_int,
     x_len,
+    x_round,
+    xatan2,
     xmax,
     xmin,
-    x_round,
     xsum,
 )
 from pycel.excelutil import (
@@ -64,7 +65,6 @@ from pycel.excelutil import (
     REF_ERROR,
     VALUE_ERROR,
 )
-
 from pycel.lib.function_helpers import error_string_wrapper, load_to_test_module
 
 

@@ -1,12 +1,13 @@
 import json
 import os
 import shutil
-from ruamel.yaml import YAML
 from unittest import mock
 
 import pytest
 from openpyxl import Workbook
 from openpyxl.workbook.defined_name import DefinedName
+from ruamel.yaml import YAML
+
 from pycel.excelcompiler import _Cell, _CellRange, ExcelCompiler
 from pycel.excelformula import FormulaParserError, UnknownFunction
 from pycel.excelutil import (

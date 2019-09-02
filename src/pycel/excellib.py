@@ -1,11 +1,12 @@
 """
 Python equivalents of various excel functions
 """
+import math
 from bisect import bisect_right
 from decimal import Decimal, ROUND_HALF_UP, ROUND_UP
-import math
 
 import numpy as np
+
 from pycel.excelutil import (
     build_wildcard_re,
     coerce_to_string,
@@ -24,7 +25,6 @@ from pycel.excelutil import (
     REF_ERROR,
     VALUE_ERROR,
 )
-
 from pycel.lib.function_helpers import (
     excel_func,
     excel_helper,

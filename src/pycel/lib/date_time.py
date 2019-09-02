@@ -12,14 +12,12 @@ from pycel.excelutil import (
     DATE_ZERO,
     ERROR_CODES,
     is_leap_year,
-    NUM_ERROR,
     normalize_year,
+    NUM_ERROR,
     SECOND,
     time_from_serialnumber,
     VALUE_ERROR,
 )
-
-
 from pycel.lib.function_helpers import (
     excel_helper,
     excel_math_func,

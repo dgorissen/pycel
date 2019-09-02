@@ -4,7 +4,7 @@ Python equivalents of binary base number excel functions (hex2dec, etc.)
 
 import functools
 
-from pycel.excelutil import flatten, ERROR_CODES, EMPTY, VALUE_ERROR, NUM_ERROR
+from pycel.excelutil import EMPTY, ERROR_CODES, flatten, NUM_ERROR, VALUE_ERROR
 
 _SIZE_MASK = {2: 512, 8: 0x20000000, 16: 0x8000000000}
 _BASE_TO_FUNC = {2: bin, 8: oct, 16: hex}

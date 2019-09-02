@@ -6,8 +6,8 @@ from pycel.excelutil import (
     ERROR_CODES,
     flatten,
     in_array_formula_context,
+    NA_ERROR,
     VALUE_ERROR,
-    NA_ERROR
 )
 from pycel.lib.function_helpers import cse_array_wrapper, excel_helper
 

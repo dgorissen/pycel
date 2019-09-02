@@ -5,6 +5,7 @@ import pickle
 from unittest import mock
 
 import pytest
+
 from pycel.excelformula import (
     ASTNode,
     ExcelFormula,
@@ -14,7 +15,6 @@ from pycel.excelformula import (
     UnknownFunction,
 )
 from pycel.excelutil import AddressCell, DIV0, NAME_ERROR, VALUE_ERROR
-from test_excelutil import ATestCell
 
 
 FormulaTest = collections.namedtuple('FormulaTest', 'formula rpn python_code')
@@ -356,7 +356,7 @@ def dump_test_case(formula, python_code, rpn):
     print("        '{}'),".format(escaped_python_code))
 
 
-def dump_parse(to_dump):
+def dump_parse(to_dump, ATestCell):
     cell = ATestCell('A', 1)
 
     print('[')
@@ -399,7 +399,7 @@ def test_tokenizer(test_number, formula, rpn, python_code):
 
 
 @pytest.mark.parametrize('test_number, formula, rpn, python_code', test_data)
-def test_parse(test_number, formula, rpn, python_code):
+def test_parse(test_number, formula, rpn, python_code, ATestCell):
     cell = ATestCell('A', 1)
 
     excel_formula = ExcelFormula(formula, cell=cell)
@@ -427,7 +427,7 @@ def test_parse(test_number, formula, rpn, python_code):
     assert python_code == result_python_code
 
 
-def test_table_relative_address():
+def test_table_relative_address(ATestCell):
     cell = ATestCell('A', 1, sheet='s')
 
     excel_formula = ExcelFormula('=junk')
@@ -457,7 +457,7 @@ def test_table_relative_address():
         assert '_R_("s!A1:A2")' == excel_formula.ast.emit
 
 
-def test_multi_area_ranges(excel):
+def test_multi_area_ranges(excel, ATestCell):
     cell = ATestCell('A', 1, excel=excel)
 
     with mock.patch.object(excel, '_defined_names', {
@@ -610,7 +610,7 @@ def test_save_to_file(fixture_dir):
     assert formula.python_code == loaded_formula.python_code
 
 
-def test_get_linest_degree_with_cell():
+def test_get_linest_degree_with_cell(ATestCell):
     with mock.patch('pycel.excelformula.get_linest_degree') as get:
         get.return_value = -1, -1
 
@@ -769,11 +769,13 @@ def test_string_concat(formula, result, empty_eval_context):
         ('=COLUMN(D1:E1)', ((4, 5),), None),
         ('=COLUMN(D1:D2)', ((4,),), None),
         ('=COLUMN(D1:E2)', ((4, 5),), None),
-        ('=COLUMN()', 2, ATestCell('B', 3)),
+        ('=COLUMN()', 2, "ATestCell('B', 3)"),
         ('=COLUMN(B6:D9 C7:E8)', ((3, 4), ), None),
     )
 )
-def test_column(formula, result, cell, empty_eval_context):
+def test_column(formula, result, cell, empty_eval_context, ATestCell):
+    if cell is not None:
+        cell = eval(cell)
     assert empty_eval_context(ExcelFormula(formula, cell=cell)) == result
 
 
@@ -785,11 +787,13 @@ def test_column(formula, result, cell, empty_eval_context):
         ('=ROW(D1:E1)', ((1,), ), None),
         ('=ROW(D1:D2)', ((1,), (2,)), None),
         ('=ROW(D1:E2)', ((1,), (2,)), None),
-        ('=ROW()', 3, ATestCell('B', 3)),
+        ('=ROW()', 3, "ATestCell('B', 3)"),
         ('=ROW(B6:D9 C7:E8)', ((7,), (8,)), None),
     )
 )
-def test_row(formula, result, cell, empty_eval_context):
+def test_row(formula, result, cell, empty_eval_context, ATestCell):
+    if cell is not None:
+        cell = eval(cell)
     assert empty_eval_context(ExcelFormula(formula, cell=cell)) == result
 
 

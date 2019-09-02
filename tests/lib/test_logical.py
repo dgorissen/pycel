@@ -1,25 +1,24 @@
 import pytest
 
+import pycel.lib.logical
 from pycel.excelutil import (
     DIV0,
     in_array_formula_context,
     NA_ERROR,
     VALUE_ERROR,
 )
-
-import pycel.lib.logical
+from pycel.lib.function_helpers import load_to_test_module
 from pycel.lib.logical import (
     _clean_logicals,
     iferror,
+    ifs,
     x_and,
     x_if,
     x_not,
     x_or,
     x_xor,
-    ifs
 )
 
-from pycel.lib.function_helpers import load_to_test_module
 
 # dynamic load the lib functions from excellib and apply metadata
 load_to_test_module(pycel.lib.logical, __name__)

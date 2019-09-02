@@ -2,11 +2,10 @@ import pytest
 
 from pycel.excelutil import AddressRange
 from pycel.excelwrapper import (
+    _OpxRange,
     ARRAY_FORMULA_FORMAT,
     ExcelOpxWrapperNoData,
-    _OpxRange
 )
-from test_excelutil import ATestCell
 
 
 def test_connect(unconnected_excel):
@@ -245,7 +244,7 @@ def test_conditional_format(cond_format_ws, address, expecteds):
         (ARRAY_FORMULA_FORMAT % ('xyzzy', 2, 2, 2, 2), None),
     )
 )
-def test_cell_to_formulax(value, formula):
+def test_cell_to_formulax(value, formula, ATestCell):
     cells = ((ATestCell('A', 1, value=value), ), )
     assert _OpxRange(cells, cells, '').formula == formula
 

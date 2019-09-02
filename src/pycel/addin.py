@@ -6,12 +6,13 @@ import webbrowser
 
 import win32api
 import win32com.client
-from pycel import AddressRange, ExcelCompiler
 from pyxll import (
     get_active_object,
     get_config,
     xl_menu
 )
+
+from pycel import AddressRange, ExcelCompiler
 
 
 @xl_menu("Open log file", menu="PyXLL")

@@ -3,11 +3,12 @@ import pickle
 from collections import namedtuple
 
 import pytest
-from openpyxl.utils import column_index_from_string, quote_sheetname
+from openpyxl.utils import quote_sheetname
+
 from pycel.excelutil import (
     AddressCell,
-    AddressRange,
     AddressMultiAreaRange,
+    AddressRange,
     assert_list_like,
     build_operator_operand_fixup,
     coerce_to_number,
@@ -29,8 +30,8 @@ from pycel.excelutil import (
     MAX_COL,
     MAX_ROW,
     MICROSECOND,
-    NUM_ERROR,
     normalize_year,
+    NUM_ERROR,
     OPERATORS,
     PyCelException,
     range_boundaries,
@@ -42,18 +43,6 @@ from pycel.excelutil import (
     VALUE_ERROR,
 )
 from pycel.excelutil import DIV0
-
-
-class ATestCell:
-
-    def __init__(self, col, row, sheet='', excel=None, value=None):
-        self.row = row
-        self.col = col
-        self.col_idx = column_index_from_string(col)
-        self.sheet = sheet
-        self.excel = excel
-        self.address = AddressCell('{}{}'.format(col, row), sheet=sheet)
-        self.value = value
 
 
 def test_address_range():
@@ -321,7 +310,7 @@ def test_split_sheetname():
         split_sheetname('sh!B1:C2:sh2!B1:C2')
 
 
-def test_address_cell_enum():
+def test_address_cell_enum(ATestCell):
     assert ('B1', '', 2, 1, 'B1') == AddressCell('B1')
     assert ('sheet!B1', 'sheet', 2, 1, 'B1') == AddressCell('sheet!B1')
 
@@ -482,7 +471,7 @@ def test_structured_table_reference_boundaries(ref, expected):
         assert ref_bound == expected_ref
 
 
-def test_extended_range_boundaries():
+def test_extended_range_boundaries(ATestCell):
     cell = ATestCell('A', 1)
 
     assert (1, 2) * 2 == range_boundaries('A2')[0]
@@ -512,7 +501,7 @@ def test_extended_range_boundaries():
         range_boundaries('A1:B2:C3')
 
 
-def test_range_boundaries_defined_names(excel):
+def test_range_boundaries_defined_names(excel, ATestCell):
     cell = ATestCell('A', 1, excel=excel)
 
     assert ((3, 1, 3, 18), 'Sheet1') == range_boundaries('SINUS', cell)
@@ -540,14 +529,14 @@ def test_range_boundaries_defined_names(excel):
         'xyzzy',
     ]
 )
-def test_extended_range_boundaries_errors(address_string):
+def test_extended_range_boundaries_errors(address_string, ATestCell):
     cell = ATestCell('A', 1)
 
     with pytest.raises(ValueError, match='not a valid coordinate or range'):
         range_boundaries(address_string, cell)
 
 
-def test_multi_area_ranges(excel):
+def test_multi_area_ranges(excel, ATestCell):
     cell = ATestCell('A', 1, excel=excel)
     from unittest import mock
     with mock.patch.object(excel, '_defined_names', {

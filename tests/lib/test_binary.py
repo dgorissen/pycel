@@ -1,6 +1,7 @@
 import pytest
-from pycel.lib import binary
+
 from pycel.excelutil import coerce_to_number, ERROR_CODES
+from pycel.lib import binary
 
 MAX_BASE_2 = binary._SIZE_MASK[2]
 MAX_BASE_8 = binary._SIZE_MASK[8]

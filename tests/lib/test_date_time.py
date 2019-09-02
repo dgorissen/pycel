@@ -1,15 +1,9 @@
 import datetime as dt
+
 import pytest
 
 import pycel.lib.date_time
-from pycel.lib.date_time import (
-    date,
-    now,
-    timevalue,
-    today,
-    yearfrac,
-)
-
+from pycel.excelcompiler import ExcelCompiler
 from pycel.excelutil import (
     DATE_ZERO,
     DIV0,
@@ -17,8 +11,13 @@ from pycel.excelutil import (
     SECOND,
     VALUE_ERROR,
 )
-from pycel.excelcompiler import ExcelCompiler
-
+from pycel.lib.date_time import (
+    date,
+    now,
+    timevalue,
+    today,
+    yearfrac,
+)
 from pycel.lib.function_helpers import load_to_test_module
 
 

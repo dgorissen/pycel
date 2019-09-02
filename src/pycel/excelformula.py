@@ -9,9 +9,10 @@ import tokenize as tk
 import openpyxl.formula.tokenizer as tokenizer
 from networkx.classes.digraph import DiGraph
 from networkx.exception import NetworkXError
+
 from pycel.excelutil import (
-    AddressRange,
     AddressMultiAreaRange,
+    AddressRange,
     build_operator_operand_fixup,
     coerce_to_number,
     EMPTY,

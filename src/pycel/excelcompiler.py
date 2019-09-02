@@ -7,6 +7,8 @@ import os
 import pickle
 
 import networkx as nx
+from ruamel.yaml import YAML
+
 from pycel.excelformula import ExcelFormula
 from pycel.excelutil import (
     AddressCell,
@@ -18,7 +20,6 @@ from pycel.excelutil import (
     VALUE_ERROR,
 )
 from pycel.excelwrapper import ExcelOpxWrapper, ExcelOpxWrapperNoData
-from ruamel.yaml import YAML
 
 REF_START = '=_REF_("'
 REF_END = '")'
