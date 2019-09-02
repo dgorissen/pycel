@@ -6,7 +6,6 @@ import pycel.lib.date_time
 from pycel.excelcompiler import ExcelCompiler
 from pycel.excelutil import (
     DIV0,
-    NA_ERROR,
     NUM_ERROR,
     VALUE_ERROR,
 )
@@ -209,11 +208,21 @@ def test_timevalue(value, expected):
 
 @pytest.mark.parametrize(
     'value, expected', (
-        ("1/1/2008", 39448),
-        ("1/1/1900", 2),
-        ("fsdfsf", VALUE_ERROR),
-        (100, VALUE_ERROR),
-        (NA_ERROR, NA_ERROR),
+        ('12/31/1899', VALUE_ERROR),
+        ('1/1/1900', 1),
+        ('2/28/1900', 59),
+        ('2/29/1900', 60),
+        ('2/30/1900', VALUE_ERROR),
+        ('12/31/1900 12:00', 366),
+        ('3/1/1900', 61),
+        ('1/1/1950', 18264),
+        ('1/1/2000', 36526),
+        ('xyzzy', VALUE_ERROR),
+        (1, VALUE_ERROR),
+        ('TRUE', VALUE_ERROR),
+        ('1.1', VALUE_ERROR),
+        (True, VALUE_ERROR),
+        (DIV0, DIV0),
     )
 )
 def test_datevalue(value, expected):

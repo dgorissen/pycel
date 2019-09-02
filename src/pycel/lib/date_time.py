@@ -150,20 +150,41 @@ def date(year, month_, day):
     #   datedif-function-25dba1a4-2812-480b-84dd-8b32a451b35c
 
 
+class DateutilParserInfo(dateutil.parser.parserinfo):
+    """Hook into dateutil parser and fix number strings and 1900/01/29"""
+
+    def __init__(self):
+        super().__init__()
+        self.is_leap_day_1900 = False
+
+    def validate(self, res):
+        if res.day is None or res.month is None:
+            return False
+        if (res.year, res.month, res.day) == (1900, 2, 29):
+            self.is_leap_day_1900 = True
+        return super().validate(res)
+
+
 def datevalue(value):
     # Excel reference: https://support.office.com/en-us/article/
     #   datevalue-function-df8b07d4-7761-4a93-bc33-b7471bbff252
-    if not isinstance(value, str):
-        return VALUE_ERROR
-
-    if value in ERROR_CODES:
-        return value
-
+    parserinfo = DateutilParserInfo()
     try:
-        date = dateutil.parser.parse(value).date()
-        return (date - dt.date(1899, 12, 31)).days + 1
-    except ValueError:
-        return VALUE_ERROR
+        a_date = dateutil.parser.parse(value, parserinfo=parserinfo).date()
+    except (TypeError, ValueError):
+        if parserinfo.is_leap_day_1900:
+            return LEAP_1900_SERIAL_NUMBER
+        elif value in ERROR_CODES:
+            return value
+        else:
+            return VALUE_ERROR
+
+    serial_number = (a_date - DATE_ZERO.date()).days
+    if serial_number <= LEAP_1900_SERIAL_NUMBER:
+        serial_number -= 1
+        if serial_number < 1:
+            return VALUE_ERROR
+    return serial_number
 
 
 @serial_number_wrapper
