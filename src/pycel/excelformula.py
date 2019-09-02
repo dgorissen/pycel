@@ -510,6 +510,7 @@ class ExcelFormula:
         'pycel.lib.binary',
         'pycel.lib.date_time',
         'pycel.lib.logical',
+        'pycel.lib.text',
         'math',
     )
 

@@ -9,7 +9,6 @@ import numpy as np
 
 from pycel.excelutil import (
     build_wildcard_re,
-    coerce_to_string,
     DIV0,
     ERROR_CODES,
     ExcelCmp,
@@ -26,7 +25,6 @@ from pycel.excelutil import (
     VALUE_ERROR,
 )
 from pycel.lib.function_helpers import (
-    excel_func,
     excel_helper,
     excel_math_func,
 )
@@ -101,25 +99,6 @@ def column(ref):
         return ref.col_idx
 
 
-def concat(*args):
-    # Excel reference: https://support.office.com/en-us/article/
-    #   concat-function-9b1a9a3f-94ff-41af-9736-694cbd6b4ca2
-    return concatenate(*tuple(flatten(args)))
-
-
-def concatenate(*args):
-    # Excel reference: https://support.office.com/en-us/article/
-    #   CONCATENATE-function-8F8AE884-2CA8-4F7A-B093-75D702BEA31D
-    if tuple(flatten(args)) != args:
-        return VALUE_ERROR
-
-    error = next((x for x in args if x in ERROR_CODES), None)
-    if error:
-        return error
-
-    return ''.join(coerce_to_string(a) for a in args)
-
-
 def count(*args):
     # Excel reference: https://support.office.com/en-us/article/
     #   COUNT-function-a59cd7fc-b623-4d93-87a4-d23bf411294c
@@ -169,19 +148,6 @@ def countifs(*args):
     #   COUNTIFS-function-dda3dc6e-f74e-4aee-88bc-aa8c2a866842
 
     return len(handle_ifs(args))
-
-
-@excel_helper(cse_params=(0, 1, 2), number_params=2)
-def find(find_text, within_text, start_num=1):
-    # Excel reference: https://support.office.com/en-us/article/
-    #   FIND-FINDB-functions-C7912941-AF2A-4BDF-A553-D0D89B0A0628
-    find_text = coerce_to_string(find_text)
-    within_text = coerce_to_string(within_text)
-    found = within_text.find(find_text, start_num - 1)
-    if found == -1:
-        return VALUE_ERROR
-    else:
-        return found + 1
 
 
 @excel_math_func
@@ -310,16 +276,6 @@ def isnumber(value):
     # Excel reference: https://support.office.com/en-us/article/
     #   is-functions-0f2d7971-6019-40a0-a171-f2d869135665
     return isinstance(value, (int, float))
-
-
-@excel_helper(cse_params=(0, 1), number_params=1)
-def left(text, num_chars=1):
-    # Excel reference: https://support.office.com/en-us/article/
-    #   LEFT-LEFTB-functions-9203D2D2-7960-479B-84C6-1EA52B99640C
-    if num_chars < 0:
-        return VALUE_ERROR
-    else:
-        return str(text)[:int(num_chars)]
 
 
 def linest(Y, X, const=True, degree=1):  # pragma: no cover  ::TODO::
@@ -493,19 +449,6 @@ def _match(lookup_value, lookup_array, match_type=1):
     return result[0]
 
 
-@excel_helper(cse_params=0, number_params=(1, 2))
-def mid(text, start_num, num_chars):
-    # Excel reference: https://support.office.com/en-us/article/
-    #   MID-MIDB-functions-d5f9e25c-d7d6-472e-b568-4ecb12433028
-
-    if start_num < 1 or num_chars < 0:
-        return VALUE_ERROR
-
-    start_num = int(start_num) - 1
-
-    return str(text)[start_num:start_num + int(num_chars)]
-
-
 @excel_math_func
 def mod(number, divisor):
     # Excel reference: https://support.office.com/en-us/article/
@@ -538,19 +481,6 @@ def power(number, power):
         return number ** power
     except ZeroDivisionError:
         return DIV0
-
-
-@excel_helper(cse_params=(0, 1), number_params=1)
-def right(text, num_chars=1):
-    # Excel reference:  https://support.office.com/en-us/article/
-    #   RIGHT-RIGHTB-functions-240267EE-9AFA-4639-A02B-F19E1786CF2F
-
-    if num_chars < 0:
-        return VALUE_ERROR
-    elif num_chars == 0:
-        return ''
-    else:
-        return str(text)[-int(num_chars):]
 
 
 @excel_math_func
@@ -636,18 +566,6 @@ def trunc(number, num_digits=0):
     return int(number * factor) / factor
 
 
-@excel_helper(cse_params=0)
-def value(text):
-    # Excel reference: https://support.office.com/en-us/article/
-    #   VALUE-function-257D0108-07DC-437D-AE1C-BC2D3953D8C2
-    if isinstance(text, bool):
-        return VALUE_ERROR
-    try:
-        return float(text)
-    except ValueError:
-        return VALUE_ERROR
-
-
 @excel_helper(cse_params=0, bool_params=3, number_params=2)
 def vlookup(lookup_value, table_array, col_index_num, range_lookup=True):
     """ Vertical Lookup
@@ -704,11 +622,6 @@ def x_int(value1):
     # Excel reference: https://support.office.com/en-us/article/
     #   INT-function-A6C4AF9E-356D-4369-AB6A-CB1FD9D343EF
     return math.floor(value1)
-
-
-@excel_func
-def x_len(arg):
-    return 0 if arg is None else len(str(arg))
 
 
 def xmax(*args):
