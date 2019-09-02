@@ -1,6 +1,7 @@
 """
 Python equivalents of text excel functions (lower, upper, etc.)
 """
+import re
 
 from pycel.excelutil import (
     coerce_to_string,
@@ -13,28 +14,30 @@ from pycel.lib.function_helpers import (
     excel_helper,
 )
 
+RE_MULTI_SPACE = re.compile(' +')
 
-# def asc(value):
+
+# def asc(text):
 # Excel reference: https://support.office.com/en-us/article/
 #   asc-function-0b6abf1c-c663-4004-a964-ebc00b723266
 
 
-# def bahttext(value):
+# def bahttext(text):
 # Excel reference: https://support.office.com/en-us/article/
 #   bahttext-function-5ba4d0b4-abd3-4325-8d22-7a92d59aab9c
 
 
-# def char(value):
+# def char(text):
 # Excel reference: https://support.office.com/en-us/article/
 #   char-function-bbd249c8-b36e-4a91-8017-1c133f9b837a
 
 
-# def clean(value):
+# def clean(text):
 # Excel reference: https://support.office.com/en-us/article/
 #   clean-function-26f3d7c5-475f-4a9c-90e5-4b8ba987ba41
 
 
-# def code(value):
+# def code(text):
 # Excel reference: https://support.office.com/en-us/article/
 #   code-function-c32b692b-2ed0-4a04-bdd9-75640144b928
 
@@ -58,17 +61,17 @@ def concatenate(*args):
     return ''.join(coerce_to_string(a) for a in args)
 
 
-# def dbcs(value):
+# def dbcs(text):
     # Excel reference: https://support.office.com/en-us/article/
     #   dbcs-function-a4025e73-63d2-4958-9423-21a24794c9e5
 
 
-# def dollar(value):
+# def dollar(text):
     # Excel reference: https://support.office.com/en-us/article/
     #   dollar-function-a6cd05d9-9740-4ad3-a469-8109d18ff611
 
 
-# def exact(value):
+# def exact(text):
     # Excel reference: https://support.office.com/en-us/article/
     #   exact-function-d3087698-fc15-4a15-9631-12575cf29926
 
@@ -86,17 +89,17 @@ def find(find_text, within_text, start_num=1):
         return found + 1
 
 
-# def findb(value):
+# def findb(text):
     # Excel reference: https://support.office.com/en-us/article/
     #   find-findb-functions-c7912941-af2a-4bdf-a553-d0d89b0a0628
 
 
-# def fixed(value):
+# def fixed(text):
     # Excel reference: https://support.office.com/en-us/article/
     #   fixed-function-ffd5723c-324c-45e9-8b96-e41be2a8274a
 
 
-# def jis(value):
+# def jis(text):
     # Excel reference: https://support.office.com/en-us/article/
     #   jis-function-b72fb1a7-ba52-448a-b7d3-d2610868b7e2
 
@@ -111,7 +114,7 @@ def left(text, num_chars=1):
         return str(text)[:int(num_chars)]
 
 
-# def leftb(value):
+# def leftb(text):
     # Excel reference: https://support.office.com/en-us/article/
     #   left-leftb-functions-9203d2d2-7960-479b-84c6-1ea52b99640c
 
@@ -123,14 +126,16 @@ def x_len(arg):
     return 0 if arg is None else len(str(arg))
 
 
-# def lenb(value):
+# def lenb(text):
     # Excel reference: https://support.office.com/en-us/article/
     #   len-lenb-functions-29236f94-cedc-429d-affd-b5e33d2c67cb
 
 
-# def lower(value):
+@excel_helper(cse_params=0)
+def lower(text):
     # Excel reference: https://support.office.com/en-us/article/
     #   lower-function-3f21df02-a80c-44b2-afaf-81358f9fdeb4
+    return coerce_to_string(text).lower()
 
 
 @excel_helper(cse_params=0, number_params=(1, 2))
@@ -146,37 +151,46 @@ def mid(text, start_num, num_chars):
     return str(text)[start_num:start_num + int(num_chars)]
 
 
-# def midb(value):
+# def midb(text):
     # Excel reference: https://support.office.com/en-us/article/
     #   mid-midb-functions-d5f9e25c-d7d6-472e-b568-4ecb12433028
 
 
-# def numbervalue(value):
+# def numbervalue(text):
     # Excel reference: https://support.office.com/en-us/article/
     #   numbervalue-function-1b05c8cf-2bfa-4437-af70-596c7ea7d879
 
 
-# def phonetic(value):
+# def phonetic(text):
     # Excel reference: https://support.office.com/en-us/article/
     #   phonetic-function-9a329dac-0c0f-42f8-9a55-639086988554
 
 
-# def proper(value):
+# def proper(text):
     # Excel reference: https://support.office.com/en-us/article/
     #   proper-function-52a5a283-e8b2-49be-8506-b2887b889f94
 
 
-# def replace(value):
+@excel_helper(cse_params=0, number_params=(1, 2))
+def replace(old_text, start_num, num_chars, new_text):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   replace-replaceb-functions-8d799074-2425-4a8a-84bc-82472868878a
+    old_text = coerce_to_string(old_text)
+    new_text = coerce_to_string(new_text)
+    start_num = int(start_num) - 1
+    num_chars = int(num_chars)
+    if start_num < 0 or num_chars < 0:
+        return VALUE_ERROR
+    return '{}{}{}'.format(
+        old_text[:start_num], new_text, old_text[start_num + num_chars:])
+
+
+# def replaceb(text):
     # Excel reference: https://support.office.com/en-us/article/
     #   replace-replaceb-functions-8d799074-2425-4a8a-84bc-82472868878a
 
 
-# def replaceb(value):
-    # Excel reference: https://support.office.com/en-us/article/
-    #   replace-replaceb-functions-8d799074-2425-4a8a-84bc-82472868878a
-
-
-# def rept(value):
+# def rept(text):
     # Excel reference: https://support.office.com/en-us/article/
     #   rept-function-04c4d778-e712-43b4-9c15-d656582bb061
 
@@ -194,59 +208,63 @@ def right(text, num_chars=1):
         return str(text)[-int(num_chars):]
 
 
-# def rightb(value):
+# def rightb(text):
     # Excel reference: https://support.office.com/en-us/article/
     #   right-rightb-functions-240267ee-9afa-4639-a02b-f19e1786cf2f
 
 
-# def search(value):
+# def search(text):
     # Excel reference: https://support.office.com/en-us/article/
     #   search-searchb-functions-9ab04538-0e55-4719-a72e-b6f54513b495
 
 
-# def searchb(value):
+# def searchb(text):
     # Excel reference: https://support.office.com/en-us/article/
     #   search-searchb-functions-9ab04538-0e55-4719-a72e-b6f54513b495
 
 
-# def substitute(value):
+# def substitute(text):
     # Excel reference: https://support.office.com/en-us/article/
     #   substitute-function-6434944e-a904-4336-a9b0-1e58df3bc332
 
 
-# def t(value):
+# def t(text):
     # Excel reference: https://support.office.com/en-us/article/
     #   t-function-fb83aeec-45e7-4924-af95-53e073541228
 
 
-# def text(value):
+# def text(text):
     # Excel reference: https://support.office.com/en-us/article/
     #   text-function-20d5ac4d-7b94-49fd-bb38-93d29371225c
 
 
-# def textjoin(value):
+# def textjoin(text):
     # Excel reference: https://support.office.com/en-us/article/
     #   textjoin-function-357b449a-ec91-49d0-80c3-0e8fc845691c
 
 
-# def trim(value):
+@excel_helper(cse_params=0)
+def trim(text):
     # Excel reference: https://support.office.com/en-us/article/
     #   trim-function-410388fa-c5df-49c6-b16c-9e5630b479f9
+    return RE_MULTI_SPACE.sub(' ', coerce_to_string(text))
 
 
-# def unichar(value):
+# def unichar(text):
     # Excel reference: https://support.office.com/en-us/article/
     #   unichar-function-ffeb64f5-f131-44c6-b332-5cd72f0659b8
 
 
-# def unicode(value):
+# def unicode(text):
     # Excel reference: https://support.office.com/en-us/article/
     #   unicode-function-adb74aaa-a2a5-4dde-aff6-966e4e81f16f
 
 
-# def upper(value):
+@excel_helper(cse_params=0)
+def upper(text):
     # Excel reference: https://support.office.com/en-us/article/
     #   upper-function-c11f29b3-d1a3-4537-8df6-04d0049963d6
+    return coerce_to_string(text).upper()
 
 
 @excel_helper(cse_params=0)

@@ -13,8 +13,12 @@ from pycel.lib.text import (
     concatenate,
     find,
     left,
+    lower,
     mid,
+    replace,
     right,
+    trim,
+    upper,
     value,
     x_len,
 )
@@ -84,6 +88,21 @@ def test_left(text, num_chars, expected):
     assert left(text, num_chars) == expected
 
 
+@pytest.mark.parametrize(
+    'text, expected', (
+        ('aBcD', 'abcd'),
+        (1.234, '1.234'),
+        (1, '1'),
+        (True, 'true'),
+        (False, 'false'),
+        ('TRUe', 'true'),
+        (DIV0, DIV0),
+    )
+)
+def test_lower(text, expected):
+    assert lower(text) == expected
+
+
 class TestMid:
 
     def test_invalid_parameters(self):
@@ -116,6 +135,54 @@ class TestMid:
 
 
 @pytest.mark.parametrize(
+    'expected, old_text, start_num, num_chars, new_text', (
+        ('AB CD_X_', 'AB CD', 7, 2, '_X_'),
+        ('AB CD_X_', 'AB CD', 6, 2, '_X_'),
+        ('AB C_X_', 'AB CD', 5, 2, '_X_'),
+        ('AB _X_', 'AB CD', 4, 2, '_X_'),
+        ('AB_X_D', 'AB CD', 3, 2, '_X_'),
+        ('A_X_CD', 'AB CD', 2, 2, '_X_'),
+        ('_X_ CD', 'AB CD', 1, 2, '_X_'),
+        (VALUE_ERROR, 'AB CD', 0, 2, '_X_'),
+        ('_X_', 'AB CD', 1, 6, '_X_'),
+        ('_X_', 'AB CD', 1, 5, '_X_'),
+        ('_X_D', 'AB CD', 1, 4, '_X_'),
+        ('AB C_X_', 'AB CD', 5, 1, '_X_'),
+        ('AB C_X_', 'AB CD', 5, 2, '_X_'),
+        ('AB _X_D', 'AB CD', 4, 1, '_X_'),
+        ('AB _X_', 'AB CD', 4, 2, '_X_'),
+        ('AB_X_ CD', 'AB CD', 3, 0, '_X_'),
+        (VALUE_ERROR, 'AB CD', 3, -1, '_X_'),
+        ('_X_ CD', 'AB CD', True, 2, '_X_'),
+        (VALUE_ERROR, 'AB CD', False, 2, '_X_'),
+        ('AB_X_CD', 'AB CD', 3, True, '_X_'),
+        ('AB_X_ CD', 'AB CD', 3, False, '_X_'),
+        ('_X_ CD', 'AB CD', 1, 2, '_X_'),
+        (VALUE_ERROR, 'AB CD', 0, 2, '_X_'),
+        (DIV0, DIV0, 2, 2, '_X_'),
+        (DIV0, 'AB CD', DIV0, 2, '_X_'),
+        (DIV0, 'AB CD', 2, DIV0, '_X_'),
+        (DIV0, 'AB CD', 2, 2, DIV0),
+        ('A0CD', 'AB CD', 2, 2, '0'),
+        ('AFALSECD', 'AB CD', 2, 2, 'FALSE'),
+        ('T_X_E', 'TRUE', 2, 2, '_X_'),
+        ('F_X_SE', 'FALSE', 2, 2, '_X_'),
+        ('A_X_', 'A', 2, 2, '_X_'),
+        ('1_X_1', '1.1', 2, 1, '_X_'),
+        (VALUE_ERROR, '1.1', 'A', 1, '_X_'),
+        (VALUE_ERROR, '1.1', 2, 'A', '_X_'),
+        ('1_X_1', '1.1', 2.2, 1, '_X_'),
+        ('1_X_1', '1.1', 2.9, 1, '_X_'),
+        ('1._X_', '1.1', 3, 1, '_X_'),
+        ('1_X_1', '1.1', 2, 1.5, '_X_'),
+        ('1.0', '1.1', 3, 1, 0),
+    )
+)
+def test_replace(expected, old_text, start_num, num_chars, new_text):
+    assert replace(old_text, start_num, num_chars, new_text) == expected
+
+
+@pytest.mark.parametrize(
     'text, num_chars, expected', (
         ('abcd', 5, 'abcd'),
         ('abcd', 4, 'abcd'),
@@ -134,6 +201,39 @@ class TestMid:
 )
 def test_right(text, num_chars, expected):
     assert right(text, num_chars) == expected
+
+
+@pytest.mark.parametrize(
+    'text, expected', (
+        ('ABCD', 'ABCD'),
+        ('AB CD', 'AB CD'),
+        ('AB  CD', 'AB CD'),
+        ('AB   CD   EF', 'AB CD EF'),
+        (1.234, '1.234'),
+        (1, '1'),
+        (True, 'TRUE'),
+        (False, 'FALSE'),
+        ('tRUe', 'tRUe'),
+        (DIV0, DIV0),
+    )
+)
+def test_trim(text, expected):
+    assert trim(text) == expected
+
+
+@pytest.mark.parametrize(
+    'text, expected', (
+        ('aBcD', 'ABCD'),
+        (1.234, '1.234'),
+        (1, '1'),
+        (True, 'TRUE'),
+        (False, 'FALSE'),
+        ('tRUe', 'TRUE'),
+        (DIV0, DIV0),
+    )
+)
+def test_upper(text, expected):
+    assert upper(text) == expected
 
 
 @pytest.mark.parametrize(
