@@ -16,6 +16,7 @@ from pycel.lib.logical import (
     x_not,
     x_or,
     x_xor,
+    ifs
 )
 
 from pycel.lib.function_helpers import load_to_test_module
@@ -173,3 +174,16 @@ def test_x_or(result, test_value):
 )
 def test_x_xor(result, test_value):
     assert x_xor(*test_value) == result
+
+
+@pytest.mark.parametrize(
+    'result, test_value', (
+        (20, (False, 10, True, 20, False, 30)),
+        (NA_ERROR, (False, 10, True)),
+        (VALUE_ERROR, ("fsdfas", 10, True, 20)),
+        (10, (True, 10, "fsdfas", 20)),
+        (NA_ERROR, (False, 10, False, 20, False, 30))
+    )
+)
+def test_ifs(result, test_value):
+    assert ifs(*test_value) == result

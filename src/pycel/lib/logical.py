@@ -7,6 +7,7 @@ from pycel.excelutil import (
     flatten,
     in_array_formula_context,
     VALUE_ERROR,
+    NA_ERROR
 )
 from pycel.lib.function_helpers import cse_array_wrapper, excel_helper
 
@@ -100,6 +101,20 @@ def iferror(arg, value_if_error):
 # corresponds to the first TRUE condition.
 # Excel reference: https://support.office.com/en-us/article/
 #   ifs-function-36329a26-37b2-467c-972b-4a39bd951d45
+def ifs(*args):
+    length = len(args)
+    if length % 2 == 1 or length == 0:
+        return NA_ERROR
+
+    for i in range(0, length, 2):
+        value = _clean_logical(args[i])
+        if isinstance(value, str):
+            # return error code
+            return value
+        elif value:
+            return args[i + 1]
+
+    return NA_ERROR
 
 
 def x_not(value):
