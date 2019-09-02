@@ -8,6 +8,7 @@ from pycel.lib.date_time import (
     timevalue,
     today,
     yearfrac,
+    datevalue
 )
 
 from pycel.excelutil import (
@@ -16,6 +17,7 @@ from pycel.excelutil import (
     NUM_ERROR,
     SECOND,
     VALUE_ERROR,
+    NA_ERROR
 )
 from pycel.excelcompiler import ExcelCompiler
 
@@ -93,6 +95,19 @@ def test_timevalue(value, expected):
         assert timevalue(value) == expected
     else:
         assert timevalue(value) == pytest.approx(expected)
+
+
+@pytest.mark.parametrize(
+    'value, expected', (
+        ("1/1/2008", 39448),
+        ("1/1/1900", 2),
+        ("fsdfsf", VALUE_ERROR),
+        (100, VALUE_ERROR),
+        (NA_ERROR, NA_ERROR),
+    )
+)
+def test_datevalue(value, expected):
+    assert datevalue(value) == expected
 
 
 def test_today_now():

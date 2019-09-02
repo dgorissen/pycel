@@ -56,6 +56,7 @@ setup(
         'numpy',
         'openpyxl>=2.6.2',
         'ruamel.yaml',
+        'python-dateutil'
     ],
     python_requires='>=3.5',
     author='Dirk Gorissen, Stephen Rauch',
