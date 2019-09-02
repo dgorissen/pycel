@@ -14,30 +14,24 @@ from pycel.excelutil import (
     coerce_to_number,
     coerce_to_string,
     criteria_parser,
-    date_from_int,
     EMPTY,
     ExcelCmp,
     find_corresponding_index,
     flatten,
     get_linest_degree,
-    get_max_days_in_month,
     handle_ifs,
     in_array_formula_context,
-    is_leap_year,
     is_number,
     iterative_eval_tracker,
     list_like,
     MAX_COL,
     MAX_ROW,
-    MICROSECOND,
-    normalize_year,
     NUM_ERROR,
     OPERATORS,
     PyCelException,
     range_boundaries,
     split_sheetname,
     structured_reference_boundaries,
-    time_from_serialnumber,
     uniqueify,
     unquote_sheetname,
     VALUE_ERROR,
@@ -727,29 +721,6 @@ def test_is_number():
     assert not is_number('x')
 
 
-def test_is_leap_year():
-
-    assert is_leap_year(1900)
-    assert is_leap_year(1904)
-    assert is_leap_year(2000)
-    assert is_leap_year(2104)
-
-    assert not is_leap_year(1)
-    assert not is_leap_year(2100)
-    assert not is_leap_year(2101)
-    assert not is_leap_year(2103)
-    assert not is_leap_year(2102)
-
-    with pytest.raises(TypeError):
-        is_leap_year('x')
-
-    with pytest.raises(TypeError):
-        is_leap_year(-1)
-
-    with pytest.raises(TypeError):
-        is_leap_year(0)
-
-
 @pytest.mark.parametrize(
     'data, result', (
         ((12, 12), TypeError),
@@ -778,85 +749,6 @@ def test_handle_ifs_op_range_errors():
 
     with pytest.raises(AssertionError):
         handle_ifs(((((1, 2), (3, 4)), ">=3")), ((1, ), (1, )))
-
-
-def test_get_max_days_in_month():
-    assert 31 == get_max_days_in_month(1, 2000)
-    assert 29 == get_max_days_in_month(2, 2000)
-    assert 28 == get_max_days_in_month(2, 2001)
-    assert 31 == get_max_days_in_month(3, 2000)
-    assert 30 == get_max_days_in_month(4, 2000)
-    assert 31 == get_max_days_in_month(5, 2000)
-    assert 30 == get_max_days_in_month(6, 2000)
-    assert 31 == get_max_days_in_month(7, 2000)
-    assert 31 == get_max_days_in_month(8, 2000)
-    assert 30 == get_max_days_in_month(9, 2000)
-    assert 31 == get_max_days_in_month(10, 2000)
-    assert 30 == get_max_days_in_month(11, 2000)
-    assert 31 == get_max_days_in_month(12, 2000)
-
-    # excel thinks 1900 is a leap year
-    assert 29 == get_max_days_in_month(2, 1900)
-
-
-@pytest.mark.parametrize(
-    'result, value', (
-        ((1900, 1, 1), (1900, 1, 1)),
-        ((1900, 2, 1), (1900, 1, 32)),
-        ((1900, 3, 1), (1900, 1, 61)),
-        ((1900, 4, 1), (1900, 1, 92)),
-        ((1900, 5, 1), (1900, 1, 122)),
-        ((1900, 4, 1), (1900, 0, 123)),
-        ((1900, 3, 1), (1900, -1, 122)),
-
-        ((1899, 12, 1), (1900, 1, -31)),
-        ((1899, 12, 1), (1900, 0, 1)),
-        ((1899, 11, 1), (1900, -1, 1)),
-
-        ((1918, 12, 1), (1920, -12, 1)),
-        ((1919, 1, 1), (1920, -11, 1)),
-        ((1919, 11, 1), (1920, -1, 1)),
-        ((1919, 12, 1), (1920, 0, 1)),
-        ((1920, 1, 1), (1920, 1, 1)),
-        ((1920, 11, 1), (1920, 11, 1)),
-        ((1920, 12, 1), (1920, 12, 1)),
-        ((1921, 1, 1), (1920, 13, 1)),
-        ((1921, 11, 1), (1920, 23, 1)),
-        ((1921, 12, 1), (1920, 24, 1)),
-        ((1922, 1, 1), (1920, 25, 1)),
-    )
-)
-def test_normalize_year(result, value):
-    assert normalize_year(*value) == result
-
-
-@pytest.mark.parametrize(
-    'result, value', (
-        ((1900, 1, 1), 1),
-        ((1900, 1, 31), 31),
-        ((1900, 2, 29), 60),
-        ((1900, 3, 1), 61),
-        ((2009, 7, 6), 40000),
-    )
-)
-def test_date_from_int(result, value):
-    assert date_from_int(value) == result
-
-
-@pytest.mark.parametrize(
-    'result, value', (
-        ((0, 0, 0), 1),
-        ((23, 58, 34), 0.999),
-        ((23, 59, 51), 0.9999),
-        ((23, 59, 59), 1 - (MICROSECOND * 1e6)),
-        ((0, 0, 0), 0),
-        ((23, 59, 59), 0 - MICROSECOND * 5e5),
-        ((23, 59, 59), 1 - MICROSECOND * 5e5),
-        ((2, 24, 0), 1.1),
-    )
-)
-def test_time_from_serialnumber(result, value):
-    assert time_from_serialnumber(value) == result
 
 
 def test_find_corresponding_index():

@@ -5,17 +5,23 @@ import pytest
 import pycel.lib.date_time
 from pycel.excelcompiler import ExcelCompiler
 from pycel.excelutil import (
-    DATE_ZERO,
     DIV0,
     NA_ERROR,
     NUM_ERROR,
-    SECOND,
     VALUE_ERROR,
 )
 from pycel.lib.date_time import (
     date,
+    date_from_int,
+    DATE_ZERO,
     datevalue,
+    is_leap_year,
+    max_days_in_month,
+    MICROSECOND,
+    normalize_year,
     now,
+    SECOND,
+    time_from_serialnumber,
     timevalue,
     today,
     yearfrac,
@@ -25,6 +31,111 @@ from pycel.lib.function_helpers import load_to_test_module
 
 # dynamic load the lib functions from excellib and apply metadata
 load_to_test_module(pycel.lib.date_time, __name__)
+
+
+@pytest.mark.parametrize(
+    'result, value', (
+        ((1900, 1, 1), 1),
+        ((1900, 1, 31), 31),
+        ((1900, 2, 29), 60),
+        ((1900, 3, 1), 61),
+        ((2009, 7, 6), 40000),
+    )
+)
+def test_date_from_int(result, value):
+    assert date_from_int(value) == result
+
+
+@pytest.mark.parametrize(
+    'result, value', (
+        ((0, 0, 0), 1),
+        ((23, 58, 34), 0.999),
+        ((23, 59, 51), 0.9999),
+        ((23, 59, 59), 1 - (MICROSECOND * 1e6)),
+        ((0, 0, 0), 0),
+        ((23, 59, 59), 0 - MICROSECOND * 5e5),
+        ((23, 59, 59), 1 - MICROSECOND * 5e5),
+        ((2, 24, 0), 1.1),
+    )
+)
+def test_time_from_serialnumber(result, value):
+    assert time_from_serialnumber(value) == result
+
+
+@pytest.mark.parametrize(
+    'value, result', (
+        (1900, True),
+        (1904, True),
+        (2000, True),
+        (2104, True),
+
+        (1, False),
+        (2100, False),
+        (2101, False),
+        (2103, False),
+        (2102, False),
+
+        ('x', TypeError),
+        (-1, TypeError),
+        (0, TypeError),
+    )
+)
+def test_is_leap_year(value, result):
+    if result == TypeError:
+        with pytest.raises(result):
+            is_leap_year(value)
+    else:
+        assert is_leap_year(value) == result
+
+
+def test_get_max_days_in_month():
+    assert 31 == max_days_in_month(1, 2000)
+    assert 29 == max_days_in_month(2, 2000)
+    assert 28 == max_days_in_month(2, 2001)
+    assert 31 == max_days_in_month(3, 2000)
+    assert 30 == max_days_in_month(4, 2000)
+    assert 31 == max_days_in_month(5, 2000)
+    assert 30 == max_days_in_month(6, 2000)
+    assert 31 == max_days_in_month(7, 2000)
+    assert 31 == max_days_in_month(8, 2000)
+    assert 30 == max_days_in_month(9, 2000)
+    assert 31 == max_days_in_month(10, 2000)
+    assert 30 == max_days_in_month(11, 2000)
+    assert 31 == max_days_in_month(12, 2000)
+
+    # excel thinks 1900 is a leap year
+    assert 29 == max_days_in_month(2, 1900)
+
+
+@pytest.mark.parametrize(
+    'result, value', (
+        ((1900, 1, 1), (1900, 1, 1)),
+        ((1900, 2, 1), (1900, 1, 32)),
+        ((1900, 3, 1), (1900, 1, 61)),
+        ((1900, 4, 1), (1900, 1, 92)),
+        ((1900, 5, 1), (1900, 1, 122)),
+        ((1900, 4, 1), (1900, 0, 123)),
+        ((1900, 3, 1), (1900, -1, 122)),
+
+        ((1899, 12, 1), (1900, 1, -31)),
+        ((1899, 12, 1), (1900, 0, 1)),
+        ((1899, 11, 1), (1900, -1, 1)),
+
+        ((1918, 12, 1), (1920, -12, 1)),
+        ((1919, 1, 1), (1920, -11, 1)),
+        ((1919, 11, 1), (1920, -1, 1)),
+        ((1919, 12, 1), (1920, 0, 1)),
+        ((1920, 1, 1), (1920, 1, 1)),
+        ((1920, 11, 1), (1920, 11, 1)),
+        ((1920, 12, 1), (1920, 12, 1)),
+        ((1921, 1, 1), (1920, 13, 1)),
+        ((1921, 11, 1), (1920, 23, 1)),
+        ((1921, 12, 1), (1920, 24, 1)),
+        ((1922, 1, 1), (1920, 25, 1)),
+    )
+)
+def test_normalize_year(result, value):
+    assert normalize_year(*value) == result
 
 
 class TestDate:

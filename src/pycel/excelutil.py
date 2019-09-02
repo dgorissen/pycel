@@ -1,8 +1,5 @@
-import calendar
 import collections
-import datetime as dt
 import itertools as it
-import math
 import operator
 import re
 import threading
@@ -25,10 +22,6 @@ NA_ERROR = '#N/A'
 NAME_ERROR = "#NAME?"
 NULL_ERROR = "#NULL!"
 REF_ERROR = "#REF!"
-
-DATE_ZERO = dt.datetime(1899, 12, 30)
-SECOND = 1 / 24 / 60 / 60
-MICROSECOND = SECOND / 1E6
 
 R1C1_ROW_RE_STR = r"R(\[-?\d+\]|\d+)?"
 R1C1_COL_RE_STR = r"C(\[-?\d+\]|\d+)?"
@@ -1045,72 +1038,6 @@ def handle_ifs(args, op_range=None):
 
     # if it is true in all cases, return the coordinates
     return tuple(idx for idx, cnt in index_counts.items() if cnt == ifs_count)
-
-
-def is_leap_year(year):
-    if not is_number(year):
-        raise TypeError("%s must be a number" % str(year))
-    if year <= 0:
-        raise TypeError("%s must be strictly positive" % str(year))
-
-    # Watch out, 1900 is a leap according to Excel =>
-    # https://support.microsoft.com/en-us/kb/214326
-    return year % 4 == 0 and year % 100 != 0 or year % 400 == 0 or year == 1900
-
-
-def get_max_days_in_month(month, year):
-    if month == 2 and is_leap_year(year):
-        return 29
-
-    return calendar.monthrange(year, month)[1]
-
-
-def normalize_year(y, m, d):
-    """taking into account negative month and day values"""
-    if not (1 <= m <= 12):
-        y_plus = math.floor((m - 1) / 12)
-        y += y_plus
-        m -= y_plus * 12
-
-    if d <= 0:
-        d += get_max_days_in_month(m, y)
-        m -= 1
-        y, m, d = normalize_year(y, m, d)
-
-    else:
-        days_in_month = get_max_days_in_month(m, y)
-        if d > days_in_month:
-            m += 1
-            d -= days_in_month
-            y, m, d = normalize_year(y, m, d)
-
-    return y, m, d
-
-
-def date_from_int(datestamp):
-
-    if datestamp == 31 + 29:
-        # excel thinks 1900 is a leap year
-        return 1900, 2, 29
-
-    if datestamp == 0:
-        # excel thinks Jan 1900 starts at day 0
-        return 1900, 1, 0
-
-    date = DATE_ZERO + dt.timedelta(days=datestamp)
-    if datestamp < 31 + 29:
-        date += dt.timedelta(days=1)
-
-    return date.year, date.month, date.day
-
-
-def time_from_serialnumber(serialnumber):
-    at_hours = (serialnumber + MICROSECOND) * 24
-    hours = math.floor(at_hours)
-    at_mins = (at_hours - hours) * 60
-    mins = math.floor(at_mins)
-    secs = (at_mins - mins) * 60
-    return hours % 24, mins, int(round(secs - 1.1E-6, 0))
 
 
 def build_wildcard_re(lookup_value):
