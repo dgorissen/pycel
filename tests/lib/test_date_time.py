@@ -7,12 +7,14 @@ from pycel.excelcompiler import ExcelCompiler
 from pycel.excelutil import (
     DATE_ZERO,
     DIV0,
+    NA_ERROR,
     NUM_ERROR,
     SECOND,
     VALUE_ERROR,
 )
 from pycel.lib.date_time import (
     date,
+    datevalue,
     now,
     timevalue,
     today,
@@ -92,6 +94,19 @@ def test_timevalue(value, expected):
         assert timevalue(value) == expected
     else:
         assert timevalue(value) == pytest.approx(expected)
+
+
+@pytest.mark.parametrize(
+    'value, expected', (
+        ("1/1/2008", 39448),
+        ("1/1/1900", 2),
+        ("fsdfsf", VALUE_ERROR),
+        (100, VALUE_ERROR),
+        (NA_ERROR, NA_ERROR),
+    )
+)
+def test_datevalue(value, expected):
+    assert datevalue(value) == expected
 
 
 def test_today_now():

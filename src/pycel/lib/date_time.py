@@ -6,6 +6,8 @@ import datetime as dt
 import functools
 import math
 
+import dateutil.parser
+
 from pycel.excelutil import (
     coerce_to_number,
     date_from_int,
@@ -80,9 +82,20 @@ def date(year, month_, day):
     #   datedif-function-25dba1a4-2812-480b-84dd-8b32a451b35c
 
 
-# def datevalue(value):
+def datevalue(value):
     # Excel reference: https://support.office.com/en-us/article/
     #   datevalue-function-df8b07d4-7761-4a93-bc33-b7471bbff252
+    if not isinstance(value, str):
+        return VALUE_ERROR
+
+    if value in ERROR_CODES:
+        return value
+
+    try:
+        date = dateutil.parser.parse(value).date()
+        return (date - dt.date(1899, 12, 31)).days + 1
+    except ValueError:
+        return VALUE_ERROR
 
 
 @serial_number_wrapper
