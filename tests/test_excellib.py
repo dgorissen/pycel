@@ -22,6 +22,7 @@ from pycel.excellib import (
     floor,
     hlookup,
     index,
+    iserr,
     iserror,
     isna,
     isnumber,
@@ -454,6 +455,23 @@ class TestIndex:
         assert NA_ERROR == index_f(TestIndex.test_data, NA_ERROR, 1)
         assert NA_ERROR == index_f(TestIndex.test_data, 1, NA_ERROR)
         assert VALUE_ERROR == index_f(None, 1, 1)
+
+
+@pytest.mark.parametrize(
+    'value, expected', (
+        (0, False),
+        (1, False),
+        (1.0, False),
+        (-1, False),
+        ('a', False),
+        (((1, NUM_ERROR), ('2', DIV0)), ((False, True), (False, True))),
+        (NA_ERROR, False),
+        (NUM_ERROR, True),
+        (REF_ERROR, True),
+    )
+)
+def test_iserr(value, expected):
+    assert iserr(value) == expected
 
 
 @pytest.mark.parametrize(

@@ -274,9 +274,19 @@ def index(array, row_num, col_num=None):
 
 
 @excel_helper(cse_params=0, err_str_params=None)
+def iserr(value):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   is-functions-0f2d7971-6019-40a0-a171-f2d869135665
+    # Value refers to any error value except #N/A.
+    return isinstance(value, str) and value in ERROR_CODES and value != NA_ERROR
+
+
+@excel_helper(cse_params=0, err_str_params=None)
 def iserror(value):
     # Excel reference: https://support.office.com/en-us/article/
-    #   IFERROR-function-C526FD07-CAEB-47B8-8BB6-63F3E417F611
+    #   is-functions-0f2d7971-6019-40a0-a171-f2d869135665
+    # Value refers to any error value:
+    #   (#N/A, #VALUE!, #REF!, #DIV/0!, #NUM!, #NAME?, or #NULL!).
     return isinstance(value, str) and value in ERROR_CODES or (
         isinstance(value, tuple))
 
