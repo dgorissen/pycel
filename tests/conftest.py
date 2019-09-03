@@ -1,11 +1,30 @@
 import os
 import shutil
-
-import pytest
 from unittest import mock
 
-from pycel.excelwrapper import ExcelOpxWrapper as ExcelWrapperImpl
+import pytest
+from openpyxl.utils import column_index_from_string
+
 from pycel.excelcompiler import ExcelCompiler
+from pycel.excelutil import AddressCell
+from pycel.excelwrapper import ExcelOpxWrapper as ExcelWrapperImpl
+
+
+@pytest.fixture('session')
+def ATestCell():
+
+    class ATestCell:
+
+        def __init__(self, col, row, sheet='', excel=None, value=None):
+            self.row = row
+            self.col = col
+            self.col_idx = column_index_from_string(col)
+            self.sheet = sheet
+            self.excel = excel
+            self.address = AddressCell('{}{}'.format(col, row), sheet=sheet)
+            self.value = value
+
+    return ATestCell
 
 
 @pytest.fixture('session')

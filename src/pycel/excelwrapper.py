@@ -9,12 +9,13 @@ import collections
 import os
 from unittest import mock
 
-from openpyxl import load_workbook
+from openpyxl import load_workbook, Workbook
 from openpyxl.cell.cell import Cell, MergedCell
 from openpyxl.cell.read_only import EMPTY_CELL
 from openpyxl.formula.translate import Translator
 from openpyxl.utils import datetime as opxl_dt
-from pycel.excelutil import AddressCell, AddressRange, flatten
+
+from pycel.excelutil import AddressCell, AddressRange, coerce_to_number, flatten
 
 ARRAY_FORMULA_NAME = '=CSE_INDEX'
 ARRAY_FORMULA_FORMAT = '{}(%s,%s,%s,%s,%s)'.format(ARRAY_FORMULA_NAME)
@@ -27,7 +28,7 @@ class ExcelWrapper:
 
     @abc.abstractmethod
     def connect(self):
-        """"""
+        """This is obsolete and could be removed at some point"""
 
     @abc.abstractmethod
     def get_range(self, address):
@@ -159,11 +160,12 @@ class ExcelOpxWrapper(ExcelWrapper):
         if self.workbook is not None and self._defined_names is None:
             self._defined_names = {}
 
-            for defined_name in self.workbook.defined_names.definedName:
-                for worksheet, range_alias in defined_name.destinations:
-                    if worksheet in self.workbook:
-                        self._defined_names[str(defined_name.name)] = (
-                            range_alias, worksheet)
+            for d_name in self.workbook.defined_names.definedName:
+                destinations = [
+                    (alias, wksht) for wksht, alias in d_name.destinations
+                    if wksht in self.workbook]
+                if len(destinations):
+                    self._defined_names[str(d_name.name)] = destinations
         return self._defined_names
 
     def table(self, table_name):
@@ -301,3 +303,44 @@ class ExcelOpxWrapper(ExcelWrapper):
 
     def get_active_sheet_name(self):
         return self.workbook.active.title
+
+
+class ExcelOpxWrapperNoData(ExcelOpxWrapper):
+    """ ExcelWrapper interface from openpyxl workbook,
+        without data_only workbook """
+
+    @staticmethod
+    def excel_value(formula, value):
+        """A openpyxl sheet does not have values for formula cells"""
+        return None if formula or value is None else coerce_to_number(
+            value, convert_all=True)
+
+    class OpxRange(_OpxRange):
+        def __new__(cls, range_data):
+            values = tuple(
+                tuple(ExcelOpxWrapperNoData.excel_value(*cell)
+                      for cell in zip(row_f, row_v))
+                for row_f, row_v in zip(range_data.formula, range_data.values)
+            )
+            return ExcelWrapper.RangeData.__new__(
+                cls, range_data.address, range_data.formula, values)
+
+    class OpxCell(_OpxCell):
+        def __new__(cls, cell_data):
+            value = ExcelOpxWrapperNoData.excel_value(
+                cell_data.formula, cell_data.values)
+            return ExcelWrapper.RangeData.__new__(
+                cls, cell_data.address, cell_data.formula, value)
+
+    def __init__(self, workbook, filename='Unknown'):
+        super().__init__(filename=filename)
+        assert isinstance(workbook, Workbook)
+        self.workbook = workbook
+        self.workbook_dataonly = workbook
+
+    def get_range(self, address):
+        data = super().get_range(address)
+        if isinstance(data.values, tuple):
+            return self.OpxRange(data)
+        else:
+            return self.OpxCell(data)

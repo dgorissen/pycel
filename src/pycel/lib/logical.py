@@ -6,8 +6,8 @@ from pycel.excelutil import (
     ERROR_CODES,
     flatten,
     in_array_formula_context,
+    NA_ERROR,
     VALUE_ERROR,
-    NA_ERROR
 )
 from pycel.lib.function_helpers import cse_array_wrapper, excel_helper
 
@@ -95,24 +95,30 @@ def iferror(arg, value_if_error):
 #   ifna-function-6626c961-a569-42fc-a49d-79b4951fd461
 
 
-# IFS function
-# Excel 2016
-# Checks whether one or more conditions are met and returns a value that
-# corresponds to the first TRUE condition.
-# Excel reference: https://support.office.com/en-us/article/
-#   ifs-function-36329a26-37b2-467c-972b-4a39bd951d45
 def ifs(*args):
-    length = len(args)
-    if length % 2 == 1 or length == 0:
-        return NA_ERROR
+    # IFS function
+    # Excel 2016
+    # Checks whether one or more conditions are met and returns a value that
+    # corresponds to the first TRUE condition.
+    # Excel reference: https://support.office.com/en-us/article/
+    #   ifs-function-36329a26-37b2-467c-972b-4a39bd951d45
+    if not len(args) % 2:
+        for test, value in zip(args[::2], args[1::2]):
 
-    for i in range(0, length, 2):
-        value = _clean_logical(args[i])
-        if isinstance(value, str):
-            # return error code
-            return value
-        elif value:
-            return args[i + 1]
+            if test in ERROR_CODES:
+                return test
+
+            if isinstance(test, str):
+                if test.lower() in ('true', 'false'):
+                    test = len(test) == 4
+                else:
+                    return VALUE_ERROR
+
+            elif not isinstance(test, (bool, int, float, type(None))):
+                return VALUE_ERROR
+
+            if test:
+                return value
 
     return NA_ERROR
 

@@ -1,8 +1,5 @@
-import calendar
 import collections
-import datetime as dt
 import itertools as it
-import math
 import operator
 import re
 import threading
@@ -25,10 +22,6 @@ NA_ERROR = '#N/A'
 NAME_ERROR = "#NAME?"
 NULL_ERROR = "#NULL!"
 REF_ERROR = "#REF!"
-
-DATE_ZERO = dt.datetime(1899, 12, 30)
-SECOND = 1 / 24 / 60 / 60
-MICROSECOND = SECOND / 1E6
 
 R1C1_ROW_RE_STR = r"R(\[-?\d+\]|\d+)?"
 R1C1_COL_RE_STR = r"C(\[-?\d+\]|\d+)?"
@@ -123,10 +116,20 @@ class AddressMixin:
         """Does the address have a sheet?"""
         return bool(self.sheet)
 
+    @staticmethod
+    def quote_sheet(sheet):
+        if ' ' in sheet:
+            sheet = quote_sheetname(sheet)
+        return sheet
+
     @property
     def quoted_address(self):
         """requote the sheetname if going to include in formulas"""
-        return "{}!{}".format(quote_sheetname(self.sheet), self.coordinate)
+        return "{}!{}".format(self.quote_sheet(self.sheet), self.coordinate)
+
+    @property
+    def abs_address(self):
+        return "{}!{}".format(self.quote_sheet(self.sheet), self.abs_coordinate)
 
     @property
     def sort_key(self):
@@ -255,6 +258,11 @@ class AddressRange(collections.namedtuple(
         """top row"""
         return self.start.row
 
+    @property
+    def abs_coordinate(self):
+        return '{}:{}'.format(
+            self.start.abs_coordinate, self.end.abs_coordinate)
+
     # Is this address a range?
     is_range = True
 
@@ -299,7 +307,7 @@ class AddressRange(collections.namedtuple(
 
     @property
     def resolve_range(self):
-        """Return nested tuples with AddressCell for each element"""
+        """Return nested tuples with an AddressCell for each element"""
         assert self.is_bounded_range
         return tuple(tuple(row) for row in self.rows)
 
@@ -326,7 +334,9 @@ class AddressRange(collections.namedtuple(
         addr_tuple, sheetname = range_boundaries(
             addr, sheet=sheetname, cell=cell)
 
-        if None in addr_tuple or addr_tuple[0:2] != addr_tuple[2:]:
+        if isinstance(addr_tuple, AddressMultiAreaRange):
+            return addr_tuple
+        elif None in addr_tuple or addr_tuple[0:2] != addr_tuple[2:]:
             return AddressRange(addr_tuple, sheet=sheetname)
         else:
             return AddressCell(addr_tuple, sheet=sheetname)
@@ -399,6 +409,9 @@ class AddressCell(collections.namedtuple(
             cls, format_str.format(sheet, coordinate),
             sheet, col_idx, row, coordinate)
 
+    def __contains__(self, address):
+        return self == AddressCell(address)
+
     # Is this address a range?
     is_range = False
 
@@ -426,6 +439,10 @@ class AddressCell(collections.namedtuple(
         """
         return (self.row + inc - 1) % MAX_ROW + 1
 
+    @property
+    def abs_coordinate(self):
+        return '${}${}'.format(self.column, self.row)
+
     def address_at_offset(self, row_inc=0, col_inc=0):
         """ Construct an `AddressCell` offset from the address
 
@@ -440,7 +457,7 @@ class AddressCell(collections.namedtuple(
 
     @property
     def resolve_range(self):
-        """Return a nested lists with AddressCell for each element"""
+        """Return nested tuples with an AddressCell for each element"""
         return (self, ),
 
     @classmethod
@@ -460,6 +477,31 @@ class AddressCell(collections.namedtuple(
             raise ValueError(
                 "{0} is not a valid coordinate".format(address))
         return addr
+
+
+class AddressMultiAreaRange(tuple):
+    """Multi-Area Address Range"""
+
+    def __str__(self):
+        return ','.join(str(addr) for addr in self)
+
+    def __contains__(self, address):
+        address = AddressCell(address)
+        return any(address in addr for addr in self)
+
+    # Is this address a range?
+    is_range = True
+
+    @property
+    def is_bounded_range(self):
+        """Is this address a bounded range?"""
+        return all(addr.is_bounded_range for addr in self
+                   if isinstance(addr, AddressRange))
+
+    @property
+    def resolve_range(self):
+        """Return nested tuples with an AddressCell for each element"""
+        return it.chain.from_iterable(addr.resolve_range for addr in self)
 
 
 def unquote_sheetname(sheetname):
@@ -659,7 +701,12 @@ def range_boundaries(address, cell=None, sheet=None):
     # Try to see if this is a defined name
     name_addr = cell and cell.excel and cell.excel.defined_names.get(address)
     if name_addr:
-        return openpyxl_range_boundaries(name_addr[0]), name_addr[1]
+        if len(name_addr) == 1:
+            return openpyxl_range_boundaries(name_addr[0][0]), name_addr[0][1]
+        else:
+            return AddressMultiAreaRange(tuple(
+                AddressRange(range_alias, sheet=worksheet)
+                for range_alias, worksheet in name_addr)), None
 
     if len(address.split(':')) > 2:
         raise NotImplementedError("Multiple Colon Ranges: {}".format(address))
@@ -991,72 +1038,6 @@ def handle_ifs(args, op_range=None):
 
     # if it is true in all cases, return the coordinates
     return tuple(idx for idx, cnt in index_counts.items() if cnt == ifs_count)
-
-
-def is_leap_year(year):
-    if not is_number(year):
-        raise TypeError("%s must be a number" % str(year))
-    if year <= 0:
-        raise TypeError("%s must be strictly positive" % str(year))
-
-    # Watch out, 1900 is a leap according to Excel =>
-    # https://support.microsoft.com/en-us/kb/214326
-    return year % 4 == 0 and year % 100 != 0 or year % 400 == 0 or year == 1900
-
-
-def get_max_days_in_month(month, year):
-    if month == 2 and is_leap_year(year):
-        return 29
-
-    return calendar.monthrange(year, month)[1]
-
-
-def normalize_year(y, m, d):
-    """taking into account negative month and day values"""
-    if not (1 <= m <= 12):
-        y_plus = math.floor((m - 1) / 12)
-        y += y_plus
-        m -= y_plus * 12
-
-    if d <= 0:
-        d += get_max_days_in_month(m, y)
-        m -= 1
-        y, m, d = normalize_year(y, m, d)
-
-    else:
-        days_in_month = get_max_days_in_month(m, y)
-        if d > days_in_month:
-            m += 1
-            d -= days_in_month
-            y, m, d = normalize_year(y, m, d)
-
-    return y, m, d
-
-
-def date_from_int(datestamp):
-
-    if datestamp == 31 + 29:
-        # excel thinks 1900 is a leap year
-        return 1900, 2, 29
-
-    if datestamp == 0:
-        # excel thinks Jan 1900 starts at day 0
-        return 1900, 1, 0
-
-    date = DATE_ZERO + dt.timedelta(days=datestamp)
-    if datestamp < 31 + 29:
-        date += dt.timedelta(days=1)
-
-    return date.year, date.month, date.day
-
-
-def time_from_serialnumber(serialnumber):
-    at_hours = (serialnumber + MICROSECOND) * 24
-    hours = math.floor(at_hours)
-    at_mins = (at_hours - hours) * 60
-    mins = math.floor(at_mins)
-    secs = (at_mins - mins) * 60
-    return hours % 24, mins, int(round(secs - 1.1E-6, 0))
 
 
 def build_wildcard_re(lookup_value):

@@ -2,9 +2,9 @@ import pytest
 
 from pycel.lib.function_info import (
     all_excel_functions,
-    function_version,
-    function_category,
     func_status_msg,
+    function_category,
+    function_version,
 )
 
 

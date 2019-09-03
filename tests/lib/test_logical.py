@@ -1,25 +1,24 @@
 import pytest
 
+import pycel.lib.logical
 from pycel.excelutil import (
     DIV0,
     in_array_formula_context,
     NA_ERROR,
     VALUE_ERROR,
 )
-
-import pycel.lib.logical
+from pycel.lib.function_helpers import load_to_test_module
 from pycel.lib.logical import (
     _clean_logicals,
     iferror,
+    ifs,
     x_and,
     x_if,
     x_not,
     x_or,
     x_xor,
-    ifs
 )
 
-from pycel.lib.function_helpers import load_to_test_module
 
 # dynamic load the lib functions from excellib and apply metadata
 load_to_test_module(pycel.lib.logical, __name__)
@@ -112,6 +111,30 @@ def test_x_if(test_value, true_value, false_value, result):
 
 
 @pytest.mark.parametrize(
+    'result, value', (
+        (10, (True, 10, True, 20, False, 30)),
+        (20, (False, 10, True, 20, True, 30)),
+        (30, (False, 10, False, 20, True, 30)),
+        (10, ("true", 10, True, 20)),
+        (20, ("false", 10, True, 20)),
+        (10, (2, 10, True, 20)),
+        (20, (0, 10, True, 20)),
+        (10, (2.1, 10, True, 20)),
+        (20, (0.0, 10, True, 20)),
+        (20, (None, 10, True, 20)),
+        (10, (True, 10, "xyzzy", 20)),
+        (VALUE_ERROR, ("xyzzy", 10, True, 20)),
+        (VALUE_ERROR, (tuple(), 10, True, 20)),
+        (DIV0, (DIV0, 10, True, 20)),
+        (NA_ERROR, (False, 10, 0, 20, 'false', 30)),
+        (NA_ERROR, (False, 10, True)),
+    )
+)
+def test_ifs(result, value):
+    assert ifs(*value) == result
+
+
+@pytest.mark.parametrize(
     'result, test_value', (
         (False, True),
         (False, 1),
@@ -174,16 +197,3 @@ def test_x_or(result, test_value):
 )
 def test_x_xor(result, test_value):
     assert x_xor(*test_value) == result
-
-
-@pytest.mark.parametrize(
-    'result, test_value', (
-        (20, (False, 10, True, 20, False, 30)),
-        (NA_ERROR, (False, 10, True)),
-        (VALUE_ERROR, ("fsdfas", 10, True, 20)),
-        (10, (True, 10, "fsdfas", 20)),
-        (NA_ERROR, (False, 10, False, 20, False, 30))
-    )
-)
-def test_ifs(result, test_value):
-    assert ifs(*test_value) == result

@@ -1,10 +1,9 @@
 import importlib
 import math
+
 import pytest
 
-
 from pycel.excelutil import DIV0, NUM_ERROR, VALUE_ERROR
-
 from pycel.lib.function_helpers import (
     apply_meta,
     cse_array_wrapper,

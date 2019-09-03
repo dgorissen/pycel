@@ -9,7 +9,9 @@ import tokenize as tk
 import openpyxl.formula.tokenizer as tokenizer
 from networkx.classes.digraph import DiGraph
 from networkx.exception import NetworkXError
+
 from pycel.excelutil import (
+    AddressMultiAreaRange,
     AddressRange,
     build_operator_operand_fixup,
     coerce_to_number,
@@ -298,12 +300,16 @@ class RangeNode(OperandNode):
 
     @property
     def emit(self):
+        return self._emit()
+
+    def _emit(self, value=None):
         # resolve the range into cells
         sheet = self.cell and self.cell.sheet or ''
-        if '!' in self.value:
+        value = value is not None and value or self.value
+        if '!' in value:
             sheet = ''
         try:
-            addr_str = self.value.replace('$', '')
+            addr_str = value.replace('$', '')
             address = AddressRange.create(addr_str, sheet=sheet, cell=self.cell)
         except ValueError:
             # check for table relative address
@@ -322,8 +328,11 @@ class RangeNode(OperandNode):
             address = AddressRange.create(
                 addr_str, sheet=self.cell.address.sheet, cell=self.cell)
 
-        template = '_R_("{}")' if address.is_range else '_C_("{}")'
-        return template.format(address)
+        if isinstance(address, AddressMultiAreaRange):
+            return ', '.join(self._emit(value=str(addr)) for addr in address)
+        else:
+            template = '_R_("{}")' if address.is_range else '_C_("{}")'
+            return template.format(address)
 
 
 class FunctionNode(ASTNode):
@@ -501,6 +510,7 @@ class ExcelFormula:
         'pycel.lib.binary',
         'pycel.lib.date_time',
         'pycel.lib.logical',
+        'pycel.lib.text',
         'math',
     )
 

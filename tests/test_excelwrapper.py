@@ -1,8 +1,11 @@
 import pytest
 
 from pycel.excelutil import AddressRange
-from pycel.excelwrapper import ARRAY_FORMULA_FORMAT, _OpxRange
-from test_excelutil import ATestCell
+from pycel.excelwrapper import (
+    _OpxRange,
+    ARRAY_FORMULA_FORMAT,
+    ExcelOpxWrapperNoData,
+)
 
 
 def test_connect(unconnected_excel):
@@ -62,6 +65,9 @@ def test_get_formula_from_range(excel):
 def test_get_formula_or_value(excel, address, value):
     assert value == excel.get_formula_or_value(address)
 
+    from_opxl = ExcelOpxWrapperNoData(excel.workbook)
+    assert value == from_opxl.get_formula_or_value(address)
+
 
 @pytest.mark.parametrize(
     'address1, address2',
@@ -115,7 +121,7 @@ def test_get_range_value(excel):
 
 
 def test_get_defined_names(excel):
-    expected = {'SINUS': ('$C$1:$C$18', 'Sheet1')}
+    expected = {'SINUS': [('$C$1:$C$18', 'Sheet1')]}
     assert expected == excel.defined_names
 
     assert excel.defined_names == excel.defined_names
@@ -238,7 +244,7 @@ def test_conditional_format(cond_format_ws, address, expecteds):
         (ARRAY_FORMULA_FORMAT % ('xyzzy', 2, 2, 2, 2), None),
     )
 )
-def test_cell_to_formulax(value, formula):
+def test_cell_to_formulax(value, formula, ATestCell):
     cells = ((ATestCell('A', 1, value=value), ), )
     assert _OpxRange(cells, cells, '').formula == formula
 
@@ -250,10 +256,10 @@ def test_cell_to_formulax(value, formula):
         ("xyzzy", ""),
         ("=xyzzy", "=xyzzy"),
         ("={1,2;3,4}", "=index({1,2;3,4},1,1)"),
-        (ARRAY_FORMULA_FORMAT % ('xyzzy', 1, 1, 2, 2), "=index('s'!E3:F4,1,1)"),
-        (ARRAY_FORMULA_FORMAT % ('xyzzy', 1, 2, 2, 2), "=index('s'!D3:E4,1,2)"),
-        (ARRAY_FORMULA_FORMAT % ('xyzzy', 2, 1, 2, 2), "=index('s'!E2:F3,2,1)"),
-        (ARRAY_FORMULA_FORMAT % ('xyzzy', 2, 2, 2, 2), "=index('s'!D2:E3,2,2)"),
+        (ARRAY_FORMULA_FORMAT % ('xyzzy', 1, 1, 2, 2), "=index(s!E3:F4,1,1)"),
+        (ARRAY_FORMULA_FORMAT % ('xyzzy', 1, 2, 2, 2), "=index(s!D3:E4,1,2)"),
+        (ARRAY_FORMULA_FORMAT % ('xyzzy', 2, 1, 2, 2), "=index(s!E2:F3,2,1)"),
+        (ARRAY_FORMULA_FORMAT % ('xyzzy', 2, 2, 2, 2), "=index(s!D2:E3,2,2)"),
     )
 )
 def test_cell_to_formula(value, formula):

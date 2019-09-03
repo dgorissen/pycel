@@ -2,29 +2,30 @@
 Python equivalents of Date and Time library functions
 """
 
+import calendar
 import datetime as dt
 import functools
 import math
+
 import dateutil.parser
 
 from pycel.excelutil import (
     coerce_to_number,
-    date_from_int,
-    DATE_ZERO,
     ERROR_CODES,
-    is_leap_year,
+    is_number,
     NUM_ERROR,
-    normalize_year,
-    SECOND,
-    time_from_serialnumber,
     VALUE_ERROR,
 )
-
-
 from pycel.lib.function_helpers import (
     excel_helper,
     excel_math_func,
 )
+
+
+DATE_ZERO = dt.datetime(1899, 12, 30)
+SECOND = 1 / 24 / 60 / 60
+MICROSECOND = SECOND / 1E6
+LEAP_1900_SERIAL_NUMBER = 60  # magic number for non-existent 1900/02/29
 
 
 def serial_number_wrapper(f):
@@ -57,6 +58,72 @@ def time_value_wrapper(f):
     return wrapped
 
 
+def date_from_int(datestamp):
+
+    if datestamp == LEAP_1900_SERIAL_NUMBER:
+        # excel thinks 1900 is a leap year
+        return 1900, 2, 29
+
+    if datestamp == 0:
+        # excel thinks Jan 1900 starts at day 0
+        return 1900, 1, 0
+
+    date = DATE_ZERO + dt.timedelta(days=datestamp)
+    if datestamp < LEAP_1900_SERIAL_NUMBER:
+        date += dt.timedelta(days=1)
+
+    return date.year, date.month, date.day
+
+
+def time_from_serialnumber(serialnumber):
+    at_hours = (serialnumber + MICROSECOND) * 24
+    hours = math.floor(at_hours)
+    at_mins = (at_hours - hours) * 60
+    mins = math.floor(at_mins)
+    secs = (at_mins - mins) * 60
+    return hours % 24, mins, int(round(secs - 1.1E-6, 0))
+
+
+def is_leap_year(year):
+    if not is_number(year):
+        raise TypeError("%s must be a number" % str(year))
+    if year <= 0:
+        raise TypeError("%s must be strictly positive" % str(year))
+
+    # Watch out, 1900 is a leap according to Excel =>
+    # https://support.microsoft.com/en-us/kb/214326
+    return year % 4 == 0 and year % 100 != 0 or year % 400 == 0 or year == 1900
+
+
+def max_days_in_month(month, year):
+    if month == 2 and is_leap_year(year):
+        return 29
+
+    return calendar.monthrange(year, month)[1]
+
+
+def normalize_year(y, m, d):
+    """taking into account negative month and day values"""
+    if not (1 <= m <= 12):
+        y_plus = math.floor((m - 1) / 12)
+        y += y_plus
+        m -= y_plus * 12
+
+    if d <= 0:
+        d += max_days_in_month(m, y)
+        m -= 1
+        y, m, d = normalize_year(y, m, d)
+
+    else:
+        days_in_month = max_days_in_month(m, y)
+        if d > days_in_month:
+            m += 1
+            d -= days_in_month
+            y, m, d = normalize_year(y, m, d)
+
+    return y, m, d
+
+
 @excel_helper(number_params=-1)
 def date(year, month_, day):
     # Excel reference: https://support.office.com/en-us/article/
@@ -83,20 +150,41 @@ def date(year, month_, day):
     #   datedif-function-25dba1a4-2812-480b-84dd-8b32a451b35c
 
 
+class DateutilParserInfo(dateutil.parser.parserinfo):
+    """Hook into dateutil parser and fix number strings and 1900/01/29"""
+
+    def __init__(self):
+        super().__init__()
+        self.is_leap_day_1900 = False
+
+    def validate(self, res):
+        if res.day is None or res.month is None:
+            return False
+        if (res.year, res.month, res.day) == (1900, 2, 29):
+            self.is_leap_day_1900 = True
+        return super().validate(res)
+
+
 def datevalue(value):
     # Excel reference: https://support.office.com/en-us/article/
     #   datevalue-function-df8b07d4-7761-4a93-bc33-b7471bbff252
-    if not isinstance(value, str):
-        return VALUE_ERROR
-
-    if value in ERROR_CODES:
-        return value
-
+    parserinfo = DateutilParserInfo()
     try:
-        date = dateutil.parser.parse(value).date()
-        return (date - dt.date(1899, 12, 31)).days + 1
-    except ValueError:
-        return VALUE_ERROR
+        a_date = dateutil.parser.parse(value, parserinfo=parserinfo).date()
+    except (TypeError, ValueError):
+        if parserinfo.is_leap_day_1900:
+            return LEAP_1900_SERIAL_NUMBER
+        elif value in ERROR_CODES:
+            return value
+        else:
+            return VALUE_ERROR
+
+    serial_number = (a_date - DATE_ZERO.date()).days
+    if serial_number <= LEAP_1900_SERIAL_NUMBER:
+        serial_number -= 1
+        if serial_number < 1:
+            return VALUE_ERROR
+    return serial_number
 
 
 @serial_number_wrapper

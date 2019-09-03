@@ -3,56 +3,40 @@ import pickle
 from collections import namedtuple
 
 import pytest
-from openpyxl.utils import column_index_from_string, quote_sheetname
+from openpyxl.utils import quote_sheetname
+
 from pycel.excelutil import (
     AddressCell,
+    AddressMultiAreaRange,
     AddressRange,
     assert_list_like,
     build_operator_operand_fixup,
     coerce_to_number,
     coerce_to_string,
     criteria_parser,
-    date_from_int,
     EMPTY,
     ExcelCmp,
     find_corresponding_index,
     flatten,
     get_linest_degree,
-    get_max_days_in_month,
     handle_ifs,
     in_array_formula_context,
-    is_leap_year,
     is_number,
     iterative_eval_tracker,
     list_like,
     MAX_COL,
     MAX_ROW,
-    MICROSECOND,
     NUM_ERROR,
-    normalize_year,
     OPERATORS,
     PyCelException,
     range_boundaries,
     split_sheetname,
     structured_reference_boundaries,
-    time_from_serialnumber,
     uniqueify,
     unquote_sheetname,
     VALUE_ERROR,
 )
 from pycel.excelutil import DIV0
-
-
-class ATestCell:
-
-    def __init__(self, col, row, sheet='', excel=None, value=None):
-        self.row = row
-        self.col = col
-        self.col_idx = column_index_from_string(col)
-        self.sheet = sheet
-        self.excel = excel
-        self.address = AddressCell('{}{}'.format(col, row), sheet=sheet)
-        self.value = value
 
 
 def test_address_range():
@@ -152,6 +136,7 @@ def test_address_range_contains(a_range, address, expected):
     assert expected == (address in a_range)
     address = AddressCell(address)
     assert expected == (address in a_range)
+    assert address in address
 
 
 def test_is_range():
@@ -288,7 +273,18 @@ def test_unquote_sheetname(sheet_name):
 )
 def test_quoted_address(sheet_name):
     addr = AddressCell('A2', sheet=sheet_name)
-    assert addr.quoted_address == '{}!A2'.format(quote_sheetname(sheet_name))
+    assert addr.quoted_address == '{}!A2'.format(addr.quote_sheet(sheet_name))
+
+
+@pytest.mark.parametrize(
+    'address, expected', (
+        ('s!D2', 's!$D$2'),
+        ('s!D2:F4', 's!$D$2:$F$4'),
+        (AddressRange("D2:F4", sheet='sh 1'), "'sh 1'!$D$2:$F$4"),
+    )
+)
+def test_address_absolute(address, expected):
+    assert AddressRange.create(address).abs_address == expected
 
 
 def test_split_sheetname():
@@ -308,7 +304,7 @@ def test_split_sheetname():
         split_sheetname('sh!B1:C2:sh2!B1:C2')
 
 
-def test_address_cell_enum():
+def test_address_cell_enum(ATestCell):
     assert ('B1', '', 2, 1, 'B1') == AddressCell('B1')
     assert ('sheet!B1', 'sheet', 2, 1, 'B1') == AddressCell('sheet!B1')
 
@@ -358,6 +354,28 @@ def test_resolve_range():
 
     with pytest.raises(AssertionError):
         a('1:2').resolve_range
+
+
+addr_cr = AddressRange.create
+
+
+@pytest.mark.parametrize(
+    'address, string, mar', (
+        (((addr_cr('B1'), ), (addr_cr('B1'), addr_cr('C1'),)),
+         'B1,B1:C1',
+         AddressMultiAreaRange((addr_cr('B1'), addr_cr('B1:C1')))),
+        (((addr_cr('B1'),), (addr_cr('B2'),),
+          (addr_cr('B1'), addr_cr('C1')), (addr_cr('B2'), addr_cr('C2'))),
+         'B1:B2,B1:C2',
+         AddressMultiAreaRange((addr_cr('B1:B2'), addr_cr('B1:C2')))),
+    )
+)
+def test_multi_area_range(address, string, mar):
+    assert address == tuple(mar.resolve_range)
+    assert mar.is_bounded_range
+    assert address[0][0] in mar
+    assert AddressRange('Z99') not in mar
+    assert str(mar) == string
 
 
 @pytest.mark.parametrize(
@@ -447,7 +465,7 @@ def test_structured_table_reference_boundaries(ref, expected):
         assert ref_bound == expected_ref
 
 
-def test_extended_range_boundaries():
+def test_extended_range_boundaries(ATestCell):
     cell = ATestCell('A', 1)
 
     assert (1, 2) * 2 == range_boundaries('A2')[0]
@@ -477,7 +495,7 @@ def test_extended_range_boundaries():
         range_boundaries('A1:B2:C3')
 
 
-def test_range_boundaries_defined_names(excel):
+def test_range_boundaries_defined_names(excel, ATestCell):
     cell = ATestCell('A', 1, excel=excel)
 
     assert ((3, 1, 3, 18), 'Sheet1') == range_boundaries('SINUS', cell)
@@ -505,11 +523,25 @@ def test_range_boundaries_defined_names(excel):
         'xyzzy',
     ]
 )
-def test_extended_range_boundaries_errors(address_string):
+def test_extended_range_boundaries_errors(address_string, ATestCell):
     cell = ATestCell('A', 1)
 
     with pytest.raises(ValueError, match='not a valid coordinate or range'):
         range_boundaries(address_string, cell)
+
+
+def test_multi_area_ranges(excel, ATestCell):
+    cell = ATestCell('A', 1, excel=excel)
+    from unittest import mock
+    with mock.patch.object(excel, '_defined_names', {
+            'dname': (('$A$1', 's1'), ('$A$3:$A$4', 's2'))}):
+
+        multi_area_range = AddressMultiAreaRange(
+            tuple(AddressRange(addr, sheet=sh))
+            for addr, sh in excel._defined_names['dname'])
+
+        assert (multi_area_range, None) == range_boundaries('dname', cell)
+        assert multi_area_range == AddressRange.create('dname', cell=cell)
 
 
 @pytest.mark.parametrize(
@@ -689,29 +721,6 @@ def test_is_number():
     assert not is_number('x')
 
 
-def test_is_leap_year():
-
-    assert is_leap_year(1900)
-    assert is_leap_year(1904)
-    assert is_leap_year(2000)
-    assert is_leap_year(2104)
-
-    assert not is_leap_year(1)
-    assert not is_leap_year(2100)
-    assert not is_leap_year(2101)
-    assert not is_leap_year(2103)
-    assert not is_leap_year(2102)
-
-    with pytest.raises(TypeError):
-        is_leap_year('x')
-
-    with pytest.raises(TypeError):
-        is_leap_year(-1)
-
-    with pytest.raises(TypeError):
-        is_leap_year(0)
-
-
 @pytest.mark.parametrize(
     'data, result', (
         ((12, 12), TypeError),
@@ -740,85 +749,6 @@ def test_handle_ifs_op_range_errors():
 
     with pytest.raises(AssertionError):
         handle_ifs(((((1, 2), (3, 4)), ">=3")), ((1, ), (1, )))
-
-
-def test_get_max_days_in_month():
-    assert 31 == get_max_days_in_month(1, 2000)
-    assert 29 == get_max_days_in_month(2, 2000)
-    assert 28 == get_max_days_in_month(2, 2001)
-    assert 31 == get_max_days_in_month(3, 2000)
-    assert 30 == get_max_days_in_month(4, 2000)
-    assert 31 == get_max_days_in_month(5, 2000)
-    assert 30 == get_max_days_in_month(6, 2000)
-    assert 31 == get_max_days_in_month(7, 2000)
-    assert 31 == get_max_days_in_month(8, 2000)
-    assert 30 == get_max_days_in_month(9, 2000)
-    assert 31 == get_max_days_in_month(10, 2000)
-    assert 30 == get_max_days_in_month(11, 2000)
-    assert 31 == get_max_days_in_month(12, 2000)
-
-    # excel thinks 1900 is a leap year
-    assert 29 == get_max_days_in_month(2, 1900)
-
-
-@pytest.mark.parametrize(
-    'result, value', (
-        ((1900, 1, 1), (1900, 1, 1)),
-        ((1900, 2, 1), (1900, 1, 32)),
-        ((1900, 3, 1), (1900, 1, 61)),
-        ((1900, 4, 1), (1900, 1, 92)),
-        ((1900, 5, 1), (1900, 1, 122)),
-        ((1900, 4, 1), (1900, 0, 123)),
-        ((1900, 3, 1), (1900, -1, 122)),
-
-        ((1899, 12, 1), (1900, 1, -31)),
-        ((1899, 12, 1), (1900, 0, 1)),
-        ((1899, 11, 1), (1900, -1, 1)),
-
-        ((1918, 12, 1), (1920, -12, 1)),
-        ((1919, 1, 1), (1920, -11, 1)),
-        ((1919, 11, 1), (1920, -1, 1)),
-        ((1919, 12, 1), (1920, 0, 1)),
-        ((1920, 1, 1), (1920, 1, 1)),
-        ((1920, 11, 1), (1920, 11, 1)),
-        ((1920, 12, 1), (1920, 12, 1)),
-        ((1921, 1, 1), (1920, 13, 1)),
-        ((1921, 11, 1), (1920, 23, 1)),
-        ((1921, 12, 1), (1920, 24, 1)),
-        ((1922, 1, 1), (1920, 25, 1)),
-    )
-)
-def test_normalize_year(result, value):
-    assert normalize_year(*value) == result
-
-
-@pytest.mark.parametrize(
-    'result, value', (
-        ((1900, 1, 1), 1),
-        ((1900, 1, 31), 31),
-        ((1900, 2, 29), 60),
-        ((1900, 3, 1), 61),
-        ((2009, 7, 6), 40000),
-    )
-)
-def test_date_from_int(result, value):
-    assert date_from_int(value) == result
-
-
-@pytest.mark.parametrize(
-    'result, value', (
-        ((0, 0, 0), 1),
-        ((23, 58, 34), 0.999),
-        ((23, 59, 51), 0.9999),
-        ((23, 59, 59), 1 - (MICROSECOND * 1e6)),
-        ((0, 0, 0), 0),
-        ((23, 59, 59), 0 - MICROSECOND * 5e5),
-        ((23, 59, 59), 1 - MICROSECOND * 5e5),
-        ((2, 24, 0), 1.1),
-    )
-)
-def test_time_from_serialnumber(result, value):
-    assert time_from_serialnumber(value) == result
 
 
 def test_find_corresponding_index():

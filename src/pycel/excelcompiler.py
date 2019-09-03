@@ -7,6 +7,8 @@ import os
 import pickle
 
 import networkx as nx
+from ruamel.yaml import YAML
+
 from pycel.excelformula import ExcelFormula
 from pycel.excelutil import (
     AddressCell,
@@ -17,8 +19,7 @@ from pycel.excelutil import (
     NULL_ERROR,
     VALUE_ERROR,
 )
-from pycel.excelwrapper import ExcelOpxWrapper
-from ruamel.yaml import YAML
+from pycel.excelwrapper import ExcelOpxWrapper, ExcelOpxWrapperNoData
 
 REF_START = '=_REF_("'
 REF_END = '")'
@@ -39,7 +40,7 @@ class ExcelCompiler:
         """ Build a compiler instance to organize the formula for a workbook
 
         :param filename: Excel filename to load from (xlsx or `to_file`)
-        :param excel: Opened instance of ExcelWrapper
+        :param excel: Opened instance of ExcelWrapper or openpyxl workbook
         :param plugins: module paths for plugin lib functions
         :param cycles: Override workbook iterative calculation settings
         """
@@ -48,6 +49,8 @@ class ExcelCompiler:
 
         if excel:
             # if we are running as an excel addin, this gets passed to us
+            if not isinstance(excel, (ExcelOpxWrapper, _CompiledImporter)):
+                excel = ExcelOpxWrapperNoData(excel)
             self.excel = excel
             self.filename = excel.filename
             self.hash = None
