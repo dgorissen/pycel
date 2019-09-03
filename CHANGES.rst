@@ -1,3 +1,33 @@
+1.0b17 (2019-09-02)
+===================
+
+Changes
+-------
+* Add Formula Support for Multi Area Ranges from defined names
+* Allow ExcelCompiler init from openpyxl workbook
+* Implement LOWER(), REPLACE(), TRIM() & UPPER()
+* Implement DATEVALUE(), IFS() and ISERR()
+
+* Reorganized time and time utils and text functions
+* Add excelutil.AddressMultiAreaRange.
+* Add abs_coordinate() property to AddressRange and AddressCell
+* Cleanup import statements
+
+Fixes
+-----
+* Resolved tox version issue on travis
+* Fix defined names with Multi Area Range
+
+
+1.0b16 (2019-07-07)
+===================
+
+Changes
+-------
+* Add twelve date and time functions
+* Serialize workbook filename and use it instead of the serialization filename
+
+
 1.0b15 (2019-06-30)
 ===================
 
