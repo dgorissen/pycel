@@ -9,6 +9,7 @@ import numpy as np
 
 from pycel.excelutil import (
     build_wildcard_re,
+    coerce_to_number,
     DIV0,
     ERROR_CODES,
     ExcelCmp,
@@ -150,6 +151,13 @@ def countifs(*args):
     return len(handle_ifs(args))
 
 
+@excel_helper(cse_params=0, err_str_params=0, number_params=0)
+def even(value):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   even-function-197b5f06-c795-4c1e-8696-3c3b8a646cf9'
+    return math.copysign(math.ceil(abs(value) / 2) * 2, value)
+
+
 @excel_math_func
 def floor(number, significance):
     # Excel reference: https://support.office.com/en-us/article/
@@ -257,6 +265,13 @@ def iserror(value):
         isinstance(value, tuple))
 
 
+def iseven(value):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   iseven-function-aa15929a-d77b-4fbb-92f4-2f479af55356
+    result = isodd(value)
+    return not result if isinstance(result, bool) else result
+
+
 @excel_helper(cse_params=0, err_str_params=None)
 def istext(arg):
     # Excel reference: https://support.office.com/en-us/article/
@@ -269,6 +284,20 @@ def isna(value):
     # Excel reference: https://support.office.com/en-us/article/
     #   is-functions-0f2d7971-6019-40a0-a171-f2d869135665
     return value == NA_ERROR or isinstance(value, tuple)
+
+
+@excel_helper(cse_params=0, err_str_params=0)
+def isodd(value):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   is-functions-0f2d7971-6019-40a0-a171-f2d869135665
+    if isinstance(value, bool):
+        return VALUE_ERROR
+    value = coerce_to_number(value)
+    if value in ERROR_CODES:
+        return value
+    if isinstance(value, str):
+        return VALUE_ERROR
+    return bool(math.floor(abs(value)) % 2)
 
 
 @excel_helper(cse_params=0, err_str_params=None)
@@ -469,6 +498,13 @@ def npv(*args):
     return sum([float(x) * rate ** -i for i, x in enumerate(cashflow, start=1)])
 
 
+@excel_helper(cse_params=0, err_str_params=0, number_params=0)
+def odd(value):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   odd-function-deae64eb-e08a-4c88-8b40-6d0b42575c98
+    return math.copysign(math.ceil((abs(value) - 1) / 2) * 2 + 1, value)
+
+
 @excel_math_func
 def power(number, power):
     # Excel reference: https://support.office.com/en-us/article/
@@ -503,6 +539,13 @@ def row(ref):
             return tuple((c, ) for c in range(ref.start.row, ref.end.row + 1))
     else:
         return ref.row
+
+
+@excel_helper(cse_params=0, err_str_params=0, number_params=0)
+def sign(value):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   sign-function-109c932d-fcdc-4023-91f1-2dd0e916a1d8
+    return -1 if value < 0 else int(bool(value))
 
 
 def sumif(rng, criteria, sum_range=None):

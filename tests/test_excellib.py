@@ -16,13 +16,16 @@ from pycel.excellib import (
     count,
     countif,
     countifs,
+    even,
     floor,
     hlookup,
     index,
     iserr,
     iserror,
+    iseven,
     isna,
     isnumber,
+    isodd,
     istext,
     # ::TODO:: finish test cases for remainder of functions
     # linest,
@@ -32,9 +35,11 @@ from pycel.excellib import (
     match,
     mod,
     npv,
+    odd,
     power,
     roundup,
     row,
+    sign,
     sumif,
     sumifs,
     sumproduct,
@@ -237,6 +242,35 @@ class TestCountIfs:
     def test_countifs_odd_args_len(self):
         with pytest.raises(AssertionError):
             countifs(((7, 25, 13, 25), ), 25, ((100, 102, 201, 20), ))
+
+
+@pytest.mark.parametrize(
+    '_iseven, _isodd, _sign, _odd, _even, value', (
+        (True, False, -1, -101, -102, -100.1),
+        (True, False, -1, -101, -102, '-100.1'),
+        (True, False, -1, -101, -100, -100),
+        (False, True, -1, -101, -100, -99.9),
+        (True, False, 0, 1, 0, 0),
+        (False, True, 1, 1, 2, 1),
+        (True, False, 1, 1, 2, 0.1),
+        (True, False, 1, 1, 2, '0.1'),
+        (True, False, 1, 3, 2, '2'),
+        (True, False, 1, 3, 4, 2.9),
+        (False, True, 1, 3, 4, 3),
+        (False, True, 1, 5, 4, 3.1),
+        (VALUE_ERROR, VALUE_ERROR, 1, 1, 2, True),
+        (VALUE_ERROR, VALUE_ERROR, 0, 1, 0, False),
+        (VALUE_ERROR, ) * 5 + ('xyzzy', ),
+        (VALUE_ERROR, ) * 6,
+        (DIV0, ) * 6,
+    )
+)
+def test_even_odd_sign(_iseven, _isodd, _sign, _odd, _even, value):
+    assert iseven(value) == _iseven
+    assert isodd(value) == _isodd
+    assert sign(value) == _sign
+    assert odd(value) == _odd
+    assert even(value) == _even
 
 
 @pytest.mark.parametrize(
