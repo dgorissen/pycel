@@ -651,6 +651,38 @@ def test_multi_area_range_defined_name(fixture_xls_copy):
     assert (3, 10, 4) == excel_compiler.evaluate(output_addrs[0])
 
 
+def test_unbounded_countifs(fixture_xls_copy):
+    wb = Workbook()
+    ws = wb.active
+    ws['A1'] = 1
+    ws['A2'] = 2
+    ws['A3'] = 3
+    ws['A4'] = 4
+    ws['A5'] = 5
+    ws['B1'] = '1'
+    ws['B2'] = '2'
+    ws['B3'] = '3'
+    ws['B4'] = '4'
+    ws['B5'] = '5'
+    ws['C1'] = '=COUNTIFS(B:B,">3")'
+    ws['C2'] = '=SUMIFS(A:A,B:B,">3")'
+    excel_compiler = ExcelCompiler(filename='test_unbounded_countifs', excel=wb)
+
+    output_addrs = 'Sheet!C1', 'Sheet!C2'
+    assert (2, 9) == excel_compiler.evaluate(output_addrs)
+    excel_compiler.recalculate()
+    assert (2, 9) == excel_compiler.evaluate(output_addrs)
+
+    # read the spreadsheet from pickle
+    excel_compiler.to_file(file_types=('pickle', ))
+    excel_compiler = ExcelCompiler.from_file(excel_compiler.filename)
+
+    # test evaluation
+    assert (2, 9) == excel_compiler.evaluate(output_addrs)
+    excel_compiler.recalculate()
+    assert (2, 9) == excel_compiler.evaluate(output_addrs)
+
+
 @pytest.mark.parametrize(
     'msg, formula', (
         ("Function XYZZY is not implemented. "

@@ -270,7 +270,7 @@ class ExcelOpxWrapper(ExcelWrapper):
                         self.from_excel):
             # work around type coercion to datetime that causes some issues
 
-            if address.is_range and not address.is_bounded_range:
+            if address.is_unbounded_range:
                 # bound the address range to the data in the spreadsheet
                 address = address & AddressRange(
                     (1, 1, sheet_dataonly.max_column, sheet_dataonly.max_row),

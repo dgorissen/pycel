@@ -372,7 +372,7 @@ addr_cr = AddressRange.create
 )
 def test_multi_area_range(address, string, mar):
     assert address == tuple(mar.resolve_range)
-    assert mar.is_bounded_range
+    assert not mar.is_unbounded_range
     assert address[0][0] in mar
     assert AddressRange('Z99') not in mar
     assert str(mar) == string
