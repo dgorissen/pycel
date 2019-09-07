@@ -45,6 +45,8 @@ def _numerics(*args, keep_bools=False):
 
 
 def average(*args):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   average-function-047bac88-d466-426c-a32b-8f33eb960cf6
     data = _numerics(*args)
 
     # A returned string is an error code
@@ -56,9 +58,27 @@ def average(*args):
         return sum(data) / len(data)
 
 
+def averageif(rng, criteria, average_range=None):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   averageif-function-faec8e2e-0dec-4308-af69-f5576d8ac642
+
+    # WARNING:
+    # - The following is not currently implemented:
+    #  The average_range argument does not have to be the same size and shape
+    #  as the range argument. The actual cells that are added are determined by
+    #  using the upper leftmost cell in the average_range argument as the
+    #  beginning cell, and then including cells that correspond in size and
+    #  shape to the range argument.
+    if average_range is None:
+        average_range = rng
+    return averageifs(average_range, rng, criteria)
+
+
 def averageifs(average_range, *args):
     # Excel reference: https://support.office.com/en-us/article/
     #   AVERAGEIFS-function-48910C45-1FC0-4389-A028-F7C5C3001690
+    if not list_like(average_range):
+        average_range = ((average_range, ), )
 
     coords = handle_ifs(args, average_range)
     data = _numerics((average_range[r][c] for r, c in coords), keep_bools=True)
@@ -117,16 +137,12 @@ def count(*args):
     return total
 
 
-def countif(range, criteria):
+def countif(rng, criteria):
     # Excel reference: https://support.office.com/en-us/article/
     #   COUNTIF-function-e0de10c6-f885-4e71-abb4-1f464816df34
-
-    # WARNING:
-    # - wildcards not supported  ::TODO:: test if this is no longer true
-    # - support of strings with >, <, <=, =>, <> not provided
-
-    valid = find_corresponding_index(range, criteria)
-
+    if not list_like(rng):
+        rng = ((rng, ), )
+    valid = find_corresponding_index(rng, criteria)
     return len(valid)
 
 
@@ -147,11 +163,10 @@ def conditional_format_ids(*args):
 def countifs(*args):
     # Excel reference: https://support.office.com/en-us/article/
     #   COUNTIFS-function-dda3dc6e-f74e-4aee-88bc-aa8c2a866842
-
     return len(handle_ifs(args))
 
 
-@excel_helper(cse_params=0, err_str_params=0, number_params=0)
+@excel_math_func
 def even(value):
     # Excel reference: https://support.office.com/en-us/article/
     #   even-function-197b5f06-c795-4c1e-8696-3c3b8a646cf9'
@@ -265,6 +280,7 @@ def iserror(value):
         isinstance(value, tuple))
 
 
+@excel_helper(cse_params=0)
 def iseven(value):
     # Excel reference: https://support.office.com/en-us/article/
     #   iseven-function-aa15929a-d77b-4fbb-92f4-2f479af55356
@@ -286,15 +302,13 @@ def isna(value):
     return value == NA_ERROR or isinstance(value, tuple)
 
 
-@excel_helper(cse_params=0, err_str_params=0)
+@excel_helper(cse_params=0)
 def isodd(value):
     # Excel reference: https://support.office.com/en-us/article/
     #   is-functions-0f2d7971-6019-40a0-a171-f2d869135665
     if isinstance(value, bool):
         return VALUE_ERROR
     value = coerce_to_number(value)
-    if value in ERROR_CODES:
-        return value
     if isinstance(value, str):
         return VALUE_ERROR
     return bool(math.floor(abs(value)) % 2)
@@ -406,6 +420,21 @@ def match(lookup_value, lookup_array, match_type=1):
     return _match(lookup_value, lookup_array, match_type)
 
 
+def maxifs(max_range, *args):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   maxifs-function-dfd611e6-da2c-488a-919b-9b6376b28883
+    if not list_like(max_range):
+        max_range = ((max_range, ), )
+
+    try:
+        return max(_numerics(
+            (max_range[r][c] for r, c in handle_ifs(args, max_range)),
+            keep_bools=True
+        ))
+    except ValueError:
+        return 0
+
+
 def _match(lookup_value, lookup_array, match_type=1):
     # Excel reference: https://support.office.com/en-us/article/
     #   MATCH-function-E8DFFD45-C762-47D6-BF89-533F4A37673A
@@ -478,6 +507,21 @@ def _match(lookup_value, lookup_array, match_type=1):
     return result[0]
 
 
+def minifs(min_range, *args):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   minifs-function-6ca1ddaa-079b-4e74-80cc-72eef32e6599
+    if not list_like(min_range):
+        min_range = ((min_range, ), )
+
+    try:
+        return min(_numerics(
+            (min_range[r][c] for r, c in handle_ifs(args, min_range)),
+            keep_bools=True
+        ))
+    except ValueError:
+        return 0
+
+
 @excel_math_func
 def mod(number, divisor):
     # Excel reference: https://support.office.com/en-us/article/
@@ -498,7 +542,7 @@ def npv(*args):
     return sum([float(x) * rate ** -i for i, x in enumerate(cashflow, start=1)])
 
 
-@excel_helper(cse_params=0, err_str_params=0, number_params=0)
+@excel_math_func
 def odd(value):
     # Excel reference: https://support.office.com/en-us/article/
     #   odd-function-deae64eb-e08a-4c88-8b40-6d0b42575c98
@@ -541,7 +585,7 @@ def row(ref):
         return ref.row
 
 
-@excel_helper(cse_params=0, err_str_params=0, number_params=0)
+@excel_math_func
 def sign(value):
     # Excel reference: https://support.office.com/en-us/article/
     #   sign-function-109c932d-fcdc-4023-91f1-2dd0e916a1d8
@@ -568,6 +612,8 @@ def sumif(rng, criteria, sum_range=None):
 def sumifs(sum_range, *args):
     # Excel reference: https://support.office.com/en-us/article/
     #   SUMIFS-function-C9E748F5-7EA7-455D-9406-611CEBCE642B
+    if not list_like(sum_range):
+        sum_range = ((sum_range, ), )
 
     return sum(_numerics(
         (sum_range[r][c] for r, c in handle_ifs(args, sum_range)),

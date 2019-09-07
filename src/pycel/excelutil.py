@@ -1020,11 +1020,13 @@ def handle_ifs(args, op_range=None):
     assert len(args) and len(args) % 2 == 0, \
         'Must have paired criteria and ranges'
 
+    ranges = tuple(r if list_like(r) else ((r,),) for r in args[::2])
     if op_range is not None:
-        assert_list_like(op_range)
+        if not list_like(op_range):
+            op_range = ((op_range, ), )
 
         size = len(op_range), len(op_range[0])
-        for rng in args[0::2]:
+        for rng in ranges:
             assert size == (len(rng), len(rng[0])), \
                 "Size mismatch criteria {},{} != {},{}".format(
                     size[0], size[1], len(rng), len(rng[0]))
@@ -1032,7 +1034,7 @@ def handle_ifs(args, op_range=None):
     # count the number of times a particular cell matches the criteria
     index_counts = collections.Counter(it.chain.from_iterable(
         find_corresponding_index(rng, criteria)
-        for rng, criteria in zip(args[0::2], args[1::2])))
+        for rng, criteria in zip(ranges, args[1::2])))
 
     ifs_count = len(args) // 2
 

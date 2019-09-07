@@ -9,6 +9,7 @@ from pycel.excellib import (
     _match,
     _numerics,
     average,
+    averageif,
     averageifs,
     ceiling,
     column,
@@ -33,6 +34,8 @@ from pycel.excellib import (
     log,
     lookup,
     match,
+    maxifs,
+    minifs,
     mod,
     npv,
     odd,
@@ -93,7 +96,7 @@ def test_average():
 @pytest.mark.parametrize(
     'data, result', (
         ((12, 12), AssertionError),
-        ((12, 12, 12), TypeError),
+        ((12, 12, 12), 12),
         ((((1, 1, 2, 2, 2), ), ((1, 1, 2, 2, 2), ), 2), 2),
         ((((1, 1, 2, 2, 2), ), ((1, 1, 2, 2, 2), ), 3), DIV0),
         ((((1, 2, 3, 4, 5), ), ((1, 2, 3, 4, 5), ), ">=3"), 4),
@@ -102,7 +105,7 @@ def test_average():
         ((((100, 123), (12, 23)), ((1, 2), (3, 4)), ">=3"), 35 / 2),
         ((((100, 123, 12, 23, None), ),
           ((1, 2, 3, 4, 5), ), ">=3"), 35 / 2),
-        (('JUNK', ((), ), ((), ), ), TypeError),
+        (('JUNK', ((), ), ((), ), ), AssertionError),
         ((((1, 2, 3, 4, 5), ),
           ((1, 2, 3, 4, 5), ), ">=3",
           ((1, 2, 3, 4, 5), ), "<=4"), 7 / 2),
@@ -242,6 +245,79 @@ class TestCountIfs:
     def test_countifs_odd_args_len(self):
         with pytest.raises(AssertionError):
             countifs(((7, 25, 13, 25), ), 25, ((100, 102, 201, 20), ))
+
+
+class TestVariousIfsSizing:
+
+    test_vector = tuple(range(1, 7)) + tuple('abcdef')
+    test_vectors = ((test_vector, ), ) * 4 + (test_vector[0],) * 4
+
+    conditions = '>3', '<=2', '<=c', '>d'
+    data_columns = ('averageif', 'countif', 'sumif', 'averageifs',
+                    'countifs', 'maxifs', 'minifs', 'sumifs')
+
+    responses_list = (
+        (5, 3, 15, 5, 3, 6, 4, 15),
+        (1.5, 2, 3, 1.5, 2, 2, 1, 3),
+        (DIV0, 3, 0, DIV0, 3, 0, 0, 0),
+        (DIV0, 2, 0, DIV0, 2, 0, 0, 0),
+
+        (DIV0, 0, 0, DIV0, 0, 0, 0, 0),
+        (1, 1, 1, 1, 1, 1, 1, 1),
+        (DIV0, 0, 0, DIV0, 0, 0, 0, 0),
+        (DIV0, 0, 0, DIV0, 0, 0, 0, 0),
+    )
+
+    responses = dict(
+        (dc, tuple((r, cond, tv) for r, cond, tv in zip(resp, conds, tvs)))
+        for dc, resp, tvs, conds in zip(
+            data_columns, zip(*responses_list), (test_vectors, ) * 8,
+            ((conditions + conditions), ) * 8
+        ))
+
+    params = 'result, criteria, values'
+
+    @staticmethod
+    @pytest.mark.parametrize(params, responses['averageif'])
+    def test_averageif(result, criteria, values):
+        assert averageif(values, criteria) == result
+        assert averageif(values, criteria, values) == result
+
+    @staticmethod
+    @pytest.mark.parametrize(params, responses['countif'])
+    def test_countif(result, criteria, values):
+        assert countif(values, criteria) == result
+
+    @staticmethod
+    @pytest.mark.parametrize(params, responses['sumif'])
+    def test_sumif(result, criteria, values):
+        assert sumif(values, criteria) == result
+        assert sumif(values, criteria, values) == result
+
+    @staticmethod
+    @pytest.mark.parametrize(params, responses['averageifs'])
+    def test_averageifs(result, criteria, values):
+        assert averageifs(values, values, criteria) == result
+
+    @staticmethod
+    @pytest.mark.parametrize(params, responses['countifs'])
+    def test_countifs(result, criteria, values):
+        assert countifs(values, criteria) == result
+
+    @staticmethod
+    @pytest.mark.parametrize(params, responses['maxifs'])
+    def test_maxifs(result, criteria, values):
+        assert maxifs(values, values, criteria) == result
+
+    @staticmethod
+    @pytest.mark.parametrize(params, responses['minifs'])
+    def test_minifs(result, criteria, values):
+        assert minifs(values, values, criteria) == result
+
+    @staticmethod
+    @pytest.mark.parametrize(params, responses['sumifs'])
+    def test_sumifs(result, criteria, values):
+        assert sumifs(values, values, criteria) == result
 
 
 @pytest.mark.parametrize(
@@ -858,8 +934,8 @@ def test_row(address, expected):
 
 @pytest.mark.parametrize(
     'data, result', (
-        ((12, 12), TypeError),
-        ((12, 12, 12), TypeError),
+        ((12, 12), 12),
+        ((12, 12, 12), 12),
         ((((1, 1, 2, 2, 2), ), 2), 6),
         ((((1, 2, 3, 4, 5), ), ">=3"), 12),
         ((((1, 2, 3, 4, 5), ), ">=3",
@@ -867,7 +943,7 @@ def test_row(address, expected):
         ((((1, 2, 3, 4, 5),), ">=3",
           ((100, 123, 12, 23, 633, 1),)), AssertionError),
         ((((1, 2, 3, 4, 5),), ">=3", ((100, 123, 12, 23),)), AssertionError),
-        (([], [], 'JUNK'), TypeError),
+        (([], [], 'JUNK'), IndexError),
     )
 )
 def test_sumif(data, result):
@@ -881,7 +957,7 @@ def test_sumif(data, result):
 @pytest.mark.parametrize(
     'data, result', (
         ((12, 12), AssertionError),
-        ((12, 12, 12), TypeError),
+        ((12, 12, 12), 12),
         ((((1, 1, 2, 2, 2), ), ((1, 1, 2, 2, 2), ), 2), 6),
         ((((1, 2, 3, 4, 5), ), ((1, 2, 3, 4, 5), ), ">=3"), 12),
         ((((100, 123, 12, 23, 633), ),
@@ -889,7 +965,7 @@ def test_sumif(data, result):
         ((((100, 123), (12, 23)), ((1, 2), (3, 4)), ">=3"), 35),
         ((((100, 123, 12, 23, None), ),
           ((1, 2, 3, 4, 5), ), ">=3"), 35),
-        (('JUNK', ((), ), ((), ), ), TypeError),
+        (('JUNK', ((), ), ((), ), ), AssertionError),
         ((((1, 2, 3, 4, 5), ),
           ((1, 2, 3, 4, 5), ), ">=3",
           ((1, 2, 3, 4, 5), ), "<=4"), 7),
