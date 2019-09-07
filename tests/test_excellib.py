@@ -18,6 +18,8 @@ from pycel.excellib import (
     countif,
     countifs,
     even,
+    fact,
+    factdouble,
     floor,
     hlookup,
     index,
@@ -347,6 +349,46 @@ def test_even_odd_sign(_iseven, _isodd, _sign, _odd, _even, value):
     assert sign(value) == _sign
     assert odd(value) == _odd
     assert even(value) == _even
+
+
+@pytest.mark.parametrize(
+    'result, number', (
+        (1, None),
+        (1, 0),
+        (1, 1),
+        (2, 2),
+        (6, 3),
+        (24, 4.9),
+        (120, 5.1),
+        (1, True),
+        (1, False),
+        (VALUE_ERROR, 'AA'),
+        (NUM_ERROR, -1),
+        (DIV0, DIV0),
+    )
+)
+def test_fact(result, number):
+    assert fact(number) == result
+
+
+@pytest.mark.parametrize(
+    'result, number', (
+        (1, None),
+        (1, 0),
+        (1, 1),
+        (2, 2),
+        (3, 3),
+        (8, 4.9),
+        (15, 5.1),
+        (VALUE_ERROR, True),
+        (VALUE_ERROR, False),
+        (VALUE_ERROR, 'AA'),
+        (NUM_ERROR, -1),
+        (DIV0, DIV0),
+    )
+)
+def test_factdouble(result, number):
+    assert factdouble(number) == result
 
 
 @pytest.mark.parametrize(

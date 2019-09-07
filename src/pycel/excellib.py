@@ -169,8 +169,30 @@ def countifs(*args):
 @excel_math_func
 def even(value):
     # Excel reference: https://support.office.com/en-us/article/
-    #   even-function-197b5f06-c795-4c1e-8696-3c3b8a646cf9'
+    #   even-function-197b5f06-c795-4c1e-8696-3c3b8a646cf9
     return math.copysign(math.ceil(abs(value) / 2) * 2, value)
+
+
+@excel_math_func
+def fact(value):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   fact-function-ca8588c2-15f2-41c0-8e8c-c11bd471a4f3
+    return math.factorial(int(value)) if value >= 0 else NUM_ERROR
+
+
+@excel_helper(cse_params=-1)
+def factdouble(value):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   fact-function-ca8588c2-15f2-41c0-8e8c-c11bd471a4f3
+    if isinstance(value, bool):
+        return VALUE_ERROR
+    value = coerce_to_number(value, convert_all=True)
+    if isinstance(value, str):
+        return VALUE_ERROR
+    if value < 0:
+        return NUM_ERROR
+
+    return np.sum(np.prod(range(int(value), 0, -2), axis=0))
 
 
 @excel_math_func
