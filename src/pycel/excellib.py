@@ -94,16 +94,37 @@ def ceiling(number, significance):
     if significance < 0 < number:
         return NUM_ERROR
 
-    if number == 0:
+    if number == 0 or significance == 0:
         return 0
-
-    if significance == 0:
-        return DIV0
 
     if number < 0 < significance:
         return significance * int(number / significance)
     else:
         return significance * math.ceil(number / significance)
+
+
+@excel_math_func
+def ceiling_math(number, significance=1, mode=0):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   ceiling-math-function-80f95d2f-b499-4eee-9f16-f795a8e306c8
+    if significance == 0:
+        return 0
+
+    significance = abs(significance)
+    if mode and number < 0:
+        significance = -significance
+    return significance * math.ceil(number / significance)
+
+
+@excel_math_func
+def ceiling_precise(number, significance=1):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   ceiling-precise-function-f366a774-527a-4c92-ba49-af0a196e66cb
+    if significance == 0:
+        return 0
+
+    significance = abs(significance)
+    return significance * math.ceil(number / significance)
 
 
 @excel_helper()
@@ -199,7 +220,7 @@ def factdouble(value):
 def floor(number, significance):
     # Excel reference: https://support.office.com/en-us/article/
     #   FLOOR-function-14BB497C-24F2-4E04-B327-B0B4DE5A8886
-    if significance < 0 < number or number < 0 < significance:
+    if significance < 0 < number:
         return NUM_ERROR
 
     if number == 0:
@@ -208,7 +229,31 @@ def floor(number, significance):
     if significance == 0:
         return DIV0
 
-    return significance * int(number / significance)
+    return significance * math.floor(number / significance)
+
+
+@excel_math_func
+def floor_math(number, significance=1, mode=0):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   floor-math-function-c302b599-fbdb-4177-ba19-2c2b1249a2f5
+    if significance == 0:
+        return 0
+
+    significance = abs(significance)
+    if mode and number < 0:
+        significance = -significance
+    return significance * math.floor(number / significance)
+
+
+@excel_math_func
+def floor_precise(number, significance=1):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   floor-precise-function-f769b468-1452-4617-8dc3-02f842a0702e
+    if significance == 0:
+        return 0
+
+    significance = abs(significance)
+    return significance * math.floor(number / significance)
 
 
 @excel_helper(cse_params=0, bool_params=3, number_params=2)

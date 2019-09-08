@@ -12,6 +12,8 @@ from pycel.excellib import (
     averageif,
     averageifs,
     ceiling,
+    ceiling_math,
+    ceiling_precise,
     column,
     conditional_format_ids,
     count,
@@ -21,6 +23,8 @@ from pycel.excellib import (
     fact,
     factdouble,
     floor,
+    floor_math,
+    floor_precise,
     hlookup,
     index,
     iserr,
@@ -135,24 +139,89 @@ def test_x_abs(value, expected):
     assert x_abs(value) == expected
 
 
-@pytest.mark.parametrize(
-    'number, significance, result', (
-        (2.5, 1, 3),
-        (2.5, 2, 4),
-        (2.5, 3, 3),
-        (-2.5, -1, -3),
-        (-2.5, -2, -4),
-        (-2.5, -3, -3),
-        (-2.5, 1, -2),
-        (-2.5, 2, -2),
-        (-2.5, 3, 0),
-        (0, 0, 0),
-        (-2.5, 0, DIV0),
-        (1, -1, NUM_ERROR),
+class TestCeilingFloor:
+    data_columns = "floor floor_prec floor_math_m floor_math " \
+                   "ceil ceil_prec ceil_math_m ceil_math " \
+                   "number significance".split()
+    data_values = (
+        (0, 0, 0, 0, 0, 0, 0, 0, None, 1),
+        (0, 0, 0, 0, 0, 0, 0, 0, 0, 1),
+        (1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+        (2, 2, 2, 2, 2, 2, 2, 2, 2, 1),
+        (3, 3, 3, 3, 3, 3, 3, 3, 3, 1),
+        (4, 4, 4, 4, 5, 5, 5, 5, 4.9, 1),
+        (5, 5, 5, 5, 6, 6, 6, 6, 5.1, 1),
+        ((VALUE_ERROR, ) * 8 + ("AA", 1)),
+        ((VALUE_ERROR, ) * 8 + (1, "AA")),
+        (-1, -1, 0, -1, 0, 0, -1, 0, -0.001, 1),
+        (0, -1, 0, -1, -1, 0, -1, 0, -0.001, -1),
+        (0, 0, 0, 0, 1, 1, 1, 1, 0.001, 1),
+        (NUM_ERROR, 0, 0, 0, NUM_ERROR, 1, 1, 1, 0.001, -1),
+        (1, 1, 1, 1, 1, 1, 1, 1, True, 1),
+        (0, 0, 0, 0, 0, 0, 0, 0, False, 1),
+        (1, 1, 1, 1, 1, 1, 1, 1, 1, True),
+        (DIV0, 0, 0, 0, 0, 0, 0, 0, 1, False),
+        ((DIV0, ) * 8 + (DIV0, 1)),
+        ((DIV0, ) * 8 + (2.5, DIV0)),
+        ((NAME_ERROR, ) * 8 + (NAME_ERROR, 1)),
+        ((NAME_ERROR, ) * 8 + (2.5, NAME_ERROR)),
+        (2, 2, 2, 2, 3, 3, 3, 3, 2.5, 1),
+        (2, 2, 2, 2, 3, 3, 3, 3, 2.5, 1),
+        (2, 2, 2, 2, 4, 4, 4, 4, 2.5, 2),
+        (0, 0, 0, 0, 3, 3, 3, 3, 2.5, 3),
+        (-2, -3, -2, -3, -3, -2, -3, -2, -2.5, -1),
+        (-2, -4, -2, -4, -4, -2, -4, -2, -2.5, -2),
+        (0, -3, 0, -3, -3, 0, -3, 0, -2.5, -3),
+        (0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+        (DIV0, 0, 0, 0, 0, 0, 0, 0, -2.5, 0),
+        (-1, -1, -1, -1, -1, -1, -1, -1, -1, 1),
+        (NUM_ERROR, 1, 1, 1, NUM_ERROR, 1, 1, 1, 1, -1),
     )
-)
-def test_ceiling(number, significance, result):
-    assert ceiling(number, significance) == result
+
+    data = {dc: dv for dc, dv in zip(data_columns, tuple(zip(*data_values)))}
+
+    params = 'number, significance, result'
+    inputs = data['number'], data['significance']
+
+    @staticmethod
+    @pytest.mark.parametrize(params, tuple(zip(*inputs, data['ceil'])))
+    def test_ceiling(number, significance, result):
+        assert ceiling(number, significance) == result
+
+    @staticmethod
+    @pytest.mark.parametrize(params, tuple(zip(*inputs, data['ceil_math'])))
+    def test_ceiling_math(number, significance, result):
+        assert ceiling_math(number, significance, False) == result
+
+    @staticmethod
+    @pytest.mark.parametrize(params, tuple(zip(*inputs, data['ceil_math_m'])))
+    def test_ceiling_math_mode(number, significance, result):
+        assert ceiling_math(number, significance, True) == result
+
+    @staticmethod
+    @pytest.mark.parametrize(params, tuple(zip(*inputs, data['ceil_prec'])))
+    def test_ceiling_precise(number, significance, result):
+        assert ceiling_precise(number, significance) == result
+
+    @staticmethod
+    @pytest.mark.parametrize(params, tuple(zip(*inputs, data['floor'])))
+    def test_floor(number, significance, result):
+        assert floor(number, significance) == result
+
+    @staticmethod
+    @pytest.mark.parametrize(params, tuple(zip(*inputs, data['floor_math'])))
+    def test_floor_math(number, significance, result):
+        assert floor_math(number, significance, False) == result
+
+    @staticmethod
+    @pytest.mark.parametrize(params, tuple(zip(*inputs, data['floor_math_m'])))
+    def test_floor_math_mode(number, significance, result):
+        assert floor_math(number, significance, True) == result
+
+    @staticmethod
+    @pytest.mark.parametrize(params, tuple(zip(*inputs, data['floor_prec'])))
+    def test_floor_precise(number, significance, result):
+        assert floor_precise(number, significance) == result
 
 
 @pytest.mark.parametrize(
@@ -389,24 +458,6 @@ def test_fact(result, number):
 )
 def test_factdouble(result, number):
     assert factdouble(number) == result
-
-
-@pytest.mark.parametrize(
-    'number, significance, result', (
-        (2.5, 1, 2),
-        (2.5, 2, 2),
-        (2.5, 3, 0),
-        (-2.5, -1, -2),
-        (-2.5, -2, -2),
-        (-2.5, -3, 0),
-        (0, 0, 0),
-        (-2.5, 0, DIV0),
-        (-1, 1, NUM_ERROR),
-        (1, -1, NUM_ERROR),
-    )
-)
-def test_floor(number, significance, result):
-    assert floor(number, significance) == result
 
 
 @pytest.mark.parametrize(
