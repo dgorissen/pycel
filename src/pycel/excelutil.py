@@ -267,10 +267,10 @@ class AddressRange(collections.namedtuple(
     is_range = True
 
     @property
-    def is_bounded_range(self):
-        """Is this address a bounded range?"""
+    def is_unbounded_range(self):
+        """Is this address an unbounded range?"""
         rows, cols = self.size
-        return rows != MAX_ROW and cols != MAX_COL
+        return rows == MAX_ROW or cols == MAX_COL
 
     @property
     def size(self):
@@ -308,7 +308,7 @@ class AddressRange(collections.namedtuple(
     @property
     def resolve_range(self):
         """Return nested tuples with an AddressCell for each element"""
-        assert self.is_bounded_range
+        assert not self.is_unbounded_range
         return tuple(tuple(row) for row in self.rows)
 
     @classmethod
@@ -415,8 +415,8 @@ class AddressCell(collections.namedtuple(
     # Is this address a range?
     is_range = False
 
-    # Is this address a bounded range?"""
-    is_bounded_range = False
+    # Is this address an unbounded range?"""
+    is_unbounded_range = False
 
     size = AddressSize(1, 1)
 
@@ -493,9 +493,9 @@ class AddressMultiAreaRange(tuple):
     is_range = True
 
     @property
-    def is_bounded_range(self):
-        """Is this address a bounded range?"""
-        return all(addr.is_bounded_range for addr in self
+    def is_unbounded_range(self):
+        """Is this address an unbounded range?"""
+        return any(addr.is_unbounded_range for addr in self
                    if isinstance(addr, AddressRange))
 
     @property
@@ -1020,11 +1020,13 @@ def handle_ifs(args, op_range=None):
     assert len(args) and len(args) % 2 == 0, \
         'Must have paired criteria and ranges'
 
+    ranges = tuple(r if list_like(r) else ((r,),) for r in args[::2])
     if op_range is not None:
-        assert_list_like(op_range)
+        if not list_like(op_range):
+            op_range = ((op_range, ), )
 
         size = len(op_range), len(op_range[0])
-        for rng in args[0::2]:
+        for rng in ranges:  # pragma: no branch
             assert size == (len(rng), len(rng[0])), \
                 "Size mismatch criteria {},{} != {},{}".format(
                     size[0], size[1], len(rng), len(rng[0]))
@@ -1032,7 +1034,7 @@ def handle_ifs(args, op_range=None):
     # count the number of times a particular cell matches the criteria
     index_counts = collections.Counter(it.chain.from_iterable(
         find_corresponding_index(rng, criteria)
-        for rng, criteria in zip(args[0::2], args[1::2])))
+        for rng, criteria in zip(ranges, args[1::2])))
 
     ifs_count = len(args) // 2
 

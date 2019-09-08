@@ -579,7 +579,8 @@ class ExcelCompiler:
             try:
                 self._gen_graph(addr)
                 cell = self.cell_map[addr.address]
-                if isinstance(cell, _Cell) and cell.python_code:
+                if isinstance(cell, _Cell) and cell.python_code and (
+                        not cell.address.is_unbounded_range):
                     original_value = cell.value
                     if original_value == str(cell.formula):
                         self.log.debug(
@@ -729,7 +730,14 @@ class ExcelCompiler:
         if cell_range.needs_calc:
             self.log.debug("Evaluating: {}, {}".format(
                 cell_range.address, cell_range.python_code))
-            if cell_range.formula is None:
+            if cell_range.address.is_unbounded_range:
+                bounded_addr = str(self.eval(cell_range))
+                bounded_addr_cell = self.cell_map.get(bounded_addr)
+                if bounded_addr_cell.value is None:
+                    self._evaluate_range(bounded_addr)
+                data = bounded_addr_cell.value
+
+            elif cell_range.formula is None:
                 data = tuple(
                     tuple(self._evaluate(addr.address) for addr in row)
                     for row in cell_range.addresses
@@ -750,7 +758,7 @@ class ExcelCompiler:
 
         # calculate the cell value for formulas and ranges
         if cell.needs_calc:
-            if isinstance(cell, _CellRange):
+            if isinstance(cell, _CellRange) or cell.address.is_unbounded_range:
                 self._evaluate_range(cell.address.address)
 
             elif cell.python_code:
@@ -760,10 +768,6 @@ class ExcelCompiler:
                 self.log.info("Cell %s evaluated to '%s' (%s)" % (
                     cell.address, value, type(value).__name__))
                 cell.value = VALUE_ERROR if list_like(value) else value
-
-        if isinstance(cell.value, AddressRange):
-            # If the cell returns a reference, then dereference
-            return self._evaluate(str(cell.value))
 
         return cell.value
 
@@ -1124,25 +1128,26 @@ class _CompiledImporter:
 
     def get_range(self, address):
 
-        if not address.is_bounded_range:
-            if not address.is_range:
-                return self._get_cell(address)
-            else:
-                # this is a unbounded range to range mapping, disassemble
-                cell = self._get_cell(address)
-                formula = cell.formula
-                assert formula.startswith(REF_START)
-                assert formula.endswith(REF_END)
-                ref_addr = formula[len(REF_START):-len(REF_END)]
-                return self.get_range(AddressRange(ref_addr))
+        if not address.is_range:
+            return self._get_cell(address)
 
-        # need to map col or row ranges to a specific range
-        addresses = address.resolve_range
+        elif address.is_unbounded_range:
+            # this is a unbounded range to range mapping, disassemble
+            cell = self._get_cell(address)
+            formula = cell.formula
+            assert formula.startswith(REF_START)
+            assert formula.endswith(REF_END)
+            ref_addr = formula[len(REF_START):-len(REF_END)]
+            return self.get_range(AddressRange(ref_addr))
+        else:
+            # need to map col or row ranges to a specific range
+            addresses = address.resolve_range
 
-        cells = [[self._get_cell(addr) for addr in row] for row in addresses]
-        values = [[c.values for c in row] for row in cells]
+            cells = [[self._get_cell(addr) for addr in row]
+                     for row in addresses]
+            values = [[c.values for c in row] for row in cells]
 
-        return ExcelOpxWrapper.RangeData(address, None, values)
+            return ExcelOpxWrapper.RangeData(address, None, values)
 
     def _get_cell(self, address):
         cell_value = self.cell_map.get(str(address))

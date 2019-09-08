@@ -1,3 +1,20 @@
+1.0b18 (2019-09-07)
+===================
+
+Changes
+-------
+
+* Implement CEILING_MATH, CEILING_PRECISION, FLOOR_MATH & FLOOR_PRECISION
+* Implement FACT & FACTDOUBLE
+* Implement AVERAGEIF, MAXIFS, MINIFS
+* Implement ODD, EVEN, ISODD, ISEVEN, SIGN
+
+Fixes
+-----
+* Fix #67 - Evaluation with unbounded range
+* Fix bugs w/ single cells for xIFS functions
+
+
 1.0b17 (2019-09-02)
 ===================
 

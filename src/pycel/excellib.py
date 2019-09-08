@@ -9,6 +9,7 @@ import numpy as np
 
 from pycel.excelutil import (
     build_wildcard_re,
+    coerce_to_number,
     DIV0,
     ERROR_CODES,
     ExcelCmp,
@@ -44,6 +45,8 @@ def _numerics(*args, keep_bools=False):
 
 
 def average(*args):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   average-function-047bac88-d466-426c-a32b-8f33eb960cf6
     data = _numerics(*args)
 
     # A returned string is an error code
@@ -55,9 +58,27 @@ def average(*args):
         return sum(data) / len(data)
 
 
+def averageif(rng, criteria, average_range=None):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   averageif-function-faec8e2e-0dec-4308-af69-f5576d8ac642
+
+    # WARNING:
+    # - The following is not currently implemented:
+    #  The average_range argument does not have to be the same size and shape
+    #  as the range argument. The actual cells that are added are determined by
+    #  using the upper leftmost cell in the average_range argument as the
+    #  beginning cell, and then including cells that correspond in size and
+    #  shape to the range argument.
+    if average_range is None:
+        average_range = rng
+    return averageifs(average_range, rng, criteria)
+
+
 def averageifs(average_range, *args):
     # Excel reference: https://support.office.com/en-us/article/
     #   AVERAGEIFS-function-48910C45-1FC0-4389-A028-F7C5C3001690
+    if not list_like(average_range):
+        average_range = ((average_range, ), )
 
     coords = handle_ifs(args, average_range)
     data = _numerics((average_range[r][c] for r, c in coords), keep_bools=True)
@@ -73,16 +94,37 @@ def ceiling(number, significance):
     if significance < 0 < number:
         return NUM_ERROR
 
-    if number == 0:
+    if number == 0 or significance == 0:
         return 0
-
-    if significance == 0:
-        return DIV0
 
     if number < 0 < significance:
         return significance * int(number / significance)
     else:
         return significance * math.ceil(number / significance)
+
+
+@excel_math_func
+def ceiling_math(number, significance=1, mode=0):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   ceiling-math-function-80f95d2f-b499-4eee-9f16-f795a8e306c8
+    if significance == 0:
+        return 0
+
+    significance = abs(significance)
+    if mode and number < 0:
+        significance = -significance
+    return significance * math.ceil(number / significance)
+
+
+@excel_math_func
+def ceiling_precise(number, significance=1):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   ceiling-precise-function-f366a774-527a-4c92-ba49-af0a196e66cb
+    if significance == 0:
+        return 0
+
+    significance = abs(significance)
+    return significance * math.ceil(number / significance)
 
 
 @excel_helper()
@@ -116,16 +158,12 @@ def count(*args):
     return total
 
 
-def countif(range, criteria):
+def countif(rng, criteria):
     # Excel reference: https://support.office.com/en-us/article/
     #   COUNTIF-function-e0de10c6-f885-4e71-abb4-1f464816df34
-
-    # WARNING:
-    # - wildcards not supported  ::TODO:: test if this is no longer true
-    # - support of strings with >, <, <=, =>, <> not provided
-
-    valid = find_corresponding_index(range, criteria)
-
+    if not list_like(rng):
+        rng = ((rng, ), )
+    valid = find_corresponding_index(rng, criteria)
     return len(valid)
 
 
@@ -146,15 +184,43 @@ def conditional_format_ids(*args):
 def countifs(*args):
     # Excel reference: https://support.office.com/en-us/article/
     #   COUNTIFS-function-dda3dc6e-f74e-4aee-88bc-aa8c2a866842
-
     return len(handle_ifs(args))
+
+
+@excel_math_func
+def even(value):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   even-function-197b5f06-c795-4c1e-8696-3c3b8a646cf9
+    return math.copysign(math.ceil(abs(value) / 2) * 2, value)
+
+
+@excel_math_func
+def fact(value):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   fact-function-ca8588c2-15f2-41c0-8e8c-c11bd471a4f3
+    return math.factorial(int(value)) if value >= 0 else NUM_ERROR
+
+
+@excel_helper(cse_params=-1)
+def factdouble(value):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   fact-function-ca8588c2-15f2-41c0-8e8c-c11bd471a4f3
+    if isinstance(value, bool):
+        return VALUE_ERROR
+    value = coerce_to_number(value, convert_all=True)
+    if isinstance(value, str):
+        return VALUE_ERROR
+    if value < 0:
+        return NUM_ERROR
+
+    return np.sum(np.prod(range(int(value), 0, -2), axis=0))
 
 
 @excel_math_func
 def floor(number, significance):
     # Excel reference: https://support.office.com/en-us/article/
     #   FLOOR-function-14BB497C-24F2-4E04-B327-B0B4DE5A8886
-    if significance < 0 < number or number < 0 < significance:
+    if significance < 0 < number:
         return NUM_ERROR
 
     if number == 0:
@@ -163,7 +229,31 @@ def floor(number, significance):
     if significance == 0:
         return DIV0
 
-    return significance * int(number / significance)
+    return significance * math.floor(number / significance)
+
+
+@excel_math_func
+def floor_math(number, significance=1, mode=0):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   floor-math-function-c302b599-fbdb-4177-ba19-2c2b1249a2f5
+    if significance == 0:
+        return 0
+
+    significance = abs(significance)
+    if mode and number < 0:
+        significance = -significance
+    return significance * math.floor(number / significance)
+
+
+@excel_math_func
+def floor_precise(number, significance=1):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   floor-precise-function-f769b468-1452-4617-8dc3-02f842a0702e
+    if significance == 0:
+        return 0
+
+    significance = abs(significance)
+    return significance * math.floor(number / significance)
 
 
 @excel_helper(cse_params=0, bool_params=3, number_params=2)
@@ -257,6 +347,14 @@ def iserror(value):
         isinstance(value, tuple))
 
 
+@excel_helper(cse_params=0)
+def iseven(value):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   iseven-function-aa15929a-d77b-4fbb-92f4-2f479af55356
+    result = isodd(value)
+    return not result if isinstance(result, bool) else result
+
+
 @excel_helper(cse_params=0, err_str_params=None)
 def istext(arg):
     # Excel reference: https://support.office.com/en-us/article/
@@ -269,6 +367,18 @@ def isna(value):
     # Excel reference: https://support.office.com/en-us/article/
     #   is-functions-0f2d7971-6019-40a0-a171-f2d869135665
     return value == NA_ERROR or isinstance(value, tuple)
+
+
+@excel_helper(cse_params=0)
+def isodd(value):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   is-functions-0f2d7971-6019-40a0-a171-f2d869135665
+    if isinstance(value, bool):
+        return VALUE_ERROR
+    value = coerce_to_number(value)
+    if isinstance(value, str):
+        return VALUE_ERROR
+    return bool(math.floor(abs(value)) % 2)
 
 
 @excel_helper(cse_params=0, err_str_params=None)
@@ -377,6 +487,21 @@ def match(lookup_value, lookup_array, match_type=1):
     return _match(lookup_value, lookup_array, match_type)
 
 
+def maxifs(max_range, *args):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   maxifs-function-dfd611e6-da2c-488a-919b-9b6376b28883
+    if not list_like(max_range):
+        max_range = ((max_range, ), )
+
+    try:
+        return max(_numerics(
+            (max_range[r][c] for r, c in handle_ifs(args, max_range)),
+            keep_bools=True
+        ))
+    except ValueError:
+        return 0
+
+
 def _match(lookup_value, lookup_array, match_type=1):
     # Excel reference: https://support.office.com/en-us/article/
     #   MATCH-function-E8DFFD45-C762-47D6-BF89-533F4A37673A
@@ -449,6 +574,21 @@ def _match(lookup_value, lookup_array, match_type=1):
     return result[0]
 
 
+def minifs(min_range, *args):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   minifs-function-6ca1ddaa-079b-4e74-80cc-72eef32e6599
+    if not list_like(min_range):
+        min_range = ((min_range, ), )
+
+    try:
+        return min(_numerics(
+            (min_range[r][c] for r, c in handle_ifs(args, min_range)),
+            keep_bools=True
+        ))
+    except ValueError:
+        return 0
+
+
 @excel_math_func
 def mod(number, divisor):
     # Excel reference: https://support.office.com/en-us/article/
@@ -467,6 +607,13 @@ def npv(*args):
     rate = args[0] + 1
     cashflow = args[1:]
     return sum([float(x) * rate ** -i for i, x in enumerate(cashflow, start=1)])
+
+
+@excel_math_func
+def odd(value):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   odd-function-deae64eb-e08a-4c88-8b40-6d0b42575c98
+    return math.copysign(math.ceil((abs(value) - 1) / 2) * 2 + 1, value)
 
 
 @excel_math_func
@@ -505,6 +652,13 @@ def row(ref):
         return ref.row
 
 
+@excel_math_func
+def sign(value):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   sign-function-109c932d-fcdc-4023-91f1-2dd0e916a1d8
+    return -1 if value < 0 else int(bool(value))
+
+
 def sumif(rng, criteria, sum_range=None):
     # Excel reference: https://support.office.com/en-us/article/
     #   SUMIF-function-169b8c99-c05c-4483-a712-1697a653039b
@@ -525,6 +679,8 @@ def sumif(rng, criteria, sum_range=None):
 def sumifs(sum_range, *args):
     # Excel reference: https://support.office.com/en-us/article/
     #   SUMIFS-function-C9E748F5-7EA7-455D-9406-611CEBCE642B
+    if not list_like(sum_range):
+        sum_range = ((sum_range, ), )
 
     return sum(_numerics(
         (sum_range[r][c] for r, c in handle_ifs(args, sum_range)),

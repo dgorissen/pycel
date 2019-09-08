@@ -9,20 +9,30 @@ from pycel.excellib import (
     _match,
     _numerics,
     average,
+    averageif,
     averageifs,
     ceiling,
+    ceiling_math,
+    ceiling_precise,
     column,
     conditional_format_ids,
     count,
     countif,
     countifs,
+    even,
+    fact,
+    factdouble,
     floor,
+    floor_math,
+    floor_precise,
     hlookup,
     index,
     iserr,
     iserror,
+    iseven,
     isna,
     isnumber,
+    isodd,
     istext,
     # ::TODO:: finish test cases for remainder of functions
     # linest,
@@ -30,11 +40,15 @@ from pycel.excellib import (
     log,
     lookup,
     match,
+    maxifs,
+    minifs,
     mod,
     npv,
+    odd,
     power,
     roundup,
     row,
+    sign,
     sumif,
     sumifs,
     sumproduct,
@@ -88,7 +102,7 @@ def test_average():
 @pytest.mark.parametrize(
     'data, result', (
         ((12, 12), AssertionError),
-        ((12, 12, 12), TypeError),
+        ((12, 12, 12), 12),
         ((((1, 1, 2, 2, 2), ), ((1, 1, 2, 2, 2), ), 2), 2),
         ((((1, 1, 2, 2, 2), ), ((1, 1, 2, 2, 2), ), 3), DIV0),
         ((((1, 2, 3, 4, 5), ), ((1, 2, 3, 4, 5), ), ">=3"), 4),
@@ -97,7 +111,7 @@ def test_average():
         ((((100, 123), (12, 23)), ((1, 2), (3, 4)), ">=3"), 35 / 2),
         ((((100, 123, 12, 23, None), ),
           ((1, 2, 3, 4, 5), ), ">=3"), 35 / 2),
-        (('JUNK', ((), ), ((), ), ), TypeError),
+        (('JUNK', ((), ), ((), ), ), AssertionError),
         ((((1, 2, 3, 4, 5), ),
           ((1, 2, 3, 4, 5), ), ">=3",
           ((1, 2, 3, 4, 5), ), "<=4"), 7 / 2),
@@ -125,24 +139,89 @@ def test_x_abs(value, expected):
     assert x_abs(value) == expected
 
 
-@pytest.mark.parametrize(
-    'number, significance, result', (
-        (2.5, 1, 3),
-        (2.5, 2, 4),
-        (2.5, 3, 3),
-        (-2.5, -1, -3),
-        (-2.5, -2, -4),
-        (-2.5, -3, -3),
-        (-2.5, 1, -2),
-        (-2.5, 2, -2),
-        (-2.5, 3, 0),
-        (0, 0, 0),
-        (-2.5, 0, DIV0),
-        (1, -1, NUM_ERROR),
+class TestCeilingFloor:
+    data_columns = "floor floor_prec floor_math_m floor_math " \
+                   "ceil ceil_prec ceil_math_m ceil_math " \
+                   "number significance".split()
+    data_values = (
+        (0, 0, 0, 0, 0, 0, 0, 0, None, 1),
+        (0, 0, 0, 0, 0, 0, 0, 0, 0, 1),
+        (1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+        (2, 2, 2, 2, 2, 2, 2, 2, 2, 1),
+        (3, 3, 3, 3, 3, 3, 3, 3, 3, 1),
+        (4, 4, 4, 4, 5, 5, 5, 5, 4.9, 1),
+        (5, 5, 5, 5, 6, 6, 6, 6, 5.1, 1),
+        ((VALUE_ERROR, ) * 8 + ("AA", 1)),
+        ((VALUE_ERROR, ) * 8 + (1, "AA")),
+        (-1, -1, 0, -1, 0, 0, -1, 0, -0.001, 1),
+        (0, -1, 0, -1, -1, 0, -1, 0, -0.001, -1),
+        (0, 0, 0, 0, 1, 1, 1, 1, 0.001, 1),
+        (NUM_ERROR, 0, 0, 0, NUM_ERROR, 1, 1, 1, 0.001, -1),
+        (1, 1, 1, 1, 1, 1, 1, 1, True, 1),
+        (0, 0, 0, 0, 0, 0, 0, 0, False, 1),
+        (1, 1, 1, 1, 1, 1, 1, 1, 1, True),
+        (DIV0, 0, 0, 0, 0, 0, 0, 0, 1, False),
+        ((DIV0, ) * 8 + (DIV0, 1)),
+        ((DIV0, ) * 8 + (2.5, DIV0)),
+        ((NAME_ERROR, ) * 8 + (NAME_ERROR, 1)),
+        ((NAME_ERROR, ) * 8 + (2.5, NAME_ERROR)),
+        (2, 2, 2, 2, 3, 3, 3, 3, 2.5, 1),
+        (2, 2, 2, 2, 3, 3, 3, 3, 2.5, 1),
+        (2, 2, 2, 2, 4, 4, 4, 4, 2.5, 2),
+        (0, 0, 0, 0, 3, 3, 3, 3, 2.5, 3),
+        (-2, -3, -2, -3, -3, -2, -3, -2, -2.5, -1),
+        (-2, -4, -2, -4, -4, -2, -4, -2, -2.5, -2),
+        (0, -3, 0, -3, -3, 0, -3, 0, -2.5, -3),
+        (0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+        (DIV0, 0, 0, 0, 0, 0, 0, 0, -2.5, 0),
+        (-1, -1, -1, -1, -1, -1, -1, -1, -1, 1),
+        (NUM_ERROR, 1, 1, 1, NUM_ERROR, 1, 1, 1, 1, -1),
     )
-)
-def test_ceiling(number, significance, result):
-    assert ceiling(number, significance) == result
+
+    data = {dc: dv for dc, dv in zip(data_columns, tuple(zip(*data_values)))}
+
+    params = 'number, significance, result'
+    inputs = data['number'], data['significance']
+
+    @staticmethod
+    @pytest.mark.parametrize(params, tuple(zip(*inputs, data['ceil'])))
+    def test_ceiling(number, significance, result):
+        assert ceiling(number, significance) == result
+
+    @staticmethod
+    @pytest.mark.parametrize(params, tuple(zip(*inputs, data['ceil_math'])))
+    def test_ceiling_math(number, significance, result):
+        assert ceiling_math(number, significance, False) == result
+
+    @staticmethod
+    @pytest.mark.parametrize(params, tuple(zip(*inputs, data['ceil_math_m'])))
+    def test_ceiling_math_mode(number, significance, result):
+        assert ceiling_math(number, significance, True) == result
+
+    @staticmethod
+    @pytest.mark.parametrize(params, tuple(zip(*inputs, data['ceil_prec'])))
+    def test_ceiling_precise(number, significance, result):
+        assert ceiling_precise(number, significance) == result
+
+    @staticmethod
+    @pytest.mark.parametrize(params, tuple(zip(*inputs, data['floor'])))
+    def test_floor(number, significance, result):
+        assert floor(number, significance) == result
+
+    @staticmethod
+    @pytest.mark.parametrize(params, tuple(zip(*inputs, data['floor_math'])))
+    def test_floor_math(number, significance, result):
+        assert floor_math(number, significance, False) == result
+
+    @staticmethod
+    @pytest.mark.parametrize(params, tuple(zip(*inputs, data['floor_math_m'])))
+    def test_floor_math_mode(number, significance, result):
+        assert floor_math(number, significance, True) == result
+
+    @staticmethod
+    @pytest.mark.parametrize(params, tuple(zip(*inputs, data['floor_prec'])))
+    def test_floor_precise(number, significance, result):
+        assert floor_precise(number, significance) == result
 
 
 @pytest.mark.parametrize(
@@ -239,22 +318,146 @@ class TestCountIfs:
             countifs(((7, 25, 13, 25), ), 25, ((100, 102, 201, 20), ))
 
 
+class TestVariousIfsSizing:
+
+    test_vector = tuple(range(1, 7)) + tuple('abcdef')
+    test_vectors = ((test_vector, ), ) * 4 + (test_vector[0],) * 4
+
+    conditions = '>3', '<=2', '<=c', '>d'
+    data_columns = ('averageif', 'countif', 'sumif', 'averageifs',
+                    'countifs', 'maxifs', 'minifs', 'sumifs')
+
+    responses_list = (
+        (5, 3, 15, 5, 3, 6, 4, 15),
+        (1.5, 2, 3, 1.5, 2, 2, 1, 3),
+        (DIV0, 3, 0, DIV0, 3, 0, 0, 0),
+        (DIV0, 2, 0, DIV0, 2, 0, 0, 0),
+
+        (DIV0, 0, 0, DIV0, 0, 0, 0, 0),
+        (1, 1, 1, 1, 1, 1, 1, 1),
+        (DIV0, 0, 0, DIV0, 0, 0, 0, 0),
+        (DIV0, 0, 0, DIV0, 0, 0, 0, 0),
+    )
+
+    responses = dict(
+        (dc, tuple((r, cond, tv) for r, cond, tv in zip(resp, conds, tvs)))
+        for dc, resp, tvs, conds in zip(
+            data_columns, zip(*responses_list), (test_vectors, ) * 8,
+            ((conditions + conditions), ) * 8
+        ))
+
+    params = 'result, criteria, values'
+
+    @staticmethod
+    @pytest.mark.parametrize(params, responses['averageif'])
+    def test_averageif(result, criteria, values):
+        assert averageif(values, criteria) == result
+        assert averageif(values, criteria, values) == result
+
+    @staticmethod
+    @pytest.mark.parametrize(params, responses['countif'])
+    def test_countif(result, criteria, values):
+        assert countif(values, criteria) == result
+
+    @staticmethod
+    @pytest.mark.parametrize(params, responses['sumif'])
+    def test_sumif(result, criteria, values):
+        assert sumif(values, criteria) == result
+        assert sumif(values, criteria, values) == result
+
+    @staticmethod
+    @pytest.mark.parametrize(params, responses['averageifs'])
+    def test_averageifs(result, criteria, values):
+        assert averageifs(values, values, criteria) == result
+
+    @staticmethod
+    @pytest.mark.parametrize(params, responses['countifs'])
+    def test_countifs(result, criteria, values):
+        assert countifs(values, criteria) == result
+
+    @staticmethod
+    @pytest.mark.parametrize(params, responses['maxifs'])
+    def test_maxifs(result, criteria, values):
+        assert maxifs(values, values, criteria) == result
+
+    @staticmethod
+    @pytest.mark.parametrize(params, responses['minifs'])
+    def test_minifs(result, criteria, values):
+        assert minifs(values, values, criteria) == result
+
+    @staticmethod
+    @pytest.mark.parametrize(params, responses['sumifs'])
+    def test_sumifs(result, criteria, values):
+        assert sumifs(values, values, criteria) == result
+
+
 @pytest.mark.parametrize(
-    'number, significance, result', (
-        (2.5, 1, 2),
-        (2.5, 2, 2),
-        (2.5, 3, 0),
-        (-2.5, -1, -2),
-        (-2.5, -2, -2),
-        (-2.5, -3, 0),
-        (0, 0, 0),
-        (-2.5, 0, DIV0),
-        (-1, 1, NUM_ERROR),
-        (1, -1, NUM_ERROR),
+    '_iseven, _isodd, _sign, _odd, _even, value', (
+        (True, False, -1, -101, -102, -100.1),
+        (True, False, -1, -101, -102, '-100.1'),
+        (True, False, -1, -101, -100, -100),
+        (False, True, -1, -101, -100, -99.9),
+        (True, False, 0, 1, 0, 0),
+        (False, True, 1, 1, 2, 1),
+        (True, False, 1, 1, 2, 0.1),
+        (True, False, 1, 1, 2, '0.1'),
+        (True, False, 1, 3, 2, '2'),
+        (True, False, 1, 3, 4, 2.9),
+        (False, True, 1, 3, 4, 3),
+        (False, True, 1, 5, 4, 3.1),
+        (VALUE_ERROR, VALUE_ERROR, 1, 1, 2, True),
+        (VALUE_ERROR, VALUE_ERROR, 0, 1, 0, False),
+        (VALUE_ERROR, ) * 5 + ('xyzzy', ),
+        (VALUE_ERROR, ) * 6,
+        (DIV0, ) * 6,
     )
 )
-def test_floor(number, significance, result):
-    assert floor(number, significance) == result
+def test_even_odd_sign(_iseven, _isodd, _sign, _odd, _even, value):
+    assert iseven(value) == _iseven
+    assert isodd(value) == _isodd
+    assert sign(value) == _sign
+    assert odd(value) == _odd
+    assert even(value) == _even
+
+
+@pytest.mark.parametrize(
+    'result, number', (
+        (1, None),
+        (1, 0),
+        (1, 1),
+        (2, 2),
+        (6, 3),
+        (24, 4.9),
+        (120, 5.1),
+        (1, True),
+        (1, False),
+        (VALUE_ERROR, 'AA'),
+        (NUM_ERROR, -1),
+        (DIV0, DIV0),
+    )
+)
+def test_fact(result, number):
+    assert fact(number) == result
+
+
+@pytest.mark.parametrize(
+    'result, number', (
+        (1, None),
+        (1, 0),
+        (1, 1),
+        (2, 2),
+        (3, 3),
+        (8, 4.9),
+        (15, 5.1),
+        (VALUE_ERROR, True),
+        (VALUE_ERROR, False),
+        (VALUE_ERROR, 'AA'),
+        (NUM_ERROR, -1),
+        (DIV0, DIV0),
+    )
+)
+def test_factdouble(result, number):
+    assert factdouble(number) == result
 
 
 @pytest.mark.parametrize(
@@ -824,8 +1027,8 @@ def test_row(address, expected):
 
 @pytest.mark.parametrize(
     'data, result', (
-        ((12, 12), TypeError),
-        ((12, 12, 12), TypeError),
+        ((12, 12), 12),
+        ((12, 12, 12), 12),
         ((((1, 1, 2, 2, 2), ), 2), 6),
         ((((1, 2, 3, 4, 5), ), ">=3"), 12),
         ((((1, 2, 3, 4, 5), ), ">=3",
@@ -833,7 +1036,7 @@ def test_row(address, expected):
         ((((1, 2, 3, 4, 5),), ">=3",
           ((100, 123, 12, 23, 633, 1),)), AssertionError),
         ((((1, 2, 3, 4, 5),), ">=3", ((100, 123, 12, 23),)), AssertionError),
-        (([], [], 'JUNK'), TypeError),
+        (([], [], 'JUNK'), IndexError),
     )
 )
 def test_sumif(data, result):
@@ -847,7 +1050,7 @@ def test_sumif(data, result):
 @pytest.mark.parametrize(
     'data, result', (
         ((12, 12), AssertionError),
-        ((12, 12, 12), TypeError),
+        ((12, 12, 12), 12),
         ((((1, 1, 2, 2, 2), ), ((1, 1, 2, 2, 2), ), 2), 6),
         ((((1, 2, 3, 4, 5), ), ((1, 2, 3, 4, 5), ), ">=3"), 12),
         ((((100, 123, 12, 23, 633), ),
@@ -855,7 +1058,7 @@ def test_sumif(data, result):
         ((((100, 123), (12, 23)), ((1, 2), (3, 4)), ">=3"), 35),
         ((((100, 123, 12, 23, None), ),
           ((1, 2, 3, 4, 5), ), ">=3"), 35),
-        (('JUNK', ((), ), ((), ), ), TypeError),
+        (('JUNK', ((), ), ((), ), ), AssertionError),
         ((((1, 2, 3, 4, 5), ),
           ((1, 2, 3, 4, 5), ), ">=3",
           ((1, 2, 3, 4, 5), ), "<=4"), 7),

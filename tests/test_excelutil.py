@@ -372,7 +372,7 @@ addr_cr = AddressRange.create
 )
 def test_multi_area_range(address, string, mar):
     assert address == tuple(mar.resolve_range)
-    assert mar.is_bounded_range
+    assert not mar.is_unbounded_range
     assert address[0][0] in mar
     assert AddressRange('Z99') not in mar
     assert str(mar) == string
@@ -723,7 +723,7 @@ def test_is_number():
 
 @pytest.mark.parametrize(
     'data, result', (
-        ((12, 12), TypeError),
+        ((12, 12), ((0, 0), )),
         ((12, 12, 12), AssertionError),
         ((((1, 1, 2, 2, 2), ), 2), ((0, 2), (0, 3), (0, 4))),
         ((((1, 2, 3, 4, 5), ), ">=3"), ((0, 2), (0, 3), (0, 4))),
