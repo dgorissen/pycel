@@ -14,6 +14,7 @@ using tools like `Gephi <http://www.gephi.org>`_. See the contained example
 for an illustration.
 
 Required python libraries:
+    `dateutil <https://dateutil.readthedocs.io/en/stable/>`_,
     `networkx <https://networkx.github.io/>`_,
     `numpy <https://www.numpy.org/>`_,
     `openpyxl <https://openpyxl.readthedocs.io/en/stable/>`_,
