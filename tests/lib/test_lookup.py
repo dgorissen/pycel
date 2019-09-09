@@ -3,6 +3,7 @@ import pytest
 
 import pycel.lib
 from pycel.excelutil import (
+    AddressCell,
     AddressRange,
     DIV0,
     ExcelCmp,
@@ -17,8 +18,10 @@ from pycel.lib.lookup import (
     column,
     hlookup,
     index,
+    indirect,
     lookup,
     match,
+    offset,
     row,
     vlookup,
 )
@@ -206,6 +209,24 @@ class TestIndex:
         assert VALUE_ERROR == index_f(None, 1, 1)
 
 
+@pytest.mark.parametrize(
+    'address, expected', (
+        ("A1", AddressCell("A1")),
+        ("XFD1", AddressCell("XFD1")),
+        ("XFE1", REF_ERROR),
+        ("A1048576", AddressCell("A1048576")),
+        ("A1048577", REF_ERROR),
+        ("XFD1048576", AddressCell("XFD1048576")),
+        ("XFD1048577", REF_ERROR),
+        ("XFE1048576", REF_ERROR),
+        ("R1C1", AddressCell("A1")),
+        ("ab", REF_ERROR),
+    )
+)
+def test_indirect(address, expected):
+    assert indirect(address) == expected
+
+
 lookup_vector = (('b', 'c', 'd'), )
 lookup_result = ((1, 2, 3), )
 lookup_rows = lookup_vector[0], lookup_result[0]
@@ -380,6 +401,46 @@ def test_match_crazy_order(
         if sorted(lookup_array) == lookup_array:
             # only complain on failures for mode 0 when array is sorted
             assert result1 == _match(lookup_value, lookup_array, 1)
+
+
+@pytest.mark.parametrize(
+    "crwh, refer, rows, cols, height, width", (
+        (REF_ERROR, "A1", -1, 0, 1, 1),
+        ((1, 1, 1, 1), "A1", 0, 0, 1, 1),
+        ((2, 1, 1, 1), "A1", 0, 1, 1, 1),
+        ((1, 2, 1, 1), "A1", 1, 0, 1, 1),
+        (REF_ERROR, "A1", -1, 0, 1, 1),
+        (REF_ERROR, "A1", 0, -1, 1, 1),
+        ((16384, 1048576, 1, 1), "XFD1048576", 0, 0, 1, 1),
+        ((16384, 1048575, 1, 1), "XFD1048576", -1, 0, 1, 1),
+        ((16383, 1048576, 1, 1), "XFD1048576", 0, -1, 1, 1),
+        (REF_ERROR, "XFD1048576", 1, 0, 1, 1),
+        (REF_ERROR, "XFD1048576", 0, 1, 1, 1),
+        (REF_ERROR, "XFD1048576", 0, 0, 2, 1),
+        (REF_ERROR, "XFD1048576", 0, 0, 1, 2),
+        ((16384, 1048575, 1, 2), "XFD1048576", -1, 0, 2, 1),
+        ((16383, 1048576, 2, 1), "XFD1048576", 0, -1, 1, 2),
+    )
+)
+def test_offset(crwh, refer, rows, cols, height, width):
+    expected = crwh
+    if isinstance(crwh, tuple):
+        start = AddressCell((crwh[0], crwh[1], crwh[0], crwh[1]))
+        end = AddressCell((crwh[0] + crwh[2] - 1, crwh[1] + crwh[3] - 1,
+                           crwh[0] + crwh[2] - 1, crwh[1] + crwh[3] - 1))
+
+        expected = AddressRange.create(
+            '{0}:{1}'.format(start.coordinate, end.coordinate))
+
+    result = offset(refer, rows, cols, height, width)
+    assert result == expected
+
+    refer_addr = AddressRange.create(refer)
+    if height == refer_addr.size.height:
+        height = None
+    if width == refer_addr.size.width:
+        width = None
+    assert offset(refer, rows, cols, height, width) == expected
 
 
 @pytest.mark.parametrize(

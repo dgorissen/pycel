@@ -68,6 +68,10 @@ def test_address_range():
     assert 1 == b.start.row
     assert 1 == b.end.row
 
+    # address cell's start and end is himself
+    c = b.start
+    assert c.start == c.end == c
+
 
 def test_address_range_errors():
 

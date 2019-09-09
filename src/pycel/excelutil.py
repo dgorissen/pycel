@@ -456,6 +456,14 @@ class AddressCell(collections.namedtuple(
                            sheet=self.sheet)
 
     @property
+    def start(self):
+        return self
+
+    @property
+    def end(self):
+        return self
+
+    @property
     def resolve_range(self):
         """Return nested tuples with an AddressCell for each element"""
         return (self, ),

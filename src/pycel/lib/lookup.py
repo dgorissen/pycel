@@ -6,6 +6,8 @@ from bisect import bisect_right
 import numpy as np
 
 from pycel.excelutil import (
+    AddressCell,
+    AddressRange,
     build_wildcard_re,
     ERROR_CODES,
     ExcelCmp,
@@ -220,9 +222,17 @@ def index(array, row_num, col_num=None):
     return NA_ERROR
 
 
-# def indirect(value):
+@excel_helper(cse_params=0, number_params=1)
+def indirect(ref_text, a1=True):
     # Excel reference: https://support.office.com/en-us/article/
     #   indirect-function-474b3a3a-8a26-4f44-b491-92b6306fa261
+    try:
+        address = AddressRange.create(ref_text)
+    except ValueError:
+        return REF_ERROR
+    if address.row > MAX_ROW or address.col_idx > MAX_COL:
+        return REF_ERROR
+    return address
 
 
 @excel_helper(cse_params=0)
@@ -289,9 +299,40 @@ def match(lookup_value, lookup_array, match_type=1):
     return _match(lookup_value, lookup_array, match_type)
 
 
-# def offset(value):
+@excel_helper(cse_params=-1, number_params=(1, 2))
+def offset(reference, row_inc, col_inc, height=None, width=None):
     # Excel reference: https://support.office.com/en-us/article/
     #   offset-function-c8de19ae-dd79-4b9b-a14e-b4d906d11b66
+    """
+    Returns a reference to a range that is a specified number of rows and
+    columns from a cell or range of cells.
+    """
+    base_addr = AddressRange.create(reference)
+
+    if height is None:
+        height = base_addr.size.height
+    if width is None:
+        width = base_addr.size.width
+
+    new_row = base_addr.row + row_inc
+    end_row = new_row + height - 1
+    new_col = base_addr.col_idx + col_inc
+    end_col = new_col + width - 1
+
+    if new_row <= 0 or end_row > MAX_ROW or new_col <= 0 or end_col > MAX_COL:
+        return REF_ERROR
+
+    top_left = AddressCell((new_col, new_row, new_col, new_row),
+                           sheet=base_addr.sheet)
+    if height == width == 1:
+        return top_left
+    else:
+        bottom_right = AddressCell((end_col, end_row, end_col, end_row),
+                                   sheet=base_addr.sheet)
+
+        return AddressRange('{}:{}'.format(
+            top_left.coordinate, bottom_right.coordinate),
+            sheet=top_left.sheet)
 
 
 @excel_helper()
