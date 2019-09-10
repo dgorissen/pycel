@@ -635,6 +635,9 @@ class ExcelFormula:
             if token.matches(Token.FUNC, Token.OPEN):
                 tokens.append(token)
                 token = Token('(', Token.PAREN, Token.OPEN)
+                if next_token.matches(Token.SEP, Token.ARG):
+                    raise FormulaParserError(
+                        "Unsupported Empty Parameter: {}".format(expression))
 
             elif token.matches(Token.FUNC, Token.CLOSE):
                 token = Token(')', Token.PAREN, Token.CLOSE)
@@ -654,6 +657,11 @@ class ExcelFormula:
                 tokens.append(Token(',', Token.SEP, Token.ARG))
                 tokens.append(Token('', Token.ARRAYROW, Token.OPEN))
                 token = Token('(', Token.PAREN, Token.OPEN)
+
+            elif token.matches(Token.SEP, Token.ARG):
+                if next_token.matches(Token.SEP, Token.ARG):
+                    raise FormulaParserError(
+                        "Unsupported Empty Parameter: {}".format(expression))
 
             elif token.matches(Token.PAREN, Token.OPEN):
                 token.value = '('
