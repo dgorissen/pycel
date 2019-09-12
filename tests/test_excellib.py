@@ -43,6 +43,7 @@ from pycel.excellib import (
     rounddown,
     roundup,
     sign,
+    small,
     sumif,
     sumifs,
     sumproduct,
@@ -509,13 +510,17 @@ def test_istext(value, expected):
 
 @pytest.mark.parametrize(
     'data, k, result', (
+        ([3, 1, 2], 0, NUM_ERROR),
+        ([3, 1, 2], 1, 3),
         ([3, 1, 2], 2, 2),
+        ([3, 1, 2], 3, 1),
+        ([3, 1, 2], 4, NUM_ERROR),
         ([3, 1, 2], '2', 2),
-        ([3, 1, 2], 'abc', VALUE_ERROR),
         ([3, 1, 2], 1.1, 2),
+        ([3, 1, 2], '1.1', 2),
         ([3, 1, 2], 0.1, NUM_ERROR),
         ([3, 1, 2], 3.1, NUM_ERROR),
-        ([3, 1, 2], '1.1', 2),
+        ([3, 1, 2], 'abc', VALUE_ERROR),
         ([3, 1, 2], True, 3),
         ([3, 1, 2], False, NUM_ERROR),
         ([3, 1, 2], 'True', VALUE_ERROR),
@@ -526,7 +531,9 @@ def test_istext(value, expected):
         ('abc', 2, NUM_ERROR),
         (99, 1, 99),
         ('99', 1, 99),
+        ('99.9', 1, 99.9),
         (['99', 9], 1, 99),
+        (['99.9', 9], 1, 99.9),
         ([3, 1, 2], None, NUM_ERROR),
         ([3, 1, 2], 0, NUM_ERROR),
         ([3, 1, 2], 4, NUM_ERROR),
@@ -534,7 +541,7 @@ def test_istext(value, expected):
         ([3, 1, 'aa'], 3, NUM_ERROR),
         ([3, 1, True], 1, 3),
         ([3, 1, True], 3, NUM_ERROR),
-        ([3, 1, 2], 2, 2),
+        ([3, 1, '2'], 2, 2),
         ([3, 1, REF_ERROR], 1, REF_ERROR),
     )
 )
@@ -690,6 +697,47 @@ class TestRounding:
     @pytest.mark.parametrize(params, tuple(zip(*inputs, data['roundup'])))
     def test_roundup(number, digits, result):
         assert result == roundup(number, digits)
+
+
+@pytest.mark.parametrize(
+    'data, k, result', (
+        ([3, 1, 2], 0, NUM_ERROR),
+        ([3, 1, 2], 1, 1),
+        ([3, 1, 2], 2, 2),
+        ([3, 1, 2], 3, 3),
+        ([3, 1, 2], 4, NUM_ERROR),
+        ([3, 1, 2], '2', 2),
+        ([3, 1, 2], 1.1, 2),
+        ([3, 1, 2], '1.1', 2),
+        ([3, 1, 2], 0.1, NUM_ERROR),
+        ([3, 1, 2], 3.1, NUM_ERROR),
+        ([3, 1, 2], 'abc', VALUE_ERROR),
+        ([3, 1, 2], True, 1),
+        ([3, 1, 2], False, NUM_ERROR),
+        ([3, 1, 2], 'True', VALUE_ERROR),
+        ([3, 1, 2], REF_ERROR, REF_ERROR),
+        ([3, 1, 2], EMPTY, VALUE_ERROR),
+        (REF_ERROR, 2, REF_ERROR),
+        (None, 2, NUM_ERROR),
+        ('abc', 2, NUM_ERROR),
+        (99, 1, 99),
+        ('99', 1, 99),
+        ('99.9', 1, 99.9),
+        (['99', 999], 1, 99),
+        (['99.9', 999], 1, 99.9),
+        ([3, 1, 2], None, NUM_ERROR),
+        ([3, 1, 2], 0, NUM_ERROR),
+        ([3, 1, 2], 4, NUM_ERROR),
+        ([3, 1, 'aa'], 2, 3),
+        ([3, 1, 'aa'], 3, NUM_ERROR),
+        ([3, 1, True], 1, 1),
+        ([3, 1, True], 3, NUM_ERROR),
+        ([3, 1, '2'], 2, 2),
+        ([3, 1, REF_ERROR], 1, REF_ERROR),
+    )
+)
+def test_small(data, k, result):
+    assert result == small(data, k)
 
 
 @pytest.mark.parametrize(

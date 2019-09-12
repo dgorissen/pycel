@@ -3,7 +3,7 @@ Python equivalents of various excel functions
 """
 import math
 from decimal import Decimal, ROUND_DOWN, ROUND_HALF_UP, ROUND_UP
-from heapq import nlargest
+from heapq import nlargest, nsmallest
 
 import numpy as np
 
@@ -299,8 +299,9 @@ def isnumber(value):
 
 @excel_helper()
 def large(array, k):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   large-function-3af0af19-1190-42bb-bb8b-01672ec00a64
     data = _numerics(array, to_number=coerce_to_number)
-
     if isinstance(data, str):
         return data
 
@@ -308,11 +309,10 @@ def large(array, k):
     if isinstance(k, str):
         return VALUE_ERROR
 
-    if array is None or k is None or k < 1 or k > len(data):
+    if not data or k is None or k < 1 or k > len(data):
         return NUM_ERROR
 
     k = math.ceil(k)
-
     return nlargest(k, data)[-1]
 
 
@@ -451,6 +451,25 @@ def sign(value):
     # Excel reference: https://support.office.com/en-us/article/
     #   sign-function-109c932d-fcdc-4023-91f1-2dd0e916a1d8
     return -1 if value < 0 else int(bool(value))
+
+
+@excel_helper()
+def small(array, k):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   small-function-17da8222-7c82-42b2-961b-14c45384df07
+    data = _numerics(array, to_number=coerce_to_number)
+    if isinstance(data, str):
+        return data
+
+    k = coerce_to_number(k)
+    if isinstance(k, str):
+        return VALUE_ERROR
+
+    if not data or k is None or k < 1 or k > len(data):
+        return NUM_ERROR
+
+    k = math.ceil(k)
+    return nsmallest(k, data)[-1]
 
 
 def sumif(rng, criteria, sum_range=None):
