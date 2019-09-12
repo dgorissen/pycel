@@ -878,12 +878,14 @@ class _ArrayFormulaContext:
     """ When evaluating array like data, need to know the context
         that the result will end up in
     """
-    ns = threading.local()
+    _ns = threading.local()
 
-    def __init__(self):
-        self.ns.in_array_context = False
-        self.ns.ctx_addresses = []
-        self.ns._ctx_address = None
+    @property
+    def ns(self):
+        if not hasattr(self._ns, 'ctx_addresses'):
+            self._ns.ctx_addresses = [False]
+            self._ns._ctx_address = None
+        return self._ns
 
     def __bool__(self):
         return bool(self.ctx_address)
@@ -895,14 +897,13 @@ class _ArrayFormulaContext:
     def __enter__(self):
         self.ns.ctx_addresses.append(self.ns._ctx_address)
         self.ns._ctx_address = None
-        self.ns.in_array_context = True
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.ns.ctx_addresses.pop()
 
     @property
     def ctx_address(self):
-        return self.ns.ctx_addresses and self.ns.ctx_addresses[-1]
+        return self.ns.ctx_addresses[-1]
 
     def fit_to_range(self, result):
         """Expand/Contract an answer to fill a range"""
