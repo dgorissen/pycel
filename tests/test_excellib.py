@@ -31,6 +31,7 @@ from pycel.excellib import (
     istext,
     # ::TODO:: finish test cases for remainder of functions
     # linest,
+    large,
     ln,
     log,
     maxifs,
@@ -39,6 +40,7 @@ from pycel.excellib import (
     npv,
     odd,
     power,
+    rounddown,
     roundup,
     sign,
     sumif,
@@ -55,6 +57,7 @@ from pycel.excellib import (
 )
 from pycel.excelutil import (
     DIV0,
+    EMPTY,
     NA_ERROR,
     NAME_ERROR,
     NUM_ERROR,
@@ -505,6 +508,41 @@ def test_istext(value, expected):
 
 
 @pytest.mark.parametrize(
+    'data, k, result', (
+        ([3, 1, 2], 2, 2),
+        ([3, 1, 2], '2', 2),
+        ([3, 1, 2], 'abc', VALUE_ERROR),
+        ([3, 1, 2], 1.1, 2),
+        ([3, 1, 2], 0.1, NUM_ERROR),
+        ([3, 1, 2], 3.1, NUM_ERROR),
+        ([3, 1, 2], '1.1', 2),
+        ([3, 1, 2], True, 3),
+        ([3, 1, 2], False, NUM_ERROR),
+        ([3, 1, 2], 'True', VALUE_ERROR),
+        ([3, 1, 2], REF_ERROR, REF_ERROR),
+        ([3, 1, 2], EMPTY, VALUE_ERROR),
+        (REF_ERROR, 2, REF_ERROR),
+        (None, 2, NUM_ERROR),
+        ('abc', 2, NUM_ERROR),
+        (99, 1, 99),
+        ('99', 1, 99),
+        (['99', 9], 1, 99),
+        ([3, 1, 2], None, NUM_ERROR),
+        ([3, 1, 2], 0, NUM_ERROR),
+        ([3, 1, 2], 4, NUM_ERROR),
+        ([3, 1, 'aa'], 2, 1),
+        ([3, 1, 'aa'], 3, NUM_ERROR),
+        ([3, 1, True], 1, 3),
+        ([3, 1, True], 3, NUM_ERROR),
+        ([3, 1, 2], 2, 2),
+        ([3, 1, REF_ERROR], 1, REF_ERROR),
+    )
+)
+def test_large(data, k, result):
+    assert result == large(data, k)
+
+
+@pytest.mark.parametrize(
     'expected, value',
     (
         (math.log(5), 5),
@@ -622,23 +660,36 @@ def test_power(data, expected):
         assert result == pytest.approx(expected, rel=1e-3)
 
 
-@pytest.mark.parametrize(
-    'number, digits, result', (
-        (3.2, 0, 4),
-        (76.9, 0, 77),
-        (3.14159, 3, 3.142),
-        (-3.14159, 1, -3.2),
-        (31415.92654, -2, 31500),
-        (None, -2, 0),
-        (True, -2, 100),
-        (3.2, 'X', VALUE_ERROR),
-        ('X', 0, VALUE_ERROR),
-        (3.2, VALUE_ERROR, VALUE_ERROR),
-        (VALUE_ERROR, 0, VALUE_ERROR),
+class TestRounding:
+    data_columns = "rounddown roundup number digits ".split()
+    data_values = (
+        (3, 4, 3.2, 0),
+        (76, 77, 76.9, 0),
+        (3.141, 3.142, 3.14159, 3),
+        (-3.1, -3.2, -3.14159, 1),
+        (31400, 31500, 31415.92654, -2),
+        (0, 0, None, -2),
+        (0, 100, True, -2),
+        (VALUE_ERROR, VALUE_ERROR, 3.2, 'X'),
+        (VALUE_ERROR, VALUE_ERROR, 'X', 0),
+        (VALUE_ERROR, VALUE_ERROR, 3.2, VALUE_ERROR),
+        (VALUE_ERROR, VALUE_ERROR, VALUE_ERROR, 0),
     )
-)
-def test_roundup(number, digits, result):
-    assert result == roundup(number, digits)
+
+    data = {dc: dv for dc, dv in zip(data_columns, tuple(zip(*data_values)))}
+
+    params = 'number, digits, result'
+    inputs = data['number'], data['digits']
+
+    @staticmethod
+    @pytest.mark.parametrize(params, tuple(zip(*inputs, data['rounddown'])))
+    def test_rounddown(number, digits, result):
+        assert result == rounddown(number, digits)
+
+    @staticmethod
+    @pytest.mark.parametrize(params, tuple(zip(*inputs, data['roundup'])))
+    def test_roundup(number, digits, result):
+        assert result == roundup(number, digits)
 
 
 @pytest.mark.parametrize(

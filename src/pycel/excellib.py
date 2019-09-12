@@ -2,7 +2,8 @@
 Python equivalents of various excel functions
 """
 import math
-from decimal import Decimal, ROUND_HALF_UP, ROUND_UP
+from decimal import Decimal, ROUND_DOWN, ROUND_HALF_UP, ROUND_UP
+from heapq import nlargest
 
 import numpy as np
 
@@ -25,7 +26,7 @@ from pycel.lib.function_helpers import (
 )
 
 
-def _numerics(*args, keep_bools=False):
+def _numerics(*args, keep_bools=False, to_number=lambda x: x):
     # ignore non numeric cells
     args = tuple(flatten(args))
     error = next((x for x in args if x in ERROR_CODES), None)
@@ -33,8 +34,9 @@ def _numerics(*args, keep_bools=False):
         # return the first error in the list
         return error
     else:
-        if not keep_bools:
-            args = (a for a in args if not isinstance(a, bool))
+        args = (
+            to_number(a) for a in args if keep_bools or not isinstance(a, bool)
+        )
         return tuple(x for x in args if isinstance(x, (int, float)))
 
 
@@ -295,6 +297,25 @@ def isnumber(value):
     return isinstance(value, (int, float))
 
 
+@excel_helper()
+def large(array, k):
+    data = _numerics(array, to_number=coerce_to_number)
+
+    if isinstance(data, str):
+        return data
+
+    k = coerce_to_number(k)
+    if isinstance(k, str):
+        return VALUE_ERROR
+
+    if array is None or k is None or k < 1 or k > len(data):
+        return NUM_ERROR
+
+    k = math.ceil(k)
+
+    return nlargest(k, data)[-1]
+
+
 def linest(Y, X, const=True, degree=1):  # pragma: no cover  ::TODO::
     if isinstance(const, str):
         const = (const.lower() == "true")
@@ -405,13 +426,24 @@ def power(number, power):
         return DIV0
 
 
+def _round(number, num_digits, rounding):
+    num_digits = int(num_digits)
+    quant = Decimal('1E{}{}'.format('+-'[num_digits >= 0], abs(num_digits)))
+    return float(Decimal(repr(number)).quantize(quant, rounding=rounding))
+
+
+@excel_math_func
+def rounddown(number, num_digits):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   ROUNDDOWN-function-2EC94C73-241F-4B01-8C6F-17E6D7968F53
+    return _round(number, num_digits, rounding=ROUND_DOWN)
+
+
 @excel_math_func
 def roundup(number, num_digits):
     # Excel reference: https://support.office.com/en-us/article/
     #   ROUNDUP-function-F8BC9B23-E795-47DB-8703-DB171D0C42A7
-    num_digits = int(num_digits)
-    quant = Decimal('1E{}{}'.format('+-'[num_digits >= 0], abs(num_digits)))
-    return float(Decimal(repr(number)).quantize(quant, rounding=ROUND_UP))
+    return _round(number, num_digits, rounding=ROUND_UP)
 
 
 @excel_math_func
