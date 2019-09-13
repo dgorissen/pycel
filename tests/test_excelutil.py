@@ -1,5 +1,6 @@
 import os
 import pickle
+import threading
 from collections import namedtuple
 
 import pytest
@@ -67,6 +68,10 @@ def test_address_range():
     assert '' == b.end.column
     assert 1 == b.start.row
     assert 1 == b.end.row
+
+    # address cell's start and end is himself
+    c = b.start
+    assert c.start == c.end == c
 
 
 def test_address_range_errors():
@@ -640,7 +645,7 @@ def test_in_array_formula_context():
         assert in_array_formula_context
 
     def return_in_context():
-        return in_array_formula_context
+        return bool(in_array_formula_context)
 
     assert not return_in_context()
     with in_array_formula_context('A1'):
@@ -654,6 +659,21 @@ def test_in_array_formula_context():
     except PyCelException:
         pass
     assert not return_in_context()
+
+    class AThread(threading.Thread):
+        def run(self):
+            try:
+                in_ctx_1 = return_in_context()
+                with in_array_formula_context('A1'):
+                    in_ctx_2 = return_in_context()
+                self.result = not in_ctx_1 and in_ctx_2
+            except:  # noqa: E722
+                self.result = False
+
+    thread = AThread()
+    thread.start()
+    thread.join()
+    assert thread.result
 
 
 @pytest.mark.parametrize(

@@ -1,3 +1,18 @@
+1.0b19 (2019-09-12)
+===================
+
+Changes
+-------
+
+* Implement INDIRECT & OFFSET
+* Implement SMALL, LARGE & ROUNDDOWN
+* Add error message for unhandled missing function parameter
+
+Fixes
+-----
+* Fix threading issue w/ CSE evaluator
+
+
 1.0b18 (2019-09-07)
 ===================
 

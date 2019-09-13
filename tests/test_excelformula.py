@@ -524,6 +524,8 @@ def test_if_args_error():
         '=,',
         '=-',
         '=--4',
+        '=f(,1)',
+        '=f(1,,)',
     )
 )
 def test_parser_error(formula):
