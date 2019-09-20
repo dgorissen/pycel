@@ -81,6 +81,7 @@ class Token(tokenizer.Token):
 
     INTERSECT = "INTERSECT"
     ARRAYROW = "ARRAYROW"
+    EMPTY = "EMPTY"
 
     class Precedence:
         """Small wrapper class to manage operator precedence during parsing"""
@@ -286,6 +287,9 @@ class OperandNode(ASTNode):
     def emit(self):
         if self.subtype == self.token.LOGICAL:
             return str(self.value.lower() == "true")
+
+        elif self.subtype == self.token.EMPTY:
+            return 'None'
 
         elif self.subtype in ("TEXT", "ERROR") and len(self.value) > 2:
             # if the string contains quotes, escape them
@@ -636,8 +640,7 @@ class ExcelFormula:
                 tokens.append(token)
                 token = Token('(', Token.PAREN, Token.OPEN)
                 if next_token.matches(Token.SEP, Token.ARG):
-                    raise FormulaParserError(
-                        "Unsupported Empty Parameter: {}".format(expression))
+                    tokens.append(Token('', Token.OPERAND, Token.EMPTY))
 
             elif token.matches(Token.FUNC, Token.CLOSE):
                 token = Token(')', Token.PAREN, Token.CLOSE)
@@ -660,8 +663,7 @@ class ExcelFormula:
 
             elif token.matches(Token.SEP, Token.ARG):
                 if next_token.matches(Token.SEP, Token.ARG):
-                    raise FormulaParserError(
-                        "Unsupported Empty Parameter: {}".format(expression))
+                    tokens.append(Token('', Token.OPERAND, Token.EMPTY))
 
             elif token.matches(Token.PAREN, Token.OPEN):
                 token.value = '('
