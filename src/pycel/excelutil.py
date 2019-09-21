@@ -1304,12 +1304,15 @@ def build_operator_operand_fixup(capture_error_state):
 
 class _IterativeEvalTracker:
     """When iteratively evaluating, keep track of which cycle we are on"""
-    ns = threading.local()
+    _ns = threading.local()
 
-    def __init__(self):
-        self.ns.todo = set()
-        self.ns.computed = set()
-        self.ns.iteration_number = 0
+    @property
+    def ns(self):
+        if not hasattr(self._ns, 'todo'):
+            self._ns.todo = set()
+            self._ns.computed = set()
+            self._ns.iteration_number = 0
+        return self._ns
 
     def __call__(self, iterations=100, tolerance=0.001):
         self.ns.iteration_number = 0

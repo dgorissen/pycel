@@ -1200,20 +1200,25 @@ def test_excel_operator_operand_fixup(left_op, op, right_op, expected):
 def test_iterative_eval_tracker():
     assert isinstance(iterative_eval_tracker.ns.todo, set)
 
-    # init the tracker
-    iterative_eval_tracker(iterations=100, tolerance=0.001)
-    assert iterative_eval_tracker.ns.iteration_number == 0
-    assert iterative_eval_tracker.ns.iterations == 100
-    assert iterative_eval_tracker.ns.tolerance == 0.001
-    assert iterative_eval_tracker.tolerance == 0.001
-    assert iterative_eval_tracker.done
+    def init_tracker():
+        # init the tracker
+        iterative_eval_tracker(iterations=100, tolerance=0.001)
+        assert iterative_eval_tracker.ns.iteration_number == 0
+        assert iterative_eval_tracker.ns.iterations == 100
+        assert iterative_eval_tracker.ns.tolerance == 0.001
+        assert iterative_eval_tracker.tolerance == 0.001
+        assert iterative_eval_tracker.done
 
-    # test done if no WIP
-    iterative_eval_tracker.wip(1)
-    assert iterative_eval_tracker.ns.todo == {1}
-    assert not iterative_eval_tracker.done
-    iterative_eval_tracker.inc_iteration_number()
-    assert iterative_eval_tracker.done
+    def do_test_tracker():
+        # test done if no WIP
+        iterative_eval_tracker.wip(1)
+        assert iterative_eval_tracker.ns.todo == {1}
+        assert not iterative_eval_tracker.done
+        iterative_eval_tracker.inc_iteration_number()
+        assert iterative_eval_tracker.done
+
+    init_tracker()
+    do_test_tracker()
 
     # init the tracker
     iterative_eval_tracker(iterations=2, tolerance=5)
@@ -1238,3 +1243,21 @@ def test_iterative_eval_tracker():
     assert iterative_eval_tracker.is_calced(1)
     iterative_eval_tracker.inc_iteration_number()
     assert not iterative_eval_tracker.is_calced(1)
+
+    class AThread(threading.Thread):
+        def run(self):
+            try:
+                init_tracker()
+                import time
+                time.sleep(0.1)
+                do_test_tracker()
+                self.result = True
+            except:  # noqa: E722
+                self.result = False
+
+    thread = AThread()
+    thread.start()
+    init_tracker()
+    do_test_tracker()
+    thread.join()
+    assert thread.result
