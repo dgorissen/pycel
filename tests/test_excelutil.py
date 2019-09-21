@@ -79,6 +79,25 @@ def test_address_range_errors():
     with pytest.raises(ValueError):
         AddressRange('B32:B')
 
+    with pytest.raises(ValueError):
+        AddressRange('B32:B33:B')
+
+
+@pytest.mark.parametrize(
+    'address, expected', (
+        ('s!D2:F4:E3', 's!D2:F4'),
+        ('s!D2:E3:F4', 's!D2:F4'),
+        ('s!E3:D2:F4', 's!D2:F4'),
+        ('s!D2:F4:G3', 's!D2:G4'),
+        ('s!D2:G3:F4', 's!D2:G4'),
+        ('s!G3:D2:F4', 's!D2:G4'),
+        ('s!G3:G3:G3', 's!G3'),
+    )
+)
+def test_address_range_multi_colon(address, expected):
+    a_range = AddressRange(address)
+    assert a_range == AddressRange(expected)
+
 
 @pytest.mark.parametrize(
     'left, right, result', (
@@ -470,34 +489,43 @@ def test_structured_table_reference_boundaries(ref, expected):
         assert ref_bound == expected_ref
 
 
-def test_extended_range_boundaries(ATestCell):
-    cell = ATestCell('A', 1)
+@pytest.mark.parametrize(
+    'expected, address', (
 
-    assert (1, 2) * 2 == range_boundaries('A2')[0]
-    assert (2, 1) * 2 == range_boundaries('B1')[0]
-    assert (1, 2) * 2 == range_boundaries('R2C1')[0]
-    assert (2, 1) * 2 == range_boundaries('R1C2')[0]
-    assert (2, 3) * 2 == range_boundaries('R[2]C[1]', cell)[0]
-    assert (3, 2) * 2 == range_boundaries('R[1]C[2]', cell)[0]
+        ((1, 2) * 2, 'A2'),
+        ((2, 1) * 2, 'B1'),
+        ((1, 2) * 2, 'R2C1'),
+        ((2, 1) * 2, 'R1C2'),
+        ((2, 3) * 2, 'R[2]C[1]'),
+        ((3, 2) * 2, 'R[1]C[2]'),
 
-    assert (1, 1, 2, 2) == range_boundaries('A1:B2')[0]
-    assert (1, 1, 2, 2) == range_boundaries('R1C1:R2C2')[0]
-    assert (2, 1, 2, 3) == range_boundaries('R1C2:R[2]C[1]', cell)[0]
+        ((1, 1, 2, 2), 'A1:B2'),
+        ((1, 1, 2, 2), 'R1C1:R2C2'),
+        ((2, 1, 2, 3), 'R1C2:R[2]C[1]'),
 
-    assert (3, 13) * 2 == range_boundaries('R13C3')[0]
+        ((3, 13) * 2, 'R13C3'),
 
-    assert (1, 1, 1, 1) == range_boundaries('RC', cell)[0]
+        ((1, 1, 1, 1), 'RC'),
 
-    assert (None, 1, None, 4) == range_boundaries('R:R[3]', cell)[0]
-    assert (None, 1, None, 4) == range_boundaries('R1:R[3]', cell)[0]
-    assert (None, 2, None, 4) == range_boundaries('R2:R[3]', cell)[0]
+        ((None, 1, None, 4), 'R:R[3]'),
+        ((None, 1, None, 4), 'R1:R[3]'),
+        ((None, 2, None, 4), 'R2:R[3]'),
 
-    assert (1, None, 4, None) == range_boundaries('C:C[3]', cell)[0]
-    assert (1, None, 4, None) == range_boundaries('C1:C[3]', cell)[0]
-    assert (2, None, 4, None) == range_boundaries('C2:C[3]', cell)[0]
+        ((1, None, 4, None), 'C:C[3]'),
+        ((1, None, 4, None), 'C1:C[3]'),
+        ((2, None, 4, None), 'C2:C[3]'),
 
-    with pytest.raises(NotImplementedError, match='Multiple Colon Ranges'):
-        range_boundaries('A1:B2:C3')
+        ((4, 2, 6, 4), 's!D2:F4:E3'),
+        ((4, 2, 6, 4), 's!D2:E3:F4'),
+        ((4, 2, 6, 4), 's!E3:D2:F4'),
+        ((4, 2, 7, 4), 's!D2:F4:G3'),
+        ((4, 2, 7, 4), 's!D2:G3:F4'),
+        ((4, 2, 7, 4), 's!G3:D2:F4'),
+        ((7, 3, 7, 3), 's!G3:G3:G3'),
+    )
+)
+def test_extended_range_boundaries(expected, address, ATestCell):
+    assert range_boundaries(address, cell=ATestCell('A', 1))[0] == expected
 
 
 def test_range_boundaries_defined_names(excel, ATestCell):

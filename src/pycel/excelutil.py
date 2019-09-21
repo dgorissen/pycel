@@ -716,8 +716,20 @@ def range_boundaries(address, cell=None, sheet=None):
                 AddressRange(range_alias, sheet=worksheet)
                 for range_alias, worksheet in name_addr)), None
 
-    if len(address.split(':')) > 2:
-        raise NotImplementedError("Multiple Colon Ranges: {}".format(address))
+    addrs = address.split(':')
+    if len(addrs) > 2:
+        # Multi colon range resolves to rectangle containing all nodes
+        try:
+            nodes = tuple(AddressCell(addr) for addr in addrs)
+
+            min_col_idx = min(n.col_idx for n in nodes)
+            max_col_idx = max(n.col_idx for n in nodes)
+            min_row = min(n.row for n in nodes)
+            max_row = max(n.row for n in nodes)
+
+            return (min_col_idx, min_row, max_col_idx, max_row), sheet
+        except ValueError:
+            pass
 
     raise ValueError(
         "{0} is not a valid coordinate or range".format(address))
