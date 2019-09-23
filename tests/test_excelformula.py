@@ -14,7 +14,13 @@ from pycel.excelformula import (
     Token,
     UnknownFunction,
 )
-from pycel.excelutil import AddressCell, DIV0, NAME_ERROR, VALUE_ERROR
+from pycel.excelutil import (
+    AddressCell,
+    DIV0,
+    NAME_ERROR,
+    NULL_ERROR,
+    VALUE_ERROR,
+)
 
 
 FormulaTest = collections.namedtuple('FormulaTest', 'formula rpn python_code')
@@ -781,6 +787,7 @@ def test_string_concat(formula, result, empty_eval_context):
         ('=COLUMN(D1:E2)', ((4, 5),), None),
         ('=COLUMN()', 2, "ATestCell('B', 3)"),
         ('=COLUMN(B6:D9 C7:E8)', ((3, 4), ), None),
+        ('=COLUMN(B6:D9 E7:F8)', NULL_ERROR, None),
     )
 )
 def test_column(formula, result, cell, empty_eval_context, ATestCell):
@@ -799,6 +806,7 @@ def test_column(formula, result, cell, empty_eval_context, ATestCell):
         ('=ROW(D1:E2)', ((1,), (2,)), None),
         ('=ROW()', 3, "ATestCell('B', 3)"),
         ('=ROW(B6:D9 C7:E8)', ((7,), (8,)), None),
+        ('=ROW(B6:D9 E7:F8)', NULL_ERROR, None),
     )
 )
 def test_row(formula, result, cell, empty_eval_context, ATestCell):
