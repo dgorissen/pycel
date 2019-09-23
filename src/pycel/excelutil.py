@@ -1,3 +1,12 @@
+# -*- coding: UTF-8 -*-
+#
+# Copyright 2011-2019 by Dirk Gorissen, Stephen Rauch and Contributors
+# All rights reserved.
+# This file is part of the Pycel Library, Licensed under GPLv3 (the 'License')
+# You may not use this work except in compliance with the License.
+# You may obtain a copy of the Licence at:
+#   https://www.gnu.org/licenses/gpl-3.0.en.html
+
 import collections
 import itertools as it
 import operator
@@ -716,8 +725,20 @@ def range_boundaries(address, cell=None, sheet=None):
                 AddressRange(range_alias, sheet=worksheet)
                 for range_alias, worksheet in name_addr)), None
 
-    if len(address.split(':')) > 2:
-        raise NotImplementedError("Multiple Colon Ranges: {}".format(address))
+    addrs = address.split(':')
+    if len(addrs) > 2:
+        # Multi colon range resolves to rectangle containing all nodes
+        try:
+            nodes = tuple(AddressCell(addr) for addr in addrs)
+
+            min_col_idx = min(n.col_idx for n in nodes)
+            max_col_idx = max(n.col_idx for n in nodes)
+            min_row = min(n.row for n in nodes)
+            max_row = max(n.row for n in nodes)
+
+            return (min_col_idx, min_row, max_col_idx, max_row), sheet
+        except ValueError:
+            pass
 
     raise ValueError(
         "{0} is not a valid coordinate or range".format(address))
@@ -1304,12 +1325,15 @@ def build_operator_operand_fixup(capture_error_state):
 
 class _IterativeEvalTracker:
     """When iteratively evaluating, keep track of which cycle we are on"""
-    ns = threading.local()
+    _ns = threading.local()
 
-    def __init__(self):
-        self.ns.todo = set()
-        self.ns.computed = set()
-        self.ns.iteration_number = 0
+    @property
+    def ns(self):
+        if not hasattr(self._ns, 'todo'):
+            self._ns.todo = set()
+            self._ns.computed = set()
+            self._ns.iteration_number = 0
+        return self._ns
 
     def __call__(self, iterations=100, tolerance=0.001):
         self.ns.iteration_number = 0

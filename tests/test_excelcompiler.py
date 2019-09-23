@@ -1,3 +1,12 @@
+# -*- coding: UTF-8 -*-
+#
+# Copyright 2011-2019 by Dirk Gorissen, Stephen Rauch and Contributors
+# All rights reserved.
+# This file is part of the Pycel Library, Licensed under GPLv3 (the 'License')
+# You may not use this work except in compliance with the License.
+# You may obtain a copy of the Licence at:
+#   https://www.gnu.org/licenses/gpl-3.0.en.html
+
 import json
 import os
 import shutil
@@ -15,6 +24,7 @@ from pycel.excelutil import (
     AddressRange,
     flatten,
     list_like,
+    NA_ERROR,
     NULL_ERROR,
 )
 from pycel.excelwrapper import ExcelWrapper
@@ -388,6 +398,35 @@ def test_validate_calcs_excel_compiler(excel_compiler):
     assert len(excel_compiler.formula_cells('JUNK-Sheet!B1')) == 0
 
 
+def test_validate_calcs_empty_params():
+    data = [x.strip().split() for x in """
+        =INDEX($G$2:$G$4,D2) =INDEX($G$2:$I$2,,D2) =INDEX($G$2:$I$2,$A$6,D2)
+        =INDEX($G$2:$G$4,D3) =INDEX($G$2:$I$2,,D3) =INDEX($G$2:$I$2,$A$6,D3)
+        =INDEX($G$2:$G$4,D4) =INDEX($G$2:$I$2,,D4) =INDEX($G$2:$I$2,$A$6,D4)
+        =MATCH(E2,$F$2:$F$4) 0 1 a b c
+        =MATCH(E3,$F$2:$F$4) 2 2 b
+        =MATCH(E4,$F$2:$F$4) 4 3 c
+        =IF(0,,2) =IF(1,,2) =IF(,1,2) =IF(,0,2)
+    """.split('\n')[1:-1]]
+
+    wb = Workbook()
+    ws = wb.active
+    ws['A2'], ws['B2'], ws['C2'] = data[0]
+    ws['A3'], ws['B3'], ws['C3'] = data[1]
+    ws['A4'], ws['B4'], ws['C4'] = data[2]
+    ws['D2'], ws['E2'], ws['F2'], ws['G2'], ws['H2'], ws['I2'] = data[3]
+    ws['D3'], ws['E3'], ws['F3'], ws['G3'] = data[4]
+    ws['D4'], ws['E4'], ws['F4'], ws['G4'] = data[5]
+    ws['A5'], ws['B5'], ws['C5'], ws['D5'] = data[6]
+
+    excel_compiler = ExcelCompiler(excel=wb)
+
+    assert (NA_ERROR, ) * 3 == excel_compiler.evaluate('Sheet!A2:C2')
+    assert ('b', ) * 3 == excel_compiler.evaluate('Sheet!A3:C3')
+    assert ('c', ) * 3 == excel_compiler.evaluate('Sheet!A4:C4')
+    assert (2, 0, 2, 2) == excel_compiler.evaluate('Sheet!A5:D5')
+
+
 def test_evaluate_entire_row_column(excel_compiler):
 
     value = excel_compiler.evaluate(AddressRange('Sheet1!A:A'))
@@ -627,7 +666,7 @@ def test_structured_ref(excel_compiler):
     assert 20 == excel_compiler.evaluate(output_addrs[0])
 
 
-def test_multi_area_range_defined_name(fixture_xls_copy):
+def test_multi_area_range_defined_name():
 
     wb = Workbook()
     ws = wb.active
@@ -651,7 +690,7 @@ def test_multi_area_range_defined_name(fixture_xls_copy):
     assert (3, 10, 4) == excel_compiler.evaluate(output_addrs[0])
 
 
-def test_unbounded_countifs(fixture_xls_copy):
+def test_unbounded_countifs():
     wb = Workbook()
     ws = wb.active
     ws['A1'] = 1
@@ -659,11 +698,11 @@ def test_unbounded_countifs(fixture_xls_copy):
     ws['A3'] = 3
     ws['A4'] = 4
     ws['A5'] = 5
-    ws['B1'] = '1'
-    ws['B2'] = '2'
-    ws['B3'] = '3'
-    ws['B4'] = '4'
-    ws['B5'] = '5'
+    ws['B1'] = 1
+    ws['B2'] = 2
+    ws['B3'] = 3
+    ws['B4'] = 4
+    ws['B5'] = 5
     ws['C1'] = '=COUNTIFS(B:B,">3")'
     ws['C2'] = '=SUMIFS(A:A,B:B,">3")'
     excel_compiler = ExcelCompiler(filename='test_unbounded_countifs', excel=wb)
@@ -681,6 +720,27 @@ def test_unbounded_countifs(fixture_xls_copy):
     assert (2, 9) == excel_compiler.evaluate(output_addrs)
     excel_compiler.recalculate()
     assert (2, 9) == excel_compiler.evaluate(output_addrs)
+
+
+def test_validate_count():
+    wb = Workbook()
+    ws = wb.active
+    ws['A1'] = 0
+    ws['A2'] = 1
+    ws['A3'] = 1.1
+    ws['A4'] = '1.1'
+    ws['A5'] = True
+    ws['A6'] = False
+    ws['A7'] = 'A'
+    ws['A8'] = 'TRUE'
+    ws['A9'] = 'FALSE'
+    ws['B1'] = '=COUNT(A2)'
+    ws['B2'] = '=COUNT(A2:A3)'
+    ws['B3'] = '=COUNT(A2:A3,A3)'
+    ws['B4'] = '=COUNT(A1:A9,A4,A5,A6,A7,A8,A9)'
+
+    excel_compiler = ExcelCompiler(excel=wb)
+    assert excel_compiler.evaluate('Sheet!B1:B4') == (1, 2, 3, 3)
 
 
 @pytest.mark.parametrize(

@@ -1,3 +1,12 @@
+# -*- coding: UTF-8 -*-
+#
+# Copyright 2011-2019 by Dirk Gorissen, Stephen Rauch and Contributors
+# All rights reserved.
+# This file is part of the Pycel Library, Licensed under GPLv3 (the 'License')
+# You may not use this work except in compliance with the License.
+# You may obtain a copy of the Licence at:
+#   https://www.gnu.org/licenses/gpl-3.0.en.html
+
 import collections
 import hashlib
 import itertools as it
@@ -795,7 +804,7 @@ class ExcelCompiler:
                     address, sheet=self.excel.get_active_sheet_name())
 
             if address.address not in self.cell_map:
-                self._gen_graph(address.address)
+                self._gen_graph(address)
 
         result = self._evaluate(str(address))
         if isinstance(result, tuple):

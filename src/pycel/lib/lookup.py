@@ -1,3 +1,12 @@
+# -*- coding: UTF-8 -*-
+#
+# Copyright 2011-2019 by Dirk Gorissen, Stephen Rauch and Contributors
+# All rights reserved.
+# This file is part of the Pycel Library, Licensed under GPLv3 (the 'License')
+# You may not use this work except in compliance with the License.
+# You may obtain a copy of the Licence at:
+#   https://www.gnu.org/licenses/gpl-3.0.en.html
+
 """
 Python equivalents of Lookup and Reference library functions
 """
@@ -15,6 +24,7 @@ from pycel.excelutil import (
     MAX_COL,
     MAX_ROW,
     NA_ERROR,
+    NULL_ERROR,
     REF_ERROR,
     VALUE_ERROR,
 )
@@ -115,7 +125,9 @@ def column(ref):
     # Excel reference: https://support.office.com/en-us/article/
     #   COLUMN-function-44E8C754-711C-4DF3-9DA4-47A55042554B
 
-    if ref.is_range:
+    if ref is None:
+        return NULL_ERROR
+    elif ref.is_range:
         if ref.end.col_idx == 0:
             return range(1, MAX_COL + 1)
         else:
@@ -339,7 +351,9 @@ def offset(reference, row_inc, col_inc, height=None, width=None):
 def row(ref):
     # Excel reference: https://support.office.com/en-us/article/
     #   row-function-3a63b74a-c4d0-4093-b49a-e76eb49a6d8d
-    if ref.is_range:
+    if ref is None:
+        return NULL_ERROR
+    elif ref.is_range:
         if ref.end.row == 0:
             return range(1, MAX_ROW + 1)
         else:

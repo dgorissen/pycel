@@ -1,3 +1,12 @@
+# -*- coding: UTF-8 -*-
+#
+# Copyright 2011-2019 by Dirk Gorissen, Stephen Rauch and Contributors
+# All rights reserved.
+# This file is part of the Pycel Library, Licensed under GPLv3 (the 'License')
+# You may not use this work except in compliance with the License.
+# You may obtain a copy of the Licence at:
+#   https://www.gnu.org/licenses/gpl-3.0.en.html
+
 import ast
 import importlib
 import logging
@@ -81,6 +90,7 @@ class Token(tokenizer.Token):
 
     INTERSECT = "INTERSECT"
     ARRAYROW = "ARRAYROW"
+    EMPTY = "EMPTY"
 
     class Precedence:
         """Small wrapper class to manage operator precedence during parsing"""
@@ -286,6 +296,9 @@ class OperandNode(ASTNode):
     def emit(self):
         if self.subtype == self.token.LOGICAL:
             return str(self.value.lower() == "true")
+
+        elif self.subtype == self.token.EMPTY:
+            return 'None'
 
         elif self.subtype in ("TEXT", "ERROR") and len(self.value) > 2:
             # if the string contains quotes, escape them
@@ -636,8 +649,7 @@ class ExcelFormula:
                 tokens.append(token)
                 token = Token('(', Token.PAREN, Token.OPEN)
                 if next_token.matches(Token.SEP, Token.ARG):
-                    raise FormulaParserError(
-                        "Unsupported Empty Parameter: {}".format(expression))
+                    tokens.append(Token('', Token.OPERAND, Token.EMPTY))
 
             elif token.matches(Token.FUNC, Token.CLOSE):
                 token = Token(')', Token.PAREN, Token.CLOSE)
@@ -660,8 +672,7 @@ class ExcelFormula:
 
             elif token.matches(Token.SEP, Token.ARG):
                 if next_token.matches(Token.SEP, Token.ARG):
-                    raise FormulaParserError(
-                        "Unsupported Empty Parameter: {}".format(expression))
+                    tokens.append(Token('', Token.OPERAND, Token.EMPTY))
 
             elif token.matches(Token.PAREN, Token.OPEN):
                 token.value = '('

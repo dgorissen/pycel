@@ -1,3 +1,12 @@
+# -*- coding: UTF-8 -*-
+#
+# Copyright 2011-2019 by Dirk Gorissen, Stephen Rauch and Contributors
+# All rights reserved.
+# This file is part of the Pycel Library, Licensed under GPLv3 (the 'License')
+# You may not use this work except in compliance with the License.
+# You may obtain a copy of the Licence at:
+#   https://www.gnu.org/licenses/gpl-3.0.en.html
+
 import collections
 import logging
 import os
@@ -14,7 +23,13 @@ from pycel.excelformula import (
     Token,
     UnknownFunction,
 )
-from pycel.excelutil import AddressCell, DIV0, NAME_ERROR, VALUE_ERROR
+from pycel.excelutil import (
+    AddressCell,
+    DIV0,
+    NAME_ERROR,
+    NULL_ERROR,
+    VALUE_ERROR,
+)
 
 
 FormulaTest = collections.namedtuple('FormulaTest', 'formula rpn python_code')
@@ -192,7 +207,17 @@ whitespace_inputs = [
     FormulaTest(
         '= (1,5 * (1 + B11 *B3 ^ B12) + 5) + 10 ',
         '1|5|,|1|B11|B3|B12|^|*|+|*|5|+|10|+',
-        '(((1, 5) * (1 + (_C_("B11") * (_C_("B3") ** _C_("B12"))))) + 5) + 10'
+        '(((1, 5) * (1 + (_C_("B11") * (_C_("B3") ** _C_("B12"))))) + 5) + 10',
+    ),
+    FormulaTest(
+        '=f(,1)',
+        '|1|f',
+        'f(None, 1)',
+    ),
+    FormulaTest(
+        '=f(1,,)',
+        '1||f',
+        'f(1, None)',
     ),
 ]
 
@@ -524,8 +549,6 @@ def test_if_args_error():
         '=,',
         '=-',
         '=--4',
-        '=f(,1)',
-        '=f(1,,)',
     )
 )
 def test_parser_error(formula):
@@ -773,6 +796,7 @@ def test_string_concat(formula, result, empty_eval_context):
         ('=COLUMN(D1:E2)', ((4, 5),), None),
         ('=COLUMN()', 2, "ATestCell('B', 3)"),
         ('=COLUMN(B6:D9 C7:E8)', ((3, 4), ), None),
+        ('=COLUMN(B6:D9 E7:F8)', NULL_ERROR, None),
     )
 )
 def test_column(formula, result, cell, empty_eval_context, ATestCell):
@@ -791,6 +815,7 @@ def test_column(formula, result, cell, empty_eval_context, ATestCell):
         ('=ROW(D1:E2)', ((1,), (2,)), None),
         ('=ROW()', 3, "ATestCell('B', 3)"),
         ('=ROW(B6:D9 C7:E8)', ((7,), (8,)), None),
+        ('=ROW(B6:D9 E7:F8)', NULL_ERROR, None),
     )
 )
 def test_row(formula, result, cell, empty_eval_context, ATestCell):
