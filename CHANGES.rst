@@ -1,3 +1,19 @@
+1.0b20 (2019-09-22)
+===================
+
+Changes
+-------
+
+* Implement multi colon ranges
+* Add support for missing (empty) function parameters
+
+Fixes
+-----
+* Fix threading issue in iterative evaluator
+* Fix range intersection with null result for ROW and COLUMN
+* Fix #74 - Count not working for ranges
+
+
 1.0b19 (2019-09-12)
 ===================
 
