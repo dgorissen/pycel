@@ -14,7 +14,6 @@ from pycel.excelutil import (
     find_corresponding_index,
     flatten,
     handle_ifs,
-    is_number,
     list_like,
     NA_ERROR,
     NUM_ERROR,
@@ -127,17 +126,8 @@ def count(*args):
     # Excel reference: https://support.office.com/en-us/article/
     #   COUNT-function-a59cd7fc-b623-4d93-87a4-d23bf411294c
 
-    total = 0
-
-    for arg in args:
-        if isinstance(arg, list):
-            # count inside a list
-            total += len(
-                [x for x in arg if is_number(x) and not isinstance(x, bool)])
-        else:
-            total += int(is_number(arg))
-
-    return total
+    return sum(1 for x in flatten(args)
+               if isinstance(x, (int, float)) and not isinstance(x, bool))
 
 
 def countif(rng, criteria):

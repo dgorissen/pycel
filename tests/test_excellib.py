@@ -1,4 +1,3 @@
-import datetime as dt
 import math
 
 import pytest
@@ -231,19 +230,19 @@ def test_conditional_format_ids(args, result):
     assert conditional_format_ids(*args) == result
 
 
-class TestCount:
-
-    def test_without_nested_booleans(self):
-        assert 3 == count([1, 2, 'e'], True, 'r')
-
-    def test_with_nested_booleans(self):
-        assert 2 == count([1, True, 'e'], True, 'r')
-
-    def test_with_text_representations(self):
-        assert 4 == count([1, '2.2', 'e'], True, '20')
-
-    def test_with_date_representations(self):
-        assert 4 == count([1, '2.2', dt.datetime.now()], True, '20')
+def test_count():
+    data = (
+        0,
+        1,
+        1.1,
+        '1.1',
+        True,
+        False,
+        'A',
+        'TRUE',
+        'FALSE',
+    )
+    assert count(data, data[3], data[5], data[7])
 
 
 class TestCountIf:

@@ -15,7 +15,7 @@ from openpyxl.cell.read_only import EMPTY_CELL
 from openpyxl.formula.translate import Translator
 from openpyxl.utils import datetime as opxl_dt
 
-from pycel.excelutil import AddressCell, AddressRange, coerce_to_number, flatten
+from pycel.excelutil import AddressCell, AddressRange, flatten
 
 ARRAY_FORMULA_NAME = '=CSE_INDEX'
 ARRAY_FORMULA_FORMAT = '{}(%s,%s,%s,%s,%s)'.format(ARRAY_FORMULA_NAME)
@@ -312,8 +312,7 @@ class ExcelOpxWrapperNoData(ExcelOpxWrapper):
     @staticmethod
     def excel_value(formula, value):
         """A openpyxl sheet does not have values for formula cells"""
-        return None if formula or value is None else coerce_to_number(
-            value, convert_all=True)
+        return None if formula else value
 
     class OpxRange(_OpxRange):
         def __new__(cls, range_data):

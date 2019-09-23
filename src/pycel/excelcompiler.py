@@ -795,7 +795,7 @@ class ExcelCompiler:
                     address, sheet=self.excel.get_active_sheet_name())
 
             if address.address not in self.cell_map:
-                self._gen_graph(address.address)
+                self._gen_graph(address)
 
         result = self._evaluate(str(address))
         if isinstance(result, tuple):
