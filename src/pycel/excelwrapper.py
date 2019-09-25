@@ -8,9 +8,9 @@
 #   https://www.gnu.org/licenses/gpl-3.0.en.html
 
 """
-    ExcelComWrapper : Must be run on Windows as it requires a COM link
-                      to an Excel instance.
     ExcelOpxWrapper : Can be run anywhere but only with post 2010 Excel formats
+    ExcelOpxWrapperNoData  :
+        Can be initialized with a instance of an OpenPyXl workbook
 """
 
 import abc
@@ -20,7 +20,6 @@ from unittest import mock
 
 from openpyxl import load_workbook, Workbook
 from openpyxl.cell.cell import Cell, MergedCell
-from openpyxl.cell.read_only import EMPTY_CELL
 from openpyxl.formula.translate import Translator
 from openpyxl.utils import datetime as opxl_dt
 
@@ -34,10 +33,6 @@ class ExcelWrapper:
     __metaclass__ = abc.ABCMeta
 
     RangeData = collections.namedtuple('RangeData', 'address formula values')
-
-    @abc.abstractmethod
-    def connect(self):
-        """This is obsolete and could be removed at some point"""
 
     @abc.abstractmethod
     def get_range(self, address):
@@ -163,6 +158,13 @@ class ExcelOpxWrapper(ExcelWrapper):
         self._table_refs = {}
         self.workbook = None
         self.workbook_dataonly = None
+        self._max_col_row = {}
+
+    def max_col_row(self, sheet):
+        if sheet not in self._max_col_row:
+            worksheet = self.workbook[sheet]
+            self._max_col_row[sheet] = worksheet.max_column, worksheet.max_row
+        return self._max_col_row[sheet]
 
     @property
     def defined_names(self):
@@ -229,11 +231,16 @@ class ExcelOpxWrapper(ExcelWrapper):
                     ))
         return sorted(rules, key=lambda x: x.priority)
 
-    def connect(self):
-        self.workbook = load_workbook(self.filename)
-        self.workbook_dataonly = load_workbook(
-            self.filename, data_only=True, read_only=True)
+    def load(self):
+        # work around type coercion to datetime that causes some issues
+        with mock.patch('openpyxl.worksheet._reader.from_excel',
+                        self.from_excel):
+            self.workbook = load_workbook(self.filename)
+            self.workbook_dataonly = load_workbook(
+                self.filename, data_only=True)
+        self.load_array_formulas()
 
+    def load_array_formulas(self):
         # expand array formulas
         for ws in self.workbook:
             for address, props in ws.formula_attributes.items():
@@ -282,29 +289,14 @@ class ExcelOpxWrapper(ExcelWrapper):
             if address.is_unbounded_range:
                 # bound the address range to the data in the spreadsheet
                 address = address & AddressRange(
-                    (1, 1, sheet_dataonly.max_column, sheet_dataonly.max_row),
-                    sheet=address.sheet)
+                    (1, 1, *self.max_col_row(sheet.title)),
+                    sheet=sheet.title)
 
             cells = sheet[address.coordinate]
+            cells_dataonly = sheet_dataonly[address.coordinate]
             if isinstance(cells, (Cell, MergedCell)):
-                cell = cells
-                cell_dataonly = sheet_dataonly[address.coordinate]
-                return _OpxCell(cell, cell_dataonly, address)
-
+                return _OpxCell(cells, cells_dataonly, address)
             else:
-                cells_dataonly = sheet_dataonly[address.coordinate]
-
-                if len(cells) != len(cells_dataonly):
-                    # The read_only version of openpyxl worksheet has the
-                    # somewhat annoying property of not giving empty rows at the
-                    # end.  Which is not the same behavior as the non-readonly
-                    # version.  So we need to align the data here by adding
-                    # empty rows.
-                    empty_row = (EMPTY_CELL, ) * len(cells[0])
-                    empty_rows = (empty_row, ) * (
-                        len(cells) - len(cells_dataonly))
-                    cells_dataonly += empty_rows
-
                 return _OpxRange(cells, cells_dataonly, address)
 
     def get_used_range(self):
@@ -345,6 +337,7 @@ class ExcelOpxWrapperNoData(ExcelOpxWrapper):
         assert isinstance(workbook, Workbook)
         self.workbook = workbook
         self.workbook_dataonly = workbook
+        self.load_array_formulas()
 
     def get_range(self, address):
         data = super().get_range(address)

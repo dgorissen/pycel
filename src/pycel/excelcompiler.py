@@ -64,10 +64,8 @@ class ExcelCompiler:
             self.filename = excel.filename
             self.hash = None
         else:
-            # TODO: use a proper interface so we can (eventually) support
-            # loading from file (much faster)  Still need to find a good lib.
             self.excel = ExcelOpxWrapper(filename=filename)
-            self.excel.connect()
+            self.excel.load()
             self.filename = filename
 
         # grab a copy of the current hash

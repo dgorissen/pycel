@@ -91,7 +91,7 @@ def unconnected_excel(fixture_xls_path):
 
 @pytest.fixture()
 def excel(unconnected_excel):
-    unconnected_excel.connect()
+    unconnected_excel.load()
     return unconnected_excel
 
 
