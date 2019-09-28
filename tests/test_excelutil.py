@@ -541,6 +541,7 @@ def test_range_boundaries_defined_names(excel, ATestCell):
     cell = ATestCell('A', 1, excel=excel)
 
     assert ((3, 1, 3, 18), 'Sheet1') == range_boundaries('SINUS', cell)
+    assert ((2, 1, 5, 18), 'Sheet1') == range_boundaries('B2:E5:SINUS', cell)
 
 
 @pytest.mark.parametrize(

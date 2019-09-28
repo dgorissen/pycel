@@ -729,12 +729,18 @@ def range_boundaries(address, cell=None, sheet=None):
     if len(addrs) > 2:
         # Multi colon range resolves to rectangle containing all nodes
         try:
-            nodes = tuple(AddressCell(addr) for addr in addrs)
+            nodes = tuple(AddressRange.create(addr, cell=cell, sheet=sheet)
+                          for addr in addrs)
 
             min_col_idx = min(n.col_idx for n in nodes)
-            max_col_idx = max(n.col_idx for n in nodes)
+            max_col_idx = max((n.col_idx + n.size.width - 1) for n in nodes)
             min_row = min(n.row for n in nodes)
-            max_row = max(n.row for n in nodes)
+            max_row = max((n.row + n.size.height - 1) for n in nodes)
+
+            sheets = {n.sheet for n in nodes if n.sheet}
+            if not sheet:
+                sheet = next(iter(sheets), None)
+            assert not sheets or sheets == {sheet}
 
             return (min_col_idx, min_row, max_col_idx, max_row), sheet
         except ValueError:
