@@ -22,10 +22,10 @@ from pycel.excelformula import ExcelFormula
 from pycel.excelutil import (
     AddressCell,
     AddressRange,
+    ERROR_CODES,
     flatten,
     iterative_eval_tracker,
     list_like,
-    NULL_ERROR,
     VALUE_ERROR,
 )
 from pycel.excelwrapper import ExcelOpxWrapper, ExcelOpxWrapperNoData
@@ -724,8 +724,8 @@ class ExcelCompiler:
 
     def _evaluate_range(self, address):
         """Evaluate a range"""
-        if address == 'None':
-            return NULL_ERROR
+        if address in ERROR_CODES:
+            return address
 
         cell_range = self.cell_map.get(address)
         if cell_range is None:

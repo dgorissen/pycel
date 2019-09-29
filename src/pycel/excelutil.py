@@ -144,6 +144,43 @@ class AddressMixin:
     def sort_key(self):
         return self.sheet, self.col_idx, self.row
 
+    def _and_or(self, other, min_, max_):
+        """Assumes rectangular only"""
+        if not isinstance(other, (AddressCell, AddressRange)):
+            other = AddressRange.create(other)
+        if self.sheet and other.sheet and self.sheet != other.sheet:
+            return VALUE_ERROR
+
+        min_col_idx = min_(self.col_idx, other.col_idx)
+        min_row = min_(self.row, other.row)
+
+        max_col_idx = max_(self.col_idx + self.size.width,
+                           other.col_idx + other.size.width) - 1
+        max_row = max_(self.row + self.size.height,
+                       other.row + other.size.height) - 1
+
+        if max_col_idx < min_col_idx or max_row < min_row:
+            return NULL_ERROR
+
+        elif max_col_idx == min_col_idx and max_row == min_row:
+            return AddressCell((min_col_idx, min_row, max_col_idx, max_row),
+                               sheet=self.sheet or other.sheet)
+        else:
+            return AddressRange((min_col_idx, min_row, max_col_idx, max_row),
+                                sheet=self.sheet or other.sheet)
+
+    def __or__(self, other):
+        return self._and_or(other, min, max)
+
+    def __ror__(self, other):
+        return self._and_or(other, min, max)
+
+    def __and__(self, other):
+        return self._and_or(other, max, min)
+
+    def __rand__(self, other):
+        return self._and_or(other, max, min)
+
 
 class AddressRange(collections.namedtuple(
         'Address', 'address sheet start end coordinate'), AddressMixin):
@@ -197,9 +234,6 @@ class AddressRange(collections.namedtuple(
                 raise ValueError("Mismatched sheets '{}' and '{}'".format(
                     address, sheet))
 
-        elif address is None:
-            return None
-
         else:
             assert (isinstance(address, tuple) and
                     4 == len(address) and
@@ -218,39 +252,6 @@ class AddressRange(collections.namedtuple(
         return super(AddressRange, cls).__new__(
             cls, format_str.format(sheet, coordinate),
             sheet, start, end, coordinate)
-
-    def __or__(self, other):
-        """Assumes rectangular only"""
-        other = AddressRange.create(other)
-        min_col_idx = min(self.col_idx, other.col_idx)
-        min_row = min(self.row, other.row)
-
-        max_col_idx = max(self.col_idx + self.size.width,
-                          other.col_idx + other.size.width) - 1
-        max_row = max(self.row + self.size.height,
-                      other.row + other.size.height) - 1
-
-        return AddressRange((min_col_idx, min_row, max_col_idx, max_row),
-                            sheet=self.sheet)
-
-    def __and__(self, other):
-        """Assumes rectangular only"""
-        other = AddressRange.create(other)
-        min_col_idx = max(self.col_idx, other.col_idx)
-        min_row = max(self.row, other.row)
-
-        max_col_idx = min(self.col_idx + self.size.width,
-                          other.col_idx + other.size.width) - 1
-        max_row = min(self.row + self.size.height,
-                      other.row + other.size.height) - 1
-        if max_col_idx < min_col_idx or max_row < min_row:
-            return None
-        elif max_col_idx == min_col_idx and max_row == min_row:
-            return AddressCell((min_col_idx, min_row, max_col_idx, max_row),
-                               sheet=self.sheet)
-        else:
-            return AddressRange((min_col_idx, min_row, max_col_idx, max_row),
-                                sheet=self.sheet)
 
     def __contains__(self, address):
         address = AddressCell(address)
@@ -325,7 +326,7 @@ class AddressRange(collections.namedtuple(
         """ Factory method.
 
         Able to construct R1C1, defined names, and structured references
-        style addresses, if passed a `excelcomppiler._Cell`.
+        style addresses, if passed a `excelcompiler._Cell`.
 
         :param address: str, AddressRange, AddressCell
         :param sheet: sheet for address, if not included
@@ -338,6 +339,9 @@ class AddressRange(collections.namedtuple(
 
         elif isinstance(address, AddressCell):
             return AddressCell(address, sheet=sheet)
+
+        elif address in ERROR_CODES:
+            return address
 
         sheetname, addr = split_sheetname(address, sheet=sheet)
         addr_tuple, sheetname = range_boundaries(

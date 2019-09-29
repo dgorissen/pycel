@@ -36,6 +36,7 @@ from pycel.excelutil import (
     list_like,
     MAX_COL,
     MAX_ROW,
+    NULL_ERROR,
     NUM_ERROR,
     OPERATORS,
     PyCelException,
@@ -110,34 +111,47 @@ def test_address_range_multi_colon(address, expected):
 
 @pytest.mark.parametrize(
     'left, right, result', (
+        ('a1', 'a1', 'a1'),
         ('a1:b2', 'b1:c3', 'b1:b2'),
         ('a1:d5', 'b3', 'b3'),
-        ('d4:e5', 'c3', None),
-        ('d4:e5', 'd3', None),
-        ('d4:e5', 'e3', None),
-        ('d4:e5', 'f3', None),
-        ('d4:e5', 'c4', None),
+        ('d4:e5', 'c3', NULL_ERROR),
+        ('d4:e5', 'd3', NULL_ERROR),
+        ('d4:e5', 'e3', NULL_ERROR),
+        ('d4:e5', 'f3', NULL_ERROR),
+        ('d4:e5', 'c4', NULL_ERROR),
         ('d4:e5', 'd4', 'd4'),
         ('d4:e5', 'e4', 'e4'),
-        ('d4:e5', 'f4', None),
-        ('d4:e5', 'c5', None),
+        ('d4:e5', 'f4', NULL_ERROR),
+        ('d4:e5', 'c5', NULL_ERROR),
         ('d4:e5', 'd5', 'd5'),
         ('d4:e5', 'e5', 'e5'),
-        ('d4:e5', 'f5', None),
-        ('d4:e5', 'c6', None),
-        ('d4:e5', 'd6', None),
-        ('d4:e5', 'e6', None),
-        ('d4:e5', 'f6', None),
-        ('c4:e5', 'd1', None),
-        ('c4:e6', 'a5', None),
+        ('d4:e5', 'f5', NULL_ERROR),
+        ('d4:e5', 'c6', NULL_ERROR),
+        ('d4:e5', 'd6', NULL_ERROR),
+        ('d4:e5', 'e6', NULL_ERROR),
+        ('d4:e5', 'f6', NULL_ERROR),
+        ('c4:e5', 'd1', NULL_ERROR),
+        ('c4:e6', 'a5', NULL_ERROR),
+        ('c4:e6', 's!a5', NULL_ERROR),
+        ('s!c4:e6', 'a5', NULL_ERROR),
+        ('s!c4:e6', 's!a5', NULL_ERROR),
+        ('s!c4:e6', 't!a5', VALUE_ERROR),
+        ('d4:e5', 's!e5', 's!e5'),
+        ('s!d4:e5', 'e5', 's!e5'),
+        ('s!d4:e5', 's!e5', 's!e5'),
+        ('s!d4:e5', 't!e5', VALUE_ERROR),
     )
 )
 def test_address_range_and(left, right, result):
-    assert AddressRange(left) & AddressRange(right) == AddressRange(result)
+    result = AddressRange(result)
+    assert AddressRange(left) & AddressRange(right) == result
+    assert AddressRange(left) & right == result
+    assert left & AddressRange(right) == result
 
 
 @pytest.mark.parametrize(
     'left, right, result', (
+        ('a1', 'a1', 'a1'),
         ('a1:b2', 'b1:c3', 'a1:c3'),
         ('a1:b2', 'd5', 'a1:d5'),
         ('a1:d5', 'b3', 'a1:d5'),
@@ -146,10 +160,17 @@ def test_address_range_and(left, right, result):
         ('c4:e6', 'a5', 'a4:e6'),
         ('c4:e5', 'd9', 'c4:e9'),
         ('c4:e6', 'j5', 'c4:j6'),
+        ('c4:e6', 's!a5', 's!a4:e6'),
+        ('s!c4:e6', 'a5', 's!a4:e6'),
+        ('s!c4:e6', 's!a5', 's!a4:e6'),
+        ('s!c4:e6', 't!a5', VALUE_ERROR),
     )
 )
 def test_address_range_or(left, right, result):
-    assert AddressRange(left) | AddressRange(right) == AddressRange(result)
+    result = AddressRange(result)
+    assert AddressRange(left) | AddressRange(right) == result
+    assert AddressRange(left) | right == result
+    assert left | AddressRange(right) == result
 
 
 @pytest.mark.parametrize(

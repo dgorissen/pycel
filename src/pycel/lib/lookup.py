@@ -24,7 +24,6 @@ from pycel.excelutil import (
     MAX_COL,
     MAX_ROW,
     NA_ERROR,
-    NULL_ERROR,
     REF_ERROR,
     VALUE_ERROR,
 )
@@ -124,10 +123,7 @@ def _match(lookup_value, lookup_array, match_type=1):
 def column(ref):
     # Excel reference: https://support.office.com/en-us/article/
     #   COLUMN-function-44E8C754-711C-4DF3-9DA4-47A55042554B
-
-    if ref is None:
-        return NULL_ERROR
-    elif ref.is_range:
+    if ref.is_range:
         if ref.end.col_idx == 0:
             return range(1, MAX_COL + 1)
         else:
@@ -351,9 +347,7 @@ def offset(reference, row_inc, col_inc, height=None, width=None):
 def row(ref):
     # Excel reference: https://support.office.com/en-us/article/
     #   row-function-3a63b74a-c4d0-4093-b49a-e76eb49a6d8d
-    if ref is None:
-        return NULL_ERROR
-    elif ref.is_range:
+    if ref.is_range:
         if ref.end.row == 0:
             return range(1, MAX_ROW + 1)
         else:
