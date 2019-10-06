@@ -12,6 +12,8 @@ import functools
 import sys
 
 from pycel.excelutil import (
+    AddressCell,
+    AddressRange,
     coerce_to_number,
     ERROR_CODES,
     is_number,
@@ -26,7 +28,7 @@ ALL_ARG_INDICES = frozenset(range(512))
 
 
 def excel_helper(cse_params=None, bool_params=None,
-                 err_str_params=-1, number_params=None):
+                 err_str_params=-1, number_params=None, ref_params=None):
     """ Decorator to annotate a function with info on how to process params
 
     All parameters are encoded as:
@@ -42,6 +44,7 @@ def excel_helper(cse_params=None, bool_params=None,
     :param bool_params: params to coerce to bools
     :param err_str_params: params to check for error strings
     :param number_params: params to coerce to numbers
+    :param ref_params: params which can remain as references
     :return: decorator
     """
     def mark(f):
@@ -50,6 +53,7 @@ def excel_helper(cse_params=None, bool_params=None,
             bool_params=bool_params,
             err_str_params=err_str_params,
             number_params=number_params,
+            ref_params=ref_params,
         ))
         return f
     return mark
@@ -63,7 +67,7 @@ excel_math_func = excel_helper(
     cse_params=-1, err_str_params=-1, number_params=-1)
 
 
-def apply_meta(func, meta=None):
+def apply_meta(func, meta=None, name_space=None):
     """Take the metadata applied by mark_excel_func and wrap accordingly"""
     meta = meta or getattr(func, FUNC_META, None)
     if meta:
@@ -82,6 +86,12 @@ def apply_meta(func, meta=None):
         if cse_params is not None:
             func = cse_array_wrapper(
                 func, all_params if cse_params == -1 else cse_params)
+
+        ref_params = meta['ref_params']
+        if ref_params != -1:
+            if ref_params is None:
+                ref_params = set()
+            func = refs_wrapper(func, name_space, ref_params)
 
     return func, meta
 
@@ -210,9 +220,44 @@ def error_string_wrapper(f, param_indices=None):
     return wrapper
 
 
-def built_in_wrapper(f, wrapper_marker):
+def refs_wrapper(f, name_space, param_indices=None):
+    """wrapper to address references in arguments
+
+    :param f: function to wrap
+    :param param_indices: params to check for error strings.
+        int: param number to check
+        tuple: params to check
+        None: check all params
+    :return: wrapped function
+    """
+    param_indices = convert_params_indices(f, param_indices)
+
+    _R_ = name_space.get('_R_')
+    _C_ = name_space.get('_C_')
+
+    def resolve_args(args):
+        for arg_num, arg in enumerate(args):
+            if arg_num in param_indices:
+                yield arg
+            elif isinstance(arg, AddressCell):
+                # resolve cell if this is not reference param
+                yield _C_(arg.address)
+            elif isinstance(arg, AddressRange):
+                # resolve range if this is not reference param
+                yield _R_(arg.address)
+            else:
+                yield arg
+
+    @functools.wraps(f)
+    def wrapper(*args):
+        return f(*tuple(resolve_args(args)))
+
+    return wrapper
+
+
+def built_in_wrapper(f, wrapper_marker, name_space):
     meta = getattr(wrapper_marker(lambda x: x), FUNC_META)  # pragma: no branch
-    return apply_meta(f, meta)[0]
+    return apply_meta(f, meta, name_space)[0]
 
 
 def load_functions(names, name_space, modules):
@@ -228,9 +273,10 @@ def load_functions(names, name_space, modules):
                 not_found.add(name)
             else:
                 if module.__name__ == 'math':
-                    func = built_in_wrapper(func, excel_math_func)
+                    func = built_in_wrapper(
+                        func, excel_math_func, name_space=name_space)
                 else:
-                    func, meta = apply_meta(func)
+                    func, meta = apply_meta(func, name_space=name_space)
                 name_space[name] = func
 
     return not_found
@@ -242,4 +288,4 @@ def load_to_test_module(load_from, load_to_name):
     for name in dir(load_from):
         obj = getattr(load_from, name)
         if callable(obj) and getattr(load_to, name, None) == obj:
-            setattr(load_to, name, apply_meta(obj)[0])
+            setattr(load_to, name, apply_meta(obj, name_space={})[0])

@@ -119,7 +119,7 @@ def _match(lookup_value, lookup_array, match_type=1):
     #   choose-function-fc5c184f-cb62-4ec7-a46e-38653b98f5bc
 
 
-@excel_helper()
+@excel_helper(ref_params=0)
 def column(ref):
     # Excel reference: https://support.office.com/en-us/article/
     #   COLUMN-function-44E8C754-711C-4DF3-9DA4-47A55042554B
@@ -343,7 +343,7 @@ def offset(reference, row_inc, col_inc, height=None, width=None):
             sheet=top_left.sheet)
 
 
-@excel_helper()
+@excel_helper(ref_params=0)
 def row(ref):
     # Excel reference: https://support.office.com/en-us/article/
     #   row-function-3a63b74a-c4d0-4093-b49a-e76eb49a6d8d
