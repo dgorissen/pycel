@@ -24,6 +24,7 @@ from pycel.excelutil import (
     AddressRange,
     ERROR_CODES,
     flatten,
+    is_address,
     iterative_eval_tracker,
     list_like,
     VALUE_ERROR,
@@ -844,7 +845,7 @@ class ExcelCompiler:
         generate a Spreadsheet instance that captures the logic and control
         flow of the equations.
         """
-        if not isinstance(seed, (AddressRange, AddressCell)):
+        if not is_address(seed):
             if isinstance(seed, str):
                 seed = AddressRange(seed)
             elif isinstance(seed, collections.abc.Iterable):

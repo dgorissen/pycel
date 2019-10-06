@@ -525,9 +525,13 @@ class AddressMultiAreaRange(tuple):
         return it.chain.from_iterable(addr.resolve_range for addr in self)
 
 
+def is_address(addr):
+    return isinstance(addr, (AddressCell, AddressRange))
+
+
 def unquote_sheetname(sheetname):
     """
-    Remove quotes from around, and embedded "''" in, quoted sheetnames
+    Remove quotes from around, an embedded "''" in, quoted sheetnames
 
     sheetnames with special characters are quoted in formulas
     This is the inverse of openpyxl.utils.quote_sheetname

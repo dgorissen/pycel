@@ -31,6 +31,7 @@ from pycel.excelutil import (
     get_linest_degree,
     handle_ifs,
     in_array_formula_context,
+    is_address,
     is_number,
     iterative_eval_tracker,
     list_like,
@@ -783,21 +784,50 @@ def test_uniqueify():
     assert (4, 1, 2, 3) == uniqueify((4, 1, 2, 3, 4, 3))
 
 
-def test_is_number():
-    assert is_number(1)
-    assert is_number(0)
-    assert is_number(-1)
-    assert is_number(1.0)
-    assert is_number(0.0)
-    assert is_number(-1.0)
-    assert is_number('1.0')
-    assert is_number('0.0')
-    assert is_number('-1.0')
-    assert is_number(True)
-    assert is_number(False)
+@pytest.mark.parametrize(
+    'data, result', (
+        (AddressCell('A1'), True),
+        (AddressRange('A1:B2'), True),
+        ('A1', False),
+        ('A1:B2', False),
 
-    assert not is_number(None)
-    assert not is_number('x')
+        (1, False),
+        (0, False),
+        (-1, False),
+        (1.0, False),
+        ('-1.0', False),
+        (True, False),
+        (False, False),
+        (None, False),
+        ('x', False),
+    )
+)
+def test_is_address(data, result):
+    assert is_address(data) == result
+
+
+@pytest.mark.parametrize(
+    'data, result', (
+        (1, True),
+        (0, True),
+        (-1, True),
+        (1.0, True),
+        (0.0, True),
+        (-1.0, True),
+        ('1.0', True),
+        ('0.0', True),
+        ('-1.0', True),
+        (True, True),
+        (False, True),
+
+        (None, False),
+        ('False', False),
+        ('x', False),
+        (AddressCell('A1'), False),
+    )
+)
+def test_is_number(data, result):
+    assert is_number(data) == result
 
 
 @pytest.mark.parametrize(
