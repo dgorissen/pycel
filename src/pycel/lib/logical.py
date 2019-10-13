@@ -91,7 +91,7 @@ def iferror(arg, value_if_error):
             isinstance(arg, tuple) or isinstance(value_if_error, tuple)):
         return cse_array_wrapper(iferror, (0, 1))(arg, value_if_error)
     elif arg in ERROR_CODES or isinstance(arg, tuple):
-        return value_if_error
+        return 0 if value_if_error is None else value_if_error
     else:
         return arg
 

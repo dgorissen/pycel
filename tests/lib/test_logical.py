@@ -79,14 +79,16 @@ def test_x_and(result, test_value):
         ('#NAME?', 2, 2),
         ('#NUM!', 2, 2),
         ('#N/A', 2, 2),
+        ('#N/A', None, 0),
         (((1, VALUE_ERROR), (VALUE_ERROR, 1)), 2, ((1, 2), (2, 1))),
+        (((1, VALUE_ERROR), (VALUE_ERROR, 1)), None, ((1, 0), (0, 1))),
     )
 )
 def test_iferror(test_value, error_value, result):
     if isinstance(test_value, tuple):
         with in_array_formula_context('A1'):
             assert iferror(test_value, error_value) == result
-        result = error_value
+        result = 0 if error_value is None else error_value
 
     assert iferror(test_value, error_value) == result
 

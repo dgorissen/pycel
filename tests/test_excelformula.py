@@ -216,8 +216,8 @@ whitespace_inputs = [
     ),
     FormulaTest(
         '=f(1,,)',
-        '1||f',
-        'f(1, None)',
+        '1|||f',
+        'f(1, None, None)',
     ),
 ]
 
@@ -950,6 +950,7 @@ Values: 1 Div 0"""
         ('=a1=1', VALUE_ERROR),
         ('=a1+"l"', VALUE_ERROR),
         ('=iferror(1+"A",3)', 3),
+        ('=iferror(1+"A",)', 0),
         ('=1+"A"', VALUE_ERROR),
     )
 )

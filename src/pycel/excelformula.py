@@ -678,7 +678,8 @@ class ExcelFormula:
                 tokens.append(token)
                 token = Token('(', Token.PAREN, Token.OPEN)
                 if next_token.matches(Token.SEP, Token.ARG):
-                    tokens.append(Token('', Token.OPERAND, Token.EMPTY))
+                    tokens.append(token)
+                    token = Token('', Token.OPERAND, Token.EMPTY)
 
             elif token.matches(Token.FUNC, Token.CLOSE):
                 token = Token(')', Token.PAREN, Token.CLOSE)
@@ -700,8 +701,10 @@ class ExcelFormula:
                 token = Token('(', Token.PAREN, Token.OPEN)
 
             elif token.matches(Token.SEP, Token.ARG):
-                if next_token.matches(Token.SEP, Token.ARG):
-                    tokens.append(Token('', Token.OPERAND, Token.EMPTY))
+                if next_token.matches(Token.SEP, Token.ARG) or \
+                        next_token.matches(Token.FUNC, Token.CLOSE):
+                    tokens.append(token)
+                    token = Token('', Token.OPERAND, Token.EMPTY)
 
             elif token.matches(Token.PAREN, Token.OPEN):
                 token.value = '('
