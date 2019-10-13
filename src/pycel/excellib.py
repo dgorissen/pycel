@@ -85,6 +85,11 @@ def averageifs(average_range, *args):
         average_range = ((average_range, ), )
 
     coords = handle_ifs(args, average_range)
+
+    # A returned string is an error code
+    if isinstance(coords, str):
+        return coords
+
     data = _numerics((average_range[r][c] for r, c in coords), keep_bools=True)
     if len(data) == 0:
         return DIV0
@@ -165,7 +170,13 @@ def conditional_format_ids(*args):
 def countifs(*args):
     # Excel reference: https://support.office.com/en-us/article/
     #   COUNTIFS-function-dda3dc6e-f74e-4aee-88bc-aa8c2a866842
-    return len(handle_ifs(args))
+    coords = handle_ifs(args)
+
+    # A returned string is an error code
+    if isinstance(coords, str):
+        return coords
+
+    return len(coords)
 
 
 @excel_math_func
@@ -361,8 +372,14 @@ def maxifs(max_range, *args):
         max_range = ((max_range, ), )
 
     try:
+        coords = handle_ifs(args, max_range)
+
+        # A returned string is an error code
+        if isinstance(coords, str):
+            return coords
+
         return max(_numerics(
-            (max_range[r][c] for r, c in handle_ifs(args, max_range)),
+            (max_range[r][c] for r, c in coords),
             keep_bools=True
         ))
     except ValueError:
@@ -376,8 +393,14 @@ def minifs(min_range, *args):
         min_range = ((min_range, ), )
 
     try:
+        coords = handle_ifs(args, min_range)
+
+        # A returned string is an error code
+        if isinstance(coords, str):
+            return coords
+
         return min(_numerics(
-            (min_range[r][c] for r, c in handle_ifs(args, min_range)),
+            (min_range[r][c] for r, c in coords),
             keep_bools=True
         ))
     except ValueError:
@@ -494,8 +517,14 @@ def sumifs(sum_range, *args):
     if not list_like(sum_range):
         sum_range = ((sum_range, ), )
 
+    coords = handle_ifs(args, sum_range)
+
+    # A returned string is an error code
+    if isinstance(coords, str):
+        return coords
+
     return sum(_numerics(
-        (sum_range[r][c] for r, c in handle_ifs(args, sum_range)),
+        (sum_range[r][c] for r, c in coords),
         keep_bools=True
     ))
 

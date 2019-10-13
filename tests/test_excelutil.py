@@ -840,6 +840,7 @@ def test_is_number(data, result):
         ((((1, 2), (3, 4)), ">=3"), ((1, 0), (1, 1))),
         ((((1, 2, 3, 4, 5), ), ">=3"), ((0, 2), (0, 3), (0, 4))),
         (('JUNK', ((), ), ((), ), ), AssertionError),
+        ((((1,),), '', ((1, 2),), ''), VALUE_ERROR),
         ((((1, 2, 3, 4, 5), ), ">=3",
           ((1, 2, 3, 4, 5), ), "<=4"), ((0, 2), (0, 3))),
     )
@@ -848,16 +849,19 @@ def test_handle_ifs(data, result):
     if isinstance(result, type(Exception)):
         with pytest.raises(result):
             handle_ifs(data)
+    elif isinstance(result, str):
+        assert handle_ifs(data) == result
     else:
         assert tuple(sorted(handle_ifs(data))) == result
 
 
-def test_handle_ifs_op_range_errors():
+def test_handle_ifs_op_range():
     with pytest.raises(TypeError):
         handle_ifs(((1, ), (1, )), 2)
 
-    with pytest.raises(AssertionError):
-        handle_ifs(((((1, 2), (3, 4)), ">=3")), ((1, ), (1, )))
+    assert handle_ifs((((1, 2), (3, 4)), ">=3"), ((1, ), (1, ))) == VALUE_ERROR
+
+    assert handle_ifs((((1,), ), "=1"), 1) == ((0, 0), )
 
 
 def test_find_corresponding_index():
@@ -936,6 +940,13 @@ def test_list_like(value, expected):
         ('1', '>1', False),
         ('2', '>1', False),
 
+        (0, '<1', True),
+        (1, '<1', False),
+        (2, '<1', False),
+        ('0', '<1', False),
+        ('1', '<1', False),
+        ('2', '<1', False),
+
         (0, '>1x', False),
         (1, '>1x', False),
         (2, '>1x', False),
@@ -989,6 +1000,31 @@ def test_list_like(value, expected):
         ('Tt', 'T*t', True),
         ('Tht', 'Th?t', False),
         ('Tat', 'Th*t', False),
+        (None, 'Th?t', False),
+        (None, 'Th*t', False),
+
+        ('', '', True),
+        (None, '', True),
+        (1, '', False),
+        ('1', '', False),
+        ('1x', '', False),
+        ('a', '', False),
+
+        (None, '', True),
+        (None, 1, False),
+        (None, '1', False),
+        (None, '=1', False),
+        (None, '<>1', True),
+        (None, '>1', False),
+        (None, '<1', False),
+        (None, '>1x', False),
+        (None, 'b', False),
+        (None, '=b', False),
+        (None, '<>b', True),
+        (None, '<b', False),
+        (None, '<=b', False),
+        (None, '=', True),
+        (None, '<>', False),
     )
 )
 def test_criteria_parser(value, criteria, expected):

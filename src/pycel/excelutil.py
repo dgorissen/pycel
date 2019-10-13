@@ -1065,15 +1065,20 @@ def handle_ifs(args, op_range=None):
         'Must have paired criteria and ranges'
 
     ranges = tuple(r if list_like(r) else ((r,),) for r in args[::2])
+
+    # make sure all ranges are the same size
+    sizes = {(len(a), len(a[0])) for a in ranges}
+    if len(sizes) != 1:
+        return VALUE_ERROR
+
     if op_range is not None:
         if not list_like(op_range):
             op_range = ((op_range, ), )
 
         size = len(op_range), len(op_range[0])
         for rng in ranges:  # pragma: no branch
-            assert size == (len(rng), len(rng[0])), \
-                "Size mismatch criteria {},{} != {},{}".format(
-                    size[0], size[1], len(rng), len(rng[0]))
+            if size != (len(rng), len(rng[0])):
+                return VALUE_ERROR
 
     # count the number of times a particular cell matches the criteria
     index_counts = collections.Counter(it.chain.from_iterable(
@@ -1091,7 +1096,7 @@ def build_wildcard_re(lookup_value):
     if regex != lookup_value:
         # this will be a regex match"""
         compiled = re.compile('^{}$'.format(regex.lower()))
-        return lambda x: compiled.match(x.lower()) is not None
+        return lambda x: x is not None and compiled.match(x.lower()) is not None
     else:
         return None
 
@@ -1138,7 +1143,7 @@ def criteria_parser(criteria):
             value = coerce_to_number(value)
 
             def check(x):
-                if isinstance(x, str):
+                if isinstance(x, str) or x is None:
                     # string always compare False unless '!='
                     return op == operator.ne
                 else:
@@ -1148,7 +1153,10 @@ def criteria_parser(criteria):
 
             def check(x):
                 """Compare with a string"""
-                if not isinstance(x, str):
+                if x is None:
+                    return (not value) != (op == operator.ne)
+
+                elif not isinstance(x, str):
                     # non string always compare False unless '!='
                     return op == operator.ne
                 else:

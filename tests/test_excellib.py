@@ -112,7 +112,8 @@ def test_average():
         ((((100, 123), (12, 23)), ((1, 2), (3, 4)), ">=3"), 35 / 2),
         ((((100, 123, 12, 23, None), ),
           ((1, 2, 3, 4, 5), ), ">=3"), 35 / 2),
-        (('JUNK', ((), ), ((), ), ), AssertionError),
+        (('JUNK', ((), ), ((), ), ), VALUE_ERROR),
+        ((((1, 2), ), ((1,), ), '', ((1, 2), ), ''), VALUE_ERROR),
         ((((1, 2, 3, 4, 5), ),
           ((1, 2, 3, 4, 5), ), ">=3",
           ((1, 2, 3, 4, 5), ), "<=4"), 7 / 2),
@@ -254,31 +255,22 @@ def test_count():
     assert count(data, data[3], data[5], data[7])
 
 
-class TestCountIf:
-
-    def test_countif_strictly_superior(self):
-        assert 3 == countif(((7, 25, 13, 25), ), '>10')
-
-    def test_countif_strictly_inferior(self):
-        assert 1 == countif(((7, 25, 13, 25), ), '<10')
-
-    def test_countif_superior(self):
-        assert 3 == countif(((7, 10, 13, 25), ), '>=10')
-
-    def test_countif_inferior(self):
-        assert 2 == countif(((7, 10, 13, 25), ), '<=10')
-
-    def test_countif_different(self):
-        assert 3 == countif(((7, 10, 13, 25), ), '<>10')
-
-    def test_countif_with_string_equality(self):
-        assert 2 == countif(((7, 'e', 13, 'e'), ), 'e')
-
-    def test_countif_with_string_inequality(self):
-        assert 1 == countif(((7, 'e', 13, 'f'), ), '>e')
-
-    def test_countif_regular(self):
-        assert 2 == countif(((7, 25, 13, 25), ), 25)
+@pytest.mark.parametrize(
+    'value, criteria, result', (
+        (((7, 25, 13, 25), ), '>10', 3),
+        (((7, 25, 13, 25), ), '<10', 1),
+        (((7, 10, 13, 25), ), '>=10', 3),
+        (((7, 10, 13, 25), ), '<=10', 2),
+        (((7, 10, 13, 25), ), '<>10', 3),
+        (((7, 'e', 13, 'e'), ), 'e', 2),
+        (((7, 'e', 13, 'f'), ), '>e', 1),
+        (((7, 25, 13, 25), ), 25, 2),
+        (((7, 25, None, 25),), '<10', 1),
+        (((7, 25, None, 25),), '>10', 2),
+    )
+)
+def test_countif(value, criteria, result):
+    assert countif(value, criteria) == result
 
 
 class TestCountIfs:
@@ -364,6 +356,15 @@ class TestVariousIfsSizing:
     @pytest.mark.parametrize(params, responses['sumifs'])
     def test_sumifs(result, criteria, values):
         assert sumifs(values, values, criteria) == result
+
+    def test_ifs_size_errors(self):
+        criteria, v1 = self.responses['sumifs'][0][1:]
+        v2 = (v1[0][:-1], )
+        assert countifs(v1, criteria, v2, criteria) == VALUE_ERROR
+        assert sumifs(v1, v1, criteria, v2, criteria) == VALUE_ERROR
+        assert maxifs(v1, v1, criteria, v2, criteria) == VALUE_ERROR
+        assert minifs(v1, v1, criteria, v2, criteria) == VALUE_ERROR
+        assert averageifs(v1, v1, criteria, v2, criteria) == VALUE_ERROR
 
 
 @pytest.mark.parametrize(
@@ -757,8 +758,8 @@ def test_small(data, k, result):
         ((((1, 2, 3, 4, 5), ), ">=3",
           ((100, 123, 12, 23, 633), )), 668),
         ((((1, 2, 3, 4, 5),), ">=3",
-          ((100, 123, 12, 23, 633, 1),)), AssertionError),
-        ((((1, 2, 3, 4, 5),), ">=3", ((100, 123, 12, 23),)), AssertionError),
+          ((100, 123, 12, 23, 633, 1),)), VALUE_ERROR),
+        ((((1, 2, 3, 4, 5),), ">=3", ((100, 123, 12, 23),)), VALUE_ERROR),
         (([], [], 'JUNK'), IndexError),
     )
 )
@@ -781,7 +782,7 @@ def test_sumif(data, result):
         ((((100, 123), (12, 23)), ((1, 2), (3, 4)), ">=3"), 35),
         ((((100, 123, 12, 23, None), ),
           ((1, 2, 3, 4, 5), ), ">=3"), 35),
-        (('JUNK', ((), ), ((), ), ), AssertionError),
+        (('JUNK', ((), ), ((), ), ), VALUE_ERROR),
         ((((1, 2, 3, 4, 5), ),
           ((1, 2, 3, 4, 5), ), ">=3",
           ((1, 2, 3, 4, 5), ), "<=4"), 7),
