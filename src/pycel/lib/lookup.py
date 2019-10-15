@@ -24,7 +24,6 @@ from pycel.excelutil import (
     MAX_COL,
     MAX_ROW,
     NA_ERROR,
-    NULL_ERROR,
     REF_ERROR,
     VALUE_ERROR,
 )
@@ -120,14 +119,11 @@ def _match(lookup_value, lookup_array, match_type=1):
     #   choose-function-fc5c184f-cb62-4ec7-a46e-38653b98f5bc
 
 
-@excel_helper()
+@excel_helper(ref_params=0)
 def column(ref):
     # Excel reference: https://support.office.com/en-us/article/
     #   COLUMN-function-44E8C754-711C-4DF3-9DA4-47A55042554B
-
-    if ref is None:
-        return NULL_ERROR
-    elif ref.is_range:
+    if ref.is_range:
         if ref.end.col_idx == 0:
             return range(1, MAX_COL + 1)
         else:
@@ -235,7 +231,7 @@ def index(array, row_num, col_num=None):
 
 
 @excel_helper(cse_params=0, number_params=1)
-def indirect(ref_text, a1=True):
+def indirect(ref_text, a1=True, sheet=''):
     # Excel reference: https://support.office.com/en-us/article/
     #   indirect-function-474b3a3a-8a26-4f44-b491-92b6306fa261
     try:
@@ -244,6 +240,8 @@ def indirect(ref_text, a1=True):
         return REF_ERROR
     if address.row > MAX_ROW or address.col_idx > MAX_COL:
         return REF_ERROR
+    if not address.has_sheet:
+        address = AddressRange.create(address, sheet=sheet)
     return address
 
 
@@ -311,7 +309,7 @@ def match(lookup_value, lookup_array, match_type=1):
     return _match(lookup_value, lookup_array, match_type)
 
 
-@excel_helper(cse_params=-1, number_params=(1, 2))
+@excel_helper(cse_params=-1, ref_params=0, number_params=(1, 2))
 def offset(reference, row_inc, col_inc, height=None, width=None):
     # Excel reference: https://support.office.com/en-us/article/
     #   offset-function-c8de19ae-dd79-4b9b-a14e-b4d906d11b66
@@ -347,13 +345,11 @@ def offset(reference, row_inc, col_inc, height=None, width=None):
             sheet=top_left.sheet)
 
 
-@excel_helper()
+@excel_helper(ref_params=0)
 def row(ref):
     # Excel reference: https://support.office.com/en-us/article/
     #   row-function-3a63b74a-c4d0-4093-b49a-e76eb49a6d8d
-    if ref is None:
-        return NULL_ERROR
-    elif ref.is_range:
+    if ref.is_range:
         if ref.end.row == 0:
             return range(1, MAX_ROW + 1)
         else:

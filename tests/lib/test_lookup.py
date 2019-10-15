@@ -16,6 +16,7 @@ from pycel.excelutil import (
     AddressRange,
     DIV0,
     ExcelCmp,
+    is_address,
     NA_ERROR,
     NUM_ERROR,
     REF_ERROR,
@@ -234,6 +235,13 @@ class TestIndex:
 )
 def test_indirect(address, expected):
     assert indirect(address) == expected
+    if is_address(expected):
+        with_sheet = expected.create(expected, sheet='S')
+        assert indirect(address, None, 'S') == with_sheet
+
+        address = 'S!{}'.format(address)
+        assert indirect(address) == with_sheet
+        assert indirect(address, None, 'S') == with_sheet
 
 
 lookup_vector = (('b', 'c', 'd'), )
@@ -449,7 +457,7 @@ def test_offset(crwh, refer, rows, cols, height, width):
         height = None
     if width == refer_addr.size.width:
         width = None
-    assert offset(refer, rows, cols, height, width) == expected
+    assert offset(refer_addr, rows, cols, height, width) == expected
 
 
 @pytest.mark.parametrize(

@@ -22,10 +22,11 @@ from pycel.excelformula import ExcelFormula
 from pycel.excelutil import (
     AddressCell,
     AddressRange,
+    ERROR_CODES,
     flatten,
+    is_address,
     iterative_eval_tracker,
     list_like,
-    NULL_ERROR,
     VALUE_ERROR,
 )
 from pycel.excelwrapper import ExcelOpxWrapper, ExcelOpxWrapperNoData
@@ -64,10 +65,8 @@ class ExcelCompiler:
             self.filename = excel.filename
             self.hash = None
         else:
-            # TODO: use a proper interface so we can (eventually) support
-            # loading from file (much faster)  Still need to find a good lib.
             self.excel = ExcelOpxWrapper(filename=filename)
-            self.excel.connect()
+            self.excel.load()
             self.filename = filename
 
         # grab a copy of the current hash
@@ -726,8 +725,8 @@ class ExcelCompiler:
 
     def _evaluate_range(self, address):
         """Evaluate a range"""
-        if address == 'None':
-            return NULL_ERROR
+        if address in ERROR_CODES:
+            return address
 
         cell_range = self.cell_map.get(address)
         if cell_range is None:
@@ -846,7 +845,7 @@ class ExcelCompiler:
         generate a Spreadsheet instance that captures the logic and control
         flow of the equations.
         """
-        if not isinstance(seed, (AddressRange, AddressCell)):
+        if not is_address(seed):
             if isinstance(seed, str):
                 seed = AddressRange(seed)
             elif isinstance(seed, collections.abc.Iterable):

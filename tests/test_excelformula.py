@@ -216,8 +216,8 @@ whitespace_inputs = [
     ),
     FormulaTest(
         '=f(1,,)',
-        '1||f',
-        'f(1, None)',
+        '1|||f',
+        'f(1, None, None)',
     ),
 ]
 
@@ -269,6 +269,27 @@ if_inputs = [
 ]
 
 fancy_reference_inputs = [
+    FormulaTest(
+        '=A8:index(B2,1)',
+        'A8|B2|1|index|:',
+        '_R_(str(_REF_("A8") | index(_REF_("B2"), 1)))'),
+    FormulaTest(
+        '=A8:B8:index(B2,1)',
+        'A8:B8|B2|1|index|:',
+        '_R_(str(_REF_("A8:B8") | index(_REF_("B2"), 1)))'),
+    FormulaTest(
+        '=index(B2,1):A8',
+        'B2|1|index|A8|:',
+        '_R_(str(index(_REF_("B2"), 1) | _REF_("A8")))'),
+    FormulaTest(
+        '=index(B2,1):A8:B8',
+        'B2|1|index|A8:B8|:',
+        '_R_(str(index(_REF_("B2"), 1) | _REF_("A8:B8")))'),
+    FormulaTest(
+        '=A8:index(B2,1):B2',
+        'A8|B2|1|index|:|B2|:',
+        '_R_(str((_REF_(str(_REF_("A8") | index(_REF_("B2"), 1)))) | '
+        '_REF_("B2")))'),
     FormulaTest(
         '=SUM(sheet1!$A$1:$B$2)',
         'sheet1!$A$1:$B$2|SUM',
@@ -333,10 +354,11 @@ linest_inputs = [
     FormulaTest(
         '=LINEST(B32:(INDEX(B32:B119,MATCH(0,B32:B119,-1),1)),(F32:(INDEX('
         'B32:F119,MATCH(0,B32:B119,-1),5)))^{1,2,3,4})',
-        'B32:B119|0|B32:B119|1|-|MATCH|1|INDEX|B32:|B32:F119|0|B32:B119|1|'
-        '-|MATCH|5|INDEX|F32:|1|2|3|4|ARRAYROW|ARRAY|^|LINEST',
-        'linest(b32:(index(_R_("B32:B119"), match(0, _R_("B32:B119"), -1), 1)),'
-        ' f32:(index(_R_("B32:F119"), match(0, _R_("B32:B119"), -1), 5)), '
+        'B32|B32:B119|0|B32:B119|1|-|MATCH|1|INDEX||:|F32|B32:F119|0|'
+        'B32:B119|1|-|MATCH|5|INDEX||:|1|2|3|4|ARRAYROW|ARRAY|^|LINEST',
+        'linest(_R_(str(_REF_("B32") | (index(_REF_("B32:B119"),'
+        ' match(0, _REF_("B32:B119"), -1), 1)))), (_R_(str(_REF_("F32") | '
+        '(index(_REF_("B32:F119"), match(0, _REF_("B32:B119"), -1), 5))))), '
         'degree=-1)[-2]'),
     FormulaTest(
         '=LINESTMARIO(G2:G17,E2:E17,FALSE)',
@@ -928,6 +950,7 @@ Values: 1 Div 0"""
         ('=a1=1', VALUE_ERROR),
         ('=a1+"l"', VALUE_ERROR),
         ('=iferror(1+"A",3)', 3),
+        ('=iferror(1+"A",)', 0),
         ('=1+"A"', VALUE_ERROR),
     )
 )

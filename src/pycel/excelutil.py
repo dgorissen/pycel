@@ -144,6 +144,43 @@ class AddressMixin:
     def sort_key(self):
         return self.sheet, self.col_idx, self.row
 
+    def _and_or(self, other, min_, max_):
+        """Assumes rectangular only"""
+        if not isinstance(other, (AddressCell, AddressRange)):
+            other = AddressRange.create(other)
+        if self.sheet and other.sheet and self.sheet != other.sheet:
+            return VALUE_ERROR
+
+        min_col_idx = min_(self.col_idx, other.col_idx)
+        min_row = min_(self.row, other.row)
+
+        max_col_idx = max_(self.col_idx + self.size.width,
+                           other.col_idx + other.size.width) - 1
+        max_row = max_(self.row + self.size.height,
+                       other.row + other.size.height) - 1
+
+        if max_col_idx < min_col_idx or max_row < min_row:
+            return NULL_ERROR
+
+        elif max_col_idx == min_col_idx and max_row == min_row:
+            return AddressCell((min_col_idx, min_row, max_col_idx, max_row),
+                               sheet=self.sheet or other.sheet)
+        else:
+            return AddressRange((min_col_idx, min_row, max_col_idx, max_row),
+                                sheet=self.sheet or other.sheet)
+
+    def __or__(self, other):
+        return self._and_or(other, min, max)
+
+    def __ror__(self, other):
+        return self._and_or(other, min, max)
+
+    def __and__(self, other):
+        return self._and_or(other, max, min)
+
+    def __rand__(self, other):
+        return self._and_or(other, max, min)
+
 
 class AddressRange(collections.namedtuple(
         'Address', 'address sheet start end coordinate'), AddressMixin):
@@ -197,9 +234,6 @@ class AddressRange(collections.namedtuple(
                 raise ValueError("Mismatched sheets '{}' and '{}'".format(
                     address, sheet))
 
-        elif address is None:
-            return None
-
         else:
             assert (isinstance(address, tuple) and
                     4 == len(address) and
@@ -218,39 +252,6 @@ class AddressRange(collections.namedtuple(
         return super(AddressRange, cls).__new__(
             cls, format_str.format(sheet, coordinate),
             sheet, start, end, coordinate)
-
-    def __or__(self, other):
-        """Assumes rectangular only"""
-        other = AddressRange.create(other)
-        min_col_idx = min(self.col_idx, other.col_idx)
-        min_row = min(self.row, other.row)
-
-        max_col_idx = max(self.col_idx + self.size.width,
-                          other.col_idx + other.size.width) - 1
-        max_row = max(self.row + self.size.height,
-                      other.row + other.size.height) - 1
-
-        return AddressRange((min_col_idx, min_row, max_col_idx, max_row),
-                            sheet=self.sheet)
-
-    def __and__(self, other):
-        """Assumes rectangular only"""
-        other = AddressRange.create(other)
-        min_col_idx = max(self.col_idx, other.col_idx)
-        min_row = max(self.row, other.row)
-
-        max_col_idx = min(self.col_idx + self.size.width,
-                          other.col_idx + other.size.width) - 1
-        max_row = min(self.row + self.size.height,
-                      other.row + other.size.height) - 1
-        if max_col_idx < min_col_idx or max_row < min_row:
-            return None
-        elif max_col_idx == min_col_idx and max_row == min_row:
-            return AddressCell((min_col_idx, min_row, max_col_idx, max_row),
-                               sheet=self.sheet)
-        else:
-            return AddressRange((min_col_idx, min_row, max_col_idx, max_row),
-                                sheet=self.sheet)
 
     def __contains__(self, address):
         address = AddressCell(address)
@@ -325,7 +326,7 @@ class AddressRange(collections.namedtuple(
         """ Factory method.
 
         Able to construct R1C1, defined names, and structured references
-        style addresses, if passed a `excelcomppiler._Cell`.
+        style addresses, if passed a `excelcompiler._Cell`.
 
         :param address: str, AddressRange, AddressCell
         :param sheet: sheet for address, if not included
@@ -338,6 +339,9 @@ class AddressRange(collections.namedtuple(
 
         elif isinstance(address, AddressCell):
             return AddressCell(address, sheet=sheet)
+
+        elif address in ERROR_CODES:
+            return address
 
         sheetname, addr = split_sheetname(address, sheet=sheet)
         addr_tuple, sheetname = range_boundaries(
@@ -521,9 +525,13 @@ class AddressMultiAreaRange(tuple):
         return it.chain.from_iterable(addr.resolve_range for addr in self)
 
 
+def is_address(addr):
+    return isinstance(addr, (AddressCell, AddressRange))
+
+
 def unquote_sheetname(sheetname):
     """
-    Remove quotes from around, and embedded "''" in, quoted sheetnames
+    Remove quotes from around, an embedded "''" in, quoted sheetnames
 
     sheetnames with special characters are quoted in formulas
     This is the inverse of openpyxl.utils.quote_sheetname
@@ -729,12 +737,18 @@ def range_boundaries(address, cell=None, sheet=None):
     if len(addrs) > 2:
         # Multi colon range resolves to rectangle containing all nodes
         try:
-            nodes = tuple(AddressCell(addr) for addr in addrs)
+            nodes = tuple(AddressRange.create(addr, cell=cell, sheet=sheet)
+                          for addr in addrs)
 
             min_col_idx = min(n.col_idx for n in nodes)
-            max_col_idx = max(n.col_idx for n in nodes)
+            max_col_idx = max((n.col_idx + n.size.width - 1) for n in nodes)
             min_row = min(n.row for n in nodes)
-            max_row = max(n.row for n in nodes)
+            max_row = max((n.row + n.size.height - 1) for n in nodes)
+
+            sheets = {n.sheet for n in nodes if n.sheet}
+            if not sheet:
+                sheet = next(iter(sheets), None)
+            assert not sheets or sheets == {sheet}
 
             return (min_col_idx, min_row, max_col_idx, max_row), sheet
         except ValueError:
@@ -1051,15 +1065,20 @@ def handle_ifs(args, op_range=None):
         'Must have paired criteria and ranges'
 
     ranges = tuple(r if list_like(r) else ((r,),) for r in args[::2])
+
+    # make sure all ranges are the same size
+    sizes = {(len(a), len(a[0])) for a in ranges}
+    if len(sizes) != 1:
+        return VALUE_ERROR
+
     if op_range is not None:
         if not list_like(op_range):
             op_range = ((op_range, ), )
 
         size = len(op_range), len(op_range[0])
         for rng in ranges:  # pragma: no branch
-            assert size == (len(rng), len(rng[0])), \
-                "Size mismatch criteria {},{} != {},{}".format(
-                    size[0], size[1], len(rng), len(rng[0]))
+            if size != (len(rng), len(rng[0])):
+                return VALUE_ERROR
 
     # count the number of times a particular cell matches the criteria
     index_counts = collections.Counter(it.chain.from_iterable(
@@ -1077,7 +1096,7 @@ def build_wildcard_re(lookup_value):
     if regex != lookup_value:
         # this will be a regex match"""
         compiled = re.compile('^{}$'.format(regex.lower()))
-        return lambda x: compiled.match(x.lower()) is not None
+        return lambda x: x is not None and compiled.match(x.lower()) is not None
     else:
         return None
 
@@ -1124,7 +1143,7 @@ def criteria_parser(criteria):
             value = coerce_to_number(value)
 
             def check(x):
-                if isinstance(x, str):
+                if isinstance(x, str) or x is None:
                     # string always compare False unless '!='
                     return op == operator.ne
                 else:
@@ -1134,7 +1153,10 @@ def criteria_parser(criteria):
 
             def check(x):
                 """Compare with a string"""
-                if not isinstance(x, str):
+                if x is None:
+                    return (not value) != (op == operator.ne)
+
+                elif not isinstance(x, str):
                     # non string always compare False unless '!='
                     return op == operator.ne
                 else:

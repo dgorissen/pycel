@@ -12,7 +12,13 @@ import math
 
 import pytest
 
-from pycel.excelutil import DIV0, NUM_ERROR, VALUE_ERROR
+from pycel.excelutil import (
+    AddressCell,
+    AddressRange,
+    DIV0,
+    NUM_ERROR,
+    VALUE_ERROR,
+)
 from pycel.lib.function_helpers import (
     apply_meta,
     cse_array_wrapper,
@@ -73,12 +79,35 @@ def test_error_string_wrapper(arg_nums, f_args, result):
     )
 )
 def test_math_wrap(value, result):
-    assert apply_meta(excel_math_func(lambda x: x))[0](value) == result
+    assert apply_meta(
+        excel_math_func(lambda x: x), name_space={})[0](value) == result
 
 
 def test_math_wrap_domain_error():
-    func = apply_meta(excel_math_func(lambda x: math.log(x)))[0]
+    func = apply_meta(excel_math_func(lambda x: math.log(x)), name_space={})[0]
     assert func(-1) == NUM_ERROR
+
+
+@pytest.mark.parametrize(
+    'value, result', (
+        ((1, 2, 3), (1, 2, 3)),
+        ((AddressRange('A1:B1'),) * 3,
+         ('R:A1:B1', AddressRange('A1:B1'), 'R:A1:B1')),
+        ((AddressCell('A1'),) * 3,
+         ('C:A1', AddressCell('A1'), 'C:A1')),
+    )
+)
+def test_ref_wrap(value, result):
+    def r_test(*args):
+        return args
+
+    name_space = locals()
+    name_space['_R_'] = lambda a: 'R:{}'.format(a)
+    name_space['_C_'] = lambda a: 'C:{}'.format(a)
+
+    func = apply_meta(
+        excel_helper(ref_params=1)(r_test), name_space=name_space)[0]
+    assert func(*value) == result
 
 
 def test_apply_meta_nothing_active():
@@ -86,7 +115,8 @@ def test_apply_meta_nothing_active():
     def a_test_func(x):
         return x
 
-    func = apply_meta(excel_helper(err_str_params=None)(a_test_func))[0]
+    func = apply_meta(excel_helper(
+        err_str_params=None, ref_params=-1)(a_test_func), name_space={})[0]
     assert func == a_test_func
 
 

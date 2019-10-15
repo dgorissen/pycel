@@ -17,15 +17,6 @@ from pycel.excelwrapper import (
 )
 
 
-def test_connect(unconnected_excel):
-    try:
-        unconnected_excel.connect()
-        connected = True
-    except:  # noqa: E722
-        connected = False
-    assert connected
-
-
 def test_set_and_get_active_sheet(excel):
     excel.set_sheet("Sheet2")
     assert excel.get_active_sheet_name() == 'Sheet2'

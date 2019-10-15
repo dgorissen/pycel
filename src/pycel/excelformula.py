@@ -66,8 +66,31 @@ class Tokenizer(tokenizer.Tokenizer):
         tokens = []
         for prev_token, token, next_token in zip(t, t[1:], t[2:]):
             if token.type != Token.WSPACE or not prev_token or not next_token:
+                # ::HACK:: this is code to make the tokenizer behave like
+                # this change to the openpyxl tokenizer.
+                # https://bitbucket.org/openpyxl/openpyxl/pull-requests/345
+                # If the pull request gets merged, we can the update our
+                # openpyxl requirements and remove this code.
+                if (token.matches(type_=Token.FUNC, subtype=Token.OPEN) and
+                        ':' in token.value):
+
+                    # split the address on the ':'
+                    addr, func = token.value.rsplit(':', maxsplit=1)
+                    tokens.append(Token(addr, Token.OPERAND, Token.RANGE))
+                    tokens.append(Token(':', Token.OP_IN, ''))
+                    token.value = func
+                    tokens.append(token)
+
+                elif (token.matches(type_=Token.OPERAND,
+                                    subtype=Token.RANGE) and
+                      token.value.startswith(':')):
+                    # split the address on the ':'
+                    tokens.append(Token(':', Token.OP_IN, ''))
+                    token.value = token.value[1:]
+                    tokens.append(token)
+
                 # drop unary +
-                if not token.matches(type_=Token.OP_PRE, value='+'):
+                elif not token.matches(type_=Token.OP_PRE, value='+'):
                     tokens.append(token)
 
             elif (
@@ -277,6 +300,12 @@ class OperatorNode(ASTNode):
                           .replace('_R_', '_REF_')
                           .replace('_C_', '_REF_')
                           )
+        elif op == ':':
+            # range union
+            ss = '_R_' + ('(str({} | {}))'.format(args[0].emit, args[1].emit)
+                          .replace('_R_', '_REF_')
+                          .replace('_C_', '_REF_')
+                          )
         else:
             if op != ',':
                 op = ' ' + op
@@ -400,7 +429,7 @@ class FunctionNode(ASTNode):
     def emit(self):
         func = self.value.lower().strip('(')
 
-        if func[0] == func[-1] == '_':
+        if func and func[0] == func[-1] == '_':
             func = func.upper()
         if func.startswith('_xlfn.'):
             func = func[6:]
@@ -649,7 +678,8 @@ class ExcelFormula:
                 tokens.append(token)
                 token = Token('(', Token.PAREN, Token.OPEN)
                 if next_token.matches(Token.SEP, Token.ARG):
-                    tokens.append(Token('', Token.OPERAND, Token.EMPTY))
+                    tokens.append(token)
+                    token = Token('', Token.OPERAND, Token.EMPTY)
 
             elif token.matches(Token.FUNC, Token.CLOSE):
                 token = Token(')', Token.PAREN, Token.CLOSE)
@@ -671,8 +701,10 @@ class ExcelFormula:
                 token = Token('(', Token.PAREN, Token.OPEN)
 
             elif token.matches(Token.SEP, Token.ARG):
-                if next_token.matches(Token.SEP, Token.ARG):
-                    tokens.append(Token('', Token.OPERAND, Token.EMPTY))
+                if next_token.matches(Token.SEP, Token.ARG) or \
+                        next_token.matches(Token.FUNC, Token.CLOSE):
+                    tokens.append(token)
+                    token = Token('', Token.OPERAND, Token.EMPTY)
 
             elif token.matches(Token.PAREN, Token.OPEN):
                 token.value = '('

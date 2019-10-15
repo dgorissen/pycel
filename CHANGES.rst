@@ -1,3 +1,24 @@
+1.0b21 (2019-10-13)
+===================
+
+Changes
+-------
+
+* Speed up compile
+* Implement defined names in multicolon ranges
+* Tokenize ':' when adjoining functions as infix operator
+* Various changes in prep to improve references, including
+* Add reference expansion to function helpers
+* Add sheet to indirect() and ref_param=0 to offset()
+* Implement is_address() helper
+* Implement intersection and union for AddressCell
+
+Fixes
+-----
+* Fix #77, empty arg in IFERROR()
+* Fix #78, None compare and cleanup error handling for various IFS() funcs
+
+
 1.0b20 (2019-09-22)
 ===================
 

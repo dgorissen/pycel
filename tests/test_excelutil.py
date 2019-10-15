@@ -31,11 +31,13 @@ from pycel.excelutil import (
     get_linest_degree,
     handle_ifs,
     in_array_formula_context,
+    is_address,
     is_number,
     iterative_eval_tracker,
     list_like,
     MAX_COL,
     MAX_ROW,
+    NULL_ERROR,
     NUM_ERROR,
     OPERATORS,
     PyCelException,
@@ -110,34 +112,47 @@ def test_address_range_multi_colon(address, expected):
 
 @pytest.mark.parametrize(
     'left, right, result', (
+        ('a1', 'a1', 'a1'),
         ('a1:b2', 'b1:c3', 'b1:b2'),
         ('a1:d5', 'b3', 'b3'),
-        ('d4:e5', 'c3', None),
-        ('d4:e5', 'd3', None),
-        ('d4:e5', 'e3', None),
-        ('d4:e5', 'f3', None),
-        ('d4:e5', 'c4', None),
+        ('d4:e5', 'c3', NULL_ERROR),
+        ('d4:e5', 'd3', NULL_ERROR),
+        ('d4:e5', 'e3', NULL_ERROR),
+        ('d4:e5', 'f3', NULL_ERROR),
+        ('d4:e5', 'c4', NULL_ERROR),
         ('d4:e5', 'd4', 'd4'),
         ('d4:e5', 'e4', 'e4'),
-        ('d4:e5', 'f4', None),
-        ('d4:e5', 'c5', None),
+        ('d4:e5', 'f4', NULL_ERROR),
+        ('d4:e5', 'c5', NULL_ERROR),
         ('d4:e5', 'd5', 'd5'),
         ('d4:e5', 'e5', 'e5'),
-        ('d4:e5', 'f5', None),
-        ('d4:e5', 'c6', None),
-        ('d4:e5', 'd6', None),
-        ('d4:e5', 'e6', None),
-        ('d4:e5', 'f6', None),
-        ('c4:e5', 'd1', None),
-        ('c4:e6', 'a5', None),
+        ('d4:e5', 'f5', NULL_ERROR),
+        ('d4:e5', 'c6', NULL_ERROR),
+        ('d4:e5', 'd6', NULL_ERROR),
+        ('d4:e5', 'e6', NULL_ERROR),
+        ('d4:e5', 'f6', NULL_ERROR),
+        ('c4:e5', 'd1', NULL_ERROR),
+        ('c4:e6', 'a5', NULL_ERROR),
+        ('c4:e6', 's!a5', NULL_ERROR),
+        ('s!c4:e6', 'a5', NULL_ERROR),
+        ('s!c4:e6', 's!a5', NULL_ERROR),
+        ('s!c4:e6', 't!a5', VALUE_ERROR),
+        ('d4:e5', 's!e5', 's!e5'),
+        ('s!d4:e5', 'e5', 's!e5'),
+        ('s!d4:e5', 's!e5', 's!e5'),
+        ('s!d4:e5', 't!e5', VALUE_ERROR),
     )
 )
 def test_address_range_and(left, right, result):
-    assert AddressRange(left) & AddressRange(right) == AddressRange(result)
+    result = AddressRange(result)
+    assert AddressRange(left) & AddressRange(right) == result
+    assert AddressRange(left) & right == result
+    assert left & AddressRange(right) == result
 
 
 @pytest.mark.parametrize(
     'left, right, result', (
+        ('a1', 'a1', 'a1'),
         ('a1:b2', 'b1:c3', 'a1:c3'),
         ('a1:b2', 'd5', 'a1:d5'),
         ('a1:d5', 'b3', 'a1:d5'),
@@ -146,10 +161,17 @@ def test_address_range_and(left, right, result):
         ('c4:e6', 'a5', 'a4:e6'),
         ('c4:e5', 'd9', 'c4:e9'),
         ('c4:e6', 'j5', 'c4:j6'),
+        ('c4:e6', 's!a5', 's!a4:e6'),
+        ('s!c4:e6', 'a5', 's!a4:e6'),
+        ('s!c4:e6', 's!a5', 's!a4:e6'),
+        ('s!c4:e6', 't!a5', VALUE_ERROR),
     )
 )
 def test_address_range_or(left, right, result):
-    assert AddressRange(left) | AddressRange(right) == AddressRange(result)
+    result = AddressRange(result)
+    assert AddressRange(left) | AddressRange(right) == result
+    assert AddressRange(left) | right == result
+    assert left | AddressRange(right) == result
 
 
 @pytest.mark.parametrize(
@@ -541,6 +563,7 @@ def test_range_boundaries_defined_names(excel, ATestCell):
     cell = ATestCell('A', 1, excel=excel)
 
     assert ((3, 1, 3, 18), 'Sheet1') == range_boundaries('SINUS', cell)
+    assert ((2, 1, 5, 18), 'Sheet1') == range_boundaries('B2:E5:SINUS', cell)
 
 
 @pytest.mark.parametrize(
@@ -761,21 +784,50 @@ def test_uniqueify():
     assert (4, 1, 2, 3) == uniqueify((4, 1, 2, 3, 4, 3))
 
 
-def test_is_number():
-    assert is_number(1)
-    assert is_number(0)
-    assert is_number(-1)
-    assert is_number(1.0)
-    assert is_number(0.0)
-    assert is_number(-1.0)
-    assert is_number('1.0')
-    assert is_number('0.0')
-    assert is_number('-1.0')
-    assert is_number(True)
-    assert is_number(False)
+@pytest.mark.parametrize(
+    'data, result', (
+        (AddressCell('A1'), True),
+        (AddressRange('A1:B2'), True),
+        ('A1', False),
+        ('A1:B2', False),
 
-    assert not is_number(None)
-    assert not is_number('x')
+        (1, False),
+        (0, False),
+        (-1, False),
+        (1.0, False),
+        ('-1.0', False),
+        (True, False),
+        (False, False),
+        (None, False),
+        ('x', False),
+    )
+)
+def test_is_address(data, result):
+    assert is_address(data) == result
+
+
+@pytest.mark.parametrize(
+    'data, result', (
+        (1, True),
+        (0, True),
+        (-1, True),
+        (1.0, True),
+        (0.0, True),
+        (-1.0, True),
+        ('1.0', True),
+        ('0.0', True),
+        ('-1.0', True),
+        (True, True),
+        (False, True),
+
+        (None, False),
+        ('False', False),
+        ('x', False),
+        (AddressCell('A1'), False),
+    )
+)
+def test_is_number(data, result):
+    assert is_number(data) == result
 
 
 @pytest.mark.parametrize(
@@ -788,6 +840,7 @@ def test_is_number():
         ((((1, 2), (3, 4)), ">=3"), ((1, 0), (1, 1))),
         ((((1, 2, 3, 4, 5), ), ">=3"), ((0, 2), (0, 3), (0, 4))),
         (('JUNK', ((), ), ((), ), ), AssertionError),
+        ((((1,),), '', ((1, 2),), ''), VALUE_ERROR),
         ((((1, 2, 3, 4, 5), ), ">=3",
           ((1, 2, 3, 4, 5), ), "<=4"), ((0, 2), (0, 3))),
     )
@@ -796,16 +849,19 @@ def test_handle_ifs(data, result):
     if isinstance(result, type(Exception)):
         with pytest.raises(result):
             handle_ifs(data)
+    elif isinstance(result, str):
+        assert handle_ifs(data) == result
     else:
         assert tuple(sorted(handle_ifs(data))) == result
 
 
-def test_handle_ifs_op_range_errors():
+def test_handle_ifs_op_range():
     with pytest.raises(TypeError):
         handle_ifs(((1, ), (1, )), 2)
 
-    with pytest.raises(AssertionError):
-        handle_ifs(((((1, 2), (3, 4)), ">=3")), ((1, ), (1, )))
+    assert handle_ifs((((1, 2), (3, 4)), ">=3"), ((1, ), (1, ))) == VALUE_ERROR
+
+    assert handle_ifs((((1,), ), "=1"), 1) == ((0, 0), )
 
 
 def test_find_corresponding_index():
@@ -884,6 +940,13 @@ def test_list_like(value, expected):
         ('1', '>1', False),
         ('2', '>1', False),
 
+        (0, '<1', True),
+        (1, '<1', False),
+        (2, '<1', False),
+        ('0', '<1', False),
+        ('1', '<1', False),
+        ('2', '<1', False),
+
         (0, '>1x', False),
         (1, '>1x', False),
         (2, '>1x', False),
@@ -937,6 +1000,31 @@ def test_list_like(value, expected):
         ('Tt', 'T*t', True),
         ('Tht', 'Th?t', False),
         ('Tat', 'Th*t', False),
+        (None, 'Th?t', False),
+        (None, 'Th*t', False),
+
+        ('', '', True),
+        (None, '', True),
+        (1, '', False),
+        ('1', '', False),
+        ('1x', '', False),
+        ('a', '', False),
+
+        (None, '', True),
+        (None, 1, False),
+        (None, '1', False),
+        (None, '=1', False),
+        (None, '<>1', True),
+        (None, '>1', False),
+        (None, '<1', False),
+        (None, '>1x', False),
+        (None, 'b', False),
+        (None, '=b', False),
+        (None, '<>b', True),
+        (None, '<b', False),
+        (None, '<=b', False),
+        (None, '=', True),
+        (None, '<>', False),
     )
 )
 def test_criteria_parser(value, criteria, expected):
