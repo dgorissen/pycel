@@ -52,7 +52,7 @@ setup(
     tests_require=tests_require,
     test_suite='pytest',
     install_requires=[
-        'networkx>=2.0',
+        'networkx>=2.0,<2.5',
         'numpy',
         'openpyxl>=2.6.2',
         'python-dateutil',

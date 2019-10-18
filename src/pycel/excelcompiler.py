@@ -674,8 +674,8 @@ class ExcelCompiler:
 
         def add_node_to_graph(node):
             self.dep_graph.add_node(node)
-            self.dep_graph.node[node]['sheet'] = node.sheet
-            self.dep_graph.node[node]['label'] = node.address.coordinate
+            self.dep_graph.nodes[node]['sheet'] = node.sheet
+            self.dep_graph.nodes[node]['label'] = node.address.coordinate
 
             # stick in queue to add edges
             self.graph_todos.append(node)
