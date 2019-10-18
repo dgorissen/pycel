@@ -242,7 +242,8 @@ class ASTNode:
                 args = self.ast.predecessors(self)
             except NetworkXError:
                 args = []
-            self._children = sorted(args, key=lambda x: self.ast.node[x]['pos'])
+            self._children = sorted(
+                args, key=lambda x: self.ast.nodes[x]['pos'])
         # args.reverse()
         return self._children
 
