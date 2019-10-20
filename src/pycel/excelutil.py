@@ -858,21 +858,19 @@ def get_linest_degree(cell):
 
     # to the left
     i = 0
-    while True:
+    f = cell.formula
+    while f and f == cell.formula:
         i -= 1
         f = cell.excel.get_formula_from_range(
             address.address_at_offset(row_inc=0, col_inc=i))
-        if not f or f != cell.formula:
-            break
 
     # to the right
     j = 0
-    while True:
+    f = cell.formula
+    while f and f == cell.formula:
         j += 1
         f = cell.excel.get_formula_from_range(
             address.address_at_offset(row_inc=0, col_inc=j))
-        if not f or f != cell.formula:
-            break
 
     # assume the degree is the number of linest's
     # last -1 is because an n degree polynomial has n+1 coefs
@@ -885,21 +883,19 @@ def get_linest_degree(cell):
     if degree == 0:
         # up
         i = 0
-        while True:
+        f = cell.formula
+        while f and f == cell.formula:
             i -= 1
             f = cell.excel.get_formula_from_range(
                 address.address_at_offset(row_inc=i, col_inc=0))
-            if not f or f != cell.formula:
-                break
 
         # down
         j = 0
-        while True:
+        f = cell.formula
+        while f and f == cell.formula:
             j += 1
             f = cell.excel.get_formula_from_range(
                 address.address_at_offset(row_inc=j, col_inc=0))
-            if not f or f != cell.formula:
-                break
 
         degree = (j - i - 1) - 1
         coef = -i

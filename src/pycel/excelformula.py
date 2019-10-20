@@ -753,11 +753,9 @@ class ExcelFormula:
 
             elif token.is_operator:
 
-                while stack and stack[-1].is_operator:
-                    if token.precedence < stack[-1].precedence:
-                        output.append(self._ast_node(stack.pop()))
-                    else:
-                        break
+                while stack and stack[-1].is_operator and (
+                        token.precedence < stack[-1].precedence):
+                    output.append(self._ast_node(stack.pop()))
 
                 stack.append(token)
 
