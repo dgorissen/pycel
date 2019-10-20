@@ -221,7 +221,7 @@ def error_string_wrapper(f, param_indices=None):
 
 
 def refs_wrapper(f, name_space, param_indices=None):
-    """wrapper to address references in arguments
+    """wrapper to process references in arguments
 
     :param f: function to wrap
     :param param_indices: params to check for error strings.

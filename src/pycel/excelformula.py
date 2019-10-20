@@ -303,7 +303,7 @@ class OperatorNode(ASTNode):
                           )
         elif op == ':':
             # range union
-            ss = '_R_' + ('(str({} | {}))'.format(args[0].emit, args[1].emit)
+            ss = '_R_' + ('(str({} ** {}))'.format(args[0].emit, args[1].emit)
                           .replace('_R_', '_REF_')
                           .replace('_C_', '_REF_')
                           )

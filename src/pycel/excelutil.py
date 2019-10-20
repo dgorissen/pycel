@@ -144,9 +144,9 @@ class AddressMixin:
     def sort_key(self):
         return self.sheet, self.col_idx, self.row
 
-    def _and_or(self, other, min_, max_):
+    def _union_instersection(self, other, min_, max_):
         """Assumes rectangular only"""
-        if not isinstance(other, (AddressCell, AddressRange)):
+        if not is_address(other):
             other = AddressRange.create(other)
         if self.sheet and other.sheet and self.sheet != other.sheet:
             return VALUE_ERROR
@@ -169,17 +169,17 @@ class AddressMixin:
             return AddressRange((min_col_idx, min_row, max_col_idx, max_row),
                                 sheet=self.sheet or other.sheet)
 
-    def __or__(self, other):
-        return self._and_or(other, min, max)
+    def __pow__(self, other):
+        return self._union_instersection(other, min, max)
 
-    def __ror__(self, other):
-        return self._and_or(other, min, max)
+    def __rpow__(self, other):
+        return self._union_instersection(other, min, max)
 
     def __and__(self, other):
-        return self._and_or(other, max, min)
+        return self._union_instersection(other, max, min)
 
     def __rand__(self, other):
-        return self._and_or(other, max, min)
+        return self._union_instersection(other, max, min)
 
 
 class AddressRange(collections.namedtuple(

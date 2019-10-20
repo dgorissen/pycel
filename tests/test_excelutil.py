@@ -143,7 +143,7 @@ def test_address_range_multi_colon(address, expected):
         ('s!d4:e5', 't!e5', VALUE_ERROR),
     )
 )
-def test_address_range_and(left, right, result):
+def test_address_range_intersection(left, right, result):
     result = AddressRange(result)
     assert AddressRange(left) & AddressRange(right) == result
     assert AddressRange(left) & right == result
@@ -167,11 +167,11 @@ def test_address_range_and(left, right, result):
         ('s!c4:e6', 't!a5', VALUE_ERROR),
     )
 )
-def test_address_range_or(left, right, result):
+def test_address_range_union(left, right, result):
     result = AddressRange(result)
-    assert AddressRange(left) | AddressRange(right) == result
-    assert AddressRange(left) | right == result
-    assert left | AddressRange(right) == result
+    assert AddressRange(left) ** AddressRange(right) == result
+    assert AddressRange(left) ** right == result
+    assert left ** AddressRange(right) == result
 
 
 @pytest.mark.parametrize(
