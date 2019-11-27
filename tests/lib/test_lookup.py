@@ -68,12 +68,13 @@ def test_column(address, expected):
 
 
 @pytest.mark.parametrize(
-    'lkup, col_idx, result, approx', (
+    'lkup, row_idx, result, approx', (
         ('A', 0, VALUE_ERROR, True),
         ('A', 1, 'A', True),
         ('A', 2, 1, True),
         ('A', 3, 'Z', True),
-        ('A', 4, REF_ERROR, True),
+        ('A', 4, 5, True),
+        ('A', 5, REF_ERROR, True),
         ('B', 1, 'B', True),
         ('C', 1, 'C', True),
         ('B', 2, 2, True),
@@ -86,13 +87,14 @@ def test_column(address, expected):
         ((('D', 'A'),), 3, ((NA_ERROR, 'Z'), ), False),
     )
 )
-def test_hlookup(lkup, col_idx, result, approx):
+def test_hlookup(lkup, row_idx, result, approx):
     table = (
         ('A', 'B', 'C'),
         (1, 2, 3),
         ('Z', 'Y', 'X'),
+        (5, 6, 7),
     )
-    assert result == hlookup(lkup, table, col_idx, approx)
+    assert result == hlookup(lkup, table, row_idx, approx)
 
 
 @pytest.mark.parametrize(
@@ -491,7 +493,8 @@ def test_row(address, expected):
         ('A', 1, 'A', True),
         ('A', 2, 1, True),
         ('A', 3, 'Z', True),
-        ('A', 4, REF_ERROR, True),
+        ('A', 4, 5, True),
+        ('A', 5, REF_ERROR, True),
         ('B', 1, 'B', True),
         ('C', 1, 'C', True),
         ('B', 2, 2, True),
@@ -506,8 +509,8 @@ def test_row(address, expected):
 )
 def test_vlookup(lkup, col_idx, result, approx):
     table = (
-        ('A', 1, 'Z'),
-        ('B', 2, 'Y'),
-        ('C', 3, 'X'),
+        ('A', 1, 'Z', 5),
+        ('B', 2, 'Y', 6),
+        ('C', 3, 'X', 7),
     )
     assert result == vlookup(lkup, table, col_idx, approx)
