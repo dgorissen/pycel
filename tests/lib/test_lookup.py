@@ -286,7 +286,10 @@ def test_lookup_error():
         (4, [1, 3.3, 5], 1, 2),
         (5, [1, 3.3, 5], 1, 3),
         (6, [1, 3.3, 5], 1, 3),
-
+        (6, 6, 1, 1),
+        (5, 6, 1, NA_ERROR),
+        ('abc', 'abc', 1, 1),
+        ('a', 'abc', 1, NA_ERROR),
         (6, [5, 3.3, 1], -1, NA_ERROR),
         (5, [5, 3.3, 1], -1, 1),
         (4, [5, 3.3, 1], -1, 1),
@@ -315,10 +318,13 @@ def test_lookup_error():
     )
 )
 def test_match(lookup_value, lookup_array, match_type, result):
-    lookup_row = (tuple(lookup_array), )
-    lookup_col = tuple((i, ) for i in lookup_array)
-    assert result == match(lookup_value, lookup_row, match_type)
-    assert result == match(lookup_value, lookup_col, match_type)
+    if isinstance(lookup_array, list):
+        lookup_row = (tuple(lookup_array), )
+        lookup_col = tuple((i, ) for i in lookup_array)
+        assert result == match(lookup_value, lookup_row, match_type)
+        assert result == match(lookup_value, lookup_col, match_type)
+    else:
+        assert result == match(lookup_value, lookup_array, match_type)
 
 
 @pytest.mark.parametrize(

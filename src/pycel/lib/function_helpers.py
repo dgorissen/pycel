@@ -17,6 +17,7 @@ from pycel.excelutil import (
     coerce_to_number,
     ERROR_CODES,
     is_number,
+    list_like,
     NUM_ERROR,
     VALUE_ERROR,
 )
@@ -28,7 +29,8 @@ ALL_ARG_INDICES = frozenset(range(512))
 
 
 def excel_helper(cse_params=None, bool_params=None,
-                 err_str_params=-1, number_params=None, ref_params=None):
+                 err_str_params=-1, number_params=None, ref_params=None,
+                 array_params=None):
     """ Decorator to annotate a function with info on how to process params
 
     All parameters are encoded as:
@@ -45,6 +47,7 @@ def excel_helper(cse_params=None, bool_params=None,
     :param err_str_params: params to check for error strings
     :param number_params: params to coerce to numbers
     :param ref_params: params which can remain as references
+    :param array_params: params to coerse to arrays
     :return: decorator
     """
     def mark(f):
@@ -54,6 +57,7 @@ def excel_helper(cse_params=None, bool_params=None,
             err_str_params=err_str_params,
             number_params=number_params,
             ref_params=ref_params,
+            array_params=array_params,
         ))
         return f
     return mark
@@ -92,6 +96,11 @@ def apply_meta(func, meta=None, name_space=None):
             if ref_params is None:
                 ref_params = set()
             func = refs_wrapper(func, name_space, ref_params)
+
+        array_params = meta['array_params']
+        if array_params is not None:
+            func = arrays_wrapper(
+                func, all_params if array_params == -1 else array_params)
 
     return func, meta
 
@@ -251,6 +260,28 @@ def refs_wrapper(f, name_space, param_indices=None):
     @functools.wraps(f)
     def wrapper(*args):
         return f(*tuple(resolve_args(args)))
+
+    return wrapper
+
+
+def arrays_wrapper(f, param_indices=None):
+    """wrapper to coerce args to arrays
+
+    :param f: function to wrap
+    :param param_indices: params to coerce to arrays.
+        int: param number to check
+        tuple: params to check
+        None: check all params
+    :return: wrapped function
+    """
+    param_indices = convert_params_indices(f, param_indices)
+
+    @functools.wraps(f)
+    def wrapper(*args):
+        new_args = tuple((arg if list_like(arg) else ((arg,),))
+                         if idx in param_indices else arg
+                         for idx, arg in enumerate(args))
+        return f(*new_args)
 
     return wrapper
 

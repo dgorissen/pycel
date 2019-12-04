@@ -297,7 +297,7 @@ def lookup(lookup_value, lookup_array, result_range=None):
         return match_idx
 
 
-@excel_helper(cse_params=0, number_params=2)
+@excel_helper(cse_params=0, number_params=2, array_params=1)
 def match(lookup_value, lookup_array, match_type=1):
     # Excel reference: https://support.office.com/en-us/article/
     #   match-function-e8dffd45-c762-47d6-bf89-533f4a37673a

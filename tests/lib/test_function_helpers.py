@@ -21,6 +21,7 @@ from pycel.excelutil import (
 )
 from pycel.lib.function_helpers import (
     apply_meta,
+    arrays_wrapper,
     cse_array_wrapper,
     error_string_wrapper,
     excel_helper,
@@ -67,6 +68,21 @@ def test_error_string_wrapper(arg_nums, f_args, result):
         return 'args: {}'.format(args)
 
     assert error_string_wrapper(f_test, arg_nums)(*f_args) == result
+
+
+@pytest.mark.parametrize(
+    'value, result', (
+        ((1, 2, 3), (1, ((2,),), 3)),
+        ((1, 'ab', 3), (1, (('ab',),), 3)),
+        ((1, ((2,),), 3), (1, ((2,),), 3)),
+        ((1, (1,), 3), (1, (1,), 3)),
+    )
+)
+def test_arrays_wrap(value, result):
+    def a_test(*args):
+        return args
+
+    assert arrays_wrapper(a_test, 1)(*value) == result
 
 
 @pytest.mark.parametrize(

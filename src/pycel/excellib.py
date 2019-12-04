@@ -144,11 +144,10 @@ def count(*args):
                if isinstance(x, (int, float)) and not isinstance(x, bool))
 
 
+@excel_helper(err_str_params=None, array_params=0)
 def countif(rng, criteria):
     # Excel reference: https://support.office.com/en-us/article/
     #   COUNTIF-function-e0de10c6-f885-4e71-abb4-1f464816df34
-    if not list_like(rng):
-        rng = ((rng, ), )
     valid = find_corresponding_index(rng, criteria)
     return len(valid)
 
