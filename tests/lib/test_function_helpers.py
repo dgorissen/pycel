@@ -71,18 +71,19 @@ def test_error_string_wrapper(arg_nums, f_args, result):
 
 
 @pytest.mark.parametrize(
-    'value, result', (
-        ((1, 2, 3), (1, ((2,),), 3)),
-        ((1, 'ab', 3), (1, (('ab',),), 3)),
-        ((1, ((2,),), 3), (1, ((2,),), 3)),
-        ((1, (1,), 3), (1, (1,), 3)),
+    'arg_nums, f_args, result', (
+        (1, (1, 2, 3), (1, ((2,),), 3)),
+        ((1,), (1, 'ab', 3), (1, (('ab',),), 3)),
+        (None, (1, 2, 3), (((1,),), ((2,),), ((3,),))),
+        (0, (((1,),), 2, 3), (((1,),), 2, 3)),
+        (2, (1, 2, (3,)), (1, 2, (3,))),
     )
 )
-def test_arrays_wrap(value, result):
-    def a_test(*args):
+def test_arrays_wrapper(arg_nums, f_args, result):
+    def f_test(*args):
         return args
 
-    assert arrays_wrapper(a_test, 1)(*value) == result
+    assert arrays_wrapper(f_test, arg_nums)(*f_args) == result
 
 
 @pytest.mark.parametrize(

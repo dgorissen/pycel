@@ -270,8 +270,8 @@ def arrays_wrapper(f, param_indices=None):
     :param f: function to wrap
     :param param_indices: params to coerce to arrays.
         int: param number to check
-        tuple: params to check
-        None: check all params
+        tuple: params to convert
+        None: convert all params
     :return: wrapped function
     """
     param_indices = convert_params_indices(f, param_indices)
