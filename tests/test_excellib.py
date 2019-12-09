@@ -267,6 +267,12 @@ def test_count():
         (((7, 25, 13, 25), ), 25, 2),
         (((7, 25, None, 25),), '<10', 1),
         (((7, 25, None, 25),), '>10', 2),
+        (((7, 25, None, 25),), NA_ERROR, 0),
+        (((7, 25, None, 25),), REF_ERROR, 0),
+        (NA_ERROR, '<10', 0),
+        (REF_ERROR, '<10', 0),
+        (NA_ERROR, NA_ERROR, 1),
+        (REF_ERROR, REF_ERROR, 1),
     )
 )
 def test_countif(value, criteria, result):

@@ -307,6 +307,8 @@ def test_lookup_error():
         (False, [True, False, True], -1, 2),
 
         (NA_ERROR, [True, False, True], -1, NA_ERROR),
+        (2, REF_ERROR, 1, NA_ERROR),
+        (REF_ERROR, REF_ERROR, 1, REF_ERROR),
         (DIV0, [1, 2, 3], -1, DIV0),
 
         ('Th*t', ['xyzzy', 1, False, DIV0, 'That', 'TheEnd'], 0, 5),

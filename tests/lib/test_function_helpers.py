@@ -77,6 +77,7 @@ def test_error_string_wrapper(arg_nums, f_args, result):
         (None, (1, 2, 3), (((1,),), ((2,),), ((3,),))),
         (0, (((1,),), 2, 3), (((1,),), 2, 3)),
         (2, (1, 2, (3,)), (1, 2, (3,))),
+        (2, (1, 2, VALUE_ERROR), (1, 2, ((VALUE_ERROR,),))),
     )
 )
 def test_arrays_wrapper(arg_nums, f_args, result):
