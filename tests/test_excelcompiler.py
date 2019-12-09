@@ -490,7 +490,9 @@ def test_evaluate_conditional_formatting(cond_format_ws):
     ]
     formats = cond_format_ws.eval_conditional_formats(cells_addrs)
     formats2 = cond_format_ws.eval_conditional_formats((a for a in cells_addrs))
-    assert formats == list(formats2)
+    assert formats == list(formats2)  # should match cells_addrs's type
+    assert formats2 == tuple(formats2)  # tuple since cells_addrs is a generator
+    assert isinstance(formats[0], tuple)
     assert len(formats) == 3
     assert len(formats[2]) == 3
 

@@ -164,7 +164,7 @@ def conditional_format_ids(*args):
             results.append(dxf_id)
             if stop_if_true:
                 break
-    return results
+    return tuple(results)
 
 
 def countifs(*args):
