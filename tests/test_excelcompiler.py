@@ -742,6 +742,11 @@ def test_validate_count():
     excel_compiler = ExcelCompiler(excel=wb)
     assert excel_compiler.evaluate('Sheet!B1:B4') == (1, 2, 3, 3)
 
+    # Test missing calcPr in WorkbookPackage
+    wb.calculation = None
+    excel_compiler = ExcelCompiler(excel=wb)
+    assert excel_compiler.evaluate('Sheet!B1:B4') == (1, 2, 3, 3)
+
 
 @pytest.mark.parametrize(
     'msg, formula', (
