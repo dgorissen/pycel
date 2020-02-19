@@ -48,6 +48,7 @@ from pycel.excellib import (
     npv,
     odd,
     power,
+    pv,
     rounddown,
     roundup,
     sign,
@@ -676,6 +677,29 @@ def test_power(data, expected):
         assert result == pytest.approx(expected, rel=1e-3)
 
 
+@pytest.mark.parametrize(
+    # Data are the cartesian product of rate: [-0.05, 0.0, 0.05], nper: [0, 5], pmt: [500], fv: [1000],
+    # the_type: [0, 1].
+    # Result was computed using Excel.
+    'data, result', (
+    ((-0.05, 0.0, 500.0, 1000.0, 0.0), -1000.0),
+    ((-0.05, 0.0, 500.0, 1000.0, 1.0), -1000.0),
+    ((-0.05, 5.0, 500.0, 1000.0, 0.0), -4215.909784),
+    ((-0.05, 5.0, 500.0, 1000.0, 1.0), -4069.732066),
+    ((0.0, 0.0, 500.0, 1000.0, 0.0), -1000.0),
+    ((0.0, 0.0, 500.0, 1000.0, 1.0), -1000.0),
+    ((0.0, 5.0, 500.0, 1000.0, 0.0), -3500.0),
+    ((0.0, 5.0, 500.0, 1000.0, 1.0), -3500.0),
+    ((0.05, 0.0, 500.0, 1000.0, 0.0), -1000.0),
+    ((0.05, 0.0, 500.0, 1000.0, 1.0), -1000.0),
+    ((0.05, 5.0, 500.0, 1000.0, 0.0), -2948.264502),
+    ((0.05, 5.0, 500.0, 1000.0, 1.0), -3056.501419)
+    )
+)
+def test_pv(data, result):
+    assert math.isclose(pv(*data), result)
+
+
 class TestRounding:
     data_columns = "rounddown roundup number digits ".split()
     data_values = (
@@ -936,3 +960,4 @@ def test_xsum():
 
     assert DIV0 == xsum(DIV0)
     assert DIV0 == xsum((2, DIV0))
+
