@@ -12,6 +12,9 @@ numpy = "*"
 openpyxl = "*"
 ruamel-yaml = "*"
 python-dateutil = "*"
+pandas = "*"
+pytest = "*"
+restructuredtext-lint = "*"
 
 [requires]
 python_version = "3.6"
