@@ -448,6 +448,19 @@ def power(number, power):
         return DIV0
 
 
+@excel_math_func
+def pv(rate, nper, pmt, fv=0, the_type=0):
+    #  Excel reference: https://support.office.com/en-us/article/
+    #   pv-function-23879d31-0e02-4321-be01-da16e8168cbd
+
+    if rate != 0:
+        the_pv = (-fv - pmt * (1 + rate * the_type) * ((1 + rate) ** nper - 1) / rate) * 1 / (1 + rate) ** nper
+    else:
+        the_pv = -fv - pmt * nper
+
+    return the_pv
+
+
 def _round(number, num_digits, rounding):
     num_digits = int(num_digits)
     quant = Decimal('1E{}{}'.format('+-'[num_digits >= 0], abs(num_digits)))
