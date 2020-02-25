@@ -960,4 +960,3 @@ def test_xsum():
 
     assert DIV0 == xsum(DIV0)
     assert DIV0 == xsum((2, DIV0))
-
