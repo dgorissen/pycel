@@ -449,16 +449,17 @@ def power(number, power):
 
 
 @excel_math_func
-def pv(rate, nper, pmt, fv=0, the_type=0):
+def pv(rate, nper, pmt, fv=0, type_=0):
     #  Excel reference: https://support.office.com/en-us/article/
     #   pv-function-23879d31-0e02-4321-be01-da16e8168cbd
 
     if rate != 0:
-        the_pv = (-fv - pmt * (1 + rate * the_type) * ((1 + rate) ** nper - 1) / rate) * 1 / (1 + rate) ** nper
+        val = pmt * (1 + rate * type_) * ((1 + rate) ** nper - 1) / rate
+        pv_ = 1 / (1 + rate) ** nper * (-fv - val)
     else:
-        the_pv = -fv - pmt * nper
+        pv_ = -fv - pmt * nper
 
-    return the_pv
+    return pv_
 
 
 def _round(number, num_digits, rounding):
