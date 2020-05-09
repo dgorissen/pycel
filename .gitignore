@@ -40,9 +40,11 @@ Thumbs.db
 
 .coverage
 .idea/
+.vscode
 .pytest_cache/
 */__pycache__/
 venv/
+.venv/
 .tox/
 *.egg-info/
 
