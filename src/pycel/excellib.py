@@ -420,11 +420,11 @@ def mod(number, divisor):
 def npv(rate, *args):
     # Excel reference: https://support.office.com/en-us/article/
     #   NPV-function-8672CB67-2576-4D07-B67B-AC28ACF2A568
-    acceped_types = (int, float, complex)
+    accepted_types = (int, float, complex)
 
     if rate in ERROR_CODES:
         return rate
-    if not isinstance(rate, acceped_types):
+    if not isinstance(rate, accepted_types):
         return VALUE_ERROR
 
     _rate = rate + 1
@@ -436,7 +436,7 @@ def npv(rate, *args):
 
     # For entries that are both non-numeric and non-error, Excel removes them
     # and does not treat as zero or raise an error
-    cashflows = [c for c in cashflows if type(c) in acceped_types]
+    cashflows = [c for c in cashflows if type(c) in accepted_types]
 
     return sum([float(x) * _rate ** -i for i, x in enumerate(cashflows, start=1)])
 
