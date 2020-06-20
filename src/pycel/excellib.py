@@ -416,15 +416,55 @@ def mod(number, divisor):
 
     return number % divisor
 
+def get_numeric(value):
+    """Return True if the argument is a valid number, return False otherwise."""
+
+    # Test if boolean type
+    if np.dtype(type(value)) == bool:
+        return False
+    else:
+        try:
+            # Ignore empty values
+            if np.isnan(value):
+                return False
+
+            # Check if value is a float
+            float(value)
+            return True
+
+        # If you can't convert to float its not a number
+        except:
+            return False
 
 @excel_math_func
-def npv(*args):
+def npv(rate, *args):
     # Excel reference: https://support.office.com/en-us/article/
     #   NPV-function-8672CB67-2576-4D07-B67B-AC28ACF2A568
 
-    rate = args[0] + 1
-    cashflow = args[1:]
-    return sum([float(x) * rate ** -i for i, x in enumerate(cashflow, start=1)])
+    if rate in ERROR_CODES:
+        return rate
+
+    # Check if rate is a valid number
+    try:
+        float(rate)
+    except:
+        return VALUE_ERROR
+
+    _rate = rate + 1
+
+    cashflows = [x for x in flatten(args[0])]
+
+    # Return the correct error code if one of the cash flows is invalid
+    for cashflow in cashflows:
+        if cashflow in ERROR_CODES:
+            return cashflow
+
+    # For entries that are both non-numeric and non-error, Excel removes them
+    # and does not treat as zero or raise an error
+    fil = [get_numeric(c) for c in cashflows]
+    cashflows = np.array([i for (i, v) in zip(cashflows, fil) if v])
+
+    return (cashflows/np.power(_rate, np.arange(1, len(cashflows) + 1))).sum()
 
 
 @excel_math_func
