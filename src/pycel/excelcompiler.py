@@ -92,7 +92,10 @@ class ExcelCompiler:
         # Setup to be able to evaluate circular references
         self.cycles = cycles
         if hasattr(self.excel, 'workbook'):
-            wb_cycles = bool(self.excel.workbook.calculation.iterate)
+            if self.excel.workbook.calculation is None:
+                wb_cycles = False
+            else:
+                wb_cycles = bool(self.excel.workbook.calculation.iterate)
             if self.cycles is None:
                 self.cycles = wb_cycles
             elif wb_cycles != bool(self.cycles):
