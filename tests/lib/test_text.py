@@ -26,6 +26,7 @@ from pycel.lib.text import (
     mid,
     replace,
     right,
+    text,
     trim,
     upper,
     value,
@@ -210,6 +211,78 @@ def test_replace(expected, old_text, start_num, num_chars, new_text):
 )
 def test_right(text, num_chars, expected):
     assert right(text, num_chars) == expected
+
+
+@pytest.mark.parametrize(
+    'text_value, value_format, result', (
+
+        # Thousand separator
+        ("12200000", "#,###", "12,200,000"),
+        ("12200000", "0,000.00", "12,200,000.00"),
+
+        # Number, currency, accounting
+        ("1234.56", "0.00", "1234.56"),
+        ("1234.56", "#,##0", "1,235"),
+        ("1234.56", "#,##0.00", "1,234.56"),
+        ("1234.56", "$#,##0", "$1,235"),
+        ("1234.56", "$#,##0.00", "$1,234.56"),
+        ("1234.56", "$ * #,##0", "$1,235"),
+        ("1234.56", "$ * #,##0.00", "$1,234.56"),
+
+        # Months, days, years
+        ('15/01/2021', "m", '01'),  # Excel returns 1
+        ('15/01/2021', "mm", '01'),
+        ('15/01/2021', "mmm", 'Jan'),
+        ('15/01/2021', "mmmm", 'January'),
+        ('15/01/2021', "mmmmm", 'Jan'),  # Excel returns J
+        ('15/01/2021', "d", '15'),
+        ('15/01/2021', "dd", '15'),
+        ('15/01/2021', "ddd", 'Fri'),
+        ('15/01/2021', "dddd", 'Friday'),
+        ('15/01/2021', "yy", '21'),
+        ('15/01/2021', "yyyy", '2021'),
+        ('2021-01-15', 'yyyy', '2021'),
+
+        # Hours, minutes and seconds
+        ('3:33 pm', "h", '15'),
+        ('3:33 pm', "hh", '15'),
+        ('3:33 pm', "m", '01'),  # Excel returns 1
+        ('3:33 pm', "mm", '01'),
+        ('3:33:30 pm', "s", '30'),
+        ('3:33:30 pm', "ss", '30'),
+        ('3:33 pm', "h AM/PM", '03 pm'),
+        ('3:33 am', "h AM/PM", '03 am'),
+        ('3:33 pm', "h:mm AM/PM", '03:33 pm'),
+        ('3:33:30 pm', "h:mm:ss A/P", '15:33:30 A/P'),
+        ('3:33 pm', "h:mm:ss.00", '15:33:00.00'),
+        ('99:99', '', '99:99'),
+        # not supported
+        # ('3:33 pm', "[h]:mm", '1:02'),
+        # ('3:33 pm', "[mm]:ss", '62:16'),
+        # ('3:33 pm', "[ss].00", '3735.80'),
+
+        # Date & Time
+        ("31/12/1989 15:30:00", "MM/DD/YYYY", "12/31/1989"),
+        ("31/12/89 15:30:00", "MM/DD/YY", "12/31/89"),
+        ("1989-12-31", "YYYY-MM-DD", "1989-12-31"),
+        ("1989/12/31", "YYYY/MM/DD", "1989/12/31"),
+
+        ("31/12/1989 15:30:00",
+         "MM/DD/YYYY hh:mm AM/PM", "12/31/1989 03:30 pm"),
+
+        # Percentage
+        ('0.244740088392962', '0%', '24%'),
+        ('0.244740088392962', '0.0%', '24.5%'),
+        ('0.244740088392962', '0.00%', '24.47%'),
+
+        # text without formatting - returned as-is
+        ('test', '', 'test'),
+        (55, '', '55'),
+
+    )
+)
+def test_text(text_value, value_format, result):
+    assert text(text_value, value_format).lower() == result.lower()
 
 
 @pytest.mark.parametrize(
