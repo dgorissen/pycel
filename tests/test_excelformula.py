@@ -189,6 +189,11 @@ basic_inputs = [
         '=OR(TRUE, TRUE(), FALSE, FALSE())',
         'TRUE|TRUE|FALSE|FALSE|OR',
         'x_or(True, True, False, False)'),
+    FormulaTest(
+        '=--4',
+        '4|-|-',
+        '--4'
+    ),
 ]
 
 whitespace_inputs = [
@@ -570,7 +575,6 @@ def test_if_args_error():
         '=;',
         '=,',
         '=-',
-        '=--4',
     )
 )
 def test_parser_error(formula):
