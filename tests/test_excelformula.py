@@ -776,6 +776,7 @@ def test_unary_ops(expected, formula, empty_eval_context):
         ('=3&"A"', '3A'),
         ('=3.0&"A"', '3A'),
         ('=A1&"A"', '3A'),
+        ('="0x"&"3e8000"', '0x3e8000'),
     )
 )
 def test_numerics_type_coercion(formula, result):

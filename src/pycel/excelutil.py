@@ -1306,15 +1306,19 @@ def build_operator_operand_fixup(capture_error_state):
                 left_op = ''
             elif isinstance(left_op, bool):
                 left_op = str(left_op).upper()
-            else:
+            elif isinstance(left_op, float) or isinstance(left_op, int):
                 left_op = str(coerce_to_number(left_op))
+            else:
+                left_op = str(left_op)
 
             if right_op in (None, EMPTY):
                 right_op = ''
             elif isinstance(right_op, bool):
                 right_op = str(right_op).upper()
-            else:
+            elif isinstance(right_op, float) or isinstance(right_op, int):
                 right_op = str(coerce_to_number(right_op))
+            else:
+                right_op = str(right_op)
 
         else:
             left_op = coerce_to_number(left_op, convert_all=True)
