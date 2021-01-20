@@ -735,6 +735,20 @@ def test_bool_funcs(formula, result):
 
 @pytest.mark.parametrize(
     'formula, result', (
+            ('=BITAND(1,2)', 0),
+            ('=BITOR(1,2)', 3),
+            ('=BITXOR(9, 5)', 12),
+            ('=BITLSHIFT(6, 1)', 12),
+            ('=BITRSHIFT(6, 1)', 3),
+            )
+    )
+def test_bit_funcs(formula, result):
+    eval_ctx = ExcelFormula.build_eval_context(lambda x: None, None)
+    assert eval_ctx(ExcelFormula(formula)) == result
+
+
+@pytest.mark.parametrize(
+    'formula, result', (
         ('=(A1=0) + (A1=1)', 1),
         ('=(A1<0)+(A1<=0)+(A1=0)+(A1>=0)+(A1>0)', 3),
     )
