@@ -171,7 +171,7 @@ def hlookup(lookup_value, table_array, row_index_num, range_lookup=True):
     if row_index_num <= 0:
         return VALUE_ERROR
 
-    if row_index_num > len(table_array[0]):
+    if row_index_num > len(table_array):
         return REF_ERROR
 
     result_idx = _match(

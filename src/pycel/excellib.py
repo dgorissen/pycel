@@ -416,15 +416,55 @@ def mod(number, divisor):
 
     return number % divisor
 
+def get_numeric(value):
+    """Return True if the argument is a valid number, return False otherwise."""
+
+    # Test if boolean type
+    if np.dtype(type(value)) == bool:
+        return False
+    else:
+        try:
+            # Ignore empty values
+            if np.isnan(value):
+                return False
+
+            # Check if value is a float
+            float(value)
+            return True
+
+        # If you can't convert to float its not a number
+        except:
+            return False
 
 @excel_math_func
-def npv(*args):
+def npv(rate, *args):
     # Excel reference: https://support.office.com/en-us/article/
     #   NPV-function-8672CB67-2576-4D07-B67B-AC28ACF2A568
 
-    rate = args[0] + 1
-    cashflow = args[1:]
-    return sum([float(x) * rate ** -i for i, x in enumerate(cashflow, start=1)])
+    if rate in ERROR_CODES:
+        return rate
+
+    # Check if rate is a valid number
+    try:
+        float(rate)
+    except:
+        return VALUE_ERROR
+
+    _rate = rate + 1
+
+    cashflows = [x for x in flatten(args[0])]
+
+    # Return the correct error code if one of the cash flows is invalid
+    for cashflow in cashflows:
+        if cashflow in ERROR_CODES:
+            return cashflow
+
+    # For entries that are both non-numeric and non-error, Excel removes them
+    # and does not treat as zero or raise an error
+    fil = [get_numeric(c) for c in cashflows]
+    cashflows = np.array([i for (i, v) in zip(cashflows, fil) if v])
+
+    return (cashflows/np.power(_rate, np.arange(1, len(cashflows) + 1))).sum()
 
 
 @excel_math_func
@@ -639,3 +679,52 @@ def xsum(*args):
 
     # if no non numeric cells, return zero (is what excel does)
     return sum(data)
+
+
+@excel_math_func
+def bitand(op_x, op_y):
+    # Excel reference https://support.microsoft.com/en-us/office/
+    # bitand-function-8a2be3d7-91c3-4b48-9517-64548008563a
+    if op_x < 0 or op_y < 0:
+        return NUM_ERROR
+    return op_x & op_y
+
+
+@excel_math_func
+def bitor(op_x, op_y):
+    # Excel reference https://support.microsoft.com/en-us/office/
+    # bitor-function-f6ead5c8-5b98-4c9e-9053-8ad5234919b2
+    if op_x < 0 or op_y < 0:
+        return NUM_ERROR
+    return op_x | op_y
+
+
+@excel_math_func
+def bitxor(op_x, op_y):
+    # https://support.microsoft.com/en-us/office/
+    # bitxor-function-c81306a1-03f9-4e89-85ac-b86c3cba10e4
+    if op_x < 0 or op_y < 0:
+        return NUM_ERROR
+    return op_x ^ op_y
+
+
+@excel_math_func
+def bitlshift(number, pos):
+    # https://support.microsoft.com/en-us/office/
+    # bitlshift-function-c55bb27e-cacd-4c7c-b258-d80861a03c9c
+    if number < 0 or abs(pos) > 53 or number >= 2**48:
+        return NUM_ERROR
+    if pos < 0:
+        return bitrshift(number, abs(pos))
+    return number << pos
+
+
+@excel_math_func
+def bitrshift(number, pos):
+    # https://support.microsoft.com/en-us/office/
+    # bitrshift-function-274d6996-f42c-4743-abdb-4ff95351222c
+    if number < 0 or abs(pos) > 53 or number >= 2**48:
+        return NUM_ERROR
+    if pos < 0:
+        return bitlshift(number, abs(pos))
+    return number >> pos

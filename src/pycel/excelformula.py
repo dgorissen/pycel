@@ -134,7 +134,7 @@ class Token(tokenizer.Token):
         ':': Precedence(8, 'left'),
         ' ': Precedence(8, 'left'),  # range intersection
         ',': Precedence(8, 'left'),
-        'u': Precedence(7, 'left'),  # unary operator
+        'u': Precedence(7, 'right'),  # unary operator
         '%': Precedence(6, 'left'),
         '^': Precedence(5, 'left'),
         '*': Precedence(4, 'left'),
