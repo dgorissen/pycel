@@ -1,6 +1,6 @@
 # -*- coding: UTF-8 -*-
 #
-# Copyright 2011-2019 by Dirk Gorissen, Stephen Rauch and Contributors
+# Copyright 2011-2021 by Dirk Gorissen, Stephen Rauch and Contributors
 # All rights reserved.
 # This file is part of the Pycel Library, Licensed under GPLv3 (the 'License')
 # You may not use this work except in compliance with the License.
@@ -9,8 +9,20 @@
 
 import pytest
 
-from pycel.excelutil import coerce_to_number, ERROR_CODES
+import pycel.lib.engineering
+from pycel.excelutil import coerce_to_number, DIV0, ERROR_CODES, NUM_ERROR, VALUE_ERROR
 from pycel.lib import engineering
+from pycel.lib.engineering import (
+    bitand,
+    bitlshift,
+    bitor,
+    bitrshift,
+    bitxor,
+)
+from pycel.lib.function_helpers import load_to_test_module
+
+# dynamic load the lib functions from engineering and apply metadata
+load_to_test_module(pycel.lib.engineering, __name__)
 
 MAX_BASE_2 = engineering._SIZE_MASK[2]
 MAX_BASE_8 = engineering._SIZE_MASK[8]
@@ -187,3 +199,79 @@ def test_base2base_errors(value):
         for base_out in (2, 8, 16):
             assert compare_result(value, engineering._base2base(
                 value, base_in=base_in, base_out=base_out))
+
+
+@pytest.mark.parametrize(
+    'op_x, op_y, expected', (
+        (32, 48, 32),
+        (1, 2, 0),
+        (DIV0, 1, DIV0),
+        (1, DIV0, DIV0),
+        ('er', 1, VALUE_ERROR),
+        (2, 'ze', VALUE_ERROR),
+        (NUM_ERROR, 1, NUM_ERROR),
+        (1, NUM_ERROR, NUM_ERROR),
+        (-1, 1, NUM_ERROR),
+        (1, -1, NUM_ERROR),
+    )
+)
+def test_bitand(op_x, op_y, expected):
+    assert bitand(op_x, op_y) == expected
+
+
+@pytest.mark.parametrize(
+    'number, pos, expected', (
+        (6, 1, 12),
+        (6, -1, 3),
+        (6, 0, 6),
+        ('er', 1, VALUE_ERROR),
+        (2, 'ze', VALUE_ERROR),
+        (-1, 0, NUM_ERROR),
+        (2**48, 0, NUM_ERROR),
+        (6, 54, NUM_ERROR),
+        (6, -54, NUM_ERROR),
+    )
+)
+def test_bitlshift(number, pos, expected):
+    assert bitlshift(number, pos) == expected
+
+
+@pytest.mark.parametrize(
+    'op_x, op_y, expected', (
+        (32, 16, 48),
+        (1, 2, 3),
+        (-1, 1, NUM_ERROR),
+        (1, -1, NUM_ERROR),
+    )
+)
+def test_bitor(op_x, op_y, expected):
+    assert bitor(op_x, op_y) == expected
+
+
+@pytest.mark.parametrize(
+    'number, pos, expected', (
+        (6, 1, 3),
+        (6, -1, 12),
+        (6, 0, 6),
+        ('er', 1, VALUE_ERROR),
+        (2, 'ze', VALUE_ERROR),
+        (-1, 0, NUM_ERROR),
+        (2**48, 0, NUM_ERROR),
+        (6, 54, NUM_ERROR),
+        (6, -54, NUM_ERROR),
+    )
+)
+def test_bitrshift(number, pos, expected):
+    assert bitrshift(number, pos) == expected
+
+
+@pytest.mark.parametrize(
+    'op_x, op_y, expected', (
+        (16, 15, 31),
+        (1, 3, 2),
+        (-1, 1, NUM_ERROR),
+        (1, -1, NUM_ERROR),
+    )
+)
+def test_bitxor(op_x, op_y, expected):
+    assert bitxor(op_x, op_y) == expected
