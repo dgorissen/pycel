@@ -54,7 +54,7 @@ setup(
     install_requires=[
         'networkx>=2.0,<2.6',
         'numpy',
-        'openpyxl>=2.6.2,<3.0',  # need to update table support for openpyxl > 3.0
+        'openpyxl>=2.6.2',
         'python-dateutil',
         'ruamel.yaml',
     ],
