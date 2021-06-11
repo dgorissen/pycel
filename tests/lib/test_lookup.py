@@ -214,7 +214,7 @@ class TestIndex:
 
     @staticmethod
     def test_index_error_inputs():
-        index_f = error_string_wrapper(index)
+        index_f = error_string_wrapper(index, {0, 1, 2})
         assert NA_ERROR == index_f(NA_ERROR, 1)
         assert NA_ERROR == index_f(TestIndex.test_data, NA_ERROR, 1)
         assert NA_ERROR == index_f(TestIndex.test_data, 1, NA_ERROR)
@@ -278,7 +278,7 @@ def test_lookup_error():
 
 
 @pytest.mark.parametrize(
-    'lookup_value, lookup_array, match_type, result', (
+    'lookup_value, lookup_array, match_type, expected', (
         (DIV0, [1, 2, 3], -1, DIV0),
         (0, [1, 3.3, 5], 1, NA_ERROR),
         (1, [1, 3.3, 5], 1, 1),
@@ -314,11 +314,11 @@ def test_lookup_error():
         ('Th*t', ['xyzzy', 1, False, DIV0, 'Tat', 'TheEnd'], 0, NA_ERROR),
     )
 )
-def test_match(lookup_value, lookup_array, match_type, result):
+def test_match(lookup_value, lookup_array, match_type, expected):
     lookup_row = (tuple(lookup_array), )
     lookup_col = tuple((i, ) for i in lookup_array)
-    assert result == match(lookup_value, lookup_row, match_type)
-    assert result == match(lookup_value, lookup_col, match_type)
+    assert match(lookup_value, lookup_row, match_type) == expected
+    assert match(lookup_value, lookup_col, match_type) == expected
 
 
 @pytest.mark.parametrize(

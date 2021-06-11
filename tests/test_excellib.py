@@ -12,6 +12,7 @@ import math
 import pytest
 
 import pycel.excellib
+from pycel.excelcompiler import ExcelCompiler
 from pycel.excellib import (
     _numerics,
     average,
@@ -65,6 +66,7 @@ from pycel.excellib import (
     xsum,
 )
 from pycel.excelutil import (
+    AddressRange,
     DIV0,
     EMPTY,
     NA_ERROR,
@@ -648,6 +650,12 @@ def test_npv(data, expected):
         assert result == expected
     else:
         assert result == pytest.approx(expected, rel=1e-3)
+
+
+def test_npv_ws(fixture_xls_copy):
+    compiler = ExcelCompiler(fixture_xls_copy('npv.xlsx'))
+    result = compiler.validate_calcs(output_addrs=AddressRange('NPV!A2:B13').rows)
+    assert result == {}
 
 
 @pytest.mark.parametrize(

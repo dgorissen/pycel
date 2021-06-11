@@ -9,6 +9,7 @@
 
 import collections
 import functools
+import inspect
 import sys
 
 from pycel.excelutil import (
@@ -16,6 +17,7 @@ from pycel.excelutil import (
     AddressRange,
     coerce_to_number,
     ERROR_CODES,
+    flatten,
     is_number,
     NUM_ERROR,
     VALUE_ERROR,
@@ -25,6 +27,8 @@ from pycel.excelutil import (
 FUNC_META = 'excel_func_meta'
 
 ALL_ARG_INDICES = frozenset(range(512))
+
+star_args = set()
 
 
 def excel_helper(cse_params=None, bool_params=None,
@@ -48,6 +52,10 @@ def excel_helper(cse_params=None, bool_params=None,
     :return: decorator
     """
     def mark(f):
+        if any(param.kind == inspect.Parameter.VAR_POSITIONAL
+               for param in inspect.signature(f).parameters.values()):
+            star_args.add(f.__name__)
+
         setattr(f, FUNC_META, dict(
             cse_params=cse_params,
             bool_params=bool_params,
@@ -68,25 +76,45 @@ excel_math_func = excel_helper(
 
 
 def apply_meta(func, meta=None, name_space=None):
-    """Take the metadata applied by mark_excel_func and wrap accordingly"""
+    """Take the metadata applied by excel_helper and wrap accordingly"""
     meta = meta or getattr(func, FUNC_META, None)
     if meta:
-        all_params = convert_params_indices(func, None)
+        # find what all_params for this function should look like
+        try:
+            sig = inspect.signature(func)
+            if any(param.kind == inspect.Parameter.VAR_KEYWORD
+                   for param in sig.parameters.values()):
+                raise RuntimeError(
+                    f'Function {func.__name__}: **kwargs not allowed in signature.')
+        except ValueError:
+            # some built-ins do not have signature information
+            sig = None  # pragma: no cover
+        if sig and any(param.kind == inspect.Parameter.VAR_POSITIONAL
+                       for param in sig.parameters.values()):
+            all_params = ALL_ARG_INDICES
+        else:
+            all_params = set(range(getattr(getattr(func, '__code__', None), 'co_argcount', 0))
+                             ) or ALL_ARG_INDICES
+
+        # process error strings
         err_str_params = meta['err_str_params']
         if err_str_params is not None:
             func = error_string_wrapper(
                 func, all_params if err_str_params == -1 else err_str_params)
 
+        # process number parameters
         number_params = meta['number_params']
         if number_params is not None:
             func = nums_wrapper(
                 func, all_params if number_params == -1 else number_params)
 
+        # process CSE parameters
         cse_params = meta['cse_params']
         if cse_params is not None:
             func = cse_array_wrapper(
                 func, all_params if cse_params == -1 else cse_params)
 
+        # process reference parameters
         ref_params = meta['ref_params']
         if ref_params != -1:
             if ref_params is None:
@@ -103,14 +131,9 @@ def convert_params_indices(f, param_indices):
     :param param_indices: params to check if CSE array
         int: param number to check
         tuple: params to check
-        None: check all params
     :return: set of parameter indices
     """
-    if param_indices is None:
-        code = getattr(f, '__code__', None)
-        return set(range(getattr(code, 'co_argcount', 0))) or ALL_ARG_INDICES
-
-    elif not isinstance(param_indices, collections.abc.Iterable):
+    if not isinstance(param_indices, collections.abc.Iterable):
         assert param_indices >= 0
         return {int(param_indices)}
 
@@ -203,7 +226,7 @@ def error_string_wrapper(f, param_indices=None):
         None: check all params
     :return: wrapped function
     """
-    param_indices = convert_params_indices(f, param_indices)
+    param_indices = sorted(convert_params_indices(f, param_indices))
 
     @functools.wraps(f)
     def wrapper(*args):
@@ -214,6 +237,11 @@ def error_string_wrapper(f, param_indices=None):
                 break
             if isinstance(arg, str) and arg in ERROR_CODES:
                 return arg
+            elif isinstance(arg, tuple):
+                error = next((a for a in flatten(arg)
+                              if isinstance(a, str) and a in ERROR_CODES), None)
+                if error is not None:
+                    return error
 
         return f(*args)
 
