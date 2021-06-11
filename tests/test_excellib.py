@@ -17,6 +17,11 @@ from pycel.excellib import (
     average,
     averageif,
     averageifs,
+    bitand,
+    bitlshift,
+    bitor,
+    bitrshift,
+    bitxor,
     ceiling,
     ceiling_math,
     ceiling_precise,
@@ -63,11 +68,6 @@ from pycel.excellib import (
     xmax,
     xmin,
     xsum,
-    bitand,
-    bitor,
-    bitxor,
-    bitlshift,
-    bitrshift
 )
 from pycel.excelutil import (
     DIV0,
@@ -949,75 +949,75 @@ def test_xsum():
 
 @pytest.mark.parametrize(
     'op_x, op_y, result', (
-            (32, 48, 32),
-            (1, 2, 0),
-            (DIV0, 1, DIV0),
-            (1, DIV0, DIV0),
-            ('er', 1, VALUE_ERROR),
-            (2, 'ze', VALUE_ERROR),
-            (NUM_ERROR, 1, NUM_ERROR),
-            (1, NUM_ERROR, NUM_ERROR),
-            (-1, 1, NUM_ERROR),
-            (1, -1, NUM_ERROR),
-            )
+        (32, 48, 32),
+        (1, 2, 0),
+        (DIV0, 1, DIV0),
+        (1, DIV0, DIV0),
+        ('er', 1, VALUE_ERROR),
+        (2, 'ze', VALUE_ERROR),
+        (NUM_ERROR, 1, NUM_ERROR),
+        (1, NUM_ERROR, NUM_ERROR),
+        (-1, 1, NUM_ERROR),
+        (1, -1, NUM_ERROR),
     )
+)
 def test_bitand(op_x, op_y, result):
     assert result == bitand(op_x, op_y)
 
 
 @pytest.mark.parametrize(
     'op_x, op_y, result', (
-            (32, 16, 48),
-            (1, 2, 3),
-            (-1, 1, NUM_ERROR),
-            (1, -1, NUM_ERROR),
-            )
+        (32, 16, 48),
+        (1, 2, 3),
+        (-1, 1, NUM_ERROR),
+        (1, -1, NUM_ERROR),
     )
+)
 def test_bitor(op_x, op_y, result):
     assert result == bitor(op_x, op_y)
 
 
 @pytest.mark.parametrize(
     'op_x, op_y, result', (
-            (16, 15, 31),
-            (1, 3, 2),
-            (-1, 1, NUM_ERROR),
-            (1, -1, NUM_ERROR),
-            )
+        (16, 15, 31),
+        (1, 3, 2),
+        (-1, 1, NUM_ERROR),
+        (1, -1, NUM_ERROR),
     )
+)
 def test_bitxor(op_x, op_y, result):
     assert result == bitxor(op_x, op_y)
 
 
 @pytest.mark.parametrize(
     'number, pos, result', (
-            (6, 1, 12),
-            (6, -1, 3),
-            (6, 0, 6),
-            ('er', 1, VALUE_ERROR),
-            (2, 'ze', VALUE_ERROR),
-            (-1, 0, NUM_ERROR),
-            (2**48, 0, NUM_ERROR),
-            (6, 54, NUM_ERROR),
-            (6, -54, NUM_ERROR),
-            )
+        (6, 1, 12),
+        (6, -1, 3),
+        (6, 0, 6),
+        ('er', 1, VALUE_ERROR),
+        (2, 'ze', VALUE_ERROR),
+        (-1, 0, NUM_ERROR),
+        (2**48, 0, NUM_ERROR),
+        (6, 54, NUM_ERROR),
+        (6, -54, NUM_ERROR),
     )
+)
 def test_bitlshift(number, pos, result):
     assert result == bitlshift(number, pos)
 
 
 @pytest.mark.parametrize(
     'number, pos, result', (
-            (6, 1, 3),
-            (6, -1, 12),
-            (6, 0, 6),
-            ('er', 1, VALUE_ERROR),
-            (2, 'ze', VALUE_ERROR),
-            (-1, 0, NUM_ERROR),
-            (2**48, 0, NUM_ERROR),
-            (6, 54, NUM_ERROR),
-            (6, -54, NUM_ERROR),
-            )
+        (6, 1, 3),
+        (6, -1, 12),
+        (6, 0, 6),
+        ('er', 1, VALUE_ERROR),
+        (2, 'ze', VALUE_ERROR),
+        (-1, 0, NUM_ERROR),
+        (2**48, 0, NUM_ERROR),
+        (6, 54, NUM_ERROR),
+        (6, -54, NUM_ERROR),
     )
+)
 def test_bitrshift(number, pos, result):
     assert result == bitrshift(number, pos)
