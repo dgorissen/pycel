@@ -191,7 +191,7 @@ class ExcelOpxWrapper(ExcelWrapper):
                 'TableAndSheet', 'table, sheet_name')
             self._tables = {
                 t.name.lower(): TableAndSheet(t, ws.title)
-                for ws in self.workbook for t in ws._tables}
+                for ws in self.workbook for t in ws._tables.values()}
             self._tables[None] = TableAndSheet(None, None)
         return self._tables.get(table_name.lower(), self._tables[None])
 
@@ -199,7 +199,7 @@ class ExcelOpxWrapper(ExcelWrapper):
         """ Return the table name containing the address given """
         address = AddressCell(address)
         if address not in self._table_refs:
-            for t in self.workbook[address.sheet]._tables:
+            for t in self.workbook[address.sheet]._tables.values():
                 if address in AddressRange(t.ref):
                     self._table_refs[address] = t.name.lower()
                     break
