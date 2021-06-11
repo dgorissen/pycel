@@ -10,11 +10,11 @@
 import pytest
 
 from pycel.excelutil import coerce_to_number, ERROR_CODES
-from pycel.lib import binary
+from pycel.lib import engineering
 
-MAX_BASE_2 = binary._SIZE_MASK[2]
-MAX_BASE_8 = binary._SIZE_MASK[8]
-MAX_BASE_16 = binary._SIZE_MASK[16]
+MAX_BASE_2 = engineering._SIZE_MASK[2]
+MAX_BASE_8 = engineering._SIZE_MASK[8]
+MAX_BASE_16 = engineering._SIZE_MASK[16]
 
 
 def compare_result(expected, result):
@@ -55,16 +55,16 @@ def compare_result(expected, result):
     )
 )
 def test_base2dec(value, base, expected):
-    assert compare_result(expected, binary._base2dec(value, base))
+    assert compare_result(expected, engineering._base2dec(value, base))
 
-    mapped = {2: binary.bin2dec, 8: binary.oct2dec, 16: binary.hex2dec}
+    mapped = {2: engineering.bin2dec, 8: engineering.oct2dec, 16: engineering.hex2dec}
     assert compare_result(expected, mapped[base](value))
 
 
 @pytest.mark.parametrize('value', tuple(ERROR_CODES))
 def test_base2dec_errors(value):
     for base in (2, 8, 16):
-        assert compare_result(value, binary._base2dec(value, base))
+        assert compare_result(value, engineering._base2dec(value, base))
 
 
 @pytest.mark.parametrize(
@@ -90,9 +90,9 @@ def test_base2dec_errors(value):
     )
 )
 def test_dec2base(value, base, expected):
-    assert compare_result(expected, binary._dec2base(value, base=base))
+    assert compare_result(expected, engineering._dec2base(value, base=base))
 
-    mapped = {2: binary.dec2bin, 8: binary.dec2oct, 16: binary.dec2hex}
+    mapped = {2: engineering.dec2bin, 8: engineering.dec2oct, 16: engineering.dec2hex}
     assert compare_result(expected, mapped[base](value))
 
 
@@ -108,13 +108,13 @@ def test_dec2base(value, base, expected):
 )
 def test_dec2base_places(value, base, places, expected):
     assert compare_result(expected,
-                          binary._dec2base(value, base=base, places=places))
+                          engineering._dec2base(value, base=base, places=places))
 
 
 @pytest.mark.parametrize('value', tuple(ERROR_CODES))
 def test_dec2base_errors(value):
     for base in (2, 8, 16):
-        assert compare_result(value, binary._dec2base(value, base=base))
+        assert compare_result(value, engineering._dec2base(value, base=base))
 
 
 @pytest.mark.parametrize(
@@ -147,16 +147,16 @@ def test_dec2base_errors(value):
 )
 def test_base2base(value, bases, expected):
     base_in, base_out = bases
-    assert compare_result(expected, binary._base2base(
+    assert compare_result(expected, engineering._base2base(
         value, base_in=base_in, base_out=base_out))
 
     mapped = {
-        (2, 8): binary.bin2oct,
-        (2, 16): binary.bin2hex,
-        (8, 2): binary.oct2bin,
-        (8, 16): binary.oct2hex,
-        (16, 2): binary.hex2bin,
-        (16, 8): binary.hex2oct,
+        (2, 8): engineering.bin2oct,
+        (2, 16): engineering.bin2hex,
+        (8, 2): engineering.oct2bin,
+        (8, 16): engineering.oct2hex,
+        (16, 2): engineering.hex2bin,
+        (16, 8): engineering.hex2oct,
     }
     assert compare_result(expected, mapped[bases](value))
 
@@ -177,7 +177,7 @@ def test_base2base_all_bases(value, expected):
         for base_out in (2, 8, 16):
             if base_in != base_out:
                 assert compare_result(
-                    expected, binary._base2base(
+                    expected, engineering._base2base(
                         value, base_in=base_in, base_out=base_out))
 
 
@@ -185,5 +185,5 @@ def test_base2base_all_bases(value, expected):
 def test_base2base_errors(value):
     for base_in in (2, 8, 16):
         for base_out in (2, 8, 16):
-            assert compare_result(value, binary._base2base(
+            assert compare_result(value, engineering._base2base(
                 value, base_in=base_in, base_out=base_out))

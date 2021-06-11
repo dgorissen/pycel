@@ -550,8 +550,8 @@ class ExcelFormula:
 
     default_modules = (
         'pycel.excellib',
-        'pycel.lib.binary',
         'pycel.lib.date_time',
+        'pycel.lib.engineering',
         'pycel.lib.logical',
         'pycel.lib.lookup',
         'pycel.lib.text',
