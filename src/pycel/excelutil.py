@@ -545,6 +545,12 @@ def split_sheetname(address, sheet=''):
     sh = ''
     if '!' in address:
         sh, address_part = address.split('!', maxsplit=1)
+
+        # Remove redundant sheet references and deal with sheet names
+        # with inner quotes
+        reduntant_sheet = unquote_sheetname(sh).replace("'", "''")
+        address_part = address_part.replace("'{}'!".format(reduntant_sheet), '')
+
         if '!' in address_part:
             raise NotImplementedError(
                 "Non-rectangular formulas: {}".format(address))
