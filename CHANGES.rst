@@ -6,6 +6,7 @@ Fixes
 * Update to Python 3.9, drop support for Python 3.5
 * Fix Openpyxl > 3.0.4
 * Fix #88, Handle calcPR in workbook
+* Fix #99, Pycel raises NotImplementedError on rectangular ranges
 * Fix #105, Incorrect RPN for expressions with consecutive negations
 * Fix #109, String concatenation fails for particular cases
 * Add bitwise functions: bitand, bitor, bitxor, bitlshift and bitrshift

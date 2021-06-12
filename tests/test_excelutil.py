@@ -349,7 +349,12 @@ def test_split_sheetname():
     assert ('', 'B1:C2') == split_sheetname('B1:C2')
     assert ('sheet', 'B1:C2') == split_sheetname('sheet!B1:C2')
 
+    assert ('sheet', 'B1:C2') == split_sheetname('sheet!B1:C2')
+    assert ('SheetA', 'A1:A9') == split_sheetname("SheetA!A1:'SheetA'!A9")
+
     assert ("shee't", 'B1:C2') == split_sheetname("'shee''t'!B1:C2")
+    assert ("Sheet' A", 'A1:A9') == split_sheetname("'Sheet'' A'!A1:'Sheet'' A'!A9")
+
     assert ("shee t", 'B1:C2') == split_sheetname("'shee t'!B1:C2")
 
     with pytest.raises(ValueError):
