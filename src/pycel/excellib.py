@@ -457,11 +457,9 @@ def pv(rate, nper, pmt, fv=0, type_=0):
 
     if rate != 0:
         val = pmt * (1 + rate * type_) * ((1 + rate) ** nper - 1) / rate
-        pv_ = 1 / (1 + rate) ** nper * (-fv - val)
+        return 1 / (1 + rate) ** nper * (-fv - val)
     else:
-        pv_ = -fv - pmt * nper
-
-    return pv_
+        return -fv - pmt * nper
 
 
 def _round(number, num_digits, rounding):

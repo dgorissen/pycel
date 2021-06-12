@@ -712,6 +712,12 @@ def test_pv(data, result):
     assert math.isclose(pv(*data), result)
 
 
+def test_pv_ws(fixture_xls_copy):
+    compiler = ExcelCompiler(fixture_xls_copy('pv.xlsx'))
+    result = compiler.validate_calcs(output_addrs=AddressRange('PV!A2:A43').rows)
+    assert result == {}
+
+
 class TestRounding:
     data_columns = "rounddown roundup number digits ".split()
     data_values = (
