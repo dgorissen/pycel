@@ -233,12 +233,12 @@ class TestCeilingFloor:
 
 @pytest.mark.parametrize(
     'args, result', (
-        (((True, 1, 0), (True, 2, 1), (True, 3, 0)), [1, 2]),
-        (((False, 1, 0), (True, 2, 1), (True, 3, 0)), [2]),
-        (((False, 1, 0), (True, 2, 0), (True, 3, 0)), [2, 3]),
-        (((False, 1, 0), (False, 2, 0), (True, 3, 0)), [3]),
-        (((False, 1, 0), (False, 2, 0), (False, 3, 0)), []),
-        ((), []),
+        (((True, 1, 0), (True, 2, 1), (True, 3, 0)), (1, 2)),
+        (((False, 1, 0), (True, 2, 1), (True, 3, 0)), (2,)),
+        (((False, 1, 0), (True, 2, 0), (True, 3, 0)), (2, 3)),
+        (((False, 1, 0), (False, 2, 0), (True, 3, 0)), (3,)),
+        (((False, 1, 0), (False, 2, 0), (False, 3, 0)), ()),
+        ((), ()),
     )
 )
 def test_conditional_format_ids(args, result):
