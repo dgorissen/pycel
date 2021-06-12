@@ -10,6 +10,9 @@
 """
 Python equivalents of excel logical functions (bools)
 """
+from numbers import Number
+
+import numpy as np
 
 from pycel.excelutil import (
     ERROR_CODES,
@@ -35,7 +38,7 @@ def _clean_logical(test):
 
     if test is None:
         return False
-    elif isinstance(test, (bool, int, float)):
+    elif isinstance(test, (Number, np.bool_)):
         return bool(test)
     else:
         return VALUE_ERROR
@@ -74,13 +77,13 @@ def x_if(test, true_value, false_value=0):
     # Excel reference: https://support.office.com/en-us/article/
     #   IF-function-69AED7C9-4E8A-4755-A9BC-AA8BBFF73BE2
 
-    test = _clean_logical(test)
+    cleaned = _clean_logical(test)
 
-    if isinstance(test, str):
+    if isinstance(cleaned, str):
         # return error code
-        return test
+        return cleaned
     else:
-        return true_value if test else false_value
+        return true_value if cleaned else false_value
 
 
 def iferror(arg, value_if_error):
@@ -136,13 +139,13 @@ def x_not(value):
     # Excel reference: https://support.office.com/en-us/article/
     #   not-function-9cfc6011-a054-40c7-a140-cd4ba2d87d77
 
-    value = _clean_logical(value)
+    cleaned = _clean_logical(value)
 
-    if isinstance(value, str):
+    if isinstance(cleaned, str):
         # return error code
-        return value
+        return cleaned
     else:
-        return not value
+        return not cleaned
 
 
 def x_or(*args):

@@ -1,23 +1,26 @@
-1.0b26 (2021-06-12)
+1.0b26 (Unreleased)
 ===================
 
 Fixes
 -----
 * Update to Python 3.9, drop support for Python 3.5
-* Fix Openpyxl > 3.0.4
-* Fix #88, Handle calcPR in workbook
-* Fix #99, Pycel raises NotImplementedError on rectangular ranges
-* Fix #105, Incorrect RPN for expressions with consecutive negations
-* Fix #109, String concatenation fails for particular cases
-* Add bitwise functions: bitand, bitor, bitxor, bitlshift and bitrshift
+* Fix Openpyxl > 3.0.4 (Thanks, ckp95)
+* Fix HLOOKUP row_index_num validation to use num rows (Thanks, nanaposo)
+* Fix #88, Handle calcPR in workbook (Thanks, andreif)
+* Fix #89, NPV function fails when passed range of cashflows (Thanks, jpp-0)
+* Fix #99, Pycel raises NotImplementedError on rectangular ranges (Thanks,  rmorel)
+* Fix #103, build_operator_operand_fixup() throws #VALUE error when concatenating AddressCell objects (Thanks, nboukraa)
+* Fix #105, Incorrect RPN for expressions with consecutive negations (Thanks, victorjmarin)
+* Fix #109, String concatenation fails for particular cases (Thanks, bogdan-oprescu-nxp)
+* Fix issue in =IF() when comparing to numpy result
+* Add bitwise functions: bitand, bitor, bitxor, bitlshift and bitrshift (Thanks, bogdan-oprescu-nxp)
+* Add PV function (Thanks, estandiaa-marain)
 
 
-1.0b23 (2020-06-20)
-===================
+1.0b23-1.0b25
+=============
 
-Fixes
------
-* Fix #89, NPV function behaviour
+*Skipped*
 
 
 1.0b22 (2019-10-17)
@@ -72,7 +75,7 @@ Changes
 -------
 
 * Implement INDIRECT & OFFSET
-* Implement SMALL, LARGE & ROUNDDOWN
+* Implement SMALL, LARGE & ROUNDDOWN  (Thanks, nanaposo)
 * Add error message for unhandled missing function parameter
 
 Fixes
@@ -105,7 +108,7 @@ Changes
 * Add Formula Support for Multi Area Ranges from defined names
 * Allow ExcelCompiler init from openpyxl workbook
 * Implement LOWER(), REPLACE(), TRIM() & UPPER()
-* Implement DATEVALUE(), IFS() and ISERR()
+* Implement DATEVALUE(), IFS() and ISERR()  (Thanks, int128t)
 
 * Reorganized time and time utils and text functions
 * Add excelutil.AddressMultiAreaRange.
@@ -124,7 +127,7 @@ Fixes
 Changes
 -------
 * Add twelve date and time functions
-* Serialize workbook filename and use it instead of the serialization filename
+* Serialize workbook filename and use it instead of the serialization filename (Thanks, nanaposo)
 
 
 1.0b15 (2019-06-30)

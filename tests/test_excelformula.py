@@ -13,6 +13,7 @@ import os
 import pickle
 from unittest import mock
 
+import numpy as np
 import pytest
 
 from pycel.excelformula import (
@@ -730,6 +731,21 @@ def test_bool_ops(formula, result):
 )
 def test_bool_funcs(formula, result):
     eval_ctx = ExcelFormula.build_eval_context(lambda x: None, None)
+    assert eval_ctx(ExcelFormula(formula)) == result
+
+
+@pytest.mark.parametrize(
+    'formula, result', (
+        ('=IF(FALSE, 0, 1)', 1),
+        ('=IF(TRUE, 0, 1)', 0),
+        ('=IF(0>1, 0, 1)', 1),
+        ('=IF(1>0, 0, 1)', 0),
+        ('=IF(A1<0, 0, 1)', 1),
+        ('=IF(A1>0, 0, 1)', 0),
+    )
+)
+def test_if_with_numpy(formula, result):
+    eval_ctx = ExcelFormula.build_eval_context(lambda x: np.int_(3.0), None)
     assert eval_ctx(ExcelFormula(formula)) == result
 
 
