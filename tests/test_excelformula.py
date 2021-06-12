@@ -189,6 +189,11 @@ basic_inputs = [
         '=OR(TRUE, TRUE(), FALSE, FALSE())',
         'TRUE|TRUE|FALSE|FALSE|OR',
         'x_or(True, True, False, False)'),
+    FormulaTest(
+        '=--4',
+        '4|-|-',
+        '--4'
+    ),
 ]
 
 whitespace_inputs = [
@@ -570,7 +575,6 @@ def test_if_args_error():
         '=;',
         '=,',
         '=-',
-        '=--4',
     )
 )
 def test_parser_error(formula):
@@ -731,6 +735,20 @@ def test_bool_funcs(formula, result):
 
 @pytest.mark.parametrize(
     'formula, result', (
+            ('=BITAND(1,2)', 0),
+            ('=BITOR(1,2)', 3),
+            ('=BITXOR(9, 5)', 12),
+            ('=BITLSHIFT(6, 1)', 12),
+            ('=BITRSHIFT(6, 1)', 3),
+            )
+    )
+def test_bit_funcs(formula, result):
+    eval_ctx = ExcelFormula.build_eval_context(lambda x: None, None)
+    assert eval_ctx(ExcelFormula(formula)) == result
+
+
+@pytest.mark.parametrize(
+    'formula, result', (
         ('=(A1=0) + (A1=1)', 1),
         ('=(A1<0)+(A1<=0)+(A1=0)+(A1>=0)+(A1>0)', 3),
     )
@@ -772,6 +790,7 @@ def test_unary_ops(expected, formula, empty_eval_context):
         ('=3&"A"', '3A'),
         ('=3.0&"A"', '3A'),
         ('=A1&"A"', '3A'),
+        ('="0x"&"3e8000"', '0x3e8000'),
     )
 )
 def test_numerics_type_coercion(formula, result):

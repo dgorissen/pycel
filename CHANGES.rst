@@ -1,9 +1,10 @@
-1.0b23 (2020-06-21)
+1.0b23 (2020-06-21+)
 ===================
 
 Fixes
 -----
 * Fix #99, Pycel raises NotImplementedError on rectangular ranges
+* Fix #89, NPV function behaviour
 
 
 1.0b22 (2019-10-17)
