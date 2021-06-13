@@ -303,7 +303,7 @@ class OperatorNode(ASTNode):
                           )
         elif op == ':':
             # range union
-            ss = '_R_' + ('(str({} | {}))'.format(args[0].emit, args[1].emit)
+            ss = '_R_' + ('(str({} ** {}))'.format(args[0].emit, args[1].emit)
                           .replace('_R_', '_REF_')
                           .replace('_C_', '_REF_')
                           )
@@ -550,8 +550,8 @@ class ExcelFormula:
 
     default_modules = (
         'pycel.excellib',
-        'pycel.lib.binary',
         'pycel.lib.date_time',
+        'pycel.lib.engineering',
         'pycel.lib.logical',
         'pycel.lib.lookup',
         'pycel.lib.text',
@@ -753,11 +753,9 @@ class ExcelFormula:
 
             elif token.is_operator:
 
-                while stack and stack[-1].is_operator:
-                    if token.precedence < stack[-1].precedence:
-                        output.append(self._ast_node(stack.pop()))
-                    else:
-                        break
+                while stack and stack[-1].is_operator and (
+                        token.precedence < stack[-1].precedence):
+                    output.append(self._ast_node(stack.pop()))
 
                 stack.append(token)
 

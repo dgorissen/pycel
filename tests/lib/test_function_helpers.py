@@ -53,6 +53,7 @@ def test_cse_array_wrapper(arg_num, f_args, result):
 
 @pytest.mark.parametrize(
     'arg_nums, f_args, result', (
+        (((0, 1, 2, 3)), ((0, NUM_ERROR), (DIV0, NUM_ERROR)), NUM_ERROR),
         ((0, 1), (DIV0, 1), DIV0),
         ((0, 1), (1, DIV0), DIV0),
         ((0, 1), (NUM_ERROR, DIV0), NUM_ERROR),
@@ -118,6 +119,16 @@ def test_apply_meta_nothing_active():
     func = apply_meta(excel_helper(
         err_str_params=None, ref_params=-1)(a_test_func), name_space={})[0]
     assert func == a_test_func
+
+
+def test_apply_meta_kwargs():
+
+    def a_test_func(**x):
+        pass
+
+    with pytest.raises(RuntimeError,
+                       match=r'Function a_test_func: \*\*kwargs not allowed in signature'):
+        apply_meta(excel_helper()(a_test_func))
 
 
 def test_load_functions():

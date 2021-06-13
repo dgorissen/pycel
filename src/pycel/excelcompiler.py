@@ -458,7 +458,7 @@ class ExcelCompiler:
         cell = self.cell_map[address]
 
         if iterative_eval_tracker.is_calced(address):
-            yield "{}{} <- cycle".format(" " * indent, address, cell.value)
+            yield "{}{} <- cycle".format(" " * indent, address)
         else:
             iterative_eval_tracker.calced(address)
             yield "{}{} = {}".format(" " * indent, address, cell.value)

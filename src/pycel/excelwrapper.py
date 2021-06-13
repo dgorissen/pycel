@@ -21,7 +21,6 @@ from unittest import mock
 from openpyxl import load_workbook, Workbook
 from openpyxl.cell.cell import Cell, MergedCell
 from openpyxl.formula.translate import Translator
-from openpyxl.utils import datetime as opxl_dt
 
 from pycel.excelutil import AddressCell, AddressRange, flatten
 
@@ -191,7 +190,7 @@ class ExcelOpxWrapper(ExcelWrapper):
                 'TableAndSheet', 'table, sheet_name')
             self._tables = {
                 t.name.lower(): TableAndSheet(t, ws.title)
-                for ws in self.workbook for t in ws._tables.values()}
+                for ws in self.workbook for t in self._worksheet_tables(ws)}
             self._tables[None] = TableAndSheet(None, None)
         return self._tables.get(table_name.lower(), self._tables[None])
 
@@ -199,12 +198,20 @@ class ExcelOpxWrapper(ExcelWrapper):
         """ Return the table name containing the address given """
         address = AddressCell(address)
         if address not in self._table_refs:
-            for t in self.workbook[address.sheet]._tables.values():
+            for t in self._worksheet_tables(self.workbook[address.sheet]):
                 if address in AddressRange(t.ref):
                     self._table_refs[address] = t.name.lower()
                     break
 
         return self._table_refs.get(address)
+
+    def _worksheet_tables(self, ws):  # pragma: no cover
+        """::HACK:: workaround for unsupported tables access in openpyxl < 3.0.4"""
+        try:
+            return ws.tables.values()
+        except AttributeError:
+            # hack for openpyxl versions < 3.0.4
+            return ws._tables
 
     def conditional_format(self, address):
         """ Return the conditional formats applicable for this cell """
@@ -264,7 +271,7 @@ class ExcelOpxWrapper(ExcelWrapper):
         return self.workbook.active
 
     @staticmethod
-    def from_excel(value, offset=opxl_dt.CALENDAR_WINDOWS_1900):
+    def from_excel(value, *args, **kwargs):
         # ::HACK:: excel thinks that 1900/02/29 was a thing.  In certain
         # circumstances openpyxl will return a datetime.  This is a problem
         # as we don't want them, and having been mapped to datetime

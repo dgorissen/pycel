@@ -41,17 +41,17 @@ def serial_number_wrapper(f):
     """Validations and conversions for date-time serial numbers"""
     @functools.wraps(f)
     @excel_helper(number_params=0)
-    def wrapped(date_serial_number, *args, **kwargs):
+    def wrapped(date_serial_number):
         if date_serial_number < 0:
             return NUM_ERROR
-        return f(date_serial_number, *args, **kwargs)
+        return f(date_serial_number)
     return wrapped
 
 
 def time_value_wrapper(f):
     """Validations and conversions for date values"""
     @functools.wraps(f)
-    def wrapped(a_timevalue, *args, **kwargs):
+    def wrapped(a_timevalue):
         if isinstance(a_timevalue, str):
             try:
                 a_timevalue = float(a_timevalue)

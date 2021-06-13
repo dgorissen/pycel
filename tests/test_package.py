@@ -57,7 +57,7 @@ def test_binder_requirements():
     binder_reqs_file = '../binder/requirements.txt'
     if os.path.exists(binder_reqs_file):
         with open(binder_reqs_file, 'r') as f:
-            binder_reqs = sorted(l.strip() for l in f.readlines())
+            binder_reqs = sorted(line.strip() for line in f.readlines())
 
         with mock.patch('setuptools.setup') as setup:
             cwd = os.getcwd()

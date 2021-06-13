@@ -144,9 +144,9 @@ class AddressMixin:
     def sort_key(self):
         return self.sheet, self.col_idx, self.row
 
-    def _and_or(self, other, min_, max_):
+    def _union_instersection(self, other, min_, max_):
         """Assumes rectangular only"""
-        if not isinstance(other, (AddressCell, AddressRange)):
+        if not is_address(other):
             other = AddressRange.create(other)
         if self.sheet and other.sheet and self.sheet != other.sheet:
             return VALUE_ERROR
@@ -169,17 +169,17 @@ class AddressMixin:
             return AddressRange((min_col_idx, min_row, max_col_idx, max_row),
                                 sheet=self.sheet or other.sheet)
 
-    def __or__(self, other):
-        return self._and_or(other, min, max)
+    def __pow__(self, other):
+        return self._union_instersection(other, min, max)
 
-    def __ror__(self, other):
-        return self._and_or(other, min, max)
+    def __rpow__(self, other):
+        return self._union_instersection(other, min, max)
 
     def __and__(self, other):
-        return self._and_or(other, max, min)
+        return self._union_instersection(other, max, min)
 
     def __rand__(self, other):
-        return self._and_or(other, max, min)
+        return self._union_instersection(other, max, min)
 
 
 class AddressRange(collections.namedtuple(
@@ -546,10 +546,9 @@ def split_sheetname(address, sheet=''):
     if '!' in address:
         sh, address_part = address.split('!', maxsplit=1)
 
-        # Remove redundant sheet references and deal with sheet names
-        # with inner quotes
-        reduntant_sheet = unquote_sheetname(sh).replace("'", "''")
-        address_part = address_part.replace("'{}'!".format(reduntant_sheet), '')
+        # Remove redundant sheet references and deal with inner quotes
+        redundant_sheet = unquote_sheetname(sh).replace("'", "''")
+        address_part = address_part.replace(f"'{redundant_sheet}'!", '')
 
         if '!' in address_part:
             raise NotImplementedError(
@@ -864,21 +863,19 @@ def get_linest_degree(cell):
 
     # to the left
     i = 0
-    while True:
+    f = cell.formula
+    while f and f == cell.formula:
         i -= 1
         f = cell.excel.get_formula_from_range(
             address.address_at_offset(row_inc=0, col_inc=i))
-        if not f or f != cell.formula:
-            break
 
     # to the right
     j = 0
-    while True:
+    f = cell.formula
+    while f and f == cell.formula:
         j += 1
         f = cell.excel.get_formula_from_range(
             address.address_at_offset(row_inc=0, col_inc=j))
-        if not f or f != cell.formula:
-            break
 
     # assume the degree is the number of linest's
     # last -1 is because an n degree polynomial has n+1 coefs
@@ -891,21 +888,19 @@ def get_linest_degree(cell):
     if degree == 0:
         # up
         i = 0
-        while True:
+        f = cell.formula
+        while f and f == cell.formula:
             i -= 1
             f = cell.excel.get_formula_from_range(
                 address.address_at_offset(row_inc=i, col_inc=0))
-            if not f or f != cell.formula:
-                break
 
         # down
         j = 0
-        while True:
+        f = cell.formula
+        while f and f == cell.formula:
             j += 1
             f = cell.excel.get_formula_from_range(
                 address.address_at_offset(row_inc=j, col_inc=0))
-            if not f or f != cell.formula:
-                break
 
         degree = (j - i - 1) - 1
         coef = -i

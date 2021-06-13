@@ -12,6 +12,7 @@ import math
 import pytest
 
 import pycel.excellib
+from pycel.excelcompiler import ExcelCompiler
 from pycel.excellib import (
     _numerics,
     average,
@@ -64,13 +65,9 @@ from pycel.excellib import (
     xmax,
     xmin,
     xsum,
-    bitand,
-    bitor,
-    bitxor,
-    bitlshift,
-    bitrshift
 )
 from pycel.excelutil import (
+    AddressRange,
     DIV0,
     EMPTY,
     NA_ERROR,
@@ -656,6 +653,12 @@ def test_npv(data, expected):
         assert result == pytest.approx(expected, rel=1e-3)
 
 
+def test_npv_ws(fixture_xls_copy):
+    compiler = ExcelCompiler(fixture_xls_copy('npv.xlsx'))
+    result = compiler.validate_calcs(output_addrs=AddressRange('NPV!A2:B13').rows)
+    assert result == {}
+
+
 @pytest.mark.parametrize(
     'data, expected', (
         ((0, 0), NA_ERROR),
@@ -707,6 +710,12 @@ def test_power(data, expected):
 )
 def test_pv(data, result):
     assert math.isclose(pv(*data), result)
+
+
+def test_pv_ws(fixture_xls_copy):
+    compiler = ExcelCompiler(fixture_xls_copy('pv.xlsx'))
+    result = compiler.validate_calcs(output_addrs=AddressRange('PV!A2:A43').rows)
+    assert result == {}
 
 
 class TestRounding:
@@ -969,79 +978,3 @@ def test_xsum():
 
     assert DIV0 == xsum(DIV0)
     assert DIV0 == xsum((2, DIV0))
-
-
-@pytest.mark.parametrize(
-    'op_x, op_y, result', (
-            (32, 48, 32),
-            (1, 2, 0),
-            (DIV0, 1, DIV0),
-            (1, DIV0, DIV0),
-            ('er', 1, VALUE_ERROR),
-            (2, 'ze', VALUE_ERROR),
-            (NUM_ERROR, 1, NUM_ERROR),
-            (1, NUM_ERROR, NUM_ERROR),
-            (-1, 1, NUM_ERROR),
-            (1, -1, NUM_ERROR),
-            )
-    )
-def test_bitand(op_x, op_y, result):
-    assert result == bitand(op_x, op_y)
-
-
-@pytest.mark.parametrize(
-    'op_x, op_y, result', (
-            (32, 16, 48),
-            (1, 2, 3),
-            (-1, 1, NUM_ERROR),
-            (1, -1, NUM_ERROR),
-            )
-    )
-def test_bitor(op_x, op_y, result):
-    assert result == bitor(op_x, op_y)
-
-
-@pytest.mark.parametrize(
-    'op_x, op_y, result', (
-            (16, 15, 31),
-            (1, 3, 2),
-            (-1, 1, NUM_ERROR),
-            (1, -1, NUM_ERROR),
-            )
-    )
-def test_bitxor(op_x, op_y, result):
-    assert result == bitxor(op_x, op_y)
-
-
-@pytest.mark.parametrize(
-    'number, pos, result', (
-            (6, 1, 12),
-            (6, -1, 3),
-            (6, 0, 6),
-            ('er', 1, VALUE_ERROR),
-            (2, 'ze', VALUE_ERROR),
-            (-1, 0, NUM_ERROR),
-            (2**48, 0, NUM_ERROR),
-            (6, 54, NUM_ERROR),
-            (6, -54, NUM_ERROR),
-            )
-    )
-def test_bitlshift(number, pos, result):
-    assert result == bitlshift(number, pos)
-
-
-@pytest.mark.parametrize(
-    'number, pos, result', (
-            (6, 1, 3),
-            (6, -1, 12),
-            (6, 0, 6),
-            ('er', 1, VALUE_ERROR),
-            (2, 'ze', VALUE_ERROR),
-            (-1, 0, NUM_ERROR),
-            (2**48, 0, NUM_ERROR),
-            (6, 54, NUM_ERROR),
-            (6, -54, NUM_ERROR),
-            )
-    )
-def test_bitrshift(number, pos, result):
-    assert result == bitrshift(number, pos)
