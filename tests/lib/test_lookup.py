@@ -158,32 +158,32 @@ class TestIndex:
     INDEX returns the #REF! error value.
 
     """
-    test_data = ((0, 1), (2, 3))
-    test_data_col = ((0,), (2,))
+    test_data = ((0, 1), (DIV0, 3))
+    test_data_col = ((0,), (DIV0,))
     test_data_row = ((0, 1),)
-    test_data_np = np.asarray(test_data)
+    test_data_np = np.asarray(((0, 1), (2, 3)))
 
     @staticmethod
     @pytest.mark.parametrize(
         'data, row_num, col_num, expected', (
             (test_data, 1, 1, 0),
             (test_data, 1, 2, 1),
-            (test_data, 2, 1, 2),
+            (test_data, 2, 1, DIV0),
             (test_data, 2, 2, 3),
 
             # no col given
             (test_data, 1, None, ((0, 1),)),
-            (test_data, 2, None, ((2, 3),)),
+            (test_data, 2, None, ((DIV0, 3),)),
             (test_data_col, 1, None, 0),
-            (test_data_col, 2, None, 2),
+            (test_data_col, 2, None, DIV0),
             (test_data_row, 1, None, 0),
             (test_data_row, 2, None, 1),
 
             # no row given
-            (test_data, None, 1, ((0,), (2,))),
+            (test_data, None, 1, ((0,), (DIV0,))),
             (test_data, None, 2, ((1,), (3,))),
             (test_data_col, None, 1, 0),
-            (test_data_col, None, 2, 2),
+            (test_data_col, None, 2, DIV0),
             (test_data_row, None, 1, 0),
             (test_data_row, None, 2, 1),
 
@@ -214,10 +214,11 @@ class TestIndex:
 
     @staticmethod
     def test_index_error_inputs():
-        index_f = error_string_wrapper(index, {0, 1, 2})
+        index_f = error_string_wrapper(index, {1, 2})
         assert NA_ERROR == index_f(NA_ERROR, 1)
         assert NA_ERROR == index_f(TestIndex.test_data, NA_ERROR, 1)
         assert NA_ERROR == index_f(TestIndex.test_data, 1, NA_ERROR)
+        assert VALUE_ERROR == index_f((0, 1), 0, 1)
         assert VALUE_ERROR == index_f(None, 1, 1)
 
 

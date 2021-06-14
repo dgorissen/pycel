@@ -1,20 +1,32 @@
 1.0b26 (Unreleased)
 ===================
 
+Major Changes
+-------------
+
+* Update to Python 3.9, drop support for Python 3.5
+
+Changes
+-------
+
+* Add bitwise functions: bitand, bitor, bitxor, bitlshift and bitrshift (Thanks, bogdan-oprescu-nxp)
+* Add PV function (Thanks, estandiaa-marain)
+
 Fixes
 -----
-* Update to Python 3.9, drop support for Python 3.5
 * Fix Openpyxl > 3.0.4 (Thanks, ckp95)
 * Fix HLOOKUP row_index_num validation to use num rows (Thanks, nanaposo)
 * Fix #88, Handle calcPR in workbook (Thanks, andreif)
 * Fix #89, NPV function fails when passed range of cashflows (Thanks, jpp-0)
-* Fix #99, Pycel raises NotImplementedError on rectangular ranges (Thanks,  rmorel)
+* Fix #93, AssertionError during set_value(), by adding a better error message
+* Fix #99, Pycel raises NotImplementedError on rectangular ranges (Thanks, rmorel)
 * Fix #103, build_operator_operand_fixup() throws #VALUE error when concatenating AddressCell objects (Thanks, nboukraa)
+* Fix #104, Insufficient coverage and testing after recent merges
 * Fix #105, Incorrect RPN for expressions with consecutive negations (Thanks, victorjmarin)
 * Fix #109, String concatenation fails for particular cases (Thanks, bogdan-oprescu-nxp)
 * Fix issue in =IF() when comparing to numpy result
-* Add bitwise functions: bitand, bitor, bitxor, bitlshift and bitrshift (Thanks, bogdan-oprescu-nxp)
-* Add PV function (Thanks, estandiaa-marain)
+* Fix MID() and REPLACE() and LEN() in a CSE context
+* Fix INDEX() error handling
 
 
 1.0b23-1.0b25

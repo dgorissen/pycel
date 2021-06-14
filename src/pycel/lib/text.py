@@ -18,10 +18,7 @@ from pycel.excelutil import (
     flatten,
     VALUE_ERROR,
 )
-from pycel.lib.function_helpers import (
-    excel_func,
-    excel_helper,
-)
+from pycel.lib.function_helpers import excel_helper
 
 RE_MULTI_SPACE = re.compile(' +')
 
@@ -128,7 +125,7 @@ def left(text, num_chars=1):
     #   left-leftb-functions-9203d2d2-7960-479b-84c6-1ea52b99640c
 
 
-@excel_func
+@excel_helper(cse_params=0)
 def x_len(arg):
     # Excel reference: https://support.office.com/en-us/article/
     #   len-lenb-functions-29236f94-cedc-429d-affd-b5e33d2c67cb
@@ -147,7 +144,7 @@ def lower(text):
     return coerce_to_string(text).lower()
 
 
-@excel_helper(cse_params=0, number_params=(1, 2))
+@excel_helper(cse_params=-1, number_params=(1, 2))
 def mid(text, start_num, num_chars):
     # Excel reference: https://support.office.com/en-us/article/
     #   MID-MIDB-functions-d5f9e25c-d7d6-472e-b568-4ecb12433028
@@ -180,7 +177,7 @@ def mid(text, start_num, num_chars):
     #   proper-function-52a5a283-e8b2-49be-8506-b2887b889f94
 
 
-@excel_helper(cse_params=0, number_params=(1, 2))
+@excel_helper(cse_params=-1, number_params=(1, 2))
 def replace(old_text, start_num, num_chars, new_text):
     # Excel reference: https://support.office.com/en-us/article/
     #   replace-replaceb-functions-8d799074-2425-4a8a-84bc-82472868878a
