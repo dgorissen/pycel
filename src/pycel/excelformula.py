@@ -332,7 +332,11 @@ class OperandNode(ASTNode):
 
         elif self.subtype in ("TEXT", "ERROR") and len(self.value) > 2:
             # if the string contains quotes, escape them
-            return '"{}"'.format(self.value.replace('""', '\\"').strip('"'))
+            value = self.value
+            if value.startswith('"') and value.endswith('"'):
+                value = value[1:-1]
+            value = value.replace('""', r'\"')
+            return f'"{value}"'
 
         else:
             return self.value
