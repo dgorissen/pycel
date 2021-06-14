@@ -852,6 +852,41 @@ def test_plugins(excel_compiler):
 
 
 @pytest.mark.parametrize(
+    'a, b, rel, tol, expected', (
+        (0, 0, None, None, True),
+        (0, 1E-15, None, None, True),
+        (0, 1E-5, None, None, False),
+
+        (1, 1 + 1e-4, None, None, False),
+        (1, 1 + 1e-6, None, None, True),
+
+        (1, 1 + 1e-6, 1e-7, None, False),
+        (1, 1 + 1e-8, 1e-7, None, True),
+
+        (0.991, 1, None, 0.01, True),
+        (0.989, 1, None, 0.01, False),
+
+        ('a', 1, None, None, False),
+        ('1', 1, None, None, False),
+        ('1', None, None, None, False),
+        ('1', True, None, None, False),
+    )
+)
+def test_close_enough(a, b, rel, tol, expected):
+    cell = _Cell('A1', a)
+    kwargs = {'value': b}
+    if rel is not None:
+        kwargs['rel'] = rel
+    if tol is not None:
+        kwargs['rel'] = tol
+    assert cell.close_enough(**kwargs) == expected
+
+    cell.value = b
+    kwargs['value'] = a
+    assert cell.close_enough(**kwargs) == expected
+
+
+@pytest.mark.parametrize(
     'a2, b3, iters, result', (
         (0.2, 100, 3, 16.8),
         (0.2, 100, 4, 16.64),

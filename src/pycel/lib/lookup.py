@@ -189,12 +189,17 @@ def hlookup(lookup_value, table_array, row_index_num, range_lookup=True):
     #   hyperlink-function-333c7ce6-c5ae-4164-9c47-7de9b76f577f
 
 
-@excel_helper(number_params=(1, 2))
+@excel_helper(err_str_params=(1, 2), number_params=(1, 2))
 def index(array, row_num, col_num=None):
     # Excel reference: https://support.office.com/en-us/article/
     #   index-function-a5dcf0dd-996d-40a4-a822-b56b061328bd
 
-    if not list_like(array) or not list_like(array[0]):
+    if not list_like(array):
+        if array in ERROR_CODES:
+            return array
+        else:
+            return VALUE_ERROR
+    if not list_like(array[0]):
         return VALUE_ERROR
 
     try:

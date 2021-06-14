@@ -88,8 +88,8 @@ The code currently uses a tokenizer of similar origin from the
 
 .. Image links
 
-.. |build-state| image:: https://travis-ci.org/stephenrauch/pycel.svg?branch=master
-  :target: https://travis-ci.org/stephenrauch/pycel
+.. |build-state| image:: https://travis-ci.com/stephenrauch/pycel.svg?branch=master
+  :target: https://travis-ci.com/stephenrauch/pycel
   :alt: Build Status
 
 .. |coverage| image:: https://codecov.io/gh/stephenrauch/pycel/branch/master/graph/badge.svg

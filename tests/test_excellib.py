@@ -67,7 +67,6 @@ from pycel.excellib import (
     xsum,
 )
 from pycel.excelutil import (
-    AddressRange,
     DIV0,
     EMPTY,
     NA_ERROR,
@@ -655,7 +654,7 @@ def test_npv(data, expected):
 
 def test_npv_ws(fixture_xls_copy):
     compiler = ExcelCompiler(fixture_xls_copy('npv.xlsx'))
-    result = compiler.validate_calcs(output_addrs=AddressRange('NPV!A2:B13').rows)
+    result = compiler.validate_calcs()
     assert result == {}
 
 
@@ -714,7 +713,7 @@ def test_pv(data, result):
 
 def test_pv_ws(fixture_xls_copy):
     compiler = ExcelCompiler(fixture_xls_copy('pv.xlsx'))
-    result = compiler.validate_calcs(output_addrs=AddressRange('PV!A2:A43').rows)
+    result = compiler.validate_calcs()
     assert result == {}
 
 

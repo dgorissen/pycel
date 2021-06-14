@@ -12,8 +12,10 @@ import hashlib
 import itertools as it
 import json
 import logging
+import math
 import os
 import pickle
+from numbers import Number
 
 import networkx as nx
 from ruamel.yaml import YAML
@@ -419,7 +421,9 @@ class ExcelCompiler:
 
         elif address not in self.cell_map:
             address = AddressRange.create(address).address
-            assert address in self.cell_map
+            assert address in self.cell_map, (
+                f'Address "{address}" not found in the cell map. Evaluate the '
+                'address, or an address that references it, to place it in the cell map.')
 
         if set_as_range and list_like(value) and not (
                 value and list_like(value[0])):
@@ -988,12 +992,13 @@ class _CellBase:
         return self.value is None
 
     def close_enough(self, value, rel=0.00001, tol=None):
-        if (isinstance(self.value, (int, float)) and self.value and
-                isinstance(value, (int, float)) and value):
+        if isinstance(self.value, Number) and isinstance(value, Number):
             if tol is not None:
                 return abs(value - self.value) < (1 + rel) * tol
+            elif value and self.value:
+                return math.isclose(self.value, value, rel_tol=rel)
             else:
-                return 1 - rel < abs(value / self.value) < 1 + rel
+                return math.isclose(self.value, value, abs_tol=1e-8)
         else:
             return self.value == value
 

@@ -75,17 +75,17 @@ excel_math_func = excel_helper(
     cse_params=-1, err_str_params=-1, number_params=-1)
 
 
-def apply_meta(func, meta=None, name_space=None):
+def apply_meta(f, meta=None, name_space=None):
     """Take the metadata applied by excel_helper and wrap accordingly"""
-    meta = meta or getattr(func, FUNC_META, None)
+    meta = meta or getattr(f, FUNC_META, None)
     if meta:
         # find what all_params for this function should look like
         try:
-            sig = inspect.signature(func)
+            sig = inspect.signature(f)
             if any(param.kind == inspect.Parameter.VAR_KEYWORD
                    for param in sig.parameters.values()):
                 raise RuntimeError(
-                    f'Function {func.__name__}: **kwargs not allowed in signature.')
+                    f'Function {f.__name__}: **kwargs not allowed in signature.')
         except ValueError:
             # some built-ins do not have signature information
             sig = None  # pragma: no cover
@@ -93,35 +93,35 @@ def apply_meta(func, meta=None, name_space=None):
                        for param in sig.parameters.values()):
             all_params = ALL_ARG_INDICES
         else:
-            all_params = set(range(getattr(getattr(func, '__code__', None), 'co_argcount', 0))
+            all_params = set(range(getattr(getattr(f, '__code__', None), 'co_argcount', 0))
                              ) or ALL_ARG_INDICES
 
         # process error strings
         err_str_params = meta['err_str_params']
         if err_str_params is not None:
-            func = error_string_wrapper(
-                func, all_params if err_str_params == -1 else err_str_params)
+            f = error_string_wrapper(
+                f, all_params if err_str_params == -1 else err_str_params)
 
         # process number parameters
         number_params = meta['number_params']
         if number_params is not None:
-            func = nums_wrapper(
-                func, all_params if number_params == -1 else number_params)
+            f = nums_wrapper(
+                f, all_params if number_params == -1 else number_params)
 
         # process CSE parameters
         cse_params = meta['cse_params']
         if cse_params is not None:
-            func = cse_array_wrapper(
-                func, all_params if cse_params == -1 else cse_params)
+            f = cse_array_wrapper(
+                f, all_params if cse_params == -1 else cse_params)
 
         # process reference parameters
         ref_params = meta['ref_params']
         if ref_params != -1:
             if ref_params is None:
                 ref_params = set()
-            func = refs_wrapper(func, name_space, ref_params)
+            f = refs_wrapper(f, name_space, ref_params)
 
-    return func, meta
+    return f, meta
 
 
 def convert_params_indices(f, param_indices):
@@ -295,17 +295,17 @@ def load_functions(names, name_space, modules):
         if name not in name_space:
             funcs = ((getattr(module, name, None), module)
                      for module in modules)
-            func, module = next(
+            f, module = next(
                 (f for f in funcs if f[0] is not None), (None, None))
-            if func is None:
+            if f is None:
                 not_found.add(name)
             else:
                 if module.__name__ == 'math':
-                    func = built_in_wrapper(
-                        func, excel_math_func, name_space=name_space)
+                    f = built_in_wrapper(
+                        f, excel_math_func, name_space=name_space)
                 else:
-                    func, meta = apply_meta(func, name_space=name_space)
-                name_space[name] = func
+                    f, meta = apply_meta(f, name_space=name_space)
+                name_space[name] = f
 
     return not_found
 
