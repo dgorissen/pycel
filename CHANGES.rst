@@ -16,6 +16,7 @@ Fixes
 -----
 * Fix Openpyxl > 3.0.4 (Thanks, ckp95)
 * Fix HLOOKUP row_index_num validation to use num rows (Thanks, nanaposo)
+* Fix #86, tokenize.TokenError: ('EOF in multi-line statement',
 * Fix #88, Handle calcPR in workbook (Thanks, andreif)
 * Fix #89, NPV function fails when passed range of cashflows (Thanks, jpp-0)
 * Fix #93, AssertionError during set_value(), by adding a better error message

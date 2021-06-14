@@ -84,6 +84,10 @@ range_inputs = [
         'D9:D11|E9:E11|F9:F11|,|,|SUM',
         'xsum(_R_("D9:D11"), (_R_("E9:E11"), _R_("F9:F11")))'),
     FormulaTest(
+        '=SUMIF(A1:A5, ">""", B1:B5)',
+        'A1:A5|">"""|B1:B5|SUMIF',
+        'sumif(_R_("A1:A5"), ">\\"", _R_("B1:B5"))'),
+    FormulaTest(
         '={SUM(B2:D2*B3:D3)}',
         'B2:D2|B3:D3|*|SUM|ARRAYROW|ARRAY',
         '((xsum(_R_("B2:D2") * _R_("B3:D3")),),)'),
