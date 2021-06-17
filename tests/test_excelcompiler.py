@@ -58,31 +58,25 @@ def test_no_sheet_given(excel_compiler):
     assert sh1_value != value
 
 
-def test_round_trip_through_json_yaml_and_pickle(
-        excel_compiler, fixture_xls_path):
+@pytest.mark.parametrize('file_type', ('pickle', 'yaml', 'json'))
+def test_round_trip_through_json_yaml_and_pickle(excel_compiler, fixture_xls_path, file_type):
+    extra_data = {1: 3}
+    plugins = ('pycel.excellib', )
     excel_compiler.evaluate('Sheet1!D1')
-    excel_compiler.extra_data = {1: 3}
-    excel_compiler.to_file(file_types=('pickle', ))
-    excel_compiler.to_file(file_types=('yml', ))
-    excel_compiler.to_file(file_types=('json', ))
+    excel_compiler.extra_data = extra_data
 
-    # read the spreadsheet from json, yaml and pickle
-    excel_compiler_json = ExcelCompiler.from_file(
-        excel_compiler.filename + '.json')
-    excel_compiler_yaml = ExcelCompiler.from_file(
-        excel_compiler.filename + '.yml')
-    excel_compiler = ExcelCompiler.from_file(excel_compiler.filename)
+    excel_compiler.to_file(file_types=(file_type, ))
+
+    # read the spreadsheet from {file_type}
+    extension = f'.{file_type}' if file_type != 'pickle' else ''
+    excel_compiler = ExcelCompiler.from_file(excel_compiler.filename + extension, plugins=plugins)
+
+    # test compiler data
+    assert excel_compiler.extra_data.keys() & extra_data.keys()
+    assert excel_compiler._plugin_modules == plugins
 
     # test evaluation
-    assert -0.02286 == round(excel_compiler_json.evaluate('Sheet1!D1'), 5)
-    assert -0.02286 == round(excel_compiler_yaml.evaluate('Sheet1!D1'), 5)
     assert -0.02286 == round(excel_compiler.evaluate('Sheet1!D1'), 5)
-
-    excel_compiler_json.set_value('Sheet1!A1', 200)
-    assert -0.00331 == round(excel_compiler_json.evaluate('Sheet1!D1'), 5)
-
-    excel_compiler_yaml.set_value('Sheet1!A1', 200)
-    assert -0.00331 == round(excel_compiler_yaml.evaluate('Sheet1!D1'), 5)
 
     excel_compiler.set_value('Sheet1!A1', 200)
     assert -0.00331 == round(excel_compiler.evaluate('Sheet1!D1'), 5)

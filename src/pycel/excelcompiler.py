@@ -234,10 +234,8 @@ class ExcelCompiler:
             data = YAML().load(f)
 
         excel = _CompiledImporter(filename, data)
-        excel_compiler = cls(excel=excel, cycles=data.get('cycles', False))
+        excel_compiler = cls(excel=excel, cycles=data.pop('cycles', False))
         excel.compiler = excel_compiler
-        if 'cycles' in data:
-            del data['cycles']
 
         def add_line_numbers(cell_addr, line_number):
             formula = excel_compiler.cell_map[cell_addr].formula
@@ -341,10 +339,11 @@ class ExcelCompiler:
                     pickle.dump(excel_compiler, f)
 
     @classmethod
-    def from_file(cls, filename):
+    def from_file(cls, filename, plugins=None):
         """ Load the spreadsheet saved by `to_file`
 
         :param filename: filename to load from, can be xlsx_name
+        :param plugins: module paths for plugin lib functions
         """
 
         extension = cls._filename_has_extension(filename) or next(
@@ -365,6 +364,7 @@ class ExcelCompiler:
             excel_compiler = cls._from_text(
                 filename, is_json=extension == 'json')
 
+        excel_compiler._plugin_modules = plugins
         return excel_compiler
 
     def export_to_dot(self, filename=None):
