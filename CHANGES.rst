@@ -11,6 +11,7 @@ Changes
 
 * Add bitwise functions: bitand, bitor, bitxor, bitlshift and bitrshift (Thanks, bogdan-oprescu-nxp)
 * Add PV function (Thanks, estandiaa-marain)
+* Allow plugins to be passed to the deserialization function from_file
 
 Fixes
 -----
