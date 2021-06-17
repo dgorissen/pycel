@@ -88,12 +88,12 @@ The code currently uses a tokenizer of similar origin from the
 
 .. Image links
 
-.. |build-state| image:: https://travis-ci.com/stephenrauch/pycel.svg?branch=master
-  :target: https://travis-ci.com/stephenrauch/pycel
+.. |build-state| image:: https://travis-ci.com/dgorissen/pycel.svg?branch=master
+  :target: https://travis-ci.com/dgorissen/pycel
   :alt: Build Status
 
-.. |coverage| image:: https://codecov.io/gh/stephenrauch/pycel/branch/master/graph/badge.svg
-  :target: https://codecov.io/gh/stephenrauch/pycel/list/master
+.. |coverage| image:: https://codecov.io/gh/dgorissen/pycel/branch/master/graph/badge.svg
+  :target: https://codecov.io/gh/dgorissen/pycel/list/master
   :alt: Code Coverage
 
 .. |pypi| image:: https://img.shields.io/pypi/v/pycel.svg
@@ -107,14 +107,14 @@ The code currently uses a tokenizer of similar origin from the
   :target: https://requires.io/github/stephenrauch/pycel/requirements/?branch=master
   :alt: Requirements Status
 
-.. |repo-size| image:: https://img.shields.io/github/repo-size/stephenrauch/pycel.svg
-  :target: https://github.com/stephenrauch/pycel
+.. |repo-size| image:: https://img.shields.io/github/repo-size/dgorissen/pycel.svg
+  :target: https://github.com/dgorissen/pycel
   :alt: Repo Size
 
-.. |code-size| image:: https://img.shields.io/github/languages/code-size/stephenrauch/pycel.svg
-  :target: https://github.com/stephenrauch/pycel
+.. |code-size| image:: https://img.shields.io/github/languages/code-size/dgorissen/pycel.svg
+  :target: https://github.com/dgorissen/pycel
   :alt: Code Size
 
 .. |notebook| image:: https://mybinder.org/badge.svg
-  :target: https://mybinder.org/v2/gh/stephenrauch/pycel/master?filepath=notebooks%2Fexample.ipynb
+  :target: https://mybinder.org/v2/gh/dgorissen/pycel/master?filepath=notebooks%2Fexample.ipynb
   :alt: Open Notebook
