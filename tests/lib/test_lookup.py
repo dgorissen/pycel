@@ -11,6 +11,7 @@ import numpy as np
 import pytest
 
 import pycel.lib
+from pycel.excelcompiler import ExcelCompiler
 from pycel.excelutil import (
     AddressCell,
     AddressRange,
@@ -39,6 +40,12 @@ from pycel.lib.lookup import (
 
 # dynamic load the lib functions from excellib and apply metadata
 load_to_test_module(pycel.lib.lookup, __name__)
+
+
+def test_lookup_ws(fixture_xls_copy):
+    compiler = ExcelCompiler(fixture_xls_copy('lookup.xlsx'))
+    result = compiler.validate_calcs()
+    assert result == {}
 
 
 @pytest.mark.parametrize(
@@ -102,7 +109,7 @@ def test_hlookup(lkup, row_idx, result, approx):
         ((1, 1, 1, 1), NA_ERROR),
         ((1, ((1, 2), (3, 4)), 1, 1), 1),
         ((REF_ERROR, ((1, 2), (3, 4)), 1, 1), REF_ERROR),
-        ((1, REF_ERROR, 1, 1), REF_ERROR),
+        ((1, REF_ERROR, 1, 1), NA_ERROR),
         ((1, ((1, 2), (3, 4)), REF_ERROR, 1), REF_ERROR),
         ((1, ((1, 2), (3, 4)), 1, REF_ERROR), REF_ERROR),
         ((1, ((1, 2), (3, 4)), 0, 1), VALUE_ERROR),
@@ -275,7 +282,10 @@ def test_lookup(lookup_value, result1, result2):
 
 
 def test_lookup_error():
-    assert NA_ERROR == lookup(1, 1)
+    assert lookup(1, 1) == NA_ERROR
+    assert lookup(1, ((1,), (2,)), 0) == NA_ERROR
+    assert lookup(1, ((1, 2),), ((),)) == NA_ERROR
+    assert lookup(1, ((1,), (2,)), ((1, 2), (3, 4))) == NA_ERROR
 
 
 @pytest.mark.parametrize(

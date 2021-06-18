@@ -1,4 +1,4 @@
-1.0b26 (Unreleased)
+1.0b26 (2021-06-18)
 ===================
 
 Major Changes
@@ -29,12 +29,7 @@ Fixes
 * Fix issue in =IF() when comparing to numpy result
 * Fix MID() and REPLACE() and LEN() in a CSE context
 * Fix INDEX() error handling
-
-
-1.0b23-1.0b25
-=============
-
-*Skipped*
+* Fix error handling for lookup variants
 
 
 1.0b22 (2019-10-17)
