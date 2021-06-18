@@ -152,7 +152,7 @@ def column(ref):
     #   getpivotdata-function-8c083b99-a922-4ca0-af5e-3af55960761f
 
 
-@excel_helper(cse_params=0, bool_params=3, number_params=2)
+@excel_helper(cse_params=0, bool_params=3, number_params=2, err_str_params=(0, 2, 3))
 def hlookup(lookup_value, table_array, row_index_num, range_lookup=True):
     """ Horizontal Lookup
 
@@ -250,7 +250,7 @@ def indirect(ref_text, a1=True, sheet=''):
     return address
 
 
-@excel_helper(cse_params=0)
+@excel_helper(cse_params=0, err_str_params=0)
 def lookup(lookup_value, lookup_array, result_range=None):
     """
     There are two ways to use LOOKUP: Vector form and Array form
@@ -284,14 +284,20 @@ def lookup(lookup_value, lookup_array, result_range=None):
         match_idx = _match(lookup_value, lookup_array[0])
         result = lookup_array[-1]
 
-    if len(lookup_array) > 1 and len(lookup_array[0]) > 1:
-        # rectangular array
-        assert result_range is None
+    if result_range is not None:
+        # if not a vector return NA
+        if not list_like(result_range):
+            return NA_ERROR
+        rr_height = len(result_range)
+        rr_width = len(result_range[0])
 
-    elif result_range:
-        if len(result_range) > len(result_range[0]):
+        if rr_width < rr_height:
+            if rr_width != 1:
+                return NA_ERROR
             result = tuple(i[0] for i in result_range)
         else:
+            if rr_height != 1:
+                return NA_ERROR
             result = result_range[0]
 
     if isinstance(match_idx, int):
@@ -398,7 +404,7 @@ def row(ref):
     #   unique-function-c5ab87fd-30a3-4ce9-9d1a-40204fb85e1e
 
 
-@excel_helper(cse_params=0, bool_params=3, number_params=2)
+@excel_helper(cse_params=0, bool_params=3, number_params=2, err_str_params=(0, 2, 3))
 def vlookup(lookup_value, table_array, col_index_num, range_lookup=True):
     """ Vertical Lookup
 
