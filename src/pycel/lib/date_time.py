@@ -27,11 +27,12 @@ from pycel.excelutil import (
 )
 from pycel.lib.function_helpers import (
     excel_helper,
-    excel_math_func,
 )
 
 
 DATE_ZERO = dt.datetime(1899, 12, 30)
+DATE_MAX = dt.datetime(9999, 12, 31)  # last legal value
+DATE_MAX_INT = (DATE_MAX - DATE_ZERO).days + 1  # first illegal value
 SECOND = 1 / 24 / 60 / 60
 MICROSECOND = SECOND / 1E6
 LEAP_1900_SERIAL_NUMBER = 60  # magic number for non-existent 1900/02/29
@@ -131,6 +132,54 @@ def normalize_year(y, m, d):
             y, m, d = normalize_year(y, m, d)
 
     return y, m, d
+
+
+def yearfrac_basis_0(beg, end):
+    # https://github.com/dgorissen/pycel/issues/111
+    y1, m1, d1 = beg
+    y2, m2, d2 = end
+
+    # Change day-of-month for purposes of calculation.
+    if d1 == 31:
+        d1 = 30
+        if d2 == 31:
+            d2 = 30
+
+    elif d1 == 30 and d2 == 31:
+        # Note: If d2==31, it STAYS 31 if d1 < 30.
+        d2 = 30
+
+    # Special fixes for February:
+    elif m1 == 2 and d1 == calendar.monthrange(y1, m1)[1]:
+        d1 = 30
+        if m2 == 2 and d2 == calendar.monthrange(y2, m2)[1]:
+            d2 = 30
+
+    return ((d2 + m2 * 30 + y2 * 360) - (d1 + m1 * 30 + y1 * 360)) / 360
+
+
+def yearfrac_basis_1(beg, end):
+    # http://svn.finmath.net/finmath%20lib/trunk/src/main/java/net/
+    #   finmath/time/daycount/DayCountConvention_ACT_ACT_YEARFRAC.java
+    delta = date(*end) - date(*beg)
+
+    if delta <= 365:
+        if (is_leap_year(beg[0]) and date(*beg) <= date(beg[0], 2, 29) or
+            is_leap_year(end[0]) and date(*end) >= date(end[0], 2, 29) or
+                is_leap_year(beg[0]) and is_leap_year(end[0])):
+            denom = 366
+        else:
+            denom = 365
+    else:
+        year_range = range(beg[0], end[0] + 1)
+        nb = 0
+
+        for y in year_range:
+            nb += 366 if is_leap_year(y) else 365
+
+        denom = nb / len(year_range)
+
+    return delta / denom
 
 
 @excel_helper(number_params=-1)
@@ -367,36 +416,27 @@ def year(serial_number):
     return date_from_int(math.floor(serial_number))[0]
 
 
-@excel_math_func
+@excel_helper(cse_params=-1, err_str_params=2, number_params=None)
 def yearfrac(start_date, end_date, basis=0):
     # Excel reference: https://support.office.com/en-us/article/
     #   YEARFRAC-function-3844141e-c76d-4143-82b6-208454ddc6a8
-
-    def actual_nb_days_afb_alter(beg, end):
-        # http://svn.finmath.net/finmath%20lib/trunk/src/main/java/net/
-        #   finmath/time/daycount/DayCountConvention_ACT_ACT_YEARFRAC.java
-        delta = date(*end) - date(*beg)
-
-        if delta <= 365:
-            if (is_leap_year(beg[0]) and date(*beg) <= date(beg[0], 2, 29) or
-                is_leap_year(end[0]) and date(*end) >= date(end[0], 2, 29) or
-                    is_leap_year(beg[0]) and is_leap_year(end[0])):
-                denom = 366
-            else:
-                denom = 365
-        else:
-            year_range = range(beg[0], end[0] + 1)
-            nb = 0
-
-            for y in year_range:
-                nb += 366 if is_leap_year(y) else 365
-
-            denom = nb / len(year_range)
-
-        return delta / denom
-
-    if start_date < 0 or end_date < 0:
+    if isinstance(basis, (bool, str)):
+        return VALUE_ERROR
+    basis = 0 if basis is None else int(basis)
+    if basis not in {0, 1, 2, 3, 4}:
         return NUM_ERROR
+
+    if start_date in ERROR_CODES:
+        return start_date
+
+    if end_date in ERROR_CODES:
+        return end_date
+
+    try:
+        if not (0 <= start_date < DATE_MAX_INT and 0 <= end_date < DATE_MAX_INT):
+            return NUM_ERROR
+    except TypeError:
+        return VALUE_ERROR
 
     if start_date > end_date:  # switch dates if start_date > end_date
         start_date, end_date = end_date, start_date
@@ -405,14 +445,10 @@ def yearfrac(start_date, end_date, basis=0):
     y2, m2, d2 = date_from_int(end_date)
 
     if basis == 0:  # US 30/360
-        d1 = min(d1, 30)
-        d2 = max(d2, 30) if d1 == 30 else d2
-
-        day_count = 360 * (y2 - y1) + 30 * (m2 - m1) + (d2 - d1)
-        result = day_count / 360
+        result = yearfrac_basis_0((y1, m1, d1), (y2, m2, d2))
 
     elif basis == 1:  # Actual/actual
-        result = actual_nb_days_afb_alter((y1, m1, d1), (y2, m2, d2))
+        result = yearfrac_basis_1((y1, m1, d1), (y2, m2, d2))
 
     elif basis == 2:  # Actual/360
         result = (end_date - start_date) / 360
@@ -420,14 +456,11 @@ def yearfrac(start_date, end_date, basis=0):
     elif basis == 3:  # Actual/365
         result = (end_date - start_date) / 365
 
-    elif basis == 4:  # Eurobond 30/360
+    else:  # basis == 4:  # Eurobond 30/360
         d2 = min(d2, 30)
         d1 = min(d1, 30)
 
         day_count = 360 * (y2 - y1) + 30 * (m2 - m1) + (d2 - d1)
         result = day_count / 360
-
-    else:
-        return NUM_ERROR
 
     return result

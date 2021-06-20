@@ -1,3 +1,11 @@
+1.0b27 (unreleased)
+===================
+
+Fixes
+-----
+* Fix #111, Incorrect implementation of YEARFRAC
+
+
 1.0b26 (2021-06-18)
 ===================
 
@@ -11,7 +19,7 @@ Changes
 
 * Add bitwise functions: bitand, bitor, bitxor, bitlshift and bitrshift (Thanks, bogdan-oprescu-nxp)
 * Add PV function (Thanks, estandiaa-marain)
-* Allow plugins to be passed to the deserialization function from_file
+* Allow plugins to be passed to the deserialization function from_file (Thanks, nanaposo)
 
 Fixes
 -----
