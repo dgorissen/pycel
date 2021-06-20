@@ -311,6 +311,24 @@ class TestYearfrac:
         assert 61 / 366 == pytest.approx(
             yearfrac(date(2015, 12, 31), date(2016, 3, 1), 1))
 
+    @pytest.mark.parametrize(
+        'start, end, expected', (
+            (date(2007, 2, 28), date(2007, 3, 31), 0.086111111),
+            (date(2007, 2, 28), date(2007, 8, 31), 0.502777778),
+            (date(2008, 2, 29), date(2008, 3, 31), 0.086111111),
+            (date(2008, 2, 29), date(2008, 8, 31), 0.502777778),
+        )
+    )
+    def test_yearfrac_basis_0_feb_eom(self, start, end, expected):
+        assert expected == pytest.approx(yearfrac(start, end, 0))
+
+
+def test_yearfrac_ws(fixture_xls_copy):
+    excel_compiler = ExcelCompiler(fixture_xls_copy('yearfrac.xlsx'))
+
+    failed_cells = excel_compiler.validate_calcs()
+    assert failed_cells == {}
+
 
 def test_with_spreadsheet(fixture_xls_copy):
     excel_compiler = ExcelCompiler(fixture_xls_copy('date-time.xlsx'))
