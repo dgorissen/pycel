@@ -22,7 +22,7 @@ from openpyxl import load_workbook, Workbook
 from openpyxl.cell.cell import Cell, MergedCell
 from openpyxl.formula.translate import Translator
 
-from pycel.excelutil import AddressCell, AddressRange, flatten
+from pycel.excelutil import AddressCell, AddressRange, flatten, is_address
 
 ARRAY_FORMULA_NAME = '=CSE_INDEX'
 ARRAY_FORMULA_FORMAT = '{}(%s,%s,%s,%s,%s)'.format(ARRAY_FORMULA_NAME)
@@ -46,7 +46,7 @@ class ExcelWrapper:
         """"""
 
     def get_formula_from_range(self, address):
-        if not isinstance(address, (AddressRange, AddressCell)):
+        if not is_address(address):
             address = AddressRange(address)
         result = self.get_range(address)
         if isinstance(address, AddressCell):
@@ -57,7 +57,7 @@ class ExcelWrapper:
             ) for row in result.resolve_range)
 
     def get_formula_or_value(self, address):
-        if not isinstance(address, (AddressRange, AddressCell)):
+        if not is_address(address):
             address = AddressRange(address)
         result = self.get_range(address)
         if isinstance(address, AddressCell):
@@ -279,7 +279,7 @@ class ExcelOpxWrapper(ExcelWrapper):
         return value
 
     def get_range(self, address):
-        if not isinstance(address, (AddressRange, AddressCell)):
+        if not is_address(address):
             address = AddressRange(address)
 
         if address.has_sheet:
