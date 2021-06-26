@@ -11,6 +11,7 @@
 Python equivalents of text excel functions (lower, upper, etc.)
 """
 import re
+from datetime import datetime
 
 from pycel.excelutil import (
     coerce_to_string,
@@ -239,10 +240,137 @@ def right(text, num_chars=1):
     #   t-function-fb83aeec-45e7-4924-af95-53e073541228
 
 
-# def text(text):
+@excel_helper(cse_params=0)
+def text(text_value, value_format):
     # Excel reference: https://support.office.com/en-us/article/
     #   text-function-20d5ac4d-7b94-49fd-bb38-93d29371225c
+    def _get_datetime_format(excel_format):
+        fmt = excel_format.lower()
+        fmt.replace('a/p', 'am/pm', 1)
+        hour_fmt = '%H' if 'am/pm' not in fmt else '%I'
+        py_fmt = {
+            'dddd': '%A',
+            'ddd': '%a',
+            'dd': '%d',
+            ':mm': ':%M',
+            'mm:': '%M:',
+            ':mm:': ':%M:',
+            'mmmmm': '%b',
+            'mmmm': '%B',
+            'mmm': '%b',
+            'mm': '%m',
+            'am/pm': '%p',
+            'yyyy': '%Y',
+            'yyy': '%Y',
+            'yy': '%y',
+            'hh:': hour_fmt + ":",
+            'h:': hour_fmt + ":",
+            'hh': hour_fmt,
+            '[h]': hour_fmt,
+            'h': hour_fmt,
+            ':ss': ':%S',
+            'ss': '%S',
+            ':s': ':%S',
+            's': '%S',
+            'd': '%d',
+            'm': '%m',
+        }
 
+        replaced = set()
+        for fmt_excel, fmt_python in py_fmt.items():
+            if fmt_excel in fmt:
+                if fmt.find(fmt_excel) in replaced or fmt_python in fmt:
+                    continue
+                fmt = fmt.replace(fmt_excel, fmt_python, 1)
+                s = fmt.find(fmt_python)
+                replaced.update(set([x for x in range(s, s + len(fmt_python))]))
+        return fmt
+
+    date_format = _get_datetime_format(value_format)
+    if isinstance(text_value, str):
+        if any(x in text_value for x in ('-', '/', ':', 'am', 'pm')):
+            date_value = None
+            time_value = None
+            tokens = text_value.split(" ")
+            add_locale = ''
+            hour_fmt = 'H'
+            if 'am' in tokens or 'pm' in tokens:
+                add_locale = ' %p'
+                hour_fmt = 'I'
+
+            python_time_formats = set()
+            adds = ('', '-')
+            for h in adds:
+                for m in adds:
+                    for s in adds:
+                        python_time_formats.add(
+                            f'%{h}{hour_fmt}:%{m}M:%{s}S{add_locale}'
+                        )
+
+            python_time_formats.update(
+                set([fmt[:fmt.index('M:') + 1:] + add_locale
+                     for fmt in python_time_formats])
+            )
+
+            for token in tokens:
+                if '/' in token or '-' in token:
+                    for python_fmt in (
+                            '%d/%m/%y',
+                            '%d/%m/%Y',
+                            '%m/%d/%y',
+                            '%m/%d/%Y',
+                            '%Y-%m-%d'
+                    ):
+                        try:
+                            date_value = datetime.strptime(token, python_fmt)
+                            break
+                        except ValueError:
+                            continue
+                elif ':' in token:
+                    if 'am' in tokens:
+                        token += ' am'
+                    elif 'pm' in tokens:
+                        token += ' pm'
+                    for python_fmt in python_time_formats:
+                        try:
+                            time_value = datetime.strptime(token, python_fmt)
+                            break
+                        except ValueError:
+                            continue
+            if isinstance(time_value, datetime):
+                if isinstance(date_value, datetime):
+                    date_value = datetime.combine(date_value, time_value.time())
+                else:
+                    date_value = time_value
+
+            if isinstance(date_value, datetime):
+                return date_value.strftime(date_format)
+
+        is_pcnt = '%' in value_format
+
+        if '#' in value_format or '0' in value_format or is_pcnt:
+            if "#,#" not in value_format and "0,0" not in value_format:
+                thousand_sep = ""
+            else:
+                thousand_sep = ","
+            decimals = 0
+            dec_sep = value_format.find('.')
+            if dec_sep >= 0:
+                decimals = value_format[dec_sep::].count('0')
+            num_v = float("".join(
+                [x for x in text_value if x.isdecimal() or x == '.']
+            ))
+            if is_pcnt:
+                num_v *= 100
+            num_v = round(num_v, decimals)
+            if decimals == 0:
+                num_v = int(num_v)
+            res = f'{num_v:{thousand_sep}.{decimals}f}{"%" if is_pcnt else ""}'
+            if not value_format[0] in ('#', '.', ',', '0'):
+                res = value_format[0] + res
+            return res
+
+    return str(text_value)
 
 # def textjoin(text):
     # Excel reference: https://support.office.com/en-us/article/
