@@ -25,12 +25,22 @@ from setuptools import find_packages, setup
 exec(open('src/pycel/version.py').read())
 
 
-# Create long description from README.rst and docs/source/CHANGES.rst.
+# Create long description from README.rst and CHANGES.rst.
 # PYPI page will contain complete changelog.
-long_description = u'{}\n\n\nChange Log\n==========\n\n\n{}'.format(
-    open('README.rst', 'r', encoding='utf-8').read(),
-    open('CHANGES.rst', 'r', encoding='utf-8').read()
-)
+def changes():
+    """get changes.rst and remove the keep-a-changelog header"""
+    import itertools as it
+    import re
+
+    chages_iter = iter(open('CHANGES.rst', 'r', encoding='utf-8').readlines())
+    first_change_re = re.compile(r'^\[\d')
+    tuple(it.takewhile(lambda line: not first_change_re.match(line), chages_iter))
+    next(chages_iter)
+    return chages_iter
+
+
+long_description = u'{}\n\nChange Log\n==========\n\n{}'.format(
+    open('README.rst', 'r', encoding='utf-8').read(), ''.join(changes()))
 
 with open('test-requirements.txt') as f:
     tests_require = f.readlines()
@@ -58,7 +68,7 @@ setup(
         'python-dateutil',
         'ruamel.yaml',
     ],
-    python_requires='>=3.5',
+    python_requires='>=3.6',
     author='Dirk Gorissen, Stephen Rauch',
     author_email='dgorissen@gmail.com',
     maintainer='Stephen Rauch',

@@ -1326,8 +1326,7 @@ def build_operator_operand_fixup(capture_error_state):
             right_op = coerce_to_number(right_op, convert_all=True)
 
             if not (is_number(left_op) and is_number(right_op) or
-                    isinstance(left_op, (AddressCell, AddressRange)) and
-                    isinstance(right_op, (AddressCell, AddressRange))):
+                    is_address(left_op) and is_address(right_op)):
                 if op != 'USub':
                     capture_error_state(
                         True, 'Values: {} {} {}'.format(left_op, op, right_op))
