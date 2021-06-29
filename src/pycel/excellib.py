@@ -249,65 +249,6 @@ def floor_precise(number, significance=1):
     return significance * math.floor(number / significance)
 
 
-@excel_helper(cse_params=0, err_str_params=None)
-def iserr(value):
-    # Excel reference: https://support.office.com/en-us/article/
-    #   is-functions-0f2d7971-6019-40a0-a171-f2d869135665
-    # Value refers to any error value except #N/A.
-    return isinstance(value, str) and value in ERROR_CODES and value != NA_ERROR
-
-
-@excel_helper(cse_params=0, err_str_params=None)
-def iserror(value):
-    # Excel reference: https://support.office.com/en-us/article/
-    #   is-functions-0f2d7971-6019-40a0-a171-f2d869135665
-    # Value refers to any error value:
-    #   (#N/A, #VALUE!, #REF!, #DIV/0!, #NUM!, #NAME?, or #NULL!).
-    return isinstance(value, str) and value in ERROR_CODES or (
-        isinstance(value, tuple))
-
-
-@excel_helper(cse_params=0)
-def iseven(value):
-    # Excel reference: https://support.office.com/en-us/article/
-    #   iseven-function-aa15929a-d77b-4fbb-92f4-2f479af55356
-    result = isodd(value)
-    return not result if isinstance(result, bool) else result
-
-
-@excel_helper(cse_params=0, err_str_params=None)
-def istext(arg):
-    # Excel reference: https://support.office.com/en-us/article/
-    #   is-functions-0f2d7971-6019-40a0-a171-f2d869135665
-    return isinstance(arg, str) and arg not in ERROR_CODES
-
-
-@excel_helper(cse_params=0, err_str_params=None)
-def isna(value):
-    # Excel reference: https://support.office.com/en-us/article/
-    #   is-functions-0f2d7971-6019-40a0-a171-f2d869135665
-    return value == NA_ERROR or isinstance(value, tuple)
-
-
-@excel_helper(cse_params=0)
-def isodd(value):
-    # Excel reference: https://support.office.com/en-us/article/
-    #   is-functions-0f2d7971-6019-40a0-a171-f2d869135665
-    if isinstance(value, bool):
-        return VALUE_ERROR
-    value = coerce_to_number(value)
-    if isinstance(value, str):
-        return VALUE_ERROR
-    return bool(math.floor(abs(value)) % 2)
-
-
-@excel_helper(cse_params=0, err_str_params=None)
-def isnumber(value):
-    # Excel reference: https://support.office.com/en-us/article/
-    #   is-functions-0f2d7971-6019-40a0-a171-f2d869135665
-    return isinstance(value, (int, float))
-
-
 @excel_helper()
 def large(array, k):
     # Excel reference: https://support.office.com/en-us/article/

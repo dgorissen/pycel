@@ -31,13 +31,6 @@ from pycel.excellib import (
     floor,
     floor_math,
     floor_precise,
-    iserr,
-    iserror,
-    iseven,
-    isna,
-    isnumber,
-    isodd,
-    istext,
     # ::TODO:: finish test cases for remainder of functions
     # linest,
     large,
@@ -370,29 +363,27 @@ class TestVariousIfsSizing:
 
 
 @pytest.mark.parametrize(
-    '_iseven, _isodd, _sign, _odd, _even, value', (
-        (True, False, -1, -101, -102, -100.1),
-        (True, False, -1, -101, -102, '-100.1'),
-        (True, False, -1, -101, -100, -100),
-        (False, True, -1, -101, -100, -99.9),
-        (True, False, 0, 1, 0, 0),
-        (False, True, 1, 1, 2, 1),
-        (True, False, 1, 1, 2, 0.1),
-        (True, False, 1, 1, 2, '0.1'),
-        (True, False, 1, 3, 2, '2'),
-        (True, False, 1, 3, 4, 2.9),
-        (False, True, 1, 3, 4, 3),
-        (False, True, 1, 5, 4, 3.1),
-        (VALUE_ERROR, VALUE_ERROR, 1, 1, 2, True),
-        (VALUE_ERROR, VALUE_ERROR, 0, 1, 0, False),
-        (VALUE_ERROR, ) * 5 + ('xyzzy', ),
-        (VALUE_ERROR, ) * 6,
-        (DIV0, ) * 6,
+    '_sign, _odd, _even, value', (
+        (-1, -101, -102, -100.1),
+        (-1, -101, -102, '-100.1'),
+        (-1, -101, -100, -100),
+        (-1, -101, -100, -99.9),
+        (0, 1, 0, 0),
+        (1, 1, 2, 1),
+        (1, 1, 2, 0.1),
+        (1, 1, 2, '0.1'),
+        (1, 3, 2, '2'),
+        (1, 3, 4, 2.9),
+        (1, 3, 4, 3),
+        (1, 5, 4, 3.1),
+        (1, 1, 2, True),
+        (0, 1, 0, False),
+        (VALUE_ERROR, ) * 3 + ('xyzzy', ),
+        (VALUE_ERROR, ) * 4,
+        (DIV0, ) * 4,
     )
 )
-def test_even_odd_sign(_iseven, _isodd, _sign, _odd, _even, value):
-    assert iseven(value) == _iseven
-    assert isodd(value) == _isodd
+def test_even_odd_sign(_sign, _odd, _even, value):
     assert sign(value) == _sign
     assert odd(value) == _odd
     assert even(value) == _even
@@ -436,87 +427,6 @@ def test_fact(result, number):
 )
 def test_factdouble(result, number):
     assert factdouble(number) == result
-
-
-@pytest.mark.parametrize(
-    'value, expected', (
-        (0, False),
-        (1, False),
-        (1.0, False),
-        (-1, False),
-        ('a', False),
-        (((1, NUM_ERROR), ('2', DIV0)), ((False, True), (False, True))),
-        (NA_ERROR, False),
-        (NUM_ERROR, True),
-        (REF_ERROR, True),
-    )
-)
-def test_iserr(value, expected):
-    assert iserr(value) == expected
-
-
-@pytest.mark.parametrize(
-    'value, expected', (
-        (0, False),
-        (1, False),
-        (1.0, False),
-        (-1, False),
-        ('a', False),
-        (((1, NA_ERROR), ('2', DIV0)), ((False, True), (False, True))),
-        (NUM_ERROR, True),
-        (REF_ERROR, True),
-    )
-)
-def test_iserror(value, expected):
-    assert iserror(value) == expected
-
-
-@pytest.mark.parametrize(
-    'value, expected', (
-        (0, False),
-        (1, False),
-        (1.0, False),
-        (-1, False),
-        ('a', False),
-        (((1, NA_ERROR), ('2', 3)), ((False, True), (False, False))),
-        (NA_ERROR, True),
-        (VALUE_ERROR, False),
-    )
-)
-def test_isna(value, expected):
-    assert isna(value) == expected
-
-
-@pytest.mark.parametrize(
-    'value, expected', (
-        (0, True),
-        (1, True),
-        (1.0, True),
-        (-1, True),
-        ('a', False),
-        (((1, NA_ERROR), ('2', 3)), ((True, False), (False, True))),
-        (NA_ERROR, False),
-        (VALUE_ERROR, False),
-    )
-)
-def test_isnumber(value, expected):
-    assert isnumber(value) == expected
-
-
-@pytest.mark.parametrize(
-    'value, expected', (
-        ('a', True),
-        (1, False),
-        (1.0, False),
-        (None, False),
-        (DIV0, False),
-        (((1, NA_ERROR), ('2', 3)), ((False, False), (True, False))),
-        (NA_ERROR, False),
-        (VALUE_ERROR, False),
-    )
-)
-def test_istext(value, expected):
-    assert istext(value) == expected
 
 
 @pytest.mark.parametrize(
