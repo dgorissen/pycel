@@ -36,9 +36,11 @@ from pycel.lib.function_helpers import excel_helper
 #     #   info-function-725f259a-0e4b-49b3-8b52-58815c69acae
 
 
-# def isblank(value):
-#     # Excel reference: https://support.office.com/en-us/article/
-#     #   is-functions-0f2d7971-6019-40a0-a171-f2d869135665
+@excel_helper(cse_params=0, err_str_params=None)
+def isblank(value):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   is-functions-0f2d7971-6019-40a0-a171-f2d869135665
+    return value is None
 
 
 @excel_helper(cse_params=0, err_str_params=None)
@@ -93,7 +95,7 @@ def isna(value):
 def isnumber(value):
     # Excel reference: https://support.office.com/en-us/article/
     #   is-functions-0f2d7971-6019-40a0-a171-f2d869135665
-    return isinstance(value, (int, float))
+    return not isinstance(value, bool) and isinstance(value, (int, float))
 
 
 @excel_helper(cse_params=0)
@@ -105,6 +107,8 @@ def isodd(value):
     value = coerce_to_number(value)
     if isinstance(value, str):
         return VALUE_ERROR
+    if value is None:
+        value = 0
     return bool(math.floor(abs(value)) % 2)
 
 

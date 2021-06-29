@@ -556,6 +556,7 @@ class ExcelFormula:
         'pycel.excellib',
         'pycel.lib.date_time',
         'pycel.lib.engineering',
+        'pycel.lib.information',
         'pycel.lib.logical',
         'pycel.lib.lookup',
         'pycel.lib.text',

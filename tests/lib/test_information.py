@@ -10,6 +10,7 @@
 import pytest
 
 import pycel.excellib
+from pycel.excelcompiler import ExcelCompiler
 from pycel.excelutil import (
     DIV0,
     NA_ERROR,
@@ -19,6 +20,7 @@ from pycel.excelutil import (
 )
 from pycel.lib.function_helpers import load_to_test_module
 from pycel.lib.information import (
+    isblank,
     iserr,
     iserror,
     iseven,
@@ -31,6 +33,28 @@ from pycel.lib.information import (
 
 # dynamic load the lib functions from excellib and apply metadata
 load_to_test_module(pycel.lib.information, __name__)
+
+
+def test_information_ws(fixture_xls_copy):
+    compiler = ExcelCompiler(fixture_xls_copy('information.xlsx'))
+    result = compiler.validate_calcs()
+    assert result == {}
+
+
+@pytest.mark.parametrize(
+    'value, expected', (
+        (None, True),
+        (0, False),
+        (1, False),
+        (1.0, False),
+        (-1, False),
+        ('a', False),
+        (True, False),
+        (False, False),
+    )
+)
+def test_isblank(value, expected):
+    assert isblank(value) == expected
 
 
 @pytest.mark.parametrize(
@@ -64,6 +88,7 @@ def test_iserr(value, expected):
         (True, False, 2.9),
         (False, True, 3),
         (False, True, 3.1),
+        (True, False, None),
         (VALUE_ERROR, VALUE_ERROR, True),
         (VALUE_ERROR, VALUE_ERROR, False),
         (VALUE_ERROR, ) * 2 + ('xyzzy', ),
@@ -115,6 +140,8 @@ def test_isna(value, expected):
         (1.0, True),
         (-1, True),
         ('a', False),
+        (False, False),
+        (True, False),
         (((1, NA_ERROR), ('2', 3)), ((True, False), (False, True))),
         (NA_ERROR, False),
         (VALUE_ERROR, False),
