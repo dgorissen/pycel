@@ -175,6 +175,7 @@ def bitxor(op_x, op_y):
         return NUM_ERROR
     return op_x ^ op_y
 
+
 # def complex(value):
 #     # Excel reference: https://support.office.com/en-us/article/
 #     #   complex-function-f0b8f3a9-51cc-4d6d-86fb-3a9362fa4128
