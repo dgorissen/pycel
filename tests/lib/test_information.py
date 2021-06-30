@@ -24,10 +24,14 @@ from pycel.lib.information import (
     iserr,
     iserror,
     iseven,
+    islogical,
     isna,
+    isnontext,
     isnumber,
     isodd,
     istext,
+    n,
+    na,
 )
 
 
@@ -119,6 +123,24 @@ def test_iserror(value, expected):
 
 @pytest.mark.parametrize(
     'value, expected', (
+        (False, True),
+        (True, True),
+        (0, False),
+        (1, False),
+        (1.0, False),
+        (-1, False),
+        ('a', False),
+        (((1, NA_ERROR), ('2', True)), ((False, False), (False, True))),
+        (NA_ERROR, False),
+        (VALUE_ERROR, False),
+    )
+)
+def test_islogical(value, expected):
+    assert islogical(value) == expected
+
+
+@pytest.mark.parametrize(
+    'value, expected', (
         (0, False),
         (1, False),
         (1.0, False),
@@ -165,3 +187,27 @@ def test_isnumber(value, expected):
 )
 def test_istext(value, expected):
     assert istext(value) == expected
+    assert isnontext(value) != expected
+
+
+@pytest.mark.parametrize(
+    'value, expected', (
+        (False, 0),
+        (True, 1),
+        ('a', 0),
+        (1, 1),
+        (1.0, 1.0),
+        (-1.0, -1.0),
+        (None, None),
+        (DIV0, DIV0),
+        (((1, NA_ERROR), ('2', 3)), ((1, NA_ERROR), (0, 3))),
+        (NA_ERROR, NA_ERROR),
+        (VALUE_ERROR, VALUE_ERROR),
+    )
+)
+def test_n(value, expected):
+    assert n(value) == expected
+
+
+def test_na():
+    assert na() == NA_ERROR

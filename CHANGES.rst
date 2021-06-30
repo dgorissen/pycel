@@ -30,6 +30,11 @@ and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0
 Added
 -----
 
+* Added ISBLANK() function
+* Added ISLOGICAL() function
+* Added ISNONTEXT() function
+* Added N() function
+* Added NA() function
 * Added TEXT() function  (Thanks, Luckykarter)
 
 Fixed

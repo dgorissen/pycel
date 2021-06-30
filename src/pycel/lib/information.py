@@ -74,9 +74,11 @@ def iseven(value):
 #     #   isformula-function-e4d1355f-7121-4ef2-801e-3839bfd6b1e5
 
 
-# def islogical(value):
-#     # Excel reference: https://support.office.com/en-us/article/
-#     #   is-functions-0f2d7971-6019-40a0-a171-f2d869135665
+@excel_helper(cse_params=0, err_str_params=None)
+def islogical(value):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   is-functions-0f2d7971-6019-40a0-a171-f2d869135665
+    return isinstance(value, bool)
 
 
 @excel_helper(cse_params=0, err_str_params=None)
@@ -86,9 +88,11 @@ def isna(value):
     return value == NA_ERROR or isinstance(value, tuple)
 
 
-# def isnontext(value):
-#     # Excel reference: https://support.office.com/en-us/article/
-#     #   is-functions-0f2d7971-6019-40a0-a171-f2d869135665
+@excel_helper(cse_params=0, err_str_params=None)
+def isnontext(value):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   is-functions-0f2d7971-6019-40a0-a171-f2d869135665
+    return not isinstance(value, str) or value in ERROR_CODES
 
 
 @excel_helper(cse_params=0, err_str_params=None)
@@ -124,14 +128,21 @@ def istext(arg):
     return isinstance(arg, str) and arg not in ERROR_CODES
 
 
-# def n(value):
-#     # Excel reference: https://support.office.com/en-us/article/
-#     #   n-function-a624cad1-3635-4208-b54a-29733d1278c9
+@excel_helper(cse_params=0, err_str_params=0)
+def n(value):
+    # Excel reference: https://support.office.com/en-us/article/
+    #   n-function-a624cad1-3635-4208-b54a-29733d1278c9
+    if isinstance(value, str):
+        return 0
+    if isinstance(value, bool):
+        return int(value)
+    return value
 
 
-# def na(value):
-#     # Excel reference: https://support.office.com/en-us/article/
-#     #   na-function-5469c2d1-a90c-4fb5-9bbc-64bd9bb6b47c
+def na():
+    # Excel reference: https://support.office.com/en-us/article/
+    #   na-function-5469c2d1-a90c-4fb5-9bbc-64bd9bb6b47c
+    return NA_ERROR
 
 
 # def sheet(value):
