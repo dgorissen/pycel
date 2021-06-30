@@ -114,9 +114,14 @@ def _match(lookup_value, lookup_array, match_type=1):
     #   areas-function-8392ba32-7a41-43b3-96b0-3695d2ec6152
 
 
-# def choose(value):
+@excel_helper(cse_params=0, number_params=0, err_str_params=0)
+def choose(index, *args):
     # Excel reference: https://support.office.com/en-us/article/
     #   choose-function-fc5c184f-cb62-4ec7-a46e-38653b98f5bc
+    index = int(index)
+    if index < 1 or len(args) < index or not args:
+        return VALUE_ERROR
+    return args[index - 1]
 
 
 @excel_helper(ref_params=0)
