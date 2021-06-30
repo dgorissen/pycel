@@ -10,6 +10,7 @@
 import pytest
 
 import pycel.excellib
+from pycel.excelcompiler import ExcelCompiler
 from pycel.excelutil import (
     DIV0,
     NA_ERROR,
@@ -26,6 +27,7 @@ from pycel.lib.text import (
     mid,
     replace,
     right,
+    substitute,
     text,
     trim,
     upper,
@@ -35,6 +37,12 @@ from pycel.lib.text import (
 
 # dynamic load the lib functions from excellib and apply metadata
 load_to_test_module(pycel.lib.text, __name__)
+
+
+def test_text_ws(fixture_xls_copy):
+    compiler = ExcelCompiler(fixture_xls_copy('text.xlsx'))
+    result = compiler.validate_calcs()
+    assert result == {}
 
 
 @pytest.mark.parametrize(
@@ -88,6 +96,9 @@ def test_find(to_find, find_in, result):
 
         (1.234, 3, '1.2'),
 
+        (True, 3, 'TRU'),
+        (False, 2, 'FA'),
+
         ('abcd', -1, VALUE_ERROR),
         ('abcd', 'x', VALUE_ERROR),
         (DIV0, 1, DIV0),
@@ -113,35 +124,37 @@ def test_lower(text, expected):
     assert lower(text) == expected
 
 
-class TestMid:
+@pytest.mark.parametrize(
+    'text, start, count, expected', (
+        (VALUE_ERROR, 2, 2, VALUE_ERROR),
+        ('Romain', VALUE_ERROR, 2, VALUE_ERROR),
+        ('Romain', 2, VALUE_ERROR, VALUE_ERROR),
+        (DIV0, 2, 2, DIV0),
+        ('Romain', DIV0, 2, DIV0),
+        ('Romain', 2, DIV0, DIV0),
 
-    def test_invalid_parameters(self):
-        assert mid(VALUE_ERROR, 2, 2) == VALUE_ERROR
-        assert mid('Romain', VALUE_ERROR, 2) == VALUE_ERROR
-        assert mid('Romain', 2, VALUE_ERROR) == VALUE_ERROR
-        assert mid(DIV0, 2, 2) == DIV0
-        assert mid('Romain', DIV0, 2) == DIV0
-        assert mid('Romain', 2, DIV0) == DIV0
+        ('Romain', 'x', 2, VALUE_ERROR),
+        ('Romain', 2, 'x', VALUE_ERROR),
 
-        assert mid('Romain', 'x', 2) == VALUE_ERROR
-        assert mid('Romain', 2, 'x') == VALUE_ERROR
+        ('Romain', 1, 2.1, 'Ro'),
 
-    def test_num_chars_must_be_integer(self):
-        assert 'Ro' == mid('Romain', 1, 2.1)
+        ('Romain', 0, 3, VALUE_ERROR),
+        ('Romain', 1, -1, VALUE_ERROR),
 
-    def test_start_num_must_be_superior_or_equal_to_1(self):
-        assert VALUE_ERROR == mid('Romain', 0, 3)
+        (1234, 2, 2, '23'),
+        (12.34, 2, 2, '2.'),
 
-    def test_num_chars_must_be_positive(self):
-        assert VALUE_ERROR == mid('Romain', 1, -1)
+        (True, 2, 2, 'RU'),
+        (False, 2, 2, 'AL'),
+        (None, 2, 2, ''),
 
-    def test_from_not_str(self):
-        assert '23' == mid(1234, 2, 2)
-
-    def test_mid(self):
-        assert 'omain' == mid('Romain', 2, 9)
-        assert 'om' == mid('Romain', 2.1, 2)
-        assert 'om' == mid('Romain', 2, 2.1)
+        ('Romain', 2, 9, 'omain'),
+        ('Romain', 2.1, 2, 'om'),
+        ('Romain', 2, 2.1, 'om'),
+    )
+)
+def test_mid(text, start, count, expected):
+    assert mid(text, start, count) == expected
 
 
 @pytest.mark.parametrize(
@@ -203,6 +216,9 @@ def test_replace(expected, old_text, start_num, num_chars, new_text):
 
         (1234.1, 2, '.1'),
 
+        (True, 3, 'RUE'),
+        (False, 2, 'SE'),
+
         ('abcd', -1, VALUE_ERROR),
         ('abcd', 'x', VALUE_ERROR),
         (VALUE_ERROR, 1, VALUE_ERROR),
@@ -211,6 +227,48 @@ def test_replace(expected, old_text, start_num, num_chars, new_text):
 )
 def test_right(text, num_chars, expected):
     assert right(text, num_chars) == expected
+
+
+@pytest.mark.parametrize(
+    'text, old_text, new_text, instance_num, expected', (
+        ('abcdef', 'cd', '', None, 'abef'),
+        ('abcdef', 'cd', 'X', None, 'abXef'),
+        ('abcdef', 'cd', 'XY', None, 'abXYef'),
+        ('abcdef', 'cd', '', True, VALUE_ERROR),
+        ('abcdef', 'cd', '', 'PLUGH', VALUE_ERROR),
+
+        ('abcdabcdab', 'a', 'X', 1, 'Xbcdabcdab'),
+        ('abcdabcdab', 'a', 'X', 2, 'abcdXbcdab'),
+        ('abcdabcdab', 'a', 'X', 3, 'abcdabcdXb'),
+        ('abcdabcdab', 'ab', 'X', None, 'XcdXcdX'),
+        ('abcdabcdab', 'ab', 'X', 0, VALUE_ERROR),
+        ('abcdabcdab', 'ab', 'X', 1, 'Xcdabcdab'),
+        ('abcdabcdab', 'ab', 'X', 2, 'abcdXcdab'),
+        ('abcdabcdab', 'ab', 'X', 3, 'abcdabcdX'),
+        ('abcdabcdab', 'ab', 'X', 4, 'abcdabcdab'),
+        ('abcdabcdab', 'abc', 'X', 1, 'Xdabcdab'),
+        ('abcdabcdab', 'abc', 'X', 2, 'abcdXdab'),
+
+        ('abcdabcdab', 'cd', 'X', None, 'abXabXab'),
+        ('abcdabcdab', 'cd', 'X', -1, VALUE_ERROR),
+        ('abcdabcdab', 'cd', 'X', 0, VALUE_ERROR),
+        ('abcdabcdab', 'cd', 'X', 1, 'abXabcdab'),
+        ('abcdabcdab', 'cd', 'X', 2, 'abcdabXab'),
+        ('abcdabcdab', 'cd', 'X', 3, 'abcdabcdab'),
+
+        (VALUE_ERROR, 'ab', 'X', None, VALUE_ERROR),
+        ('abcdabcdab', DIV0, 'X', None, DIV0),
+        ('abcdabcdab', 'ab', NAME_ERROR, None, NAME_ERROR),
+        ('abcdabcdab', 'ab', 'X', NA_ERROR, NA_ERROR),
+
+        (True, 'R', '', None, 'TUE'),
+        (False, 'AL', '^', None, 'F^SE'),
+        (False, 'AL', 1.2, None, 'F1.2SE'),
+        (321.245, 21, 1.2, None, '31.2.245'),
+    )
+)
+def test_substitute(text, old_text, new_text, instance_num, expected):
+    assert substitute(text, old_text, new_text, instance_num) == expected
 
 
 @pytest.mark.parametrize(
@@ -330,6 +388,7 @@ def test_upper(text, expected):
         ('3.0', 3),
         ('.01', 0.01),
         ('1E5', 100000),
+        (None, 0),
         ('X', VALUE_ERROR),
         ('`1', VALUE_ERROR),
         (False, VALUE_ERROR),

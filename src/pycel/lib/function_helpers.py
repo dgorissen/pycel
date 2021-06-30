@@ -16,6 +16,7 @@ from pycel.excelutil import (
     AddressCell,
     AddressRange,
     coerce_to_number,
+    coerce_to_string,
     ERROR_CODES,
     flatten,
     is_number,
@@ -31,8 +32,12 @@ ALL_ARG_INDICES = frozenset(range(512))
 star_args = set()
 
 
-def excel_helper(cse_params=None, bool_params=None,
-                 err_str_params=-1, number_params=None, ref_params=None):
+def excel_helper(cse_params=None,
+                 bool_params=None,
+                 err_str_params=-1,
+                 number_params=None,
+                 str_params=None,
+                 ref_params=None):
     """ Decorator to annotate a function with info on how to process params
 
     All parameters are encoded as:
@@ -48,6 +53,7 @@ def excel_helper(cse_params=None, bool_params=None,
     :param bool_params: params to coerce to bools
     :param err_str_params: params to check for error strings
     :param number_params: params to coerce to numbers
+    :param str_params: params to coerce to strings
     :param ref_params: params which can remain as references
     :return: decorator
     """
@@ -61,6 +67,7 @@ def excel_helper(cse_params=None, bool_params=None,
             bool_params=bool_params,
             err_str_params=err_str_params,
             number_params=number_params,
+            str_params=str_params,
             ref_params=ref_params,
         ))
         return f
@@ -107,6 +114,11 @@ def apply_meta(f, meta=None, name_space=None):
         if number_params is not None:
             f = nums_wrapper(
                 f, all_params if number_params == -1 else number_params)
+
+        # process str parameters
+        str_params = meta['str_params']
+        if str_params is not None:
+            f = strs_wrapper(f, all_params if str_params == -1 else str_params)
 
         # process CSE parameters
         cse_params = meta['cse_params']
@@ -212,6 +224,33 @@ def nums_wrapper(f, param_indices=None):
             if "math domain error" in str(exc):
                 return NUM_ERROR
             raise  # pragma: no cover
+
+    return wrapper
+
+
+def strs_wrapper(f, param_indices=None):
+    """wrapper for functions that take strings, does excel style conversions
+
+    :param f: function to wrap
+    :param param_indices: params to coerce to strings.
+        int: param number to convert
+        tuple: params to convert
+        None: convert all params
+    :return: wrapped function
+    """
+    param_indices = convert_params_indices(f, param_indices)
+
+    @functools.wraps(f)
+    def wrapper(*args):
+        new_args = tuple(coerce_to_string(a)
+                         if i in param_indices else a
+                         for i, a in enumerate(args))
+        error = next((a for i, a in enumerate(new_args)
+                      if i in param_indices and a in ERROR_CODES), None)
+        if error:
+            return error
+
+        return f(*new_args)
 
     return wrapper
 

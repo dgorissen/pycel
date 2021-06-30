@@ -35,13 +35,15 @@ Added
 * Added ISNONTEXT() function
 * Added N() function
 * Added NA() function
+* Added SUBSTITUTE() function
 * Added TEXT() function  (Thanks, Luckykarter)
+* Added str_params to excel_helper()
 
 Fixed
 -----
 
 * Fix #111, Incorrect implementation of YEARFRAC
-
+* Improve error and number handling in some Text functions
 
 [1.0b26] - 2021-06-18
 =====================
