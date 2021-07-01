@@ -401,20 +401,19 @@ class FunctionNode(ASTNode):
 
     # dict of excel equivalent functions
     func_map = {
-        "abs": "x_abs",
-        "and": "x_and",
-        "atan2": "xatan2",
-        "gammaln": "lgamma",
-        "if": "x_if",
-        "int": "x_int",
-        "len": "x_len",
-        "max": "xmax",
-        "not": "x_not",
-        "or": "x_or",
-        "min": "xmin",
-        "round": "x_round",
-        "sum": "xsum",
-        "xor": "x_xor",
+        "abs": "abs_",
+        "and": "and_",
+        "atan2": "atan2_",
+        "if": "if_",
+        "int": "int_",
+        "len": "len_",
+        "max": "max_",
+        "not": "not_",
+        "or": "or_",
+        "min": "min_",
+        "round": "round_",
+        "sum": "sum_",
+        "xor": "xor_",
     }
 
     def __init__(self, *args):
@@ -519,12 +518,12 @@ class FunctionNode(ASTNode):
         1: 'average',
         2: 'count',
         3: 'counta',
-        4: 'xmax',
-        5: 'xmin',
+        4: 'max_',
+        5: 'min_',
         6: 'product',
         7: 'stdev',
         8: 'stdevp',
-        9: 'xsum',
+        9: 'sum_',
         10: 'var',
         11: 'varp',
     }
@@ -559,6 +558,7 @@ class ExcelFormula:
         'pycel.lib.information',
         'pycel.lib.logical',
         'pycel.lib.lookup',
+        'pycel.lib.stats',
         'pycel.lib.text',
         'math',
     )

@@ -19,13 +19,13 @@ from pycel.excelutil import (
 from pycel.lib.function_helpers import load_to_test_module
 from pycel.lib.logical import (
     _clean_logicals,
+    and_,
+    if_,
     iferror,
     ifs,
-    x_and,
-    x_if,
-    x_not,
-    x_or,
-    x_xor,
+    not_,
+    or_,
+    xor_,
 )
 
 
@@ -65,8 +65,8 @@ def test_clean_logicals(test_value, result):
         (NA_ERROR, (NA_ERROR, 1),),
     )
 )
-def test_x_and(result, test_value):
-    assert x_and(*test_value) == result
+def test_and_(result, test_value):
+    assert and_(*test_value) == result
 
 
 @pytest.mark.parametrize(
@@ -117,8 +117,8 @@ def test_iferror(test_value, error_value, result):
         (1, ((1, 2), (3, 4)), ((5, 6), (7, 8)), ((1, 2), (3, 4))),
     )
 )
-def test_x_if(test_value, true_value, false_value, result):
-    assert x_if(test_value, true_value, false_value) == result
+def test_if_(test_value, true_value, false_value, result):
+    assert if_(test_value, true_value, false_value) == result
 
 
 @pytest.mark.parametrize(
@@ -168,8 +168,8 @@ def test_ifs(result, value):
         (VALUE_ERROR, (),),
     )
 )
-def test_x_not(result, test_value):
-    assert x_not(test_value) == result
+def test_not_(result, test_value):
+    assert not_(test_value) == result
 
 
 @pytest.mark.parametrize(
@@ -185,8 +185,8 @@ def test_x_not(result, test_value):
         (VALUE_ERROR, (),),
     )
 )
-def test_x_or(result, test_value):
-    assert x_or(*test_value) == result
+def test_or_(result, test_value):
+    assert or_(*test_value) == result
 
 
 @pytest.mark.parametrize(
@@ -206,5 +206,5 @@ def test_x_or(result, test_value):
         (VALUE_ERROR, (),),
     )
 )
-def test_x_xor(result, test_value):
-    assert x_xor(*test_value) == result
+def test_xor_(result, test_value):
+    assert xor_(*test_value) == result

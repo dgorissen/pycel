@@ -125,7 +125,7 @@ def left(text, num_chars=1):
 
 
 @excel_helper(cse_params=0)
-def x_len(arg):
+def len_(arg):
     # Excel reference: https://support.microsoft.com/en-us/office/
     #   len-lenb-functions-29236f94-cedc-429d-affd-b5e33d2c67cb
     return 0 if arg is None else len(str(arg))
@@ -432,3 +432,7 @@ def value(text):
         return float(text)
     except ValueError:
         return VALUE_ERROR
+
+
+# Older mappings for excel functions that match Python built-in and keywords
+x_len = len_

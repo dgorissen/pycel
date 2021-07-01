@@ -23,6 +23,7 @@ from pycel.lib.text import (
     concatenate,
     find,
     left,
+    len_,
     lower,
     mid,
     replace,
@@ -32,7 +33,6 @@ from pycel.lib.text import (
     trim,
     upper,
     value,
-    x_len,
 )
 
 # dynamic load the lib functions from excellib and apply metadata
@@ -413,5 +413,5 @@ def test_value(param, result):
         (DIV0, DIV0),
     )
 )
-def test_x_len(param, result):
-    assert x_len(param) == result
+def test_len_(param, result):
+    assert len_(param) == result

@@ -12,7 +12,6 @@ Python equivalents of various excel functions
 """
 import math
 from decimal import Decimal, ROUND_DOWN, ROUND_HALF_UP, ROUND_UP
-from heapq import nlargest, nsmallest
 
 import numpy as np
 
@@ -20,7 +19,6 @@ from pycel.excelutil import (
     coerce_to_number,
     DIV0,
     ERROR_CODES,
-    find_corresponding_index,
     flatten,
     handle_ifs,
     is_number,
@@ -49,52 +47,20 @@ def _numerics(*args, keep_bools=False, to_number=lambda x: x):
         return tuple(x for x in args if isinstance(x, (int, float)))
 
 
-def average(*args):
+@excel_math_func
+def abs_(value1):
     # Excel reference: https://support.microsoft.com/en-us/office/
-    #   average-function-047bac88-d466-426c-a32b-8f33eb960cf6
-    data = _numerics(*args)
-
-    # A returned string is an error code
-    if isinstance(data, str):
-        return data
-    elif len(data) == 0:
-        return DIV0
-    else:
-        return sum(data) / len(data)
+    #   ABS-function-3420200F-5628-4E8C-99DA-C99D7C87713C
+    return abs(value1)
 
 
-def averageif(rng, criteria, average_range=None):
+@excel_math_func
+def atan2_(x_num, y_num):
     # Excel reference: https://support.microsoft.com/en-us/office/
-    #   averageif-function-faec8e2e-0dec-4308-af69-f5576d8ac642
+    #   ATAN2-function-C04592AB-B9E3-4908-B428-C96B3A565033
 
-    # WARNING:
-    # - The following is not currently implemented:
-    #  The average_range argument does not have to be the same size and shape
-    #  as the range argument. The actual cells that are added are determined by
-    #  using the upper leftmost cell in the average_range argument as the
-    #  beginning cell, and then including cells that correspond in size and
-    #  shape to the range argument.
-    if average_range is None:
-        average_range = rng
-    return averageifs(average_range, rng, criteria)
-
-
-def averageifs(average_range, *args):
-    # Excel reference: https://support.microsoft.com/en-us/office/
-    #   AVERAGEIFS-function-48910C45-1FC0-4389-A028-F7C5C3001690
-    if not list_like(average_range):
-        average_range = ((average_range, ), )
-
-    coords = handle_ifs(args, average_range)
-
-    # A returned string is an error code
-    if isinstance(coords, str):
-        return coords
-
-    data = _numerics((average_range[r][c] for r, c in coords), keep_bools=True)
-    if len(data) == 0:
-        return DIV0
-    return sum(data) / len(data)
+    # swap arguments
+    return math.atan2(y_num, x_num)
 
 
 @excel_math_func
@@ -137,23 +103,6 @@ def ceiling_precise(number, significance=1):
     return significance * math.ceil(number / significance)
 
 
-def count(*args):
-    # Excel reference: https://support.microsoft.com/en-us/office/
-    #   COUNT-function-a59cd7fc-b623-4d93-87a4-d23bf411294c
-
-    return sum(1 for x in flatten(args)
-               if isinstance(x, (int, float)) and not isinstance(x, bool))
-
-
-def countif(rng, criteria):
-    # Excel reference: https://support.microsoft.com/en-us/office/
-    #   COUNTIF-function-e0de10c6-f885-4e71-abb4-1f464816df34
-    if not list_like(rng):
-        rng = ((rng, ), )
-    valid = find_corresponding_index(rng, criteria)
-    return len(valid)
-
-
 def conditional_format_ids(*args):
     """helper function for getting conditional format ids"""
     # Excel reference: https://support.microsoft.com/en-us/office/
@@ -166,18 +115,6 @@ def conditional_format_ids(*args):
             if stop_if_true:
                 break
     return tuple(results)
-
-
-def countifs(*args):
-    # Excel reference: https://support.microsoft.com/en-us/office/
-    #   COUNTIFS-function-dda3dc6e-f74e-4aee-88bc-aa8c2a866842
-    coords = handle_ifs(args)
-
-    # A returned string is an error code
-    if isinstance(coords, str):
-        return coords
-
-    return len(coords)
 
 
 @excel_math_func
@@ -249,48 +186,11 @@ def floor_precise(number, significance=1):
     return significance * math.floor(number / significance)
 
 
-@excel_helper()
-def large(array, k):
+@excel_math_func
+def int_(value1):
     # Excel reference: https://support.microsoft.com/en-us/office/
-    #   large-function-3af0af19-1190-42bb-bb8b-01672ec00a64
-    data = _numerics(array, to_number=coerce_to_number)
-    if isinstance(data, str):
-        return data
-
-    k = coerce_to_number(k)
-    if isinstance(k, str):
-        return VALUE_ERROR
-
-    if not data or k is None or k < 1 or k > len(data):
-        return NUM_ERROR
-
-    k = math.ceil(k)
-    return nlargest(k, data)[-1]
-
-
-def linest(Y, X, const=True, degree=1):  # pragma: no cover  ::TODO::
-    if isinstance(const, str):
-        const = (const.lower() == "true")
-
-    def assert_vector(data):
-        vector = np.array(data)
-        assert 1 in vector.shape
-        return vector.ravel()
-
-    X = assert_vector(X)
-    Y = assert_vector(Y)
-
-    # build the vandermonde matrix
-    A = np.vander(X, degree + 1)
-
-    if not const:
-        # force the intercept to zero
-        A[:, -1] = np.zeros((1, len(X)))
-
-    # perform the fit
-    coefs, residuals, rank, sing_vals = np.linalg.lstsq(A, Y, rcond=None)
-
-    return coefs
+    #   INT-function-A6C4AF9E-356D-4369-AB6A-CB1FD9D343EF
+    return math.floor(value1)
 
 
 @excel_math_func
@@ -305,48 +205,6 @@ def log(number, base=10):
     # Excel reference: https://support.microsoft.com/en-us/office/
     #   LOG-function-4E82F196-1CA9-4747-8FB0-6C4A3ABB3280
     return math.log(number, base)
-
-
-def maxifs(max_range, *args):
-    # Excel reference: https://support.microsoft.com/en-us/office/
-    #   maxifs-function-dfd611e6-da2c-488a-919b-9b6376b28883
-    if not list_like(max_range):
-        max_range = ((max_range, ), )
-
-    try:
-        coords = handle_ifs(args, max_range)
-
-        # A returned string is an error code
-        if isinstance(coords, str):
-            return coords
-
-        return max(_numerics(
-            (max_range[r][c] for r, c in coords),
-            keep_bools=True
-        ))
-    except ValueError:
-        return 0
-
-
-def minifs(min_range, *args):
-    # Excel reference: https://support.microsoft.com/en-us/office/
-    #   minifs-function-6ca1ddaa-079b-4e74-80cc-72eef32e6599
-    if not list_like(min_range):
-        min_range = ((min_range, ), )
-
-    try:
-        coords = handle_ifs(args, min_range)
-
-        # A returned string is an error code
-        if isinstance(coords, str):
-            return coords
-
-        return min(_numerics(
-            (min_range[r][c] for r, c in coords),
-            keep_bools=True
-        ))
-    except ValueError:
-        return 0
 
 
 @excel_math_func
@@ -403,6 +261,24 @@ def pv(rate, nper, pmt, fv=0, type_=0):
         return -fv - pmt * nper
 
 
+@excel_math_func
+def round_(number, num_digits=0):
+    # Excel reference: https://support.microsoft.com/en-us/office/
+    #   ROUND-function-c018c5d8-40fb-4053-90b1-b3e7f61a213c
+
+    num_digits = int(num_digits)
+    if num_digits >= 0:  # round to the right side of the point
+        return float(Decimal(repr(number)).quantize(
+            Decimal(repr(pow(10, -num_digits))),
+            rounding=ROUND_HALF_UP
+        ))
+        # see https://docs.python.org/2/library/functions.html#round
+        # and https://gist.github.com/ejamesc/cedc886c5f36e2d075c5
+
+    else:
+        return round(number, num_digits)
+
+
 def _round(number, num_digits, rounding):
     num_digits = int(num_digits)
     quant = Decimal('1E{}{}'.format('+-'[num_digits >= 0], abs(num_digits)))
@@ -430,23 +306,13 @@ def sign(value):
     return -1 if value < 0 else int(bool(value))
 
 
-@excel_helper()
-def small(array, k):
-    # Excel reference: https://support.microsoft.com/en-us/office/
-    #   small-function-17da8222-7c82-42b2-961b-14c45384df07
-    data = _numerics(array, to_number=coerce_to_number)
+def sum_(*args):
+    data = _numerics(*args)
     if isinstance(data, str):
         return data
 
-    k = coerce_to_number(k)
-    if isinstance(k, str):
-        return VALUE_ERROR
-
-    if not data or k is None or k < 1 or k > len(data):
-        return NUM_ERROR
-
-    k = math.ceil(k)
-    return nsmallest(k, data)[-1]
+    # if no non numeric cells, return zero (is what excel does)
+    return sum(data)
 
 
 def sumif(rng, criteria, sum_range=None):
@@ -518,79 +384,9 @@ def trunc(number, num_digits=0):
     return int(number * factor) / factor
 
 
-@excel_math_func
-def x_abs(value1):
-    # Excel reference: https://support.microsoft.com/en-us/office/
-    #   ABS-function-3420200F-5628-4E8C-99DA-C99D7C87713C
-    return abs(value1)
-
-
-@excel_math_func
-def xatan2(x_num, y_num):
-    # Excel reference: https://support.microsoft.com/en-us/office/
-    #   ATAN2-function-C04592AB-B9E3-4908-B428-C96B3A565033
-
-    # swap arguments
-    return math.atan2(y_num, x_num)
-
-
-@excel_math_func
-def x_int(value1):
-    # Excel reference: https://support.microsoft.com/en-us/office/
-    #   INT-function-A6C4AF9E-356D-4369-AB6A-CB1FD9D343EF
-    return math.floor(value1)
-
-
-def xmax(*args):
-    data = _numerics(*args)
-
-    # A returned string is an error code
-    if isinstance(data, str):
-        return data
-
-    # however, if no non numeric cells, return zero (is what excel does)
-    elif len(data) < 1:
-        return 0
-    else:
-        return max(data)
-
-
-def xmin(*args):
-    data = _numerics(*args)
-
-    # A returned string is an error code
-    if isinstance(data, str):
-        return data
-
-    # however, if no non numeric cells, return zero (is what excel does)
-    elif len(data) < 1:
-        return 0
-    else:
-        return min(data)
-
-
-@excel_math_func
-def x_round(number, num_digits=0):
-    # Excel reference: https://support.microsoft.com/en-us/office/
-    #   ROUND-function-c018c5d8-40fb-4053-90b1-b3e7f61a213c
-
-    num_digits = int(num_digits)
-    if num_digits >= 0:  # round to the right side of the point
-        return float(Decimal(repr(number)).quantize(
-            Decimal(repr(pow(10, -num_digits))),
-            rounding=ROUND_HALF_UP
-        ))
-        # see https://docs.python.org/2/library/functions.html#round
-        # and https://gist.github.com/ejamesc/cedc886c5f36e2d075c5
-
-    else:
-        return round(number, num_digits)
-
-
-def xsum(*args):
-    data = _numerics(*args)
-    if isinstance(data, str):
-        return data
-
-    # if no non numeric cells, return zero (is what excel does)
-    return sum(data)
+# Older mappings for excel functions that match Python built-in and keywords
+x_abs = abs_
+xatan2 = atan2_
+x_int = int_
+x_round = round_
+xsum = sum_

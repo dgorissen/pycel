@@ -60,7 +60,7 @@ def _clean_logicals(*args):
         return VALUE_ERROR if len(values) == 0 else values
 
 
-def x_and(*args):
+def and_(*args):
     # Excel reference: https://support.microsoft.com/en-us/office/
     #   and-function-5f19b2e8-e1df-4408-897a-ce285a19e9d9
 
@@ -73,7 +73,7 @@ def x_and(*args):
 
 
 @excel_helper(cse_params=(0, 1, 2), err_str_params=0)
-def x_if(test, true_value, false_value=0):
+def if_(test, true_value, false_value=0):
     # Excel reference: https://support.microsoft.com/en-us/office/
     #   IF-function-69AED7C9-4E8A-4755-A9BC-AA8BBFF73BE2
 
@@ -135,7 +135,7 @@ def ifs(*args):
     return NA_ERROR
 
 
-def x_not(value):
+def not_(value):
     # Excel reference: https://support.microsoft.com/en-us/office/
     #   not-function-9cfc6011-a054-40c7-a140-cd4ba2d87d77
 
@@ -148,7 +148,7 @@ def x_not(value):
         return not cleaned
 
 
-def x_or(*args):
+def or_(*args):
     # Excel reference: https://support.microsoft.com/en-us/office/
     #   or-function-7d17ad14-8700-4281-b308-00b131e22af0
 
@@ -169,7 +169,7 @@ def x_or(*args):
 #   switch-function-47ab33c0-28ce-4530-8a45-d532ec4aa25e
 
 
-def x_xor(*args):
+def xor_(*args):
     # Excel reference: https://support.microsoft.com/en-us/office/
     #   xor-function-1548d4c2-5e47-4f77-9a92-0533bba14f37
     values = _clean_logicals(*args)
@@ -178,3 +178,11 @@ def x_xor(*args):
         return values
     else:
         return sum(bool(v) for v in values) % 2
+
+
+# Older mappings for excel functions that match Python built-in and keywords
+x_and = and_
+x_if = if_
+x_not = not_
+x_or = or_
+x_xor = xor_
