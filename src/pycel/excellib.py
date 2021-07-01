@@ -50,7 +50,7 @@ def _numerics(*args, keep_bools=False, to_number=lambda x: x):
 
 
 def average(*args):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   average-function-047bac88-d466-426c-a32b-8f33eb960cf6
     data = _numerics(*args)
 
@@ -64,7 +64,7 @@ def average(*args):
 
 
 def averageif(rng, criteria, average_range=None):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   averageif-function-faec8e2e-0dec-4308-af69-f5576d8ac642
 
     # WARNING:
@@ -80,7 +80,7 @@ def averageif(rng, criteria, average_range=None):
 
 
 def averageifs(average_range, *args):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   AVERAGEIFS-function-48910C45-1FC0-4389-A028-F7C5C3001690
     if not list_like(average_range):
         average_range = ((average_range, ), )
@@ -99,7 +99,7 @@ def averageifs(average_range, *args):
 
 @excel_math_func
 def ceiling(number, significance):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   CEILING-function-0A5CD7C8-0720-4F0A-BD2C-C943E510899F
     if significance < 0 < number:
         return NUM_ERROR
@@ -115,7 +115,7 @@ def ceiling(number, significance):
 
 @excel_math_func
 def ceiling_math(number, significance=1, mode=0):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   ceiling-math-function-80f95d2f-b499-4eee-9f16-f795a8e306c8
     if significance == 0:
         return 0
@@ -128,7 +128,7 @@ def ceiling_math(number, significance=1, mode=0):
 
 @excel_math_func
 def ceiling_precise(number, significance=1):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   ceiling-precise-function-f366a774-527a-4c92-ba49-af0a196e66cb
     if significance == 0:
         return 0
@@ -138,7 +138,7 @@ def ceiling_precise(number, significance=1):
 
 
 def count(*args):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   COUNT-function-a59cd7fc-b623-4d93-87a4-d23bf411294c
 
     return sum(1 for x in flatten(args)
@@ -146,7 +146,7 @@ def count(*args):
 
 
 def countif(rng, criteria):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   COUNTIF-function-e0de10c6-f885-4e71-abb4-1f464816df34
     if not list_like(rng):
         rng = ((rng, ), )
@@ -156,7 +156,7 @@ def countif(rng, criteria):
 
 def conditional_format_ids(*args):
     """helper function for getting conditional format ids"""
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   E09711A3-48DF-4BCB-B82C-9D8B8B22463D
 
     results = []
@@ -169,7 +169,7 @@ def conditional_format_ids(*args):
 
 
 def countifs(*args):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   COUNTIFS-function-dda3dc6e-f74e-4aee-88bc-aa8c2a866842
     coords = handle_ifs(args)
 
@@ -182,21 +182,21 @@ def countifs(*args):
 
 @excel_math_func
 def even(value):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   even-function-197b5f06-c795-4c1e-8696-3c3b8a646cf9
     return math.copysign(math.ceil(abs(value) / 2) * 2, value)
 
 
 @excel_math_func
 def fact(value):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   fact-function-ca8588c2-15f2-41c0-8e8c-c11bd471a4f3
     return math.factorial(int(value)) if value >= 0 else NUM_ERROR
 
 
 @excel_helper(cse_params=-1)
 def factdouble(value):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   fact-function-ca8588c2-15f2-41c0-8e8c-c11bd471a4f3
     if isinstance(value, bool):
         return VALUE_ERROR
@@ -211,7 +211,7 @@ def factdouble(value):
 
 @excel_math_func
 def floor(number, significance):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   FLOOR-function-14BB497C-24F2-4E04-B327-B0B4DE5A8886
     if significance < 0 < number:
         return NUM_ERROR
@@ -227,7 +227,7 @@ def floor(number, significance):
 
 @excel_math_func
 def floor_math(number, significance=1, mode=0):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   floor-math-function-c302b599-fbdb-4177-ba19-2c2b1249a2f5
     if significance == 0:
         return 0
@@ -240,7 +240,7 @@ def floor_math(number, significance=1, mode=0):
 
 @excel_math_func
 def floor_precise(number, significance=1):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   floor-precise-function-f769b468-1452-4617-8dc3-02f842a0702e
     if significance == 0:
         return 0
@@ -251,7 +251,7 @@ def floor_precise(number, significance=1):
 
 @excel_helper()
 def large(array, k):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   large-function-3af0af19-1190-42bb-bb8b-01672ec00a64
     data = _numerics(array, to_number=coerce_to_number)
     if isinstance(data, str):
@@ -295,20 +295,20 @@ def linest(Y, X, const=True, degree=1):  # pragma: no cover  ::TODO::
 
 @excel_math_func
 def ln(arg):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   LN-function-81FE1ED7-DAC9-4ACD-BA1D-07A142C6118F
     return math.log(arg)
 
 
 @excel_math_func
 def log(number, base=10):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   LOG-function-4E82F196-1CA9-4747-8FB0-6C4A3ABB3280
     return math.log(number, base)
 
 
 def maxifs(max_range, *args):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   maxifs-function-dfd611e6-da2c-488a-919b-9b6376b28883
     if not list_like(max_range):
         max_range = ((max_range, ), )
@@ -329,7 +329,7 @@ def maxifs(max_range, *args):
 
 
 def minifs(min_range, *args):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   minifs-function-6ca1ddaa-079b-4e74-80cc-72eef32e6599
     if not list_like(min_range):
         min_range = ((min_range, ), )
@@ -351,7 +351,7 @@ def minifs(min_range, *args):
 
 @excel_math_func
 def mod(number, divisor):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   MOD-function-9b6cd169-b6ee-406a-a97b-edf2a9dc24f3
     if divisor == 0:
         return DIV0
@@ -361,7 +361,7 @@ def mod(number, divisor):
 
 @excel_helper(cse_params=None, err_str_params=-1, number_params=0)
 def npv(rate, *args):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   NPV-function-8672CB67-2576-4D07-B67B-AC28ACF2A568
 
     rate += 1
@@ -372,14 +372,14 @@ def npv(rate, *args):
 
 @excel_math_func
 def odd(value):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   odd-function-deae64eb-e08a-4c88-8b40-6d0b42575c98
     return math.copysign(math.ceil((abs(value) - 1) / 2) * 2 + 1, value)
 
 
 @excel_math_func
 def power(number, power):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   POWER-function-D3F2908B-56F4-4C3F-895A-07FB519C362A
     if number == power == 0:
         # Really excel?  What were you thinking?
@@ -393,7 +393,7 @@ def power(number, power):
 
 @excel_math_func
 def pv(rate, nper, pmt, fv=0, type_=0):
-    #  Excel reference: https://support.office.com/en-us/article/
+    #  Excel reference: https://support.microsoft.com/en-us/office/
     #   pv-function-23879d31-0e02-4321-be01-da16e8168cbd
 
     if rate != 0:
@@ -411,28 +411,28 @@ def _round(number, num_digits, rounding):
 
 @excel_math_func
 def rounddown(number, num_digits):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   ROUNDDOWN-function-2EC94C73-241F-4B01-8C6F-17E6D7968F53
     return _round(number, num_digits, rounding=ROUND_DOWN)
 
 
 @excel_math_func
 def roundup(number, num_digits):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   ROUNDUP-function-F8BC9B23-E795-47DB-8703-DB171D0C42A7
     return _round(number, num_digits, rounding=ROUND_UP)
 
 
 @excel_math_func
 def sign(value):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   sign-function-109c932d-fcdc-4023-91f1-2dd0e916a1d8
     return -1 if value < 0 else int(bool(value))
 
 
 @excel_helper()
 def small(array, k):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   small-function-17da8222-7c82-42b2-961b-14c45384df07
     data = _numerics(array, to_number=coerce_to_number)
     if isinstance(data, str):
@@ -450,7 +450,7 @@ def small(array, k):
 
 
 def sumif(rng, criteria, sum_range=None):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   SUMIF-function-169b8c99-c05c-4483-a712-1697a653039b
 
     # WARNING:
@@ -467,7 +467,7 @@ def sumif(rng, criteria, sum_range=None):
 
 
 def sumifs(sum_range, *args):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   SUMIFS-function-C9E748F5-7EA7-455D-9406-611CEBCE642B
     if not list_like(sum_range):
         sum_range = ((sum_range, ), )
@@ -485,7 +485,7 @@ def sumifs(sum_range, *args):
 
 
 def sumproduct(*args):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   SUMPRODUCT-function-16753E75-9F68-4874-94AC-4D2145A2FD2E
 
     # find any errors
@@ -512,7 +512,7 @@ def sumproduct(*args):
 
 @excel_math_func
 def trunc(number, num_digits=0):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   TRUNC-function-8B86A64C-3127-43DB-BA14-AA5CEB292721
     factor = 10 ** int(num_digits)
     return int(number * factor) / factor
@@ -520,14 +520,14 @@ def trunc(number, num_digits=0):
 
 @excel_math_func
 def x_abs(value1):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   ABS-function-3420200F-5628-4E8C-99DA-C99D7C87713C
     return abs(value1)
 
 
 @excel_math_func
 def xatan2(x_num, y_num):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   ATAN2-function-C04592AB-B9E3-4908-B428-C96B3A565033
 
     # swap arguments
@@ -536,7 +536,7 @@ def xatan2(x_num, y_num):
 
 @excel_math_func
 def x_int(value1):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   INT-function-A6C4AF9E-356D-4369-AB6A-CB1FD9D343EF
     return math.floor(value1)
 
@@ -571,7 +571,7 @@ def xmin(*args):
 
 @excel_math_func
 def x_round(number, num_digits=0):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   ROUND-function-c018c5d8-40fb-4053-90b1-b3e7f61a213c
 
     num_digits = int(num_digits)

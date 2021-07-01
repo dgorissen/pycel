@@ -530,7 +530,7 @@ class FunctionNode(ASTNode):
     }
 
     def func_subtotal(self):
-        # Excel reference: https://support.office.com/en-us/article/
+        # Excel reference: https://support.microsoft.com/en-us/office/
         #   SUBTOTAL-function-7B027003-F060-4ADE-9040-E478765B9939
 
         # Note: This does not implement skipping hidden rows.

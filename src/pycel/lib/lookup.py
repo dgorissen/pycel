@@ -33,7 +33,7 @@ from pycel.lib.function_helpers import (
 
 
 def _match(lookup_value, lookup_array, match_type=1):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   MATCH-function-E8DFFD45-C762-47D6-BF89-533F4A37673A
 
     """ The relative position of a specified item in a range of cells.
@@ -105,18 +105,18 @@ def _match(lookup_value, lookup_array, match_type=1):
 
 
 # def address(value):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   address-function-d0c26c0d-3991-446b-8de4-ab46431d4f89
 
 
 # def areas(value):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   areas-function-8392ba32-7a41-43b3-96b0-3695d2ec6152
 
 
 @excel_helper(cse_params=0, number_params=0, err_str_params=0)
 def choose(index, *args):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   choose-function-fc5c184f-cb62-4ec7-a46e-38653b98f5bc
     index = int(index)
     if index < 1 or len(args) < index or not args:
@@ -126,7 +126,7 @@ def choose(index, *args):
 
 @excel_helper(ref_params=0)
 def column(ref):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   COLUMN-function-44E8C754-711C-4DF3-9DA4-47A55042554B
     if ref.is_range:
         if ref.end.col_idx == 0:
@@ -138,22 +138,22 @@ def column(ref):
 
 
 # def columns(value):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   columns-function-4e8e7b4e-e603-43e8-b177-956088fa48ca
 
 
 # def filter(value):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   filter-function-f4f7cb66-82eb-4767-8f7c-4877ad80c759
 
 
 # def formulatext(value):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   formulatext-function-0a786771-54fd-4ae2-96ee-09cda35439c8
 
 
 # def getpivotdata(value):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   getpivotdata-function-8c083b99-a922-4ca0-af5e-3af55960761f
 
 
@@ -167,7 +167,7 @@ def hlookup(lookup_value, table_array, row_index_num, range_lookup=True):
     :param range_lookup: True, assumes sorted, finds nearest. False: find exact
     :return: #N/A if not found else value
     """
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   hlookup-function-a3034eec-b719-4ba3-bb65-e1ad662ed95f
 
     if not list_like(table_array):
@@ -190,13 +190,13 @@ def hlookup(lookup_value, table_array, row_index_num, range_lookup=True):
 
 
 # def hyperlink(value):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   hyperlink-function-333c7ce6-c5ae-4164-9c47-7de9b76f577f
 
 
 @excel_helper(err_str_params=(1, 2), number_params=(1, 2))
 def index(array, row_num, col_num=None):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   index-function-a5dcf0dd-996d-40a4-a822-b56b061328bd
 
     if not list_like(array):
@@ -242,7 +242,7 @@ def index(array, row_num, col_num=None):
 
 @excel_helper(cse_params=0, number_params=1)
 def indirect(ref_text, a1=True, sheet=''):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   indirect-function-474b3a3a-8a26-4f44-b491-92b6306fa261
     try:
         address = AddressRange.create(ref_text)
@@ -273,7 +273,7 @@ def lookup(lookup_value, lookup_array, result_range=None):
     :param result_range: (optional vector form) values are returned from here
     :return: #N/A if not found else value
     """
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   lookup-function-446d94af-663b-451d-8251-369d5e3864cb
     if not list_like(lookup_array):
         return NA_ERROR
@@ -315,7 +315,7 @@ def lookup(lookup_value, lookup_array, result_range=None):
 
 @excel_helper(cse_params=0, number_params=2, err_str_params=(0, 2))
 def match(lookup_value, lookup_array, match_type=1):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   match-function-e8dffd45-c762-47d6-bf89-533f4a37673a
     if len(lookup_array) == 1:
         lookup_array = lookup_array[0]
@@ -327,7 +327,7 @@ def match(lookup_value, lookup_array, match_type=1):
 
 @excel_helper(cse_params=-1, ref_params=0, number_params=(1, 2))
 def offset(reference, row_inc, col_inc, height=None, width=None):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   offset-function-c8de19ae-dd79-4b9b-a14e-b4d906d11b66
     """
     Returns a reference to a range that is a specified number of rows and
@@ -363,7 +363,7 @@ def offset(reference, row_inc, col_inc, height=None, width=None):
 
 @excel_helper(ref_params=0)
 def row(ref):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   row-function-3a63b74a-c4d0-4093-b49a-e76eb49a6d8d
     if ref.is_range:
         if ref.end.row == 0:
@@ -375,37 +375,37 @@ def row(ref):
 
 
 # def rows(value):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   rows-function-b592593e-3fc2-47f2-bec1-bda493811597
 
 
 # def rtd(value):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   rtd-function-e0cc001a-56f0-470a-9b19-9455dc0eb593
 
 
 # def single(value):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   single-function-7ca229ca-13ae-420b-928e-2ef52a3805ff
 
 
 # def sort(value):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   sort-function-22f63bd0-ccc8-492f-953d-c20e8e44b86c
 
 
 # def sortby(value):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   sortby-function-cd2d7a62-1b93-435c-b561-d6a35134f28f
 
 
 # def transpose(value):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   transpose-function-ed039415-ed8a-4a81-93e9-4b6dfac76027
 
 
 # def unique(value):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   unique-function-c5ab87fd-30a3-4ce9-9d1a-40204fb85e1e
 
 
@@ -419,7 +419,7 @@ def vlookup(lookup_value, table_array, col_index_num, range_lookup=True):
     :param range_lookup: True, assumes sorted, finds nearest. False: find exact
     :return: #N/A if not found else value
     """
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   VLOOKUP-function-0BBC8083-26FE-4963-8AB8-93A18AD188A1
 
     if not list_like(table_array):
@@ -442,3 +442,13 @@ def vlookup(lookup_value, table_array, col_index_num, range_lookup=True):
     else:
         # error string
         return result_idx
+
+
+# def xlookup(value):
+    # Excel reference: https://support.microsoft.com/en-us/office/
+    #   xlookup-function-b7fd680e-6d10-43e6-84f9-88eae8bf5929
+
+
+# def xmatch(value):
+    # Excel reference: https://support.microsoft.com/en-us/office/
+    #   xmatch-function-d966da31-7a6b-4a13-a1c6-5a33ed6a0312

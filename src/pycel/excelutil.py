@@ -564,7 +564,7 @@ def split_sheetname(address, sheet=''):
 
 
 def structured_reference_boundaries(address, cell=None):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   Using-structured-references-with-Excel-tables-
     #   F5ED2452-2337-4F71-BED3-C8AE6D2B276E
 

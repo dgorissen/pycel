@@ -824,7 +824,7 @@ class ExcelCompiler:
     def _evaluate_iterative(self, address, iterations=None, tolerance=None):
         """ evaluate a cell or cells in a spreadsheet with cycles
 
-        reference: https://support.office.com/en-us/article/
+        reference: https://support.microsoft.com/en-us/office/
                     8540bd0f-6e97-4483-bcf7-1b49cd50d123
 
         :param address: str, AddressRange, AddressCell or a tuple or list

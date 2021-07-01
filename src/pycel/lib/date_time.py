@@ -184,7 +184,7 @@ def yearfrac_basis_1(beg, end):
 
 @excel_helper(number_params=-1)
 def date(year, month_, day):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   DATE-function-e36c0c8c-4104-49da-ab83-82328b832349
 
     if not (0 <= year <= 9999):
@@ -204,7 +204,7 @@ def date(year, month_, day):
 
 
 # def datedif(value):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   datedif-function-25dba1a4-2812-480b-84dd-8b32a451b35c
 
 
@@ -224,7 +224,7 @@ class DateutilParserInfo(dateutil.parser.parserinfo):
 
 
 def datevalue(value):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   datevalue-function-df8b07d4-7761-4a93-bc33-b7471bbff252
     parserinfo = DateutilParserInfo()
     try:
@@ -247,31 +247,31 @@ def datevalue(value):
 
 @serial_number_wrapper
 def day(serial_number):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   day-function-8a7d1cbb-6c7d-4ba1-8aea-25c134d03101
     return date_from_int(math.floor(serial_number))[2]
 
 
 # def days(value):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   days-function-57740535-d549-4395-8728-0f07bff0b9df
 
 
 # def days360(value):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   days360-function-b9a509fd-49ef-407e-94df-0cbda5718c2a
 
 
 @excel_helper(err_str_params=-1)
 def edate(start_date, months):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   edate-function-3c920eb2-6e66-44e7-a1f5-753ae47ee4f5
     return months_inc(start_date, months)
 
 
 @excel_helper(err_str_params=-1)
 def eomonth(start_date, months):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   eomonth-function-7314ffa1-2bc9-4005-9d66-f49db127d628
     return months_inc(start_date, months, eomonth=True)
 
@@ -294,42 +294,42 @@ def months_inc(start_date, months, eomonth=False):
 
 @time_value_wrapper
 def hour(serial_number):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   hour-function-a3afa879-86cb-4339-b1b5-2dd2d7310ac7
     return time_from_serialnumber(serial_number)[0]
 
 
 # def isoweeknum(value):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   isoweeknum-function-1c2d0afe-d25b-4ab1-8894-8d0520e90e0e
 
 
 @time_value_wrapper
 def minute(serial_number):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   minute-function-af728df0-05c4-4b07-9eed-a84801a60589
     return time_from_serialnumber(serial_number)[1]
 
 
 @serial_number_wrapper
 def month(serial_number):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   month-function-579a2881-199b-48b2-ab90-ddba0eba86e8
     return date_from_int(math.floor(serial_number))[1]
 
 
 # def networkdays(value):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   networkdays-function-48e717bf-a7a3-495f-969e-5005e3eb18e7
 
 
 # def networkdays.intl(value):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   networkdays-intl-function-a9b26239-4f20-46a1-9ab8-4e925bfd5e28
 
 
 def now():
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   now-function-3337fd29-145a-4347-b2e6-20c904739c46
     delta = dt.datetime.now() - DATE_ZERO
     return delta.days + delta.seconds * SECOND
@@ -337,18 +337,18 @@ def now():
 
 @time_value_wrapper
 def second(serial_number):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   second-function-740d1cfc-553c-4099-b668-80eaa24e8af1
     return time_from_serialnumber(serial_number)[2]
 
 
 # def time(value):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   time-function-9a5aff99-8f7d-4611-845e-747d0b8d5457
 
 
 def timevalue(value):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   timevalue-function-0b615c12-33d8-4431-bf3d-f3eb6d186645
     if not isinstance(value, str):
         return VALUE_ERROR
@@ -382,43 +382,43 @@ def timevalue(value):
 
 
 def today():
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   today-function-5eb3078d-a82c-4736-8930-2f51a028fdd9
     return (dt.date.today() - DATE_ZERO.date()).days
 
 
 @serial_number_wrapper
 def weekday(serial_number):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   weekday-function-60e44483-2ed1-439f-8bd0-e404c190949a
     return (math.floor(serial_number) - 1) % 7 + 1
 
 
 # def weeknum(serial_number, return_Type=1):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   weeknum-function-e5c43a03-b4ab-426c-b411-b18c13c75340
 
 
 # def workday(value):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   workday-function-f764a5b7-05fc-4494-9486-60d494efbf33
 
 
 # def workday.intl(value):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   workday-intl-function-a378391c-9ba7-4678-8a39-39611a9bf81d
 
 
 @serial_number_wrapper
 def year(serial_number):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   year-function-c64f017a-1354-490d-981f-578e8ec8d3b9
     return date_from_int(math.floor(serial_number))[0]
 
 
 @excel_helper(cse_params=-1, err_str_params=2, number_params=None)
 def yearfrac(start_date, end_date, basis=0):
-    # Excel reference: https://support.office.com/en-us/article/
+    # Excel reference: https://support.microsoft.com/en-us/office/
     #   YEARFRAC-function-3844141e-c76d-4143-82b6-208454ddc6a8
     if isinstance(basis, (bool, str)):
         return VALUE_ERROR
