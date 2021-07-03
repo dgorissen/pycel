@@ -854,62 +854,6 @@ def r1c1_boundaries(address, cell=None, sheet=None):
     return (min_col, min_row, max_col, max_row), sheet
 
 
-def get_linest_degree(cell):
-    # TODO: assumes a row or column of linest formulas &
-    # that all coefficients are needed
-
-    address = cell.address
-    # figure out where we are in the row
-
-    # to the left
-    i = 0
-    f = cell.formula
-    while f and f == cell.formula:
-        i -= 1
-        f = cell.excel.get_formula_from_range(
-            address.address_at_offset(row_inc=0, col_inc=i))
-
-    # to the right
-    j = 0
-    f = cell.formula
-    while f and f == cell.formula:
-        j += 1
-        f = cell.excel.get_formula_from_range(
-            address.address_at_offset(row_inc=0, col_inc=j))
-
-    # assume the degree is the number of linest's
-    # last -1 is because an n degree polynomial has n+1 coefs
-    degree = (j - i - 1) - 1
-
-    # which coef are we (left most coef is the coef for the highest power)
-    coef = -i
-
-    # no linests left or right, try looking up/down
-    if degree == 0:
-        # up
-        i = 0
-        f = cell.formula
-        while f and f == cell.formula:
-            i -= 1
-            f = cell.excel.get_formula_from_range(
-                address.address_at_offset(row_inc=i, col_inc=0))
-
-        # down
-        j = 0
-        f = cell.formula
-        while f and f == cell.formula:
-            j += 1
-            f = cell.excel.get_formula_from_range(
-                address.address_at_offset(row_inc=j, col_inc=0))
-
-        degree = (j - i - 1) - 1
-        coef = -i
-
-    # if degree is zero -> only one linest formula
-    # linear regression -> degree should be one
-    return max(degree, 1), coef
-
-
 class _ArrayFormulaContext:
     """ When evaluating array like data, need to know the context
         that the result will end up in

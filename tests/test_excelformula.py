@@ -356,11 +356,11 @@ linest_inputs = [
     FormulaTest(
         '=LINEST(X5:X32,W5:W32^{1,2,3})',
         'X5:X32|W5:W32|1|2|3|ARRAYROW|ARRAY|^|LINEST',
-        'linest(_R_("X5:X32"), _R_("W5:W32"), degree=-1)[-2]'),
+        'linest(_R_("X5:X32"), _R_("W5:W32") ** ((1, 2, 3,),))'),
     FormulaTest(
         '=LINEST(G2:G17,E2:E17,FALSE)',
         'G2:G17|E2:E17|FALSE|LINEST',
-        'linest(_R_("G2:G17"), _R_("E2:E17"), False, degree=-1)[-2]'),
+        'linest(_R_("G2:G17"), _R_("E2:E17"), False)'),
     FormulaTest(
         '=LINEST(B32:(INDEX(B32:B119,MATCH(0,B32:B119,-1),1)),(F32:(INDEX('
         'B32:F119,MATCH(0,B32:B119,-1),5)))^{1,2,3,4})',
@@ -368,12 +368,8 @@ linest_inputs = [
         'B32:B119|1|-|MATCH|5|INDEX||:|1|2|3|4|ARRAYROW|ARRAY|^|LINEST',
         'linest(_R_(str(_REF_("B32") ** (index(_REF_("B32:B119"),'
         ' match(0, _REF_("B32:B119"), -1), 1)))), (_R_(str(_REF_("F32") ** '
-        '(index(_REF_("B32:F119"), match(0, _REF_("B32:B119"), -1), 5))))), '
-        'degree=-1)[-2]'),
-    FormulaTest(
-        '=LINESTMARIO(G2:G17,E2:E17,FALSE)',
-        'G2:G17|E2:E17|FALSE|LINESTMARIO',
-        'linestmario(_R_("G2:G17"), _R_("E2:E17"), False)[-2]'),
+        '(index(_REF_("B32:F119"), match(0, _REF_("B32:B119"), -1), 5))))) ** '
+        '((1, 2, 3, 4,),))'),
 ]
 
 reference_inputs = [
@@ -481,7 +477,7 @@ def test_parse(test_number, formula, rpn, python_code, ATestCell):
 
         print('--------------')
 
-    assert python_code == result_python_code
+    assert result_python_code == python_code
 
 
 def test_table_relative_address(ATestCell):
@@ -664,17 +660,6 @@ def test_save_to_file(fixture_dir):
     os.unlink(filename)
 
     assert formula.python_code == loaded_formula.python_code
-
-
-def test_get_linest_degree_with_cell(ATestCell):
-    with mock.patch('pycel.excelformula.get_linest_degree') as get:
-        get.return_value = -1, -1
-
-        cell = ATestCell('A', 1, 'Phony Sheet')
-        formula = ExcelFormula('=linest(C1)', cell=cell)
-
-        expected = 'linest(_C_("Phony Sheet!C1"), degree=-1)[-2]'
-        assert expected == formula.python_code
 
 
 def test_init_from_python_code():

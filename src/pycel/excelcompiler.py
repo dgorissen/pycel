@@ -29,7 +29,6 @@ from pycel.excelutil import (
     is_address,
     iterative_eval_tracker,
     list_like,
-    VALUE_ERROR,
 )
 from pycel.excelwrapper import ExcelOpxWrapper, ExcelOpxWrapperNoData
 
@@ -563,7 +562,7 @@ class ExcelCompiler:
         for addr in cells_to_remove:
             del self.cell_map[addr]
 
-    def validate_calcs(self, output_addrs=None, sheet=None, verify_tree=True):
+    def validate_calcs(self, output_addrs=None, sheet=None, verify_tree=True, tolerance=None):
         """For each address, calc the value, and verify that it matches
 
         This is a debugging tool which will show which cells evaluate
@@ -574,7 +573,6 @@ class ExcelCompiler:
         :param verify_tree: Follow the tree to any precedent nodes
         :return: dict of addresses with good/bad values that failed to verify
         """
-
         Mismatch = collections.namedtuple('Mismatch', 'original calced formula')
 
         if output_addrs is None:
@@ -606,7 +604,7 @@ class ExcelCompiler:
                     self._evaluate(addr.address)
 
                     if not (original_value is None or
-                            cell.close_enough(original_value)):
+                            cell.close_enough(original_value, tol=tolerance)):
                         failed.setdefault('mismatch', {})[str(addr)] = Mismatch(
                             original_value, cell.value,
                             cell.formula.base_formula)
@@ -782,7 +780,8 @@ class ExcelCompiler:
                 value = self.eval(cell)
                 self.log.info("Cell %s evaluated to '%s' (%s)" % (
                     cell.address, value, type(value).__name__))
-                cell.value = VALUE_ERROR if list_like(value) else value
+                cell.value = (value[0][0] if list_like(value[0]) else value[0]
+                              ) if list_like(value) else value
 
         return cell.value
 

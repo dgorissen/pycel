@@ -28,7 +28,6 @@ from pycel.excelutil import (
     ExcelCmp,
     find_corresponding_index,
     flatten,
-    get_linest_degree,
     handle_ifs,
     in_array_formula_context,
     is_address,
@@ -659,48 +658,6 @@ def test_coerce_to_number(value, expected, expected_type, convert_all):
 )
 def test_coerce_to_string(value, result):
     assert coerce_to_string(value) == result
-
-
-def test_get_linest_degree():
-    # build a spreadsheet with linest formulas horiz and vert
-
-    class Excel:
-
-        def __init__(self, columns, rows):
-            self.columns = columns
-            self.rows = rows
-
-        def get_formula_from_range(self, address):
-            addr = AddressRange.create(address)
-            found = addr.column in self.columns and str(addr.row) in self.rows
-            return '=linest()' if found else ''
-
-    class Cell:
-        def __init__(self, excel):
-            self.excel = excel
-            self.address = AddressCell('E5')
-
-        @property
-        def sheet(self):
-            return 'PhonySheet'
-
-        @property
-        def formula(self):
-            return '=linest()'
-
-    assert (1, 1) == get_linest_degree(Cell(Excel('E', '5')))
-
-    assert (4, 5) == get_linest_degree(Cell(Excel('E', '12345')))
-    assert (4, 4) == get_linest_degree(Cell(Excel('E', '23456')))
-    assert (4, 3) == get_linest_degree(Cell(Excel('E', '34567')))
-    assert (4, 2) == get_linest_degree(Cell(Excel('E', '45678')))
-    assert (4, 1) == get_linest_degree(Cell(Excel('E', '56789')))
-
-    assert (4, 5) == get_linest_degree(Cell(Excel('ABCDE', '5')))
-    assert (4, 4) == get_linest_degree(Cell(Excel('BCDEF', '5')))
-    assert (4, 3) == get_linest_degree(Cell(Excel('CDEFG', '5')))
-    assert (4, 2) == get_linest_degree(Cell(Excel('DEFGH', '5')))
-    assert (4, 1) == get_linest_degree(Cell(Excel('EFGHI', '5')))
 
 
 def test_in_array_formula_context():

@@ -19,16 +19,39 @@ from pycel.excellib import _numerics
 from pycel.excelutil import (
     coerce_to_number,
     DIV0,
+    ERROR_CODES,
     find_corresponding_index,
     flatten,
     handle_ifs,
     list_like,
+    NA_ERROR,
     NUM_ERROR,
+    REF_ERROR,
     VALUE_ERROR,
 )
 from pycel.lib.function_helpers import (
     excel_helper,
 )
+
+
+# Boolean, unsigned integer, signed integer, float, complex.
+_NP_NUMERIC_KINDS = set('buifc')
+
+
+def _slope_intercept(Y, X):
+    """Groom linest results for SLOPE(), INTERCEPT() and FORECAST()"""
+    try:
+        coefs, full_rank = linest_helper(Y, X)
+    except AssertionError:
+        return NA_ERROR
+    except ValueError:
+        return VALUE_ERROR
+
+    if len(coefs) != 2:
+        return NA_ERROR
+    if not full_rank:
+        return DIV0
+    return coefs
 
 
 # def avedev(value):
@@ -243,9 +266,14 @@ def countifs(*args):
     #   fisherinv-function-62504b39-415a-4284-a285-19c8e82f86bb
 
 
-# def forecast(value):
+@excel_helper(number_params=(0))
+def forecast(x, Y, X):
     # Excel reference: https://support.microsoft.com/en-us/office/
     #   forecasting-functions-reference-897a2fe9-6595-4680-a0b0-93e0308d5f6e
+    coefs = _slope_intercept(Y, X)
+    if coefs in ERROR_CODES:
+        return coefs
+    return coefs[0] * x + coefs[1]
 
 
 # def forecast.ets(value):
@@ -333,9 +361,14 @@ def countifs(*args):
     #   hypgeom-dist-function-6dbd547f-1d12-4b1f-8ae5-b0d9e3d22fbf
 
 
-# def intercept(value):
+@excel_helper()
+def intercept(Y, X):
     # Excel reference: https://support.microsoft.com/en-us/office/
     #   intercept-function-2a9b74e2-9d47-4772-b663-3bca70bf63ef
+    coefs = _slope_intercept(Y, X)
+    if coefs in ERROR_CODES:
+        return coefs
+    return coefs[1]
 
 
 # def kurt(value):
@@ -362,31 +395,112 @@ def large(array, k):
     return nlargest(k, data)[-1]
 
 
-def linest(Y, X, const=True, degree=1):  # pragma: no cover  ::TODO::
+def linest_helper(Y, X=None, const=True, stats=False):
     # Excel reference: https://support.microsoft.com/en-us/office/
     #   linest-function-84d7d0d9-6e50-4101-977a-fa7abf772b6d
-    if isinstance(const, str):
-        const = (const.lower() == "true")
+    """Perform an OLS model fir
 
-    def assert_vector(data):
-        vector = np.array(data)
-        assert 1 in vector.shape
-        return vector.ravel()
+    :param Y: Vector of output data
+    :param X: Input Data
+    :param const: force the intercept to zero
+    :param stats: Out extended statistics
+    :return:  numpy.linalg.lstsq
+        https://numpy.org/doc/stable/reference/generated/numpy.linalg.lstsq.html
+    """
+    Y = np.array(Y)
+    assert 1 in Y.shape
+    Y = Y.ravel()
 
-    X = assert_vector(X)
-    Y = assert_vector(Y)
+    if X is None:
+        length = len(Y)
+        X = np.resize(np.repeat(np.arange(1, length + 1), 1), (length, 1))
+    else:
+        X = np.array(X)
+        assert len(Y) in X.shape
+        if X.shape[0] != len(Y):
+            X = X.transpose()
 
-    # build the vandermonde matrix
-    A = np.vander(X, degree + 1)
+    for data in (X, Y):
+        if data.dtype.kind not in _NP_NUMERIC_KINDS:
+            raise ValueError
 
-    if not const:
-        # force the intercept to zero
-        A[:, -1] = np.zeros((1, len(X)))
+    if const:
+        # add a constant column
+        A = np.hstack((np.ones((len(Y), 1)), X))
+    else:
+        # force the intercept to zero if no const desired
+        A = X
 
     # perform the fit
     coefs, residuals, rank, sing_vals = np.linalg.lstsq(A, Y, rcond=None)
+    full_rank = (rank == len(coefs))
+    result_coefs = tuple(reversed(coefs if const else (0,) + tuple(coefs)))
+    if not full_rank:
+        result_coefs = (0,) * (len(result_coefs) - 1) + (np.sum(Y) / len(Y),)
 
-    return coefs
+    if stats:
+        # Compute some extended stats as Excel does
+        Y_predicted = A @ coefs
+        if const:
+            sum_sq_regression = np.sum((Y_predicted - np.sum(Y) / len(Y)) ** 2)
+            sum_sq_total = (len(Y) - 1) * np.var(Y, ddof=1)
+        else:
+            # https://stats.stackexchange.com/a/26205/154402
+            sum_sq_regression = np.sum(Y_predicted ** 2)
+            sum_sq_total = np.sum(Y ** 2)
+        sum_sq_resid = np.sum((Y - Y_predicted) ** 2)
+        r2_score = 1 - (sum_sq_resid / sum_sq_total)
+
+        # standard error stats
+        try:
+            stderr_y_2 = (1 / (len(Y) - len(coefs))) * (Y_predicted - Y) @ (Y_predicted - Y).T
+            stderr_y = np.sqrt(stderr_y_2)
+            std_err = tuple(reversed(np.sqrt((stderr_y_2 * np.linalg.inv(A.T @ A)).diagonal())))
+        except (ZeroDivisionError, np.linalg.LinAlgError):
+            stderr_y = 0
+            std_err = (0,) * len(result_coefs)
+            r2_score = 1
+            sum_sq_regression = result_coefs[-1]
+            sum_sq_resid = 0
+
+        if len(std_err) < len(result_coefs):
+            std_err += (NA_ERROR,) * (len(result_coefs) - len(std_err))
+
+        # F and dof stats
+        dof = len(Y) - len(coefs)
+        denom = (len(result_coefs) - 1) * (1 - r2_score)
+        f_score = NUM_ERROR if denom == 0 else r2_score * dof / denom
+
+        na_filler = (NA_ERROR,) * max(0, len(result_coefs) - 2)
+        return (
+            result_coefs,
+            std_err,
+            (r2_score, stderr_y, *na_filler),
+            (f_score, dof, *na_filler),
+            (sum_sq_regression, sum_sq_resid, *na_filler),
+        ), full_rank
+    else:
+        return result_coefs, full_rank
+
+
+def linest(Y, X=None, const=None, stats=None):
+    kwargs = {}
+    if const is not None:
+        kwargs['const'] = const
+    if stats is not None:
+        kwargs['stats'] = stats
+
+    try:
+        coefs, full_rank = linest_helper(Y, X, **kwargs)
+    except AssertionError:
+        return REF_ERROR
+    except ValueError:
+        return VALUE_ERROR
+
+    if stats:
+        return coefs
+    else:
+        return (coefs,)
 
 
 # def logest(value):
@@ -613,14 +727,14 @@ def minifs(min_range, *args):
     #   skew-p-function-76530a5c-99b9-48a1-8392-26632d542fcb
 
 
-# def slope(value):
+@excel_helper()
+def slope(Y, X):
     # Excel reference: https://support.microsoft.com/en-us/office/
     #   slope-function-11fb8f97-3117-4813-98aa-61d7e01276b9
-
-
-# def small(value):
-    # Excel reference: https://support.microsoft.com/en-us/office/
-    #   small-function-17da8222-7c82-42b2-961b-14c45384df07
+    coefs = _slope_intercept(Y, X)
+    if coefs in ERROR_CODES:
+        return coefs
+    return coefs[0]
 
 
 @excel_helper()
@@ -697,9 +811,54 @@ def small(array, k):
     #   t-inv-2t-function-ce72ea19-ec6c-4be7-bed2-b9baf2264f17
 
 
-# def trend(value):
+@excel_helper(bool_params=3)
+def trend(Y, X=None, new_X=None, const=None):
     # Excel reference: https://support.microsoft.com/en-us/office/
     #   trend-function-e2f135f0-8827-4096-9873-9a7cf7b51ef1
+    kwargs = {}
+    if const is not None:
+        kwargs['const'] = const
+
+    try:
+        coefs, full_rank = linest_helper(Y, X, **kwargs)
+    except AssertionError:
+        return REF_ERROR
+    except ValueError:
+        return VALUE_ERROR
+
+    if new_X is None:
+        if X is not None:
+            new_X = np.array(X)
+        else:
+            length = max(len(Y), len(Y[0]))
+            width = len(coefs) - 1
+            new_X = np.resize(np.repeat(np.arange(1, length + 1), width), (length, width))
+
+    if list_like(new_X):
+        new_X = np.array(new_X)
+        if len(coefs) - 1 not in new_X.shape:
+            return REF_ERROR
+
+        if new_X.shape[1] != len(coefs) - 1:
+            if full_rank:
+                result = np.array(coefs[-2::-1]).transpose() @ new_X + coefs[-1]
+            else:
+                result = (coefs[-1],) * new_X.shape[1]
+            return result[0] if len(result) == 1 else (tuple(result),)
+        else:
+            if full_rank:
+                result = new_X @ np.array(coefs[-2::-1]) + coefs[-1]
+            else:
+                result = (coefs[-1],) * new_X.shape[0]
+            return result[0] if len(result) == 1 else tuple((x,) for x in result)
+
+    elif len(coefs) != 2:
+        # new_X is a scaler, this needs to be a single coef fit
+        return REF_ERROR
+    elif not full_rank:
+        return coefs[-1]
+    else:
+        return coefs[0] * new_X + coefs[1]
 
 
 # def trimmean(value):
