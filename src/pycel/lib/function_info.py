@@ -17,7 +17,7 @@ all_excel_functions = frozenset(f.name for f in function_info)
 # function name to excel version and function category
 function_version = {f.name: f.version for f in function_info}
 function_category = {f.name: f.category for f in function_info}
-base_url = 'https://support.office.com/en-us/article/'
+base_url = 'https://support.microsoft.com/en-us/office/'
 
 
 def func_status_msg(name):
@@ -40,6 +40,7 @@ def scrape_function_list():  # pragma: no cover
     """
     import requests
     from bs4 import BeautifulSoup
+    from urllib.parse import urlparse
 
     base_dir = os.path.dirname(__file__)
     tmp_data_name = 'tmp_function_list_page'
@@ -62,6 +63,7 @@ def scrape_function_list():  # pragma: no cover
         web_data = importlib.import_module('pycel.lib.{}'.format(tmp_data_name))
         soup = BeautifulSoup(web_data.page_html, 'html.parser')
 
+    base_url_path = urlparse(base_url).path
     table = max(((len(table.find_all('tr')), table)
                  for table in soup.find_all('table')))[1]
 
@@ -71,12 +73,14 @@ def scrape_function_list():  # pragma: no cover
         if ':' not in p[1]:
             continue
         href = tuple(a.get('href') for a in row.find_all('a'))
-        row_url = href[-1]
+        row_url = href[-1].replace(base_url_path, '')
         name = p[0].strip().replace(' function', '')
         category, description = (x.strip() for x in p[1].split(':', 1))
         version = ''
         for img in row.find_all('img'):
             version = img['alt'].replace(' button', '')
+        if version.startswith('20') and len(version) == 4:
+            version = f'Excel {version}'
         rows_data.append((name, category, version, row_url, description))
 
     with open(os.path.join(base_dir, 'function_info_data.py'), 'w') as f:

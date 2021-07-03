@@ -142,13 +142,13 @@ def test_load_functions():
 
     namespace = locals()
 
-    names = 'degrees x_if junk'.split()
+    names = 'degrees if_ junk'.split()
     missing = load_functions(names, namespace, modules)
     assert missing == {'junk'}
     assert 'degrees' in namespace
-    assert 'x_if' in namespace
+    assert 'if_' in namespace
 
-    names = 'radians x_if junk'.split()
+    names = 'radians if_ junk'.split()
     missing = load_functions(names, namespace, modules)
     assert missing == {'junk'}
     assert 'radians' in namespace
@@ -156,8 +156,8 @@ def test_load_functions():
     assert namespace['radians'](180) == math.pi
     assert namespace['radians'](((180, 360),)) == ((math.pi, 2 * math.pi),)
 
-    assert namespace['x_if'](0, 'Y', 'N') == 'N'
-    assert namespace['x_if'](((0, 1),), 'Y', 'N') == (('N', 'Y'),)
+    assert namespace['if_'](0, 'Y', 'N') == 'N'
+    assert namespace['if_'](((0, 1),), 'Y', 'N') == (('N', 'Y'),)
 
     missing = load_functions(['log'], namespace, modules)
     assert not missing

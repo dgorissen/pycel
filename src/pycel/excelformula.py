@@ -26,7 +26,6 @@ from pycel.excelutil import (
     coerce_to_number,
     EMPTY,
     ERROR_CODES,
-    get_linest_degree,
     in_array_formula_context,
     NAME_ERROR,
     PyCelException,
@@ -287,12 +286,6 @@ class OperatorNode(ASTNode):
             return self.value + args[0].emit
 
         parent = self.parent
-        # don't render the ^{1,2,..} part in a linest formula
-        # TODO: bit of a hack
-        if op == "**":
-            if parent and parent.value.lower() == "linest(":
-                return args[0].emit
-
         if op == '%':
             ss = '{} / 100'.format(args[0].emit)
         elif op == ' ':
@@ -401,20 +394,19 @@ class FunctionNode(ASTNode):
 
     # dict of excel equivalent functions
     func_map = {
-        "abs": "x_abs",
-        "and": "x_and",
-        "atan2": "xatan2",
-        "gammaln": "lgamma",
-        "if": "x_if",
-        "int": "x_int",
-        "len": "x_len",
-        "max": "xmax",
-        "not": "x_not",
-        "or": "x_or",
-        "min": "xmin",
-        "round": "x_round",
-        "sum": "xsum",
-        "xor": "x_xor",
+        "abs": "abs_",
+        "and": "and_",
+        "atan2": "atan2_",
+        "if": "if_",
+        "int": "int_",
+        "len": "len_",
+        "max": "max_",
+        "not": "not_",
+        "or": "or_",
+        "min": "min_",
+        "round": "round_",
+        "sum": "sum_",
+        "xor": "xor_",
     }
 
     def __init__(self, *args):
@@ -472,32 +464,6 @@ class FunctionNode(ASTNode):
         # simply create a list
         return self.comma_join_emit()
 
-    def func_linest(self):
-        func = self.value.lower().strip('(')
-        code = '{}({}'.format(func, self.comma_join_emit())
-
-        if not self.cell or not self.cell.excel:
-            degree, coef = -1, -1
-        else:
-            # linests are often used as part of an array formula spanning
-            # multiple cells, one cell for each coefficient.  We have to
-            # figure out where we currently are in that range.
-            degree, coef = get_linest_degree(self.cell)
-
-        # if we are the only linest (degree is one) and linest is nested
-        # return vector, else return the coef.
-        if func == "linest":
-            code += ", degree=%s)" % degree
-        else:
-            code += ")"
-
-        if not (degree == 1 and self.parent):  # pragma: no branch
-            code += "[%s]" % (coef - 1)
-
-        return code
-
-    func_linestmario = func_linest
-
     @property
     def _build_reference(self):
         if len(self.children) == 0:
@@ -519,18 +485,18 @@ class FunctionNode(ASTNode):
         1: 'average',
         2: 'count',
         3: 'counta',
-        4: 'xmax',
-        5: 'xmin',
+        4: 'max_',
+        5: 'min_',
         6: 'product',
         7: 'stdev',
         8: 'stdevp',
-        9: 'xsum',
+        9: 'sum_',
         10: 'var',
         11: 'varp',
     }
 
     def func_subtotal(self):
-        # Excel reference: https://support.office.com/en-us/article/
+        # Excel reference: https://support.microsoft.com/en-us/office/
         #   SUBTOTAL-function-7B027003-F060-4ADE-9040-E478765B9939
 
         # Note: This does not implement skipping hidden rows.
@@ -559,6 +525,7 @@ class ExcelFormula:
         'pycel.lib.information',
         'pycel.lib.logical',
         'pycel.lib.lookup',
+        'pycel.lib.stats',
         'pycel.lib.text',
         'math',
     )

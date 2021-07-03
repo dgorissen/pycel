@@ -26,6 +26,7 @@ from pycel.excelutil import (
 from pycel.lib.function_helpers import error_string_wrapper, load_to_test_module
 from pycel.lib.lookup import (
     _match,
+    choose,
     column,
     hlookup,
     index,
@@ -46,6 +47,30 @@ def test_lookup_ws(fixture_xls_copy):
     compiler = ExcelCompiler(fixture_xls_copy('lookup.xlsx'))
     result = compiler.validate_calcs()
     assert result == {}
+
+
+@pytest.mark.parametrize(
+    'index, data, expected', (
+        (-1, 'ABCDEFG', VALUE_ERROR),
+        (0, 'ABCDEFG', VALUE_ERROR),
+        (1, 'ABCDEFG', 'A'),
+        (2, 'ABCDEFG', 'B'),
+        (7, 'ABCDEFG', 'G'),
+        (8, 'ABCDEFG', VALUE_ERROR),
+        (DIV0, 'ABCDEFG', DIV0),
+        (NUM_ERROR, 'ABCDEFG', NUM_ERROR),
+        (VALUE_ERROR, 'ABCDEFG', VALUE_ERROR),
+        (1, (), VALUE_ERROR),
+        (False, 'ABCDEFG', VALUE_ERROR),
+        (True, 'ABCDEFG', 'A'),
+        ('0', 'ABCDEFG', VALUE_ERROR),
+        ('1', 'ABCDEFG', 'A'),
+        ('1.5', 'ABCDEFG', 'A'),
+        (1.5, 'ABCDEFG', 'A'),
+    )
+)
+def test_choose(index, data, expected):
+    assert choose(index, *data) == expected
 
 
 @pytest.mark.parametrize(

@@ -15,57 +15,41 @@ import pycel.excellib
 from pycel.excelcompiler import ExcelCompiler
 from pycel.excellib import (
     _numerics,
-    average,
-    averageif,
-    averageifs,
+    abs_,
+    atan2_,
     ceiling,
     ceiling_math,
     ceiling_precise,
     conditional_format_ids,
-    count,
-    countif,
-    countifs,
     even,
     fact,
     factdouble,
     floor,
     floor_math,
     floor_precise,
-    # ::TODO:: finish test cases for remainder of functions
-    # linest,
-    large,
+    int_,
     ln,
     log,
-    maxifs,
-    minifs,
     mod,
     npv,
     odd,
     power,
     pv,
+    round_,
     rounddown,
     roundup,
     sign,
-    small,
+    sum_,
     sumif,
     sumifs,
     sumproduct,
     trunc,
-    x_abs,
-    x_int,
-    x_round,
-    xatan2,
-    xmax,
-    xmin,
-    xsum,
 )
 from pycel.excelutil import (
     DIV0,
-    EMPTY,
     NA_ERROR,
     NAME_ERROR,
     NUM_ERROR,
-    REF_ERROR,
     VALUE_ERROR,
 )
 from pycel.lib.function_helpers import load_to_test_module
@@ -80,48 +64,6 @@ def test_numerics():
     assert (1, 2, 3.1) == _numerics((1, '3', (2.0, pytest, 3.1), 'x'))
 
 
-def test_average():
-    assert 2 == average(1, '3', 2.0, pytest, 3, 'x')
-    assert 2 == average((1, '3', (2.0, pytest, 3), 'x'))
-
-    assert -0.1 == average((-0.1, None, 'x', True))
-
-    assert DIV0 == average(['x'])
-
-    assert VALUE_ERROR == average(VALUE_ERROR)
-    assert VALUE_ERROR == average((2, VALUE_ERROR))
-
-    assert DIV0 == average(DIV0)
-    assert DIV0 == average((2, DIV0))
-
-
-@pytest.mark.parametrize(
-    'data, result', (
-        ((12, 12), AssertionError),
-        ((12, 12, 12), 12),
-        ((((1, 1, 2, 2, 2), ), ((1, 1, 2, 2, 2), ), 2), 2),
-        ((((1, 1, 2, 2, 2), ), ((1, 1, 2, 2, 2), ), 3), DIV0),
-        ((((1, 2, 3, 4, 5), ), ((1, 2, 3, 4, 5), ), ">=3"), 4),
-        ((((100, 123, 12, 23, 634), ),
-          ((1, 2, 3, 4, 5), ), ">=3"), 223),
-        ((((100, 123), (12, 23)), ((1, 2), (3, 4)), ">=3"), 35 / 2),
-        ((((100, 123, 12, 23, None), ),
-          ((1, 2, 3, 4, 5), ), ">=3"), 35 / 2),
-        (('JUNK', ((), ), ((), ), ), VALUE_ERROR),
-        ((((1, 2), ), ((1,), ), '', ((1, 2), ), ''), VALUE_ERROR),
-        ((((1, 2, 3, 4, 5), ),
-          ((1, 2, 3, 4, 5), ), ">=3",
-          ((1, 2, 3, 4, 5), ), "<=4"), 7 / 2),
-    )
-)
-def test_averageifs(data, result):
-    if isinstance(result, type(Exception)):
-        with pytest.raises(result):
-            averageifs(*data)
-    else:
-        assert averageifs(*data) == result
-
-
 @pytest.mark.parametrize(
     'value, expected', (
         (1, 1),
@@ -132,8 +74,8 @@ def test_averageifs(data, result):
         (VALUE_ERROR, VALUE_ERROR),
     )
 )
-def test_x_abs(value, expected):
-    assert x_abs(value) == expected
+def test_abs_(value, expected):
+    assert abs_(value) == expected
 
 
 class TestCeilingFloor:
@@ -235,133 +177,6 @@ def test_conditional_format_ids(args, result):
     assert conditional_format_ids(*args) == result
 
 
-def test_count():
-    data = (
-        0,
-        1,
-        1.1,
-        '1.1',
-        True,
-        False,
-        'A',
-        'TRUE',
-        'FALSE',
-    )
-    assert count(data, data[3], data[5], data[7])
-
-
-@pytest.mark.parametrize(
-    'value, criteria, result', (
-        (((7, 25, 13, 25), ), '>10', 3),
-        (((7, 25, 13, 25), ), '<10', 1),
-        (((7, 10, 13, 25), ), '>=10', 3),
-        (((7, 10, 13, 25), ), '<=10', 2),
-        (((7, 10, 13, 25), ), '<>10', 3),
-        (((7, 'e', 13, 'e'), ), 'e', 2),
-        (((7, 'e', 13, 'f'), ), '>e', 1),
-        (((7, 25, 13, 25), ), 25, 2),
-        (((7, 25, None, 25),), '<10', 1),
-        (((7, 25, None, 25),), '>10', 2),
-    )
-)
-def test_countif(value, criteria, result):
-    assert countif(value, criteria) == result
-
-
-class TestCountIfs:
-    # more tests might be welcomed
-
-    def test_countifs_regular(self):
-        assert 1 == countifs(((7, 25, 13, 25), ), 25,
-                             ((100, 102, 201, 20), ), ">100")
-
-    def test_countifs_odd_args_len(self):
-        with pytest.raises(AssertionError):
-            countifs(((7, 25, 13, 25), ), 25, ((100, 102, 201, 20), ))
-
-
-class TestVariousIfsSizing:
-
-    test_vector = tuple(range(1, 7)) + tuple('abcdef')
-    test_vectors = ((test_vector, ), ) * 4 + (test_vector[0],) * 4
-
-    conditions = '>3', '<=2', '<=c', '>d'
-    data_columns = ('averageif', 'countif', 'sumif', 'averageifs',
-                    'countifs', 'maxifs', 'minifs', 'sumifs')
-
-    responses_list = (
-        (5, 3, 15, 5, 3, 6, 4, 15),
-        (1.5, 2, 3, 1.5, 2, 2, 1, 3),
-        (DIV0, 3, 0, DIV0, 3, 0, 0, 0),
-        (DIV0, 2, 0, DIV0, 2, 0, 0, 0),
-
-        (DIV0, 0, 0, DIV0, 0, 0, 0, 0),
-        (1, 1, 1, 1, 1, 1, 1, 1),
-        (DIV0, 0, 0, DIV0, 0, 0, 0, 0),
-        (DIV0, 0, 0, DIV0, 0, 0, 0, 0),
-    )
-
-    responses = dict(
-        (dc, tuple((r, cond, tv) for r, cond, tv in zip(resp, conds, tvs)))
-        for dc, resp, tvs, conds in zip(
-            data_columns, zip(*responses_list), (test_vectors, ) * 8,
-            ((conditions + conditions), ) * 8
-        ))
-
-    params = 'result, criteria, values'
-
-    @staticmethod
-    @pytest.mark.parametrize(params, responses['averageif'])
-    def test_averageif(result, criteria, values):
-        assert averageif(values, criteria) == result
-        assert averageif(values, criteria, values) == result
-
-    @staticmethod
-    @pytest.mark.parametrize(params, responses['countif'])
-    def test_countif(result, criteria, values):
-        assert countif(values, criteria) == result
-
-    @staticmethod
-    @pytest.mark.parametrize(params, responses['sumif'])
-    def test_sumif(result, criteria, values):
-        assert sumif(values, criteria) == result
-        assert sumif(values, criteria, values) == result
-
-    @staticmethod
-    @pytest.mark.parametrize(params, responses['averageifs'])
-    def test_averageifs(result, criteria, values):
-        assert averageifs(values, values, criteria) == result
-
-    @staticmethod
-    @pytest.mark.parametrize(params, responses['countifs'])
-    def test_countifs(result, criteria, values):
-        assert countifs(values, criteria) == result
-
-    @staticmethod
-    @pytest.mark.parametrize(params, responses['maxifs'])
-    def test_maxifs(result, criteria, values):
-        assert maxifs(values, values, criteria) == result
-
-    @staticmethod
-    @pytest.mark.parametrize(params, responses['minifs'])
-    def test_minifs(result, criteria, values):
-        assert minifs(values, values, criteria) == result
-
-    @staticmethod
-    @pytest.mark.parametrize(params, responses['sumifs'])
-    def test_sumifs(result, criteria, values):
-        assert sumifs(values, values, criteria) == result
-
-    def test_ifs_size_errors(self):
-        criteria, v1 = self.responses['sumifs'][0][1:]
-        v2 = (v1[0][:-1], )
-        assert countifs(v1, criteria, v2, criteria) == VALUE_ERROR
-        assert sumifs(v1, v1, criteria, v2, criteria) == VALUE_ERROR
-        assert maxifs(v1, v1, criteria, v2, criteria) == VALUE_ERROR
-        assert minifs(v1, v1, criteria, v2, criteria) == VALUE_ERROR
-        assert averageifs(v1, v1, criteria, v2, criteria) == VALUE_ERROR
-
-
 @pytest.mark.parametrize(
     '_sign, _odd, _even, value', (
         (-1, -101, -102, -100.1),
@@ -427,47 +242,6 @@ def test_fact(result, number):
 )
 def test_factdouble(result, number):
     assert factdouble(number) == result
-
-
-@pytest.mark.parametrize(
-    'data, k, result', (
-        ([3, 1, 2], 0, NUM_ERROR),
-        ([3, 1, 2], 1, 3),
-        ([3, 1, 2], 2, 2),
-        ([3, 1, 2], 3, 1),
-        ([3, 1, 2], 4, NUM_ERROR),
-        ([3, 1, 2], '2', 2),
-        ([3, 1, 2], 1.1, 2),
-        ([3, 1, 2], '1.1', 2),
-        ([3, 1, 2], 0.1, NUM_ERROR),
-        ([3, 1, 2], 3.1, NUM_ERROR),
-        ([3, 1, 2], 'abc', VALUE_ERROR),
-        ([3, 1, 2], True, 3),
-        ([3, 1, 2], False, NUM_ERROR),
-        ([3, 1, 2], 'True', VALUE_ERROR),
-        ([3, 1, 2], REF_ERROR, REF_ERROR),
-        ([3, 1, 2], EMPTY, VALUE_ERROR),
-        (REF_ERROR, 2, REF_ERROR),
-        (None, 2, NUM_ERROR),
-        ('abc', 2, NUM_ERROR),
-        (99, 1, 99),
-        ('99', 1, 99),
-        ('99.9', 1, 99.9),
-        (['99', 9], 1, 99),
-        (['99.9', 9], 1, 99.9),
-        ([3, 1, 2], None, NUM_ERROR),
-        ([3, 1, 2], 0, NUM_ERROR),
-        ([3, 1, 2], 4, NUM_ERROR),
-        ([3, 1, 'aa'], 2, 1),
-        ([3, 1, 'aa'], 3, NUM_ERROR),
-        ([3, 1, True], 1, 3),
-        ([3, 1, True], 3, NUM_ERROR),
-        ([3, 1, '2'], 2, 2),
-        ([3, 1, REF_ERROR], 1, REF_ERROR),
-    )
-)
-def test_large(data, k, result):
-    assert result == large(data, k)
 
 
 @pytest.mark.parametrize(
@@ -660,47 +434,6 @@ class TestRounding:
 
 
 @pytest.mark.parametrize(
-    'data, k, result', (
-        ([3, 1, 2], 0, NUM_ERROR),
-        ([3, 1, 2], 1, 1),
-        ([3, 1, 2], 2, 2),
-        ([3, 1, 2], 3, 3),
-        ([3, 1, 2], 4, NUM_ERROR),
-        ([3, 1, 2], '2', 2),
-        ([3, 1, 2], 1.1, 2),
-        ([3, 1, 2], '1.1', 2),
-        ([3, 1, 2], 0.1, NUM_ERROR),
-        ([3, 1, 2], 3.1, NUM_ERROR),
-        ([3, 1, 2], 'abc', VALUE_ERROR),
-        ([3, 1, 2], True, 1),
-        ([3, 1, 2], False, NUM_ERROR),
-        ([3, 1, 2], 'True', VALUE_ERROR),
-        ([3, 1, 2], REF_ERROR, REF_ERROR),
-        ([3, 1, 2], EMPTY, VALUE_ERROR),
-        (REF_ERROR, 2, REF_ERROR),
-        (None, 2, NUM_ERROR),
-        ('abc', 2, NUM_ERROR),
-        (99, 1, 99),
-        ('99', 1, 99),
-        ('99.9', 1, 99.9),
-        (['99', 999], 1, 99),
-        (['99.9', 999], 1, 99.9),
-        ([3, 1, 2], None, NUM_ERROR),
-        ([3, 1, 2], 0, NUM_ERROR),
-        ([3, 1, 2], 4, NUM_ERROR),
-        ([3, 1, 'aa'], 2, 3),
-        ([3, 1, 'aa'], 3, NUM_ERROR),
-        ([3, 1, True], 1, 1),
-        ([3, 1, True], 3, NUM_ERROR),
-        ([3, 1, '2'], 2, 2),
-        ([3, 1, REF_ERROR], 1, REF_ERROR),
-    )
-)
-def test_small(data, k, result):
-    assert result == small(data, k)
-
-
-@pytest.mark.parametrize(
     'data, result', (
         ((12, 12), 12),
         ((12, 12, 12), 12),
@@ -790,8 +523,8 @@ def test_trunc(number, num_digits, result):
         (1, DIV0, DIV0),
     )
 )
-def test_xatan2(param1, param2, result):
-    assert xatan2(param1, param2) == result
+def test_atan2_(param1, param2, result):
+    assert atan2_(param1, param2) == result
 
 
 @pytest.mark.parametrize(
@@ -805,34 +538,8 @@ def test_xatan2(param1, param2, result):
         (VALUE_ERROR, VALUE_ERROR),
     )
 )
-def test_x_int(value, expected):
-    assert x_int(value) == expected
-
-
-def test_xmax():
-    assert 0 == xmax('abcd')
-    assert 3 == xmax((2, None, 'x', 3))
-
-    assert -0.1 == xmax((-0.1, None, 'x', True))
-
-    assert VALUE_ERROR == xmax(VALUE_ERROR)
-    assert VALUE_ERROR == xmax((2, VALUE_ERROR))
-
-    assert DIV0 == xmax(DIV0)
-    assert DIV0 == xmax((2, DIV0))
-
-
-def test_xmin():
-    assert 0 == xmin('abcd')
-    assert 2 == xmin((2, None, 'x', 3))
-
-    assert -0.1 == xmin((-0.1, None, 'x', True))
-
-    assert VALUE_ERROR == xmin(VALUE_ERROR)
-    assert VALUE_ERROR == xmin((2, VALUE_ERROR))
-
-    assert DIV0 == xmin(DIV0)
-    assert DIV0 == xmin((2, DIV0))
+def test_int_(value, expected):
+    assert int_(value) == expected
 
 
 @pytest.mark.parametrize(
@@ -849,9 +556,9 @@ def test_xmin():
         (12345.6789, 4),
     )
 )
-def test_x_round(result, digits):
-    assert result == x_round(12345.6789, digits)
-    assert result == x_round(12345.6789, digits + (-0.9 if digits < 0 else 0.9))
+def test_round_(result, digits):
+    assert result == round_(12345.6789, digits)
+    assert result == round_(12345.6789, digits + (-0.9 if digits < 0 else 0.9))
 
 
 @pytest.mark.parametrize(
@@ -872,18 +579,18 @@ def test_x_round(result, digits):
         ("2352.67", "-2", 2400),
     )
 )
-def test_x_round2(number, digits, result):
-    assert result == x_round(number, digits)
+def test_round_2(number, digits, result):
+    assert result == round_(number, digits)
 
 
-def test_xsum():
-    assert 0 == xsum('abcd')
-    assert 5 == xsum((2, None, 'x', 3))
+def test_sum_():
+    assert 0 == sum_('abcd')
+    assert 5 == sum_((2, None, 'x', 3))
 
-    assert -0.1 == xsum((-0.1, None, 'x', True))
+    assert -0.1 == sum_((-0.1, None, 'x', True))
 
-    assert VALUE_ERROR == xsum(VALUE_ERROR)
-    assert VALUE_ERROR == xsum((2, VALUE_ERROR))
+    assert VALUE_ERROR == sum_(VALUE_ERROR)
+    assert VALUE_ERROR == sum_((2, VALUE_ERROR))
 
-    assert DIV0 == xsum(DIV0)
-    assert DIV0 == xsum((2, DIV0))
+    assert DIV0 == sum_(DIV0)
+    assert DIV0 == sum_((2, DIV0))
