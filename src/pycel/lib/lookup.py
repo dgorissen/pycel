@@ -64,11 +64,19 @@ def _match(lookup_value, lookup_array, match_type=1):
         # would explain the results seen when doing out of order searches.
         lookup_value = ExcelCmp(lookup_value)
 
-        result = bisect_right(lookup_array, lookup_value)
+        lo = 0
+        while lo < len(lookup_array) and lookup_array[lo] is None:
+            lo += 1
+
+        hi = len(lookup_array)
+        while hi > 0 and lookup_array[hi - 1] is None:
+            hi -= 1
+
+        result = bisect_right(lookup_array, lookup_value, lo=lo, hi=hi)
         while result and lookup_value.cmp_type != ExcelCmp(
                 lookup_array[result - 1]).cmp_type:
             result -= 1
-        if result == 0:
+        if result == 0 or lookup_array[result - 1] is None:
             result = NA_ERROR
         return result
 

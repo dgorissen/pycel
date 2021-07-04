@@ -562,7 +562,8 @@ class ExcelCompiler:
         for addr in cells_to_remove:
             del self.cell_map[addr]
 
-    def validate_calcs(self, output_addrs=None, sheet=None, verify_tree=True, tolerance=None):
+    def validate_calcs(self, output_addrs=None, sheet=None, verify_tree=True,
+                       tolerance=None, raise_exceptions=False):
         """For each address, calc the value, and verify that it matches
 
         This is a debugging tool which will show which cells evaluate
@@ -622,6 +623,8 @@ class ExcelCompiler:
                         if addr not in verified:  # pragma: no branch
                             to_verify.append(addr)
             except Exception as exc:
+                if raise_exceptions:
+                    raise
                 cell = self.cell_map.get(addr.address, None)
                 formula = cell and cell.formula.base_formula
                 exc_str = str(exc)

@@ -836,6 +836,9 @@ def test_evaluate_exceptions(fixture_dir):
     assert 'exceptions' in result
     assert len(result['exceptions']) == 1
 
+    with pytest.raises(FormulaParserError):
+        excel_compiler.validate_calcs(address, raise_exceptions=True)
+
 
 def test_evaluate_empty_intersection(fixture_dir):
     excel_compiler = ExcelCompiler.from_file(

@@ -333,6 +333,13 @@ def test_lookup_error():
         (5, [10, 3.3, 5.0], 0, 3),
         (3, [10, 3.3, 5, 2], 0, NA_ERROR),
 
+        (0, [None, None, 1, 3.3, 5, None, None], 1, NA_ERROR),
+        (1, [None, None, 1, 3.3, 5, None, None], 1, 3),
+        (2, [None, None, 1, 3.3, 5, None, None], 1, 3),
+        (4, [None, None, 1, 3.3, 5, None, None], 1, 4),
+        (5, [None, None, 1, 3.3, 5, None, None], 1, 5),
+        (6, [None, None, 1, 3.3, 5, None, None], 1, 5),
+
         ('b', ['c', DIV0, 'a'], 0, NA_ERROR),
         ('b', ['c', DIV0, 'a'], -1, 1),
 
