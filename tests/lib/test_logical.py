@@ -10,10 +10,15 @@
 import pytest
 
 import pycel.lib.logical
+from pycel.excelcompiler import ExcelCompiler
 from pycel.excelutil import (
     DIV0,
     in_array_formula_context,
     NA_ERROR,
+    NAME_ERROR,
+    NULL_ERROR,
+    NUM_ERROR,
+    REF_ERROR,
     VALUE_ERROR,
 )
 from pycel.lib.function_helpers import load_to_test_module
@@ -22,6 +27,7 @@ from pycel.lib.logical import (
     and_,
     if_,
     iferror,
+    ifna,
     ifs,
     not_,
     or_,
@@ -33,8 +39,14 @@ from pycel.lib.logical import (
 load_to_test_module(pycel.lib.logical, __name__)
 
 
+def test_logical_ws(fixture_xls_copy):
+    compiler = ExcelCompiler(fixture_xls_copy('logical.xlsx'))
+    result = compiler.validate_calcs()
+    assert result == {}
+
+
 @pytest.mark.parametrize(
-    'test_value, result', (
+    'test_value, expected', (
         ((1, '3', 2.0, 3.1, ('x', True, None)),
          (1, 2, 3.1, True)),
         ((1, '3', 2.0, 3.1, ('x', VALUE_ERROR)),
@@ -47,12 +59,12 @@ load_to_test_module(pycel.lib.logical, __name__)
          VALUE_ERROR),
     )
 )
-def test_clean_logicals(test_value, result):
-    assert _clean_logicals(*test_value) == result
+def test_clean_logicals(test_value, expected):
+    assert _clean_logicals(*test_value) == expected
 
 
 @pytest.mark.parametrize(
-    'result, test_value', (
+    'expected, test_value', (
         (False, (False,)),
         (True, (True,)),
         (True, (1, '3', 2.0, 3.1, ('x', True))),
@@ -65,36 +77,60 @@ def test_clean_logicals(test_value, result):
         (NA_ERROR, (NA_ERROR, 1),),
     )
 )
-def test_and_(result, test_value):
-    assert and_(*test_value) == result
+def test_and_(expected, test_value):
+    assert and_(*test_value) == expected
 
 
 @pytest.mark.parametrize(
-    'test_value, error_value, result', (
+    'test_value, error_value, expected', (
         ('A', 2, 'A'),
-        ('#NULL!', 2, 2),
-        ('#DIV/0!', 2, 2),
-        ('#VALUE!', 2, 2),
-        ('#REF!', 2, 2),
-        ('#NAME?', 2, 2),
-        ('#NUM!', 2, 2),
-        ('#N/A', 2, 2),
-        ('#N/A', None, 0),
+        (NULL_ERROR, 2, 2),
+        (DIV0, 2, 2),
+        (VALUE_ERROR, 2, 2),
+        (REF_ERROR, 2, 2),
+        (NAME_ERROR, 2, 2),
+        (NUM_ERROR, 2, 2),
+        (NA_ERROR, 2, 2),
+        (NA_ERROR, None, 0),
         (((1, VALUE_ERROR), (VALUE_ERROR, 1)), 2, ((1, 2), (2, 1))),
         (((1, VALUE_ERROR), (VALUE_ERROR, 1)), None, ((1, 0), (0, 1))),
     )
 )
-def test_iferror(test_value, error_value, result):
+def test_iferror(test_value, error_value, expected):
     if isinstance(test_value, tuple):
         with in_array_formula_context('A1'):
-            assert iferror(test_value, error_value) == result
-        result = 0 if error_value is None else error_value
+            assert iferror(test_value, error_value) == expected
+        expected = 0 if error_value is None else error_value
 
-    assert iferror(test_value, error_value) == result
+    assert iferror(test_value, error_value) == expected
 
 
 @pytest.mark.parametrize(
-    'test_value, true_value, false_value, result', (
+    'test_value, na_value, expected', (
+        ('A', 2, 'A'),
+        (NULL_ERROR, 2, NULL_ERROR),
+        (DIV0, 2, DIV0),
+        (VALUE_ERROR, 2, VALUE_ERROR),
+        (REF_ERROR, 2, REF_ERROR),
+        (NAME_ERROR, 2, NAME_ERROR),
+        (NUM_ERROR, 2, NUM_ERROR),
+        (NA_ERROR, 2, 2),
+        (NA_ERROR, None, 0),
+        (((1, NA_ERROR), (NA_ERROR, 1)), 2, ((1, 2), (2, 1))),
+        (((1, NA_ERROR), (NA_ERROR, 1)), None, ((1, 0), (0, 1))),
+    )
+)
+def test_ifna(test_value, na_value, expected):
+    if isinstance(test_value, tuple):
+        with in_array_formula_context('A1'):
+            assert ifna(test_value, na_value) == expected
+        expected = 0 if na_value is None else na_value
+
+    assert ifna(test_value, na_value) == expected
+
+
+@pytest.mark.parametrize(
+    'test_value, true_value, false_value, expected', (
         ('xyzzy', 3, 2, VALUE_ERROR),
         ('0', 2, 1, VALUE_ERROR),
         (True, 2, 1, 2),
@@ -117,12 +153,12 @@ def test_iferror(test_value, error_value, result):
         (1, ((1, 2), (3, 4)), ((5, 6), (7, 8)), ((1, 2), (3, 4))),
     )
 )
-def test_if_(test_value, true_value, false_value, result):
-    assert if_(test_value, true_value, false_value) == result
+def test_if_(test_value, true_value, false_value, expected):
+    assert if_(test_value, true_value, false_value) == expected
 
 
 @pytest.mark.parametrize(
-    'result, value', (
+    'expected, value', (
         (10, (True, 10, True, 20, False, 30)),
         (20, (False, 10, True, 20, True, 30)),
         (30, (False, 10, False, 20, True, 30)),
@@ -135,18 +171,24 @@ def test_if_(test_value, true_value, false_value, result):
         (20, (None, 10, True, 20)),
         (10, (True, 10, "xyzzy", 20)),
         (VALUE_ERROR, ("xyzzy", 10, True, 20)),
-        (VALUE_ERROR, (tuple(), 10, True, 20)),
         (DIV0, (DIV0, 10, True, 20)),
         (NA_ERROR, (False, 10, 0, 20, 'false', 30)),
         (NA_ERROR, (False, 10, True)),
+        ((('A', DIV0), (NA_ERROR, 4)),
+         (((1, DIV0), (0, 0)), 'A', ((0, 0), (0, 1)), ((1, 2), (3, 4)))
+         ),
     )
 )
-def test_ifs(result, value):
-    assert ifs(*value) == result
+def test_ifs(expected, value):
+    if any(isinstance(v, tuple) for v in value):
+        with in_array_formula_context('A1'):
+            assert ifs(*value) == expected
+    else:
+        assert ifs(*value) == expected
 
 
 @pytest.mark.parametrize(
-    'result, test_value', (
+    'expected, test_value', (
         (False, True),
         (False, 1),
         (False, 2.1),
@@ -168,12 +210,12 @@ def test_ifs(result, value):
         (VALUE_ERROR, (),),
     )
 )
-def test_not_(result, test_value):
-    assert not_(test_value) == result
+def test_not_(expected, test_value):
+    assert not_(test_value) == expected
 
 
 @pytest.mark.parametrize(
-    'result, test_value', (
+    'expected, test_value', (
         (False, (False,)),
         (True, (True,)),
         (True, (1, '3', 2.0, 3.1, ('x', True))),
@@ -185,12 +227,12 @@ def test_not_(result, test_value):
         (VALUE_ERROR, (),),
     )
 )
-def test_or_(result, test_value):
-    assert or_(*test_value) == result
+def test_or_(expected, test_value):
+    assert or_(*test_value) == expected
 
 
 @pytest.mark.parametrize(
-    'result, test_value', (
+    'expected, test_value', (
         (False, (False,)),
         (True, (True,)),
         (False, (False, False)),
@@ -206,5 +248,5 @@ def test_or_(result, test_value):
         (VALUE_ERROR, (),),
     )
 )
-def test_xor_(result, test_value):
-    assert xor_(*test_value) == result
+def test_xor_(expected, test_value):
+    assert xor_(*test_value) == expected
