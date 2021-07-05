@@ -87,6 +87,8 @@ def apply_meta(f, meta=None, name_space=None):
     """Take the metadata applied by excel_helper and wrap accordingly"""
     meta = meta or getattr(f, FUNC_META, None)
     if meta:
+        meta['name_space'] = name_space
+
         # find what all_params for this function should look like
         try:
             sig = inspect.signature(f)

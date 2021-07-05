@@ -301,6 +301,14 @@ fancy_reference_inputs = [
         '_R_(str((_REF_(str(_REF_("A8") ** index(_REF_("B2"), 1)))) ** '
         '_REF_("B2")))'),
     FormulaTest(
+        '=INDIRECT("sheet1!$A$1:$B$2")',
+        '"sheet1!$A$1:$B$2"|INDIRECT',
+        'indirect("sheet1!$A$1:$B$2", True, "")'),
+    FormulaTest(
+        '=INDIRECT("sheet1!$A$1:$B$2", FALSE)',
+        '"sheet1!$A$1:$B$2"|FALSE|INDIRECT',
+        'indirect("sheet1!$A$1:$B$2", False, "")'),
+    FormulaTest(
         '=SUM(sheet1!$A$1:$B$2)',
         'sheet1!$A$1:$B$2|SUM',
         'sum_(_R_("sheet1!A1:B2"))'),
@@ -397,6 +405,14 @@ reference_inputs = [
         '=COLUMN(L45)',
         'L45|COLUMN',
         'column(_REF_("L45"))'),
+    FormulaTest(
+        '=OFFSET(L45,1,2,3,4)',
+        'L45|1|2|3|4|OFFSET',
+        'offset(_REF_("L45"), 1, 2, 3, 4)'),
+    FormulaTest(
+        '=OFFSET(L45:O50,1,2,,4)',
+        'L45:O50|1|2||4|OFFSET',
+        'offset(_REF_("L45:O50"), 1, 2, None, 4)'),
 ]
 
 

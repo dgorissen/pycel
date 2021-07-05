@@ -481,6 +481,17 @@ class FunctionNode(ASTNode):
     def func_column(self):
         return 'column({})'.format(self._build_reference)
 
+    def func_offset(self):
+        to_emit = self.comma_join_emit()
+        return 'offset({}{})'.format(self._build_reference, to_emit.split(')', 1)[1])
+
+    def func_indirect(self):
+        to_emit = list(c.emit for c in self.children)
+        if len(to_emit) == 1:
+            to_emit.append('True')
+        to_emit.append(f'"{self.cell.sheet}"')
+        return f'indirect({", ".join(to_emit)})'
+
     SUBTOTAL_FUNCS = {
         1: 'average',
         2: 'count',

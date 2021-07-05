@@ -29,6 +29,7 @@ from pycel.excelutil import (
     is_address,
     iterative_eval_tracker,
     list_like,
+    REF_ERROR,
 )
 from pycel.excelwrapper import ExcelOpxWrapper, ExcelOpxWrapperNoData
 
@@ -790,6 +791,9 @@ class ExcelCompiler:
 
     def _evaluate(self, address):
         """Evaluate a single cell"""
+        if address not in self.cell_map and getattr(self, 'excel', None):
+            # INDIRECT() and OFFSET() can produce addresses we don't already have loaded
+            self._gen_graph(address)
         cell = self.cell_map[address]
 
         # calculate the cell value for formulas and ranges
@@ -799,10 +803,35 @@ class ExcelCompiler:
 
             elif cell.python_code:
                 self.log.debug(
-                    "Evaluating: {}, {}".format(cell.address, cell.python_code))
+                    "Evaluating: {}, {}".format(address, cell.python_code))
                 value = self.eval(cell)
-                self.log.info("Cell %s evaluated to '%s' (%s)" % (
-                    cell.address, value, type(value).__name__))
+                if is_address(value):
+                    # eval produced an address (aka: a reference)
+                    if value.is_range:
+                        # complain as we are not going to do any spilling
+                        self.log.warning(f"Cell {address} evaluated to '{value}',"
+                                         f" truncating to '{value.start}'")
+                        value = value.start
+                    else:
+                        self.log.info(f"Cell {address} evaluated to address '{value}'")
+
+                    # fetch the value for this cell, if it exists
+                    ref_addr = value.address
+                    if ref_addr not in self.cell_map and getattr(self, 'excel', None):
+                        # INDIRECT() can produce addresses we don't already have loaded
+                        self._gen_graph(ref_addr)
+
+                    if ref_addr in self.cell_map:
+                        # we found the cell we needed
+                        value = self.cell_map[ref_addr].value
+                    else:
+                        value = REF_ERROR
+                        self.log.warning(
+                            f"Cell {address} evaluated to '{value}', which is UNKNOWN. "
+                            f"Dynamic addresses mixed with compiled workbooks are UNSUPPORTED!")
+                else:
+                    self.log.info(
+                        f"Cell {cell.address} evaluated to '{value}' ({type(value).__name__})")
                 cell.value = (value[0][0] if list_like(value[0]) else value[0]
                               ) if list_like(value) else value
 

@@ -44,9 +44,27 @@ load_to_test_module(pycel.lib.lookup, __name__)
 
 
 def test_lookup_ws(fixture_xls_copy):
+    INDIRECT_FORMULA_ADDRESS = AddressCell('Offset!B53')
     compiler = ExcelCompiler(fixture_xls_copy('lookup.xlsx'))
-    result = compiler.validate_calcs()
+
+    # do an INDIRECT() before other cells are loaded to verify it can load what it needs
+    result = compiler.validate_calcs([INDIRECT_FORMULA_ADDRESS])
     assert result == {}
+
+    # now load and check everything
+    result = compiler.validate_serialized()
+    assert result == {}
+
+    # use indirect to an existing range
+    loaded = ExcelCompiler.from_file(compiler.filename)
+    loaded.set_value(INDIRECT_FORMULA_ADDRESS.address_at_offset(1, 0), 'B2:F6')
+    indirect = loaded.evaluate(INDIRECT_FORMULA_ADDRESS)
+    assert indirect == loaded.evaluate('Offset!B2')
+
+    # use indirect to a non-pre-existing range
+    loaded.set_value(INDIRECT_FORMULA_ADDRESS.address_at_offset(1, 0), 'H1:H2')
+    indirect = loaded.evaluate(INDIRECT_FORMULA_ADDRESS)
+    assert indirect == REF_ERROR
 
 
 @pytest.mark.parametrize(
@@ -147,82 +165,77 @@ def test_hlookup_vlookup_error(values, expected):
 
 
 class TestIndex:
-    """
-    Description
-    Returns the value of an element in a table or an array, selected by the row
-    and column number indexes.
-
-    Use the array form if the first argument to INDEX is an array constant.
-
-    Syntax
-    INDEX(array, row_num, [column_num])
-
-    The INDEX function syntax has the following arguments.
-
-    Array    Required. A range of cells or an array constant.
-
-    If array contains only one row or column, the corresponding Row_num or
-    Column_num argument is optional.
-
-    If array has more than one row and more than one column, and only Row_num
-    or Column_num is used, INDEX returns an array of the entire row or column
-    in array.
-
-    Row_num    Required. Selects the row in array from which to return a value.
-               If Row_num is omitted, Column_num is required.
-
-    Column_num    Optional. Selects the column in array from which to return a
-                value. If Column_num is omitted, Row_num is required.
-
-    Remarks
-    If both the Row_num and Column_num arguments are used, INDEX returns the
-    value in the cell at the intersection of Row_num and Column_num.
-
-    If you set Row_num or Column_num to 0 (zero), INDEX returns the array of
-    values for the entire column or row, respectively. To use values returned
-    as an array, enter the INDEX function as an array formula in a horizontal
-    range of cells for a row, and in a vertical range of cells for a column.
-    To enter an array formula, press CTRL+SHIFT+ENTER.
-
-    Note: In Excel Web App, you cannot create array formulas.
-
-    Row_num and Column_num must point to a cell within array; otherwise,
-    INDEX returns the #REF! error value.
-
-    """
-    test_data = ((0, 1), (DIV0, 3))
+    """Value of an element in an array selected by the row and column number indexes."""
+    test_data_all = ((0, 1), (DIV0, 3))
     test_data_col = ((0,), (DIV0,))
     test_data_row = ((0, 1),)
     test_data_np = np.asarray(((0, 1), (2, 3)))
 
-    @staticmethod
-    @pytest.mark.parametrize(
+    test_addr = AddressCell('sh!A1')
+    test_data_ref = {
+        test_data_all: ((test_addr, test_addr), (test_addr, test_addr)),
+        test_data_col: ((test_addr,), (test_addr,)),
+        test_data_row: ((test_addr, test_addr),),
+    }
+
+    test_data = (
         'data, row_num, col_num, expected', (
-            (test_data, 1, 1, 0),
-            (test_data, 1, 2, 1),
-            (test_data, 2, 1, DIV0),
-            (test_data, 2, 2, 3),
+            (test_data_all, -1, 0, VALUE_ERROR),
+            (test_data_all, 0, -1, VALUE_ERROR),
+            (test_data_all, 0, 0, test_data_all),
+            (test_data_all, 0, 1, ((0,), (DIV0,))),
+            (test_data_all, 0, 2, ((1,), (3,))),
+            (test_data_all, 0, 3, REF_ERROR),
+            (test_data_all, 1, -1, VALUE_ERROR),
+            (test_data_all, 1, 0, ((0, 1),)),
+            (test_data_all, 1, 1, 0),
+            (test_data_all, 1, 2, 1),
+            (test_data_all, 1, 3, REF_ERROR),
+            (test_data_all, 2, -1, VALUE_ERROR),
+            (test_data_all, 2, 0, ((DIV0, 3),)),
+            (test_data_all, 2, 1, DIV0),
+            (test_data_all, 2, 2, 3),
+            (test_data_all, 2, 3, REF_ERROR),
+            (test_data_all, 3, -1, VALUE_ERROR),
+            (test_data_all, 3, 0, REF_ERROR),
+            (test_data_all, 3, 1, REF_ERROR),
+            (test_data_all, None, None, test_data_all),
+            (test_data_row, 2, 2, REF_ERROR),
+            (test_data_col, 1, 3, REF_ERROR),
 
             # no col given
-            (test_data, 1, None, ((0, 1),)),
-            (test_data, 2, None, ((DIV0, 3),)),
+            (test_data_all, -1, None, VALUE_ERROR),
+            (test_data_all, 0, None, test_data_all),
+            (test_data_all, 1, None, ((0, 1),)),
+            (test_data_all, 2, None, ((DIV0, 3),)),
+            (test_data_all, 3, None, REF_ERROR),
+            (test_data_col, -1, None, VALUE_ERROR),
+            (test_data_col, 0, None, test_data_col),
             (test_data_col, 1, None, 0),
             (test_data_col, 2, None, DIV0),
+            (test_data_col, 3, None, REF_ERROR),
+            (test_data_row, -1, None, VALUE_ERROR),
+            (test_data_row, 0, None, test_data_row),
             (test_data_row, 1, None, 0),
             (test_data_row, 2, None, 1),
+            (test_data_row, 3, None, REF_ERROR),
 
             # no row given
-            (test_data, None, 1, ((0,), (DIV0,))),
-            (test_data, None, 2, ((1,), (3,))),
+            (test_data_all, None, -1, VALUE_ERROR),
+            (test_data_all, None, 0, test_data_all),
+            (test_data_all, None, 1, ((0,), (DIV0,))),
+            (test_data_all, None, 2, ((1,), (3,))),
+            (test_data_all, None, 3, REF_ERROR),
+            (test_data_col, None, -1, VALUE_ERROR),
+            (test_data_col, None, 0, test_data_col),
             (test_data_col, None, 1, 0),
             (test_data_col, None, 2, DIV0),
+            (test_data_col, None, 3, REF_ERROR),
+            (test_data_row, None, -1, VALUE_ERROR),
+            (test_data_row, None, 0, test_data_row),
             (test_data_row, None, 1, 0),
             (test_data_row, None, 2, 1),
-
-            # OOR
-            (test_data_row, 2, 2, NA_ERROR),
-            (test_data_col, 1, 3, NA_ERROR),
-            (test_data, None, None, NA_ERROR),
+            (test_data_row, None, 3, REF_ERROR),
 
             # numpy
             (test_data_np, 1, 1, 0),
@@ -237,6 +250,9 @@ class TestIndex:
             (test_data_np, None, 2, np.array(((1,), (3,)))),
         )
     )
+
+    @staticmethod
+    @pytest.mark.parametrize(*test_data)
     def test_index(data, row_num, col_num, expected):
         result = index(data, row_num, col_num)
         if isinstance(expected, np.ndarray):
@@ -244,12 +260,28 @@ class TestIndex:
         else:
             assert result == expected
 
+    @pytest.mark.parametrize(*test_data)
+    def test_index_reference(self, data, row_num, col_num, expected):
+        if not isinstance(data, np.ndarray):
+            def lookup_test_data(address):
+                address = AddressCell(address)
+                return data[address.row - 1][address.col_idx - 1]
+
+            from unittest import mock
+            with mock.patch.dict(index.excel_func_meta['name_space'],
+                                 {'_C_': lookup_test_data}):
+                result = index(self.test_data_ref[data], row_num, col_num)
+            if row_num or col_num:
+                assert result == expected
+            else:
+                assert result == self.test_data_ref[data]
+
     @staticmethod
     def test_index_error_inputs():
         index_f = error_string_wrapper(index, {1, 2})
         assert NA_ERROR == index_f(NA_ERROR, 1)
-        assert NA_ERROR == index_f(TestIndex.test_data, NA_ERROR, 1)
-        assert NA_ERROR == index_f(TestIndex.test_data, 1, NA_ERROR)
+        assert NA_ERROR == index_f(TestIndex.test_data_all, NA_ERROR, 1)
+        assert NA_ERROR == index_f(TestIndex.test_data_all, 1, NA_ERROR)
         assert VALUE_ERROR == index_f((0, 1), 0, 1)
         assert VALUE_ERROR == index_f(None, 1, 1)
 
