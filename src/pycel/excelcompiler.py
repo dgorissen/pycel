@@ -36,6 +36,8 @@ REF_START = '=_REF_("'
 REF_END = '")'
 REF_FORMAT = REF_START + '{}' + REF_END
 
+Mismatch = collections.namedtuple('Mismatch', 'original calced formula')
+
 pycel_logger = logging.getLogger('pycel')
 
 
@@ -562,6 +564,26 @@ class ExcelCompiler:
         for addr in cells_to_remove:
             del self.cell_map[addr]
 
+    def validate_serialized(self, **kwargs):
+        assert self.excel, "validate_serialized() needs to be run on the compiler"
+        failed = self.validate_calcs(**kwargs)
+        if failed != {}:
+            return failed
+
+        self.to_file(file_types='json')
+        compiled = ExcelCompiler.from_file(self.filename + '.json')
+        compiled.recalculate()
+        for addr in self.cell_map:
+            if not self.cell_map[addr].close_enough(
+                    compiled.cell_map[addr].value, tol=kwargs.get('tolerance')):
+                failed[addr] = Mismatch(
+                    self.cell_map[addr].value, compiled.cell_map[addr].value,
+                    str(self.cell_map[addr].formula))
+                print('{} mismatch  {} -> {}  {}'.format(
+                    addr, self.cell_map[addr].value, self.cell_map[addr].value,
+                    str(self.cell_map[addr].formula)))
+        return failed
+
     def validate_calcs(self, output_addrs=None, sheet=None, verify_tree=True,
                        tolerance=None, raise_exceptions=False):
         """For each address, calc the value, and verify that it matches
@@ -574,8 +596,6 @@ class ExcelCompiler:
         :param verify_tree: Follow the tree to any precedent nodes
         :return: dict of addresses with good/bad values that failed to verify
         """
-        Mismatch = collections.namedtuple('Mismatch', 'original calced formula')
-
         if output_addrs is None:
             to_verify = list(self.formula_cells(sheet))
             print('Found {} formulas to evaluate'.format(len(to_verify)))
@@ -1008,13 +1028,13 @@ class _CellBase:
 class _CellRange(_CellBase):
     # TODO: only supports rectangular ranges
 
-    serialize = False
-
     def __init__(self, data, excel=None):
         formula = None
         if data.formula and isinstance(data.formula, str):
-            assert data.formula.startswith('={') and data.formula[-1] == '}'
-            formula = '=' + data.formula[2:-1]
+            formula = data.formula
+            if formula.startswith('={') and formula[-1] == '}':
+                formula = '=' + formula[2:-1]
+
         super().__init__(address=data.address, formula=formula, excel=excel)
         if not self.address.sheet:
             raise ValueError("Must pass in a sheet: {}".format(self.address))
@@ -1035,6 +1055,11 @@ class _CellRange(_CellBase):
 
     def __iter__(self):
         return flatten(self.addresses)
+
+    @property
+    def serialize(self):
+        # Ranges with formulas need to be serialized
+        return bool(self.formula)
 
     @property
     def needed_addresses(self):
@@ -1145,18 +1170,22 @@ class _CompiledImporter:
         self.compiler = None
 
     def get_range(self, address):
+        cell = self._get_cell(address)
 
         if not address.is_range:
-            return self._get_cell(address)
+            return cell
 
         elif address.is_unbounded_range:
             # this is a unbounded range to range mapping, disassemble
-            cell = self._get_cell(address)
             formula = cell.formula
             assert formula.startswith(REF_START)
             assert formula.endswith(REF_END)
             ref_addr = formula[len(REF_START):-len(REF_END)]
             return self.get_range(AddressRange(ref_addr))
+
+        elif cell.formula:
+            return cell
+
         else:
             # need to map col or row ranges to a specific range
             addresses = address.resolve_range

@@ -29,8 +29,10 @@ from pycel.excelutil import (
     find_corresponding_index,
     flatten,
     handle_ifs,
+    has_array_arg,
     in_array_formula_context,
     is_address,
+    is_array_arg,
     is_number,
     iterative_eval_tracker,
     list_like,
@@ -110,7 +112,7 @@ def test_address_range_multi_colon(address, expected):
 
 
 @pytest.mark.parametrize(
-    'left, right, result', (
+    'left, right, expected', (
         ('a1', 'a1', 'a1'),
         ('a1:b2', 'b1:c3', 'b1:b2'),
         ('a1:d5', 'b3', 'b3'),
@@ -142,15 +144,15 @@ def test_address_range_multi_colon(address, expected):
         ('s!d4:e5', 't!e5', VALUE_ERROR),
     )
 )
-def test_address_range_intersection(left, right, result):
-    result = AddressRange(result)
-    assert AddressRange(left) & AddressRange(right) == result
-    assert AddressRange(left) & right == result
-    assert left & AddressRange(right) == result
+def test_address_range_intersection(left, right, expected):
+    expected = AddressRange(expected)
+    assert AddressRange(left) & AddressRange(right) == expected
+    assert AddressRange(left) & right == expected
+    assert left & AddressRange(right) == expected
 
 
 @pytest.mark.parametrize(
-    'left, right, result', (
+    'left, right, expected', (
         ('a1', 'a1', 'a1'),
         ('a1:b2', 'b1:c3', 'a1:c3'),
         ('a1:b2', 'd5', 'a1:d5'),
@@ -166,11 +168,11 @@ def test_address_range_intersection(left, right, result):
         ('s!c4:e6', 't!a5', VALUE_ERROR),
     )
 )
-def test_address_range_union(left, right, result):
-    result = AddressRange(result)
-    assert AddressRange(left) ** AddressRange(right) == result
-    assert AddressRange(left) ** right == result
-    assert left ** AddressRange(right) == result
+def test_address_range_union(left, right, expected):
+    expected = AddressRange(expected)
+    assert AddressRange(left) ** AddressRange(right) == expected
+    assert AddressRange(left) ** right == expected
+    assert left ** AddressRange(right) == expected
 
 
 @pytest.mark.parametrize(
@@ -240,15 +242,18 @@ def test_address_cell_addr_inc():
     assert 6 == cell_addr.inc_row(4)
 
 
-def test_address_cell_addr_offset():
-
-    cell_addr = AddressCell('sh!C2')
-
-    assert AddressCell('sh!XFC1048575') == cell_addr.address_at_offset(-3, -4)
-    assert AddressCell('sh!XFD1048576') == cell_addr.address_at_offset(-2, -3)
-    assert AddressCell('sh!A1') == cell_addr.address_at_offset(-1, -2)
-    assert AddressCell('sh!E5') == cell_addr.address_at_offset(3, 2)
-    assert AddressCell('sh!F6') == cell_addr.address_at_offset(4, 3)
+@pytest.mark.parametrize(
+    'row_inc, col_inc, expected', (
+        (-3, -4, 'sh!XFC1048575'),
+        (-2, -3, 'sh!XFD1048576'),
+        (-1, -2, 'sh!A1'),
+        (3, 2, 'sh!E5'),
+        (4, 3, 'sh!F6'),
+    )
+)
+def test_address_cell_addr_offset(row_inc, col_inc, expected):
+    assert AddressCell('sh!C2').address_at_offset(row_inc, col_inc).address == expected
+    assert AddressRange('sh!C2:D3').address_at_offset(row_inc, col_inc).address == expected
 
 
 def test_address_sort_keys():
@@ -646,7 +651,7 @@ def test_coerce_to_number(value, expected, expected_type, convert_all):
 
 
 @pytest.mark.parametrize(
-    'value, result', (
+    'value, expected', (
         (True, 'TRUE'),
         (False, 'FALSE'),
         (None, ''),
@@ -656,8 +661,8 @@ def test_coerce_to_number(value, expected, expected_type, convert_all):
         ('xyzzy', 'xyzzy'),
     )
 )
-def test_coerce_to_string(value, result):
-    assert coerce_to_string(value) == result
+def test_coerce_to_string(value, expected):
+    assert coerce_to_string(value) == expected
 
 
 def test_in_array_formula_context():
@@ -699,7 +704,7 @@ def test_in_array_formula_context():
 
 
 @pytest.mark.parametrize(
-    'address, value, result', (
+    'address, value, expected', (
         ('A1:A2', 3, ((3, ), (3, ))),
         (None, 1, 1),
         (None, ((1, 2), (3, 4)), ((1, 2), (3, 4))),
@@ -723,11 +728,11 @@ def test_in_array_formula_context():
          ((1, 2, '#N/A'), (3, 4, '#N/A'), ('#N/A', '#N/A', '#N/A'))),
     )
 )
-def test_array_formula_context_fit_to_range(address, value, result):
+def test_array_formula_context_fit_to_range(address, value, expected):
     if address is not None:
         address = AddressRange(address, sheet='s')
     with in_array_formula_context(address):
-        assert in_array_formula_context.fit_to_range(value) == result
+        assert in_array_formula_context.fit_to_range(value) == expected
 
 
 def test_flatten():
@@ -747,7 +752,7 @@ def test_uniqueify():
 
 
 @pytest.mark.parametrize(
-    'data, result', (
+    'data, expected', (
         (AddressCell('A1'), True),
         (AddressRange('A1:B2'), True),
         ('A1', False),
@@ -764,12 +769,39 @@ def test_uniqueify():
         ('x', False),
     )
 )
-def test_is_address(data, result):
-    assert is_address(data) == result
+def test_is_address(data, expected):
+    assert is_address(data) == expected
 
 
 @pytest.mark.parametrize(
-    'data, result', (
+    'data, expected', (
+        (((0,),), True),
+        (((0, 1), (2, 3)), True),
+        ((0,), False),
+
+        (AddressCell('A1'), False),
+        (AddressRange('A1:B2'), False),
+        ('A1', False),
+        ('A1:B2', False),
+
+        (1, False),
+        (0, False),
+        (-1, False),
+        (1.0, False),
+        ('-1.0', False),
+        (True, False),
+        (False, False),
+        (None, False),
+        ('x', False),
+    )
+)
+def test_array_arg(data, expected):
+    assert is_array_arg(data) == expected
+    assert has_array_arg(1, 'a', True, data, None) == expected
+
+
+@pytest.mark.parametrize(
+    'data, expected', (
         (1, True),
         (0, True),
         (-1, True),
@@ -788,12 +820,12 @@ def test_is_address(data, result):
         (AddressCell('A1'), False),
     )
 )
-def test_is_number(data, result):
-    assert is_number(data) == result
+def test_is_number(data, expected):
+    assert is_number(data) == expected
 
 
 @pytest.mark.parametrize(
-    'data, result', (
+    'data, expected', (
         ((12, 12), ((0, 0), )),
         ((12, 12, 12), AssertionError),
         ((((1, 1, 2, 2, 2), ), 2), ((0, 2), (0, 3), (0, 4))),
@@ -807,14 +839,14 @@ def test_is_number(data, result):
           ((1, 2, 3, 4, 5), ), "<=4"), ((0, 2), (0, 3))),
     )
 )
-def test_handle_ifs(data, result):
-    if isinstance(result, type(Exception)):
-        with pytest.raises(result):
+def test_handle_ifs(data, expected):
+    if isinstance(expected, type(Exception)):
+        with pytest.raises(expected):
             handle_ifs(data)
-    elif isinstance(result, str):
-        assert handle_ifs(data) == result
+    elif isinstance(expected, str):
+        assert handle_ifs(data) == expected
     else:
-        assert tuple(sorted(handle_ifs(data))) == result
+        assert tuple(sorted(handle_ifs(data))) == expected
 
 
 def test_handle_ifs_op_range():
@@ -994,7 +1026,7 @@ def test_criteria_parser(value, criteria, expected):
 
 
 @pytest.mark.parametrize(
-    'lval, op, rval, result', (
+    'lval, op, rval, expected', (
         (1, '>', 1, False),
         (1, '>=', 1, True),
         (1, '<', 1, False),
@@ -1068,8 +1100,8 @@ def test_criteria_parser(value, criteria, expected):
         ('', '<>', None, False),
     )
 )
-def test_excel_cmp(lval, op, rval, result):
-    assert OPERATORS[op](ExcelCmp(lval), rval) == result
+def test_excel_cmp(lval, op, rval, expected):
+    assert OPERATORS[op](ExcelCmp(lval), rval) == expected
 
 
 @pytest.mark.parametrize(

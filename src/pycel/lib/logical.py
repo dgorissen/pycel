@@ -17,7 +17,9 @@ import numpy as np
 from pycel.excelutil import (
     ERROR_CODES,
     flatten,
+    has_array_arg,
     in_array_formula_context,
+    is_array_arg,
     NA_ERROR,
     VALUE_ERROR,
 )
@@ -91,10 +93,9 @@ def if_(test, true_value, false_value=0):
 def iferror(arg, value_if_error):
     # Excel reference: https://support.microsoft.com/en-us/office/
     #   IFERROR-function-C526FD07-CAEB-47B8-8BB6-63F3E417F611
-    if in_array_formula_context and (
-            isinstance(arg, tuple) or isinstance(value_if_error, tuple)):
+    if in_array_formula_context and has_array_arg(arg, value_if_error):
         return cse_array_wrapper(iferror, (0, 1))(arg, value_if_error)
-    elif arg in ERROR_CODES or isinstance(arg, tuple):
+    elif arg in ERROR_CODES or is_array_arg(arg):
         return 0 if value_if_error is None else value_if_error
     else:
         return arg
@@ -103,10 +104,9 @@ def iferror(arg, value_if_error):
 def ifna(arg, value_if_na):
     # Excel reference: https://support.microsoft.com/en-us/office/
     #   ifna-function-6626c961-a569-42fc-a49d-79b4951fd461
-    if in_array_formula_context and (
-            isinstance(arg, tuple) or isinstance(value_if_na, tuple)):
+    if in_array_formula_context and has_array_arg(arg, value_if_na):
         return cse_array_wrapper(ifna, (0, 1))(arg, value_if_na)
-    elif arg == NA_ERROR or isinstance(arg, tuple):
+    elif arg == NA_ERROR or is_array_arg(arg):
         return 0 if value_if_na is None else value_if_na
     else:
         return arg

@@ -21,6 +21,7 @@ from pycel.excelutil import (
     ERROR_CODES,
     flatten,
     handle_ifs,
+    is_array_arg,
     is_number,
     list_like,
     NA_ERROR,
@@ -362,7 +363,7 @@ def sumproduct(*args):
     # verify array sizes match
     sizes = set()
     for arg in args:
-        assert isinstance(arg, tuple), isinstance(arg[0], tuple)
+        assert is_array_arg(arg)
         sizes.add((len(arg), len(arg[0])))
     if len(sizes) != 1:
         return VALUE_ERROR

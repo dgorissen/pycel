@@ -553,6 +553,9 @@ class ExcelFormula:
     def __str__(self):
         return self.base_formula or self.python_code
 
+    def __repr__(self):
+        return f'ExcelFormula({self.base_formula or self.python_code})'
+
     def __getstate__(self):
         # build the python code
         self.python_code

@@ -326,12 +326,12 @@ class TestYearfrac:
 def test_yearfrac_ws(fixture_xls_copy):
     excel_compiler = ExcelCompiler(fixture_xls_copy('yearfrac.xlsx'))
 
-    failed_cells = excel_compiler.validate_calcs()
+    failed_cells = excel_compiler.validate_serialized()
     assert failed_cells == {}
 
 
 def test_with_spreadsheet(fixture_xls_copy):
     excel_compiler = ExcelCompiler(fixture_xls_copy('date-time.xlsx'))
 
-    failed_cells = excel_compiler.validate_calcs()
+    failed_cells = excel_compiler.validate_serialized()
     assert failed_cells == {}

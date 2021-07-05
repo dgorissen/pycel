@@ -338,7 +338,7 @@ def test_npv(data, expected):
 
 def test_npv_ws(fixture_xls_copy):
     compiler = ExcelCompiler(fixture_xls_copy('npv.xlsx'))
-    result = compiler.validate_calcs()
+    result = compiler.validate_serialized()
     assert result == {}
 
 
@@ -397,7 +397,7 @@ def test_pv(data, result):
 
 def test_pv_ws(fixture_xls_copy):
     compiler = ExcelCompiler(fixture_xls_copy('pv.xlsx'))
-    result = compiler.validate_calcs()
+    result = compiler.validate_serialized()
     assert result == {}
 
 

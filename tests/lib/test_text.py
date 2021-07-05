@@ -41,7 +41,7 @@ load_to_test_module(pycel.lib.text, __name__)
 
 def test_text_ws(fixture_xls_copy):
     compiler = ExcelCompiler(fixture_xls_copy('text.xlsx'))
-    result = compiler.validate_calcs()
+    result = compiler.validate_serialized()
     assert result == {}
 
 

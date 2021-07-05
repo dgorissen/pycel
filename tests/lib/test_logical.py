@@ -41,7 +41,7 @@ load_to_test_module(pycel.lib.logical, __name__)
 
 def test_logical_ws(fixture_xls_copy):
     compiler = ExcelCompiler(fixture_xls_copy('logical.xlsx'))
-    result = compiler.validate_calcs()
+    result = compiler.validate_serialized()
     assert result == {}
 
 

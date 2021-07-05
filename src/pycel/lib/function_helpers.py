@@ -19,6 +19,7 @@ from pycel.excelutil import (
     coerce_to_string,
     ERROR_CODES,
     flatten,
+    is_array_arg,
     is_number,
     NUM_ERROR,
     VALUE_ERROR,
@@ -173,10 +174,7 @@ def cse_array_wrapper(f, param_indices=None):
     @functools.wraps(f)
     def wrapper(*args, **kwargs):
         looper = (i for i in param_indices if i < len(args))
-        cse_arg_nums = {arg_num for arg_num in looper
-                        if (isinstance(args[arg_num], tuple) and
-                            isinstance(args[arg_num][0], tuple))
-                        }
+        cse_arg_nums = {arg_num for arg_num in looper if is_array_arg(args[arg_num])}
 
         if cse_arg_nums:
             a_cse_arg = next(iter(cse_arg_nums))

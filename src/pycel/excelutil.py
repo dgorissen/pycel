@@ -241,10 +241,8 @@ class AddressRange(collections.namedtuple(
                 "AddressRange expected a range '{}'".format(address)
 
             start_col, start_row, end_col, end_row = address
-            start = AddressCell(
-                (start_col, start_row, start_col, start_row), sheet=sheet)
-            end = AddressCell(
-                (end_col, end_row, end_col, end_row), sheet=sheet)
+            start = AddressCell((start_col, start_row, start_col, start_row), sheet=sheet)
+            end = AddressCell((end_col, end_row, end_col, end_row), sheet=sheet)
 
         coordinate = '{0}:{1}'.format(start.coordinate, end.coordinate)
 
@@ -314,6 +312,9 @@ class AddressRange(collections.namedtuple(
         for col in range(*col_range):
             yield (AddressCell((col, row, col, row), sheet=self.sheet)
                    for row in range(self.start.row, self.end.row + 1))
+
+    def address_at_offset(self, row_inc=0, col_inc=0):
+        return self.start.address_at_offset(row_inc=row_inc, col_inc=col_inc)
 
     @property
     def resolve_range(self):
@@ -527,6 +528,14 @@ class AddressMultiAreaRange(tuple):
 
 def is_address(addr):
     return isinstance(addr, (AddressCell, AddressRange))
+
+
+def is_array_arg(arg):
+    return isinstance(arg, tuple) and not is_address(arg) and isinstance(arg[0], tuple)
+
+
+def has_array_arg(*args):
+    return any(is_array_arg(a) for a in args)
 
 
 def unquote_sheetname(sheetname):
@@ -969,7 +978,7 @@ def coerce_to_number(value, convert_all=False):
             return int(value) if convert_all else value
         if is_number(value) and int(value) == float(value):
             return int(value)
-        if isinstance(value, tuple) and isinstance(value[0], tuple):
+        if is_array_arg(value):
             return coerce_to_number(value[0][0], convert_all)
         return value
 

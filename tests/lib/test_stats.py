@@ -54,7 +54,7 @@ load_to_test_module(pycel.lib.stats, __name__)
 
 def test_stats_ws(fixture_xls_copy):
     compiler = ExcelCompiler(fixture_xls_copy('stats.xlsx'))
-    result = compiler.validate_calcs(tolerance=1e-6)
+    result = compiler.validate_serialized(tolerance=1e-6)
     assert result == {}
 
 
