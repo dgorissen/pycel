@@ -416,9 +416,8 @@ def offset(reference, row_inc, col_inc, height=None, width=None):
         bottom_right = AddressCell((end_col, end_row, end_col, end_row),
                                    sheet=base_addr.sheet)
 
-        return AddressRange('{}:{}'.format(
-            top_left.coordinate, bottom_right.coordinate),
-            sheet=top_left.sheet)
+        return AddressRange(f'{top_left.coordinate}:{bottom_right.coordinate}',
+                            sheet=top_left.sheet)
 
 
 @excel_helper(ref_params=0)

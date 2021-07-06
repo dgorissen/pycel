@@ -96,9 +96,9 @@ def time_from_serialnumber(serialnumber):
 
 def is_leap_year(year):
     if not is_number(year):
-        raise TypeError("%s must be a number" % str(year))
+        raise TypeError(f"{year} must be a number")
     if year <= 0:
-        raise TypeError("%s must be strictly positive" % str(year))
+        raise TypeError(f"{year} must be strictly positive")
 
     # Watch out, 1900 is a leap according to Excel =>
     # https://support.microsoft.com/en-us/kb/214326

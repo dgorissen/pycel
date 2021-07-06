@@ -306,7 +306,7 @@ def test_indirect(address, expected):
         with_sheet = expected.create(expected, sheet='S')
         assert indirect(address, None, 'S') == with_sheet
 
-        address = 'S!{}'.format(address)
+        address = f'S!{address}'
         assert indirect(address) == with_sheet
         assert indirect(address, None, 'S') == with_sheet
 
@@ -523,8 +523,7 @@ def test_offset(crwh, refer, rows, cols, height, width):
         end = AddressCell((crwh[0] + crwh[2] - 1, crwh[1] + crwh[3] - 1,
                            crwh[0] + crwh[2] - 1, crwh[1] + crwh[3] - 1))
 
-        expected = AddressRange.create(
-            '{0}:{1}'.format(start.coordinate, end.coordinate))
+        expected = AddressRange.create(f'{start.coordinate}:{end.coordinate}')
 
     result = offset(refer, rows, cols, height, width)
     assert result == expected

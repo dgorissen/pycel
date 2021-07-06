@@ -282,7 +282,7 @@ def round_(number, num_digits=0):
 
 def _round(number, num_digits, rounding):
     num_digits = int(num_digits)
-    quant = Decimal('1E{}{}'.format('+-'[num_digits >= 0], abs(num_digits)))
+    quant = Decimal(f'1E{"+-"[num_digits >= 0]}{abs(num_digits)}')
     return float(Decimal(repr(number)).quantize(quant, rounding=rounding))
 
 

@@ -205,14 +205,13 @@ class ASTNode:
         elif token.is_operator:
             return OperatorNode(token, cell)
 
-        raise FormulaParserError('Unknown token type: {}'.format(repr(token)))
+        raise FormulaParserError(f'Unknown token type: {repr(token)}')
 
     def __str__(self):
         return str(self.token.value.strip('('))
 
     def __repr__(self):
-        return '{}<{}>'.format(type(self).__name__,
-                               str(self.token.value.strip('(')))
+        return f"{type(self).__name__}<{self.token.value.strip('(')}>"
 
     @property
     def ast(self):
@@ -287,24 +286,23 @@ class OperatorNode(ASTNode):
 
         parent = self.parent
         if op == '%':
-            ss = '{} / 100'.format(args[0].emit)
+            ss = f'{args[0].emit} / 100'
         elif op == ' ':
             # range intersection
-            ss = '_R_' + ('(str({} & {}))'.format(args[0].emit, args[1].emit)
+            ss = '_R_' + (f'(str({args[0].emit} & {args[1].emit}))'
                           .replace('_R_', '_REF_')
                           .replace('_C_', '_REF_')
                           )
         elif op == ':':
             # range union
-            ss = '_R_' + ('(str({} ** {}))'.format(args[0].emit, args[1].emit)
+            ss = '_R_' + (f'(str({args[0].emit} ** {args[1].emit}))'
                           .replace('_R_', '_REF_')
                           .replace('_C_', '_REF_')
                           )
         else:
             if op != ',':
                 op = ' ' + op
-
-            ss = '{}{} {}'.format(args[0].emit, op, args[1].emit)
+            ss = f'{args[0].emit}{op} {args[1].emit}'
 
         # avoid needless parentheses
         if parent and not isinstance(parent, FunctionNode):
@@ -360,11 +358,10 @@ class RangeNode(OperandNode):
                     table_name = excel.table_name_containing(self.cell.address)
 
             if not table_name:
-                logging.getLogger('pycel').warning(
-                    'Table Name not found: {}'.format(addr_str))
-                return '"{}"'.format(NAME_ERROR)
+                logging.getLogger('pycel').warning(f'Table Name not found: {addr_str}')
+                return f'"{NAME_ERROR}"'
 
-            addr_str = '{}{}'.format(table_name, addr_str)
+            addr_str = f'{table_name}{addr_str}'
             address = AddressRange.create(
                 addr_str, sheet=self.cell.address.sheet, cell=self.cell)
 
@@ -419,8 +416,7 @@ class FunctionNode(ASTNode):
         if fmt_str is None:
             return ", ".join(n.emit for n in to_emit)
         else:
-            return ", ".join(
-                fmt_str.format(n.emit) for n in to_emit)
+            return ", ".join(fmt_str.format(n.emit) for n in to_emit)
 
     @property
     def emit(self):
@@ -433,14 +429,12 @@ class FunctionNode(ASTNode):
         func = func.replace('.', '_')
 
         # if a special handler is needed
-        handler = getattr(self, 'func_{}'.format(func), None)
+        handler = getattr(self, f'func_{func}', None)
         if handler is not None:
             return handler()
-
         else:
             # map to the correct name
-            return "{}({})".format(
-                self.func_map.get(func, func), self.comma_join_emit())
+            return f"{self.func_map.get(func, func)}({self.comma_join_emit()})"
 
     @staticmethod
     def func_pi():
@@ -458,7 +452,7 @@ class FunctionNode(ASTNode):
         return "False"
 
     def func_array(self):
-        return '({},)'.format(self.comma_join_emit('({},)'))
+        return f"({self.comma_join_emit(fmt_str='({},)')},)"
 
     def func_arrayrow(self):
         # simply create a list
@@ -467,7 +461,7 @@ class FunctionNode(ASTNode):
     @property
     def _build_reference(self):
         if len(self.children) == 0:
-            address = '_REF_("{}")'.format(self.cell.address)
+            address = f'_REF_("{self.cell.address}")'
         else:
             address = self.children[0].emit
             address = address.replace('_R_', '_REF_').replace('_C_', '_REF_')
@@ -476,14 +470,14 @@ class FunctionNode(ASTNode):
         return address
 
     def func_row(self):
-        return 'row({})'.format(self._build_reference)
+        return f'row({self._build_reference})'
 
     def func_column(self):
-        return 'column({})'.format(self._build_reference)
+        return f'column({self._build_reference})'
 
     def func_offset(self):
-        to_emit = self.comma_join_emit()
-        return 'offset({}{})'.format(self._build_reference, to_emit.split(')', 1)[1])
+        to_emit = self.comma_join_emit().split(')', 1)[1]
+        return f'offset({self._build_reference}{to_emit})'
 
     def func_indirect(self):
         to_emit = list(c.emit for c in self.children)
@@ -517,13 +511,12 @@ class FunctionNode(ASTNode):
             if func_num - 100 in self.SUBTOTAL_FUNCS:
                 func_num -= 100
             else:
-                raise ValueError(
-                    "Unknown SUBTOTAL function number: {}".format(func_num))
+                raise ValueError(f"Unknown SUBTOTAL function number: {func_num}")
 
         func = self.SUBTOTAL_FUNCS[func_num]
 
-        return "{}({})".format(
-            func, self.comma_join_emit(fmt_str="{}", to_emit=self.children[1:]))
+        to_emit = self.comma_join_emit(fmt_str="{}", to_emit=self.children[1:])
+        return f'{func}({to_emit})'
 
 
 class ExcelFormula:
@@ -638,8 +631,7 @@ class ExcelFormula:
                     self._compile_python_ast()
                 except Exception as exc:
                     raise FormulaParserError(
-                        "Failed to compile expression {}: {}".format(
-                            self.python_code, exc))
+                        f"Failed to compile expression {self.python_code}: {exc}")
 
         return self._compiled_python
 
@@ -730,8 +722,7 @@ class ExcelFormula:
                     output.append(self._ast_node(stack.pop()))
 
                 if not len(were_values):
-                    raise FormulaParserError(
-                        "Mismatched or misplaced parentheses")
+                    raise FormulaParserError("Mismatched or misplaced parentheses")
 
                 were_values.pop()
                 arg_count[-1] += 1
@@ -755,8 +746,7 @@ class ExcelFormula:
                     output.append(self._ast_node(stack.pop()))
 
                 if not stack:
-                    raise FormulaParserError(
-                        "Mismatched or misplaced parentheses")
+                    raise FormulaParserError("Mismatched or misplaced parentheses")
 
                 stack.pop()
 
@@ -766,8 +756,7 @@ class ExcelFormula:
                     output.append(f)
 
             else:
-                assert token.type == token.WSPACE, \
-                    'Unexpected token: {}'.format(token)
+                assert token.type == token.WSPACE, f'Unexpected token: {token}'
 
         while stack:
             if stack[-1].subtype in (Token.OPEN, Token.CLOSE):
@@ -803,8 +792,7 @@ class ExcelFormula:
                         arg1 = stack.pop()
                     except IndexError:
                         raise FormulaParserError(
-                            "'{}' operator missing operand".format(
-                                node.token.value))
+                            f"'{node.token.value}' operator missing operand")
                     tree.add_node(arg1, pos=0)
                     tree.add_node(arg2, pos=1)
                     tree.add_edge(arg1, node)
@@ -814,8 +802,7 @@ class ExcelFormula:
                         arg1 = stack.pop()
                     except IndexError:
                         raise FormulaParserError(
-                            "'{}' operator missing operand".format(
-                                node.token.value))
+                            f"'{node.token.value}' operator missing operand")
                     tree.add_node(arg1, pos=1)
                     tree.add_edge(arg1, node)
 
@@ -961,7 +948,7 @@ class ExcelFormula:
         """
         local_line = sys._getframe().f_lineno - 6
 
-        source_code = "lambdas.append(lambda: {})".format(self.python_code)
+        source_code = f"lambdas.append(lambda: {self.python_code})"
         kwargs = dict(mode='exec', filename=self.filename or __file__)
         tree = ast.parse(source_code, **kwargs)
         ast.increment_lineno(tree, (self.lineno - 1) or local_line)

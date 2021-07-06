@@ -65,7 +65,7 @@ def test_cse_array_wrapper(arg_num, f_args, result):
 def test_error_string_wrapper(arg_nums, f_args, result):
 
     def f_test(*args):
-        return 'args: {}'.format(args)
+        return f'args: {args}'
 
     assert error_string_wrapper(f_test, arg_nums)(*f_args) == result
 
@@ -103,8 +103,8 @@ def test_ref_wrap(value, result):
         return args
 
     name_space = locals()
-    name_space['_R_'] = lambda a: 'R:{}'.format(a)
-    name_space['_C_'] = lambda a: 'C:{}'.format(a)
+    name_space['_R_'] = lambda a: f'R:{a}'
+    name_space['_C_'] = lambda a: f'C:{a}'
 
     func = apply_meta(
         excel_helper(ref_params=1)(r_test), name_space=name_space)[0]

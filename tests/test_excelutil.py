@@ -332,7 +332,7 @@ def test_unquote_sheetname(sheet_name):
 )
 def test_quoted_address(sheet_name):
     addr = AddressCell('A2', sheet=sheet_name)
-    assert addr.quoted_address == '{}!A2'.format(addr.quote_sheet(sheet_name))
+    assert addr.quoted_address == f'{addr.quote_sheet(sheet_name)}!A2'
 
 
 @pytest.mark.parametrize(
@@ -1312,8 +1312,7 @@ def test_excel_operator_operand_fixup(left_op, op, right_op, expected):
             ] == error_messages
 
     elif expected == DIV0 and DIV0 not in (left_op, right_op):
-        assert [(True, 'Values: {} {} {}'.format(left_op, op, right_op))
-                ] == error_messages
+        assert [(True, f'Values: {left_op} {op} {right_op}')] == error_messages
 
 
 def test_iterative_eval_tracker():

@@ -420,9 +420,9 @@ def dump_test_case(formula, python_code, rpn):
     escaped_python_code = python_code.replace('\\', r'\\')
 
     print('    FormulaTest(')
-    print("        '{}',".format(formula))
-    print("        '{}',".format(rpn))
-    print("        '{}'),".format(escaped_python_code))
+    print(f"        '{formula}',")
+    print(f"        '{rpn}',")
+    print(f"        '{escaped_python_code}'),")
 
 
 def dump_parse(to_dump, ATestCell):
@@ -451,13 +451,12 @@ test_names = (
 test_data = []
 for test_name in test_names:
     for i, test in enumerate(globals()[test_name]):
-        test_data.append(
-            ('{}_{}'.format(test_name, i + 1), test[0], test[1], test[2]))
+        test_data.append((f'{test_name}_{i + 1}', test[0], test[1], test[2]))
 
 
 def dump_all_test_cases():
     for name in test_names:
-        print('{} = '.format(name), end='')
+        print(f'{name} = ', end='')
         dump_parse(t.formula for t in globals()[name])
         print()
 

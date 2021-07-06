@@ -184,8 +184,7 @@ def replace(old_text, start_num, num_chars, new_text):
     num_chars = int(num_chars)
     if start_num < 0 or num_chars < 0:
         return VALUE_ERROR
-    return '{}{}{}'.format(
-        old_text[:start_num], new_text, old_text[start_num + num_chars:])
+    return f'{old_text[:start_num]}{new_text}{old_text[start_num + num_chars:]}'
 
 
 # def replaceb(text):

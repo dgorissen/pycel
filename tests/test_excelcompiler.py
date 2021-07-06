@@ -112,7 +112,7 @@ def test_deserialize_filename(
         # When the serialization path is different than the workbook path
         (serialization_override_path, excel_compiler.filename),
         # When the serialization path is the same as the workbook
-        ('{}.yml'.format(excel_compiler.filename), excel_compiler.filename),
+        (f'{excel_compiler.filename}.yml', excel_compiler.filename),
     ):
         excel_compiler._to_text(serialization_filename)
         deserialized = excel_compiler._from_text(serialization_filename)
