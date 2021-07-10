@@ -10,18 +10,341 @@
 """
 Python equivalents of text excel functions (lower, upper, etc.)
 """
+import collections
+import itertools as it
+import locale
 import re
-from datetime import datetime
+from enum import Enum
+from typing import Iterable, List
 
 from pycel.excelutil import (
+    coerce_to_number,
     coerce_to_string,
     ERROR_CODES,
     flatten,
     VALUE_ERROR,
 )
+from pycel.lib.date_time import DateTimeFormatter
 from pycel.lib.function_helpers import excel_helper
 
 RE_MULTI_SPACE = re.compile(' +')
+
+
+class TextFormat:
+    Element = collections.namedtuple('Element', 'position code next_code char')
+    Token = collections.namedtuple('Token', 'token type position')
+    Tokenized = collections.namedtuple('Tokenized', 'tokens types decimal thousands percents')
+
+    FORMAT_MISC = set("$+(:^\'{<=-/)!&~}> ")
+    FORMAT_NUMBER = set('0#?.,%')
+    FORMAT_PLACEHOLDER = set('#0?')
+    DIGITS = set('0123456789')
+    NUMBER_TOKEN_MATCH = {'#': None, '0': '0', '?': '0'}
+
+    class TokenType(Enum):
+        STRING = 1
+        NUMBER = 2
+        DATETIME = 3
+        AM_PM = 4
+        REPLACE = 5
+
+    FORMAT_TYPES = {TokenType.DATETIME, TokenType.NUMBER, TokenType.REPLACE}
+
+    def __init__(self, format: str):
+        self.format = format
+        try:
+            self.tokenized_formats = tuple(self._tokenize_format(format))
+        except ValueError:
+            self.tokenized_formats = VALUE_ERROR
+
+        self.thousands_format = ',' if locale.setlocale(locale.LC_NUMERIC) == 'C' else 'n'
+
+    @classmethod
+    def _find_am_pm(cls, element, format, stream):
+        if element.code == 'a' and element.next_code in 'm/':
+            if element.next_code == 'm':
+                to_match = 'am/pm'
+            else:
+                to_match = 'a/p'
+            matched = format[element.position:element.position + len(to_match)]
+            if matched.lower() == to_match:
+                for i in range(len(to_match) - 1):
+                    next(stream)
+                return matched if to_match == 'a/p' else to_match
+        return None
+
+    @classmethod
+    def _get_matching_codes(cls, element, stream, eos_allowed=True):
+        elements = [element]
+        while elements[-1].code == elements[-1].next_code:
+            elements.append(next(stream))
+
+        if not eos_allowed and elements[-1].next_code is None:
+            raise ValueError
+
+        return "".join(e.code for e in elements)
+
+    def _tokenize_format(self, format: str) -> Iterable[Tokenized]:
+        """Break up the tokens by type and section"""
+
+        tokens = []
+        last_date = None
+        have_decimal = False
+        have_thousands = False
+        percents = 0
+
+        # amend cls.Token stream to ease code production
+        stream = iter(self.Element(i, *e) for i, e in enumerate(
+            zip(format.lower(), list(format[1:].lower()) + [None], format)))
+
+        for element in stream:
+            if element.char == '"':
+                tokens.append(self.Token(''.join(
+                    e.char for e in it.takewhile(lambda x: x.code != '"', stream)),
+                    self.TokenType.STRING, element.position))
+
+            elif element.char == '\\':
+                if element.next_code is None:
+                    raise ValueError
+                tokens.append(self.Token(
+                    next(stream).char, self.TokenType.STRING, element.position))
+
+            elif element.char == ';':
+                yield self._finalize_tokenize(tokens, have_decimal, have_thousands, percents)
+                tokens = []
+                have_decimal = False
+                have_thousands = False
+                percents = 0
+
+            elif element.char == '@':
+                tokens.append(self.Token(element.char, self.TokenType.REPLACE, element.position))
+
+            elif element.code in self.FORMAT_NUMBER and not (
+                    last_date and (
+                        (last_date[0].token[0] == 's' or last_date[0].token == '[s]') and
+                        element.code == '.' or element.code == ',')):
+
+                need_emit = True
+                if element.code == ',':
+                    need_emit = False
+                    if (have_decimal or have_thousands or
+                            element.position == 0 or element.next_code is None or
+                            format[element.position - 1] not in self.FORMAT_PLACEHOLDER or
+                            format[element.position + 1] not in self.FORMAT_PLACEHOLDER):
+                        # just a regular comma, not 1000's indicator
+                        if element.position == 0 or (
+                                format[element.position - 1] not in self.FORMAT_PLACEHOLDER):
+                            tokens.append(self.Token(
+                                element.code, self.TokenType.STRING, element.position))
+                    else:
+                        have_thousands = True
+
+                elif element.code == '.':
+                    if have_decimal:
+                        need_emit = False
+                        tokens.append(self.Token(
+                            element.code, self.TokenType.STRING, element.position))
+                    else:
+                        have_decimal = True
+
+                elif element.code == '%':
+                    percents += 1
+                    need_emit = False
+                    tokens.append(self.Token(
+                        element.code, self.TokenType.STRING, element.position))
+
+                if need_emit:
+                    tokens.append(self.Token(self._get_matching_codes(element, stream),
+                                             self.TokenType.NUMBER, element.position))
+
+            elif element.code == '[' and element.next_code in set('hms'):
+                element = next(stream)
+                tokens.append(self.Token(
+                    f'[{self._get_matching_codes(element, stream, eos_allowed=False)[0]}]',
+                    self.TokenType.DATETIME, element.position
+                ))
+                last_date = tokens[-1], len(tokens)
+                if next(stream).code != ']':
+                    raise ValueError
+
+            elif element.code in DateTimeFormatter.FORMAT_DATETIME_CONVERSION_LOOKUP:
+                am_pm = self._find_am_pm(element, format, stream)
+                if am_pm is not None:
+                    tokens.append(self.Token(am_pm, self.TokenType.AM_PM, element.position))
+                elif element.code == 'a':
+                    tokens.append(self.Token(
+                        element.code, self.TokenType.STRING, element.position))
+                else:
+                    code = self._get_matching_codes(element, stream)
+                    # Search previous actual token not punctuation
+                    if code in {'m', 'mm'} and last_date and last_date[0].token[0] in 'hs[':
+                        # this is minutes not months
+                        code = code.upper()
+
+                    elif code[0] == 's' and last_date and last_date[0].token in {'m', 'mm'}:
+                        # the previous minutes not months
+                        prev = last_date[1] - 1
+                        tokens[prev] = self.Token(
+                            tokens[prev].token.upper(), tokens[prev].type, tokens[prev].position)
+
+                    elif code == '.' and element.next_code == '0':
+                        # if we are here with '.', then this is subseconds: ss.000
+                        code += self._get_matching_codes(next(stream), stream)
+
+                    tokens.append(self.Token(code, self.TokenType.DATETIME, element.position))
+                last_date = tokens[-1], len(tokens)
+
+            elif element.code == '*':
+                if element.next_code is None:
+                    raise ValueError
+                # we don't support filling, so drop the character following '*'
+                next(stream)
+
+            else:
+                tokens.append(self.Token(element.char, self.TokenType.STRING, element.position))
+
+        if tokens:
+            yield self._finalize_tokenize(tokens, have_decimal, have_thousands, percents)
+
+    @classmethod
+    def _finalize_tokenize(cls, tokens: List[Token], decimal, thousands, percents) -> Tokenized:
+        types = {token.type for token in tokens}
+        if cls.TokenType.AM_PM in types:
+            # replace with the 12 hours version of hours
+            tokens = [t if t.token[0] != 'h' else cls.Token(t.token.upper(), t.type, t.position)
+                      for t in tokens]
+            types.remove(cls.TokenType.AM_PM)
+            types.add(cls.TokenType.DATETIME)
+        if len(types.intersection(cls.FORMAT_TYPES)) > 1:
+            raise ValueError
+        return cls.Tokenized(tuple(tokens), frozenset(types), decimal, thousands, percents)
+
+    def format_value(self, data) -> str:
+        tokenized_formats = self.tokenized_formats
+        if isinstance(tokenized_formats, str):
+            return tokenized_formats
+
+        # check for only one string replace field, and in the last field if present
+        string_replace_token_count = sum(int(self.TokenType.REPLACE in tokens.types)
+                                         for tokens in tokenized_formats)
+        if string_replace_token_count and (
+                string_replace_token_count > 1 or
+                self.TokenType.REPLACE not in tokenized_formats[-1].types):
+            return VALUE_ERROR
+
+        # (attempt to) convert the data into a date (serial number) or number
+        convertor = DateTimeFormatter.new(data)
+        if convertor is not None:
+            # The data was a convertable date
+            data = convertor.serial_number
+        elif data is None:
+            data = 0
+        else:
+            data = coerce_to_number(data)
+
+        # Process strings first
+        if isinstance(data, str):
+            # '@' is not required in the fourth field to use the field
+            if string_replace_token_count or len(tokenized_formats) == 4:
+                tokens, token_types = tokenized_formats[-1][:2]
+                return ''.join(data if t.type == self.TokenType.REPLACE else t.token
+                               for t in tokens)
+            else:
+                # if no specific string formatter, then pass through
+                return data
+
+        if not tokenized_formats:
+            return '-' if data < 0 else ''
+
+        if self.TokenType.REPLACE in tokenized_formats[-1].types:
+            # remove the string formatter on the end if present
+            tokenized_formats = tokenized_formats[:-1]
+
+        if data == 0 and len(tokenized_formats) > 2:
+            tokenized_format = tokenized_formats[2]
+        elif data < 0 and len(tokenized_formats) > 1:
+            tokenized_format = tokenized_formats[1]
+        else:
+            tokenized_format = tokenized_formats[0]
+
+        if data < 0 and self.TokenType.DATETIME not in tokenized_format.types:
+            data = -data
+            if len(tokenized_formats) < 2:
+                amended_tokens = (
+                    self.Token('-', self.TokenType.STRING, -1), *tokenized_format.tokens)
+                tokenized_format = self.Tokenized(
+                    tokens=amended_tokens,
+                    types=tokenized_format.types,
+                    decimal=tokenized_format.decimal,
+                    thousands=tokenized_format.thousands,
+                    percents=tokenized_format.percents,
+                )
+
+        format_tokens, format_types = tokenized_format[:2]
+        if self.TokenType.DATETIME in format_types:
+            if convertor is None:
+                convertor = DateTimeFormatter(data)
+            tokens = tuple(token.token if token.type == self.TokenType.STRING
+                           else convertor.format(token.token)
+                           for token in format_tokens)
+            if any(t in ERROR_CODES for t in tokens):
+                return VALUE_ERROR
+            else:
+                return ''.join(tokens)
+        elif self.TokenType.NUMBER in format_types:
+            return self._number_converter(data, tokenized_format)
+        else:
+            # return the format directly
+            return ''.join(t.token for t in tokenized_format.tokens)
+
+    def _number_converter(self, number_value, tokenized: Tokenized):
+        number_value *= 100 ** tokenized.percents
+        number_format = ''.join(
+            t.token for t in tokenized.tokens if t.type == self.TokenType.NUMBER)
+        thousands = self.thousands_format if tokenized.thousands else ''
+
+        if tokenized.decimal:
+            left_num_format, right_num_format = number_format.split('.', 1)
+            decimals = len(right_num_format)
+            left_side, right_side = f'{number_value:#{thousands}.{decimals}f}'.split('.')
+            right_side = right_side.rstrip('0')
+        else:
+            left_side = f'{int(round(number_value, 0)):{thousands}}'
+            right_side = None
+        left_side = left_side.lstrip('0')
+
+        tokens_iter = iter(tokenized.tokens)
+        left_side_tokens = tuple(it.takewhile(lambda t: t.token != '.', tokens_iter))
+        right_side_tokens = tuple(tokens_iter)
+
+        left = tuple(self._number_token_converter(left_side_tokens, left_side, left_side=True))
+        if tokenized.decimal:
+            right_side = "".join(self._number_token_converter(right_side_tokens, right_side))
+            return f'{"".join(left[::-1])}.{right_side}'
+        else:
+            return ''.join(left[::-1])
+
+    def _number_token_converter(self, tokens, number, left_side=False):
+        digits_iter = iter(number[::-1] if left_side else number)
+        result = []
+        filler = []
+        for token in (tokens[::-1] if left_side else tokens):
+            if token.type == self.TokenType.STRING:
+                filler.extend(iter(token.token[::-1] if left_side else token.token))
+            else:
+                result.extend(filler)
+                filler = []
+                for i in range(len(token.token)):
+                    c = next(digits_iter, self.NUMBER_TOKEN_MATCH[token.token[0]])
+                    if c is not None:
+                        result.append(c)
+                        if c not in self.DIGITS:
+                            c = next(digits_iter, self.NUMBER_TOKEN_MATCH[token.token[0]])
+                            if c is not None:  # pragma: no cover
+                                result.append(c)
+        result.extend(digits_iter)
+        result.extend(filler)
+        return result
 
 
 # def asc(text):
@@ -259,136 +582,14 @@ def substitute(text, old_text, new_text, instance_num=None):
     #   t-function-fb83aeec-45e7-4924-af95-53e073541228
 
 
-@excel_helper(cse_params=0, str_params=(0, 1))
+@excel_helper(cse_params=0, str_params=1)
 def text(text_value, value_format):
     # Excel reference: https://support.microsoft.com/en-us/office/
     #   text-function-20d5ac4d-7b94-49fd-bb38-93d29371225c
-    def _get_datetime_format(excel_format):
-        fmt = excel_format.lower()
-        fmt.replace('a/p', 'am/pm', 1)
-        hour_fmt = '%H' if 'am/pm' not in fmt else '%I'
-        py_fmt = {
-            'dddd': '%A',
-            'ddd': '%a',
-            'dd': '%d',
-            ':mm': ':%M',
-            'mm:': '%M:',
-            ':mm:': ':%M:',
-            'mmmmm': '%b',
-            'mmmm': '%B',
-            'mmm': '%b',
-            'mm': '%m',
-            'am/pm': '%p',
-            'yyyy': '%Y',
-            'yyy': '%Y',
-            'yy': '%y',
-            'hh:': hour_fmt + ":",
-            'h:': hour_fmt + ":",
-            'hh': hour_fmt,
-            '[h]': hour_fmt,
-            'h': hour_fmt,
-            ':ss': ':%S',
-            'ss': '%S',
-            ':s': ':%S',
-            's': '%S',
-            'd': '%d',
-            'm': '%m',
-        }
+    if isinstance(text_value, bool):
+        text_value = 'TRUE' if text_value else 'FALSE'
+    return TextFormat(value_format).format_value(text_value)
 
-        replaced = set()
-        for fmt_excel, fmt_python in py_fmt.items():
-            if fmt_excel in fmt:
-                if fmt.find(fmt_excel) in replaced or fmt_python in fmt:
-                    continue
-                fmt = fmt.replace(fmt_excel, fmt_python, 1)
-                s = fmt.find(fmt_python)
-                replaced.update(set([x for x in range(s, s + len(fmt_python))]))
-        return fmt
-
-    date_format = _get_datetime_format(value_format)
-    if any(x in text_value for x in ('-', '/', ':', 'am', 'pm')):
-        date_value = None
-        time_value = None
-        tokens = text_value.split(" ")
-        add_locale = ''
-        hour_fmt = 'H'
-        if 'am' in tokens or 'pm' in tokens:
-            add_locale = ' %p'
-            hour_fmt = 'I'
-
-        python_time_formats = set()
-        adds = ('', '-')
-        for h in adds:
-            for m in adds:
-                for s in adds:
-                    python_time_formats.add(
-                        f'%{h}{hour_fmt}:%{m}M:%{s}S{add_locale}'
-                    )
-
-        python_time_formats.update(
-            set([fmt[:fmt.index('M:') + 1:] + add_locale
-                 for fmt in python_time_formats])
-        )
-
-        for token in tokens:
-            if '/' in token or '-' in token:
-                for python_fmt in (
-                        '%d/%m/%y',
-                        '%d/%m/%Y',
-                        '%m/%d/%y',
-                        '%m/%d/%Y',
-                        '%Y-%m-%d'
-                ):
-                    try:
-                        date_value = datetime.strptime(token, python_fmt)
-                        break
-                    except ValueError:
-                        continue
-            elif ':' in token:
-                if 'am' in tokens:
-                    token += ' am'
-                elif 'pm' in tokens:
-                    token += ' pm'
-                for python_fmt in python_time_formats:
-                    try:
-                        time_value = datetime.strptime(token, python_fmt)
-                        break
-                    except ValueError:
-                        continue
-        if isinstance(time_value, datetime):
-            if isinstance(date_value, datetime):
-                date_value = datetime.combine(date_value, time_value.time())
-            else:
-                date_value = time_value
-
-        if isinstance(date_value, datetime):
-            return date_value.strftime(date_format)
-
-    is_pcnt = '%' in value_format
-
-    if '#' in value_format or '0' in value_format or is_pcnt:
-        if "#,#" not in value_format and "0,0" not in value_format:
-            thousand_sep = ""
-        else:
-            thousand_sep = ","
-        decimals = 0
-        dec_sep = value_format.find('.')
-        if dec_sep >= 0:
-            decimals = value_format[dec_sep::].count('0')
-        num_v = float("".join(
-            [x for x in text_value if x.isdecimal() or x == '.']
-        ))
-        if is_pcnt:
-            num_v *= 100
-        num_v = round(num_v, decimals)
-        if decimals == 0:
-            num_v = int(num_v)
-        res = f'{num_v:{thousand_sep}.{decimals}f}{"%" if is_pcnt else ""}'
-        if not value_format[0] in ('#', '.', ',', '0'):
-            res = value_format[0] + res
-        return res
-
-    return text_value
 
 # def textjoin(text):
     # Excel reference: https://support.microsoft.com/en-us/office/

@@ -36,6 +36,10 @@ DATE_MAX_INT = (DATE_MAX - DATE_ZERO).days + 1  # first illegal value
 SECOND = 1 / 24 / 60 / 60
 MICROSECOND = SECOND / 1E6
 LEAP_1900_SERIAL_NUMBER = 60  # magic number for non-existent 1900/02/29
+LEAP_1900_TUPLE = 1900, 2, 29
+
+TIME_CHARS = set('0123456789')
+SECS_CHARS = TIME_CHARS | {'.'}
 
 
 def serial_number_wrapper(f):
@@ -72,7 +76,7 @@ def date_from_int(datestamp):
 
     if datestamp == LEAP_1900_SERIAL_NUMBER:
         # excel thinks 1900 is a leap year
-        return 1900, 2, 29
+        return LEAP_1900_TUPLE
 
     if datestamp == 0:
         # excel thinks Jan 1900 starts at day 0
@@ -83,6 +87,17 @@ def date_from_int(datestamp):
         date += dt.timedelta(days=1)
 
     return date.year, date.month, date.day
+
+
+def time_from_serialnumber_with_microseconds(serialnumber):
+    at_hours = (serialnumber + MICROSECOND / 1.5) * 24
+    hours = math.floor(at_hours)
+    at_mins = (at_hours - hours) * 60
+    mins = math.floor(at_mins)
+    at_secs = (at_mins - mins) * 60
+    secs = math.floor(at_secs)
+    microseconds = (at_secs - secs) * 1E6
+    return hours % 24, mins, secs, int(microseconds - 0.5)
 
 
 def time_from_serialnumber(serialnumber):
@@ -182,6 +197,201 @@ def yearfrac_basis_1(beg, end):
     return delta / denom
 
 
+class DateTimeFormatter:
+    """Using the Excel Formatting language, format a date time, one token at a time
+
+    class TextFormat contains code to tokenize the format string
+    """
+
+    # Excel reference: https://support.microsoft.com/en-us/office/
+    # review-guidelines-for-customizing-a-number-format-c0a1d1fa-d3f4-4018-96b7-9c9354dd99f5
+
+    FORMAT_DATETIME_CONVERSIONS = {
+        'yyyy': lambda d: d._strftime('%Y'),
+        'yy': lambda d: d._strftime('%y'),
+        'mmmmm': lambda d: d._strftime('%b')[0],
+        'mmmm': lambda d: d._strftime('%B'),
+        'mmm': lambda d: d._strftime('%b'),
+        'mm': lambda d: "{:02d}".format(d.month),
+        'm': lambda d: str(d.month),
+        'dddd': lambda d: d._strftime('%A'),
+        'ddd': lambda d: d._strftime('%a'),
+        'dd': lambda d: "{:02d}".format(d.day),
+        'd': lambda d: str(d.day),
+        'hh': lambda d: "{:02d}".format(d.hour),
+        'h': lambda d: str(d.hour),
+        'HH': lambda d: d._strftime('%I'),  # 12 Hour (AM/PM)
+        'H': lambda d: str(int(d._strftime('%I'))),  # 12 Hour (AM/PM)
+        'MM': lambda d: "{:02d}".format(d.minute),
+        'M': lambda d: str(d.minute),
+        'ss': lambda d: "{:02d}".format(d.second),
+        's': lambda d: str(d.second),
+        '.': lambda d: ".",
+        '.0': lambda d: ".{:01d}".format(round(d.microsecond / 100000)),
+        '.00': lambda d: ".{:02d}".format(round(d.microsecond / 10000)),
+        '.000': lambda d: ".{:03d}".format(round(d.microsecond / 1000)),
+        '[h]': lambda d: str(d._elapsed('h')),
+        '[m]': lambda d: str(d._elapsed('m')),
+        '[s]': lambda d: str(d._elapsed('s')),
+        'am/pm': lambda d: d._strftime('%p'),
+        'a/p': lambda d: d._strftime('%p')[0].lower(),
+        'A/P': lambda d: d._strftime('%p')[0].upper(),
+        'A/p': lambda d: 'A' if d._strftime('%p').lower() == 'am' else 'p',
+        'a/P': lambda d: 'a' if d._strftime('%p').lower() == 'am' else 'P',
+    }
+
+    def FORMAT_DATETIME_CONVERSION_LOOKUP(FORMAT_DATETIME_CONVERSIONS):
+        return {
+            'e': lambda code: FORMAT_DATETIME_CONVERSIONS['yyyy'],
+            'y': lambda code: FORMAT_DATETIME_CONVERSIONS[{
+                1: 'yy',
+                2: 'yy'
+            }.get(len(code), 'yyyy')],
+            'm': lambda code: FORMAT_DATETIME_CONVERSIONS[{
+                1: 'm',
+                2: 'mm',
+                3: 'mmm',
+                4: 'mmmm',
+                5: 'mmmmm',
+            }.get(len(code), 'mmmm')],
+            'd': lambda code: FORMAT_DATETIME_CONVERSIONS[{
+                1: 'd',
+                2: 'dd',
+                3: 'ddd',
+            }.get(len(code), 'dddd')],
+            'h': lambda code: FORMAT_DATETIME_CONVERSIONS[{
+                1: 'h',
+            }.get(len(code), 'hh')],
+            'H': lambda code: FORMAT_DATETIME_CONVERSIONS[{
+                1: 'H',
+            }.get(len(code), 'HH')],
+            'M': lambda code: FORMAT_DATETIME_CONVERSIONS[{
+                1: 'M',
+            }.get(len(code), 'MM')],
+            's': lambda code: FORMAT_DATETIME_CONVERSIONS[{
+                1: 's',
+            }.get(len(code), 'ss')],
+            '.': lambda code: FORMAT_DATETIME_CONVERSIONS[code],
+            'a': lambda code: FORMAT_DATETIME_CONVERSIONS[code],
+            'A': lambda code: FORMAT_DATETIME_CONVERSIONS[code],
+            '[': lambda code: FORMAT_DATETIME_CONVERSIONS[code],
+        }
+    FORMAT_DATETIME_CONVERSION_LOOKUP = FORMAT_DATETIME_CONVERSION_LOOKUP(
+        FORMAT_DATETIME_CONVERSIONS)
+
+    def format(self, format_str):
+        """Format datetime using a single token from a custom format"""
+        try:
+            return self.FORMAT_DATETIME_CONVERSION_LOOKUP[format_str[0]](format_str)(self)
+        except (KeyError, ValueError, AttributeError):
+            return VALUE_ERROR
+
+    def __init__(self, serial_number, time=None):
+        """Init formatter using a datetime serial number
+
+        Use the .new() method to init from a date time string or serial number
+
+        :param serial_number: An Excel datetime serial number
+        :param time: An optional datetime.time object instance
+        """
+        if 0 <= serial_number < DATE_MAX_INT:
+            # only if the serial number is not OOR can we do date conversion
+            self.time = time
+            datestamp = int(serial_number)
+            self.year, self.month, self.day = date_from_int(datestamp)
+            if time is None:
+                self.hour, self.minute, self.second, self.microsecond = \
+                    time_from_serialnumber_with_microseconds(serial_number)
+            else:
+                assert serial_number == datestamp
+                serial_number += dt.timedelta(
+                    hours=time.hour, minutes=time.minute, seconds=time.second
+                ).total_seconds() * SECOND
+                self.hour = time.hour
+                self.minute = time.minute
+                self.second = time.second
+                self.microsecond = time.microsecond
+
+        self.serial_number = serial_number
+        self._cached_datetime = None
+
+    @classmethod
+    def new(cls, excel_date_time):
+        """Create a cls instance if the parameter is convertible to an excel date time
+
+        :param excel_date_time: An excel datatype that might be a valid date/time
+        :return: cls instance if convertible, else None
+        """
+        if isinstance(excel_date_time, bool):
+            return None
+
+        try:
+            serial_number = float(excel_date_time)
+            time = None
+        except (ValueError, TypeError):
+            if not isinstance(excel_date_time, str):
+                return None
+
+            try:
+                time = dateutil.parser.parse(
+                    excel_date_time, parserinfo=DateutilParserInfo()).time()
+                serial_number = datevalue(excel_date_time)
+            except (TypeError, ValueError):
+                # if we get here, then dateutil can't parse date, try for just a time
+                time = None
+                serial_number = timevalue(excel_date_time)
+
+            if isinstance(serial_number, str):
+                # failed to convert
+                return None
+
+        if serial_number < 0 or DATE_MAX_INT <= serial_number:
+            return None
+        return cls(serial_number, time)
+
+    def _strftime(self, format):
+        return self._datetime.strftime(format)
+
+    @property
+    def _datetime(self):
+        if self._cached_datetime is None:
+            try:
+                self._cached_datetime = dt.datetime(
+                    self.year, self.month, self.day, self.hour,
+                    self.minute, self.second, self.microsecond)
+            except ValueError:
+                if (self.year, self.month, self.day) == (1900, 1, 0):
+                    # preserve day of the week for 1900-01-00
+                    self._cached_datetime = dt.datetime(
+                        self.year, self.month, self.day + 7, self.hour,
+                        self.minute, self.second, self.microsecond)
+                elif (self.year, self.month, self.day) == (1900, 2, 29):
+                    # preserve day of the week for 1900-02-29
+                    self._cached_datetime = dt.datetime(
+                        self.year, self.month, self.day - 7, self.hour,
+                        self.minute, self.second, self.microsecond)
+                else:  # pragma: no cover
+                    # this should not be a possibility
+                    assert False
+        return self._cached_datetime
+
+    def _elapsed(self, units):
+        if hasattr(self, 'hour'):
+            elapsed = int(self.serial_number) * 24 + self.hour
+            if units == 'm':
+                elapsed = elapsed * 60 + self.minute
+            elif units == 's':
+                elapsed = (elapsed * 60 + self.minute) * 60 + self.second
+        else:
+            elapsed = self.serial_number * 24
+            if units == 'm':
+                elapsed *= 60
+            elif units == 's':
+                elapsed *= 60 * 60
+
+        return int(elapsed)
+
+
 @excel_helper(number_params=-1)
 def date(year, month_, day):
     # Excel reference: https://support.microsoft.com/en-us/office/
@@ -196,9 +406,15 @@ def date(year, month_, day):
     # taking into account negative month and day values
     year, month_, day = normalize_year(year, month_, day)
 
-    result = (dt.datetime(year, month_, day) - DATE_ZERO).days
+    try:
+        result = (dt.datetime(year, month_, day) - DATE_ZERO).days
+        if result <= 60:
+            result -= 1
+    except ValueError:
+        assert (year, month_, day) == LEAP_1900_TUPLE
+        result = 60.0
 
-    if result <= 0:
+    if result < 0:
         return NUM_ERROR
     return result
 
@@ -209,7 +425,7 @@ def date(year, month_, day):
 
 
 class DateutilParserInfo(dateutil.parser.parserinfo):
-    """Hook into dateutil parser and fix number strings and 1900/01/29"""
+    """Hook into dateutil parser and fix number strings and 1900/02/29"""
 
     def __init__(self):
         super().__init__()
@@ -218,7 +434,7 @@ class DateutilParserInfo(dateutil.parser.parserinfo):
     def validate(self, res):
         if res.day is None or res.month is None:
             return False
-        if (res.year, res.month, res.day) == (1900, 2, 29):
+        if (res.year, res.month, res.day) == LEAP_1900_TUPLE:
             self.is_leap_day_1900 = True
         return super().validate(res)
 
@@ -358,19 +574,35 @@ def timevalue(value):
 
     fields = value.lower().replace(':', ' ').split()
     colons = value.count(':')
+    have_secs = True
     if colons == 1:
-        fields.insert(2, 0)
+        if '.' in fields[1][:-1]:
+            # a decimal is seconds
+            fields.insert(0, '0')
+        else:
+            if fields[1][-1] == '.':
+                fields[1] = fields[1][:-1]
+            fields.insert(2, '0')
+            have_secs = False
     elif colons != 2:
         return VALUE_ERROR
 
+    # validate characters present
+    if set(fields[0]) - TIME_CHARS or set(fields[1]) - TIME_CHARS or set(fields[2]) - SECS_CHARS:
+        return VALUE_ERROR
+
     try:
-        time_tuple = list(map(int, fields[:3]))
-        if time_tuple[0] == 12 and len(fields) == 4:
-            time_tuple[0] = 0
-        serial_number = ((
-            time_tuple[0] * 60 + time_tuple[1]) * 60 + time_tuple[2]) / 86400
+        time_tuple = list(map(float, fields[:3]))
     except ValueError:
         return VALUE_ERROR
+    if time_tuple[0] > 23 or \
+            time_tuple[1] > (59 if have_secs else 9999) or \
+            time_tuple[2] >= 10000:
+        return VALUE_ERROR
+    if time_tuple[0] == 12 and len(fields) == 4:
+        time_tuple[0] = 0
+    serial_number = ((
+        time_tuple[0] * 60 + time_tuple[1]) * 60 + time_tuple[2]) / 86400
 
     if len(fields) == 4:
         if fields[3][0] == 'p':
