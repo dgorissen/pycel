@@ -41,7 +41,7 @@ load_to_test_module(pycel.lib.information, __name__)
 
 def test_information_ws(fixture_xls_copy):
     compiler = ExcelCompiler(fixture_xls_copy('information.xlsx'))
-    result = compiler.validate_calcs()
+    result = compiler.validate_serialized()
     assert result == {}
 
 

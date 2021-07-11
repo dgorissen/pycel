@@ -11,6 +11,7 @@ import json
 import math
 import os
 import shutil
+from pathlib import Path
 from unittest import mock
 
 import pytest
@@ -18,7 +19,7 @@ from openpyxl import Workbook
 from openpyxl.workbook.defined_name import DefinedName
 from ruamel.yaml import YAML
 
-from pycel.excelcompiler import _Cell, _CellRange, ExcelCompiler
+from pycel.excelcompiler import _Cell, _CellRange, ExcelCompiler, Mismatch
 from pycel.excelformula import FormulaParserError, UnknownFunction
 from pycel.excelutil import (
     AddressCell,
@@ -111,7 +112,7 @@ def test_deserialize_filename(
         # When the serialization path is different than the workbook path
         (serialization_override_path, excel_compiler.filename),
         # When the serialization path is the same as the workbook
-        ('{}.yml'.format(excel_compiler.filename), excel_compiler.filename),
+        (f'{excel_compiler.filename}.yml', excel_compiler.filename),
     ):
         excel_compiler._to_text(serialization_filename)
         deserialized = excel_compiler._from_text(serialization_filename)
@@ -349,16 +350,32 @@ def test_evaluate_from_non_cells(excel_compiler):
     assert old_values[0] == range_value
 
 
-def test_validate_calcs(excel_compiler, capsys):
+def test_validate_serialized(excel_compiler, capsys):
     input_addrs = ['trim-range!D5']
     output_addrs = ['trim-range!B2']
 
     excel_compiler.trim_graph(input_addrs, output_addrs)
-    excel_compiler.cell_map[output_addrs[0]].value = 'JUNK'
-    failed_cells = excel_compiler.validate_calcs(output_addrs)
+    failed_cells = excel_compiler.validate_serialized(output_addrs=output_addrs)
+    assert failed_cells == {}
 
-    assert {'mismatch': {
-        'trim-range!B2': ('JUNK', 136, '=B1+SUM(D4:E4)+D5')}} == failed_cells
+    # test error reporting in compiled sheet
+    file_name = Path(excel_compiler.filename)
+    loaded_name = str(file_name.parent / f'xyzzy-{file_name.name}.json')
+
+    excel_compiler.to_file(loaded_name)
+    loaded = excel_compiler.from_file(loaded_name)
+    loaded.cell_map[input_addrs[0]].value = 200
+    with mock.patch('pycel.excelcompiler.ExcelCompiler.from_file', return_value=loaded):
+        failed_cells = excel_compiler.validate_serialized(output_addrs=output_addrs)
+
+    assert failed_cells == {
+        'trim-range!B2': Mismatch(original=136, calced=236, formula='=B1+SUM(D4:E4)+D5'),
+        'trim-range!D5': Mismatch(original=100, calced=200, formula='None')
+    }
+
+    excel_compiler.cell_map[output_addrs[0]].value = 'JUNK'
+    failed_cells = excel_compiler.validate_serialized(output_addrs=output_addrs)
+    assert failed_cells == {'mismatch': {'trim-range!B2': ('JUNK', 136, '=B1+SUM(D4:E4)+D5')}}
 
     out, err = capsys.readouterr()
     assert '' == err
@@ -835,6 +852,9 @@ def test_evaluate_exceptions(fixture_dir):
     result = excel_compiler.validate_calcs(address)
     assert 'exceptions' in result
     assert len(result['exceptions']) == 1
+
+    with pytest.raises(FormulaParserError):
+        excel_compiler.validate_calcs(address, raise_exceptions=True)
 
 
 def test_evaluate_empty_intersection(fixture_dir):

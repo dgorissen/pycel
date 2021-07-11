@@ -84,7 +84,7 @@ by Robin Macharg.
 
 The code currently uses a tokenizer of similar origin from the
 `openpyxl library.
-<https://bitbucket.org/openpyxl/openpyxl/src/default/openpyxl/formula/>`_
+<https://foss.heptapod.net/openpyxl/openpyxl/-/tree/branch/default/openpyxl/formula/>`_
 
 .. Image links
 

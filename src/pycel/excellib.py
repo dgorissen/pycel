@@ -21,6 +21,7 @@ from pycel.excelutil import (
     ERROR_CODES,
     flatten,
     handle_ifs,
+    is_array_arg,
     is_number,
     list_like,
     NA_ERROR,
@@ -281,7 +282,7 @@ def round_(number, num_digits=0):
 
 def _round(number, num_digits, rounding):
     num_digits = int(num_digits)
-    quant = Decimal('1E{}{}'.format('+-'[num_digits >= 0], abs(num_digits)))
+    quant = Decimal(f'1E{"+-"[num_digits >= 0]}{abs(num_digits)}')
     return float(Decimal(repr(number)).quantize(quant, rounding=rounding))
 
 
@@ -362,7 +363,7 @@ def sumproduct(*args):
     # verify array sizes match
     sizes = set()
     for arg in args:
-        assert isinstance(arg, tuple), isinstance(arg[0], tuple)
+        assert is_array_arg(arg)
         sizes.add((len(arg), len(arg[0])))
     if len(sizes) != 1:
         return VALUE_ERROR

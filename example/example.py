@@ -34,19 +34,18 @@ if __name__ == '__main__':
     path = os.path.dirname(__file__)
     fname = os.path.join(path, "example.xlsx")
 
-    print("Loading %s..." % fname)
+    print(f"Loading {fname}...")
 
     # load & compile the file to a graph
     excel = ExcelCompiler(filename=fname)
 
     # test evaluation
-    print("D1 is %s" % excel.evaluate('Sheet1!D1'))
+    print(f"D1 is {excel.evaluate('Sheet1!D1')}")
 
     print("Setting A1 to 200")
     excel.set_value('Sheet1!A1', 200)
 
-    print("D1 is now %s (the same should happen in Excel)" % excel.evaluate(
-        'Sheet1!D1'))
+    print(f"D1 is now {excel.evaluate('Sheet1!D1')} (the same should happen in Excel)")
 
     # show the graph using matplotlib if installed
     print("Plotting using matplotlib...")
@@ -76,12 +75,11 @@ if __name__ == '__main__':
     excel = ExcelCompiler.from_file(fname)
 
     # test evaluation
-    print("D1 is %s" % excel.evaluate('Sheet1!D1'))
+    print(f"D1 is {excel.evaluate('Sheet1!D1')}")
 
     print("Setting A1 to 1")
     excel.set_value('Sheet1!A1', 1)
 
-    print("D1 is now %s (the same should happen in Excel)" % excel.evaluate(
-        'Sheet1!D1'))
+    print(f"D1 is now {excel.evaluate('Sheet1!D1')} (the same should happen in Excel)")
 
     print("Done")

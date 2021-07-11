@@ -34,17 +34,15 @@ REF_ERROR = "#REF!"
 
 R1C1_ROW_RE_STR = r"R(\[-?\d+\]|\d+)?"
 R1C1_COL_RE_STR = r"C(\[-?\d+\]|\d+)?"
-R1C1_COORD_RE_STR = "(?P<row>{0})?(?P<col>{1})?".format(
-    R1C1_ROW_RE_STR, R1C1_COL_RE_STR)
-
+R1C1_COORD_RE_STR = f"(?P<row>{R1C1_ROW_RE_STR})?(?P<col>{R1C1_COL_RE_STR})?"
 R1C1_COORDINATE_RE = re.compile('^' + R1C1_COORD_RE_STR + '$', re.VERBOSE)
 
-R1C1_RANGE_EXPR = """
-(?P<min_row>{0})?
-(?P<min_col>{1})?
-(:(?P<max_row>{0})?
-(?P<max_col>{1})?)?
-""".format(R1C1_ROW_RE_STR, R1C1_COL_RE_STR)
+R1C1_RANGE_EXPR = f"""
+(?P<min_row>{R1C1_ROW_RE_STR})?
+(?P<min_col>{R1C1_COL_RE_STR})?
+(:(?P<max_row>{R1C1_ROW_RE_STR})?
+(?P<max_col>{R1C1_COL_RE_STR})?)?
+"""
 
 R1C1_RANGE_RE = re.compile('^' + R1C1_RANGE_EXPR + '$', re.VERBOSE)
 
@@ -134,11 +132,11 @@ class AddressMixin:
     @property
     def quoted_address(self):
         """requote the sheetname if going to include in formulas"""
-        return "{}!{}".format(self.quote_sheet(self.sheet), self.coordinate)
+        return f"{self.quote_sheet(self.sheet)}!{self.coordinate}"
 
     @property
     def abs_address(self):
-        return "{}!{}".format(self.quote_sheet(self.sheet), self.abs_coordinate)
+        return f"{self.quote_sheet(self.sheet)}!{self.abs_coordinate}"
 
     @property
     def sort_key(self):
@@ -231,22 +229,18 @@ class AddressRange(collections.namedtuple(
                 end = AddressCell(address.end.coordinate, sheet=sheet)
 
             else:
-                raise ValueError("Mismatched sheets '{}' and '{}'".format(
-                    address, sheet))
+                raise ValueError(f"Mismatched sheets '{address}' and '{sheet}'")
 
         else:
-            assert (isinstance(address, tuple) and
-                    4 == len(address) and
+            assert (isinstance(address, tuple) and 4 == len(address) and
                     None in address or address[0:2] != address[2:]), \
-                "AddressRange expected a range '{}'".format(address)
+                f"AddressRange expected a range '{address}'"
 
             start_col, start_row, end_col, end_row = address
-            start = AddressCell(
-                (start_col, start_row, start_col, start_row), sheet=sheet)
-            end = AddressCell(
-                (end_col, end_row, end_col, end_row), sheet=sheet)
+            start = AddressCell((start_col, start_row, start_col, start_row), sheet=sheet)
+            end = AddressCell((end_col, end_row, end_col, end_row), sheet=sheet)
 
-        coordinate = '{0}:{1}'.format(start.coordinate, end.coordinate)
+        coordinate = f'{start.coordinate}:{end.coordinate}'
 
         format_str = '{0}!{1}' if sheet else '{1}'
         return super(AddressRange, cls).__new__(
@@ -270,8 +264,7 @@ class AddressRange(collections.namedtuple(
 
     @property
     def abs_coordinate(self):
-        return '{}:{}'.format(
-            self.start.abs_coordinate, self.end.abs_coordinate)
+        return f'{self.start.abs_coordinate}:{self.end.abs_coordinate}'
 
     # Is this address a range?
     is_range = True
@@ -314,6 +307,9 @@ class AddressRange(collections.namedtuple(
         for col in range(*col_range):
             yield (AddressCell((col, row, col, row), sheet=self.sheet)
                    for row in range(self.start.row, self.end.row + 1))
+
+    def address_at_offset(self, row_inc=0, col_inc=0):
+        return self.start.address_at_offset(row_inc=row_inc, col_inc=col_inc)
 
     @property
     def resolve_range(self):
@@ -400,18 +396,16 @@ class AddressCell(collections.namedtuple(
                 col_idx, row, coordinate = address[2:5]
 
             else:
-                raise ValueError("Mismatched sheets '{}' and '{}'".format(
-                    address, sheet))
+                raise ValueError(f"Mismatched sheets '{address}' and '{sheet}'")
 
         else:
-            assert (isinstance(address, tuple) and
-                    4 == len(address) and
+            assert (isinstance(address, tuple) and 4 == len(address) and
                     None not in address or address[0:2] == address[2:]), \
-                "AddressCell expected a cell '{}'".format(address)
+                f"AddressCell expected a cell '{address}'"
 
             col_idx, row = (a or 0 for a in address[:2])
             column = (col_idx or '') and get_column_letter(col_idx)
-            coordinate = '{0}{1}'.format(column, row or '')
+            coordinate = f'{column}{row or ""}'
 
         if sheet:
             format_str = '{0}!{1}'
@@ -454,7 +448,7 @@ class AddressCell(collections.namedtuple(
 
     @property
     def abs_coordinate(self):
-        return '${}${}'.format(self.column, self.row)
+        return f'${self.column}${self.row}'
 
     def address_at_offset(self, row_inc=0, col_inc=0):
         """ Construct an `AddressCell` offset from the address
@@ -495,8 +489,7 @@ class AddressCell(collections.namedtuple(
         """
         addr = AddressRange.create(address, sheet=sheet, cell=cell)
         if not isinstance(addr, AddressCell):
-            raise ValueError(
-                "{0} is not a valid coordinate".format(address))
+            raise ValueError(f"{address} is not a valid coordinate")
         return addr
 
 
@@ -529,6 +522,14 @@ def is_address(addr):
     return isinstance(addr, (AddressCell, AddressRange))
 
 
+def is_array_arg(arg):
+    return isinstance(arg, tuple) and not is_address(arg) and isinstance(arg[0], tuple)
+
+
+def has_array_arg(*args):
+    return any(is_array_arg(a) for a in args)
+
+
 def unquote_sheetname(sheetname):
     """
     Remove quotes from around, an embedded "''" in, quoted sheetnames
@@ -551,14 +552,12 @@ def split_sheetname(address, sheet=''):
         address_part = address_part.replace(f"'{redundant_sheet}'!", '')
 
         if '!' in address_part:
-            raise NotImplementedError(
-                "Non-rectangular formulas: {}".format(address))
+            raise NotImplementedError(f"Non-rectangular formulas: {address}")
         sh = unquote_sheetname(sh)
         address = address_part
 
         if sh and sheet and sh != sheet:
-            raise ValueError("Mismatched sheets '{}' and '{}'".format(
-                sh, sheet))
+            raise ValueError(f"Mismatched sheets '{sh}' and '{sheet}'")
 
     return sheet or sh, address
 
@@ -573,16 +572,13 @@ def structured_reference_boundaries(address, cell=None):
         return None
 
     if cell is None:
-        raise PyCelException(
-            "Must pass cell for Structured Reference {}".format(address))
+        raise PyCelException(f"Must pass cell for Structured Reference {address}")
 
     name = match.group('table_name')
     table, sheet = cell.excel.table(name)
 
     if table is None:
-        raise PyCelException(
-            "Table {} not found for Structured Reference: {}".format(
-                name, address))
+        raise PyCelException(f"Table {name} not found for Structured Reference: {address}")
 
     boundaries = openpyxl_range_boundaries(table.ref)
     assert None not in boundaries
@@ -596,8 +592,7 @@ def structured_reference_boundaries(address, cell=None):
     else:
         selector_match = TABLE_SELECTOR_RE.match(selector)
         if selector_match is None:
-            raise PyCelException(
-                "Unknown Structured Reference Selector: {}".format(selector))
+            raise PyCelException(f"Unknown Structured Reference Selector: {selector}")
 
         row_or_column = selector_match.group('row_or_column')
         this_row_column = selector_match.group('this_row_column')
@@ -624,9 +619,7 @@ def structured_reference_boundaries(address, cell=None):
                 rows = [r.split(']')[0] for r in rows.split('[')[1:]]
                 if len(rows) != 1:
                     # not currently supporting multiple row selects
-                    raise PyCelException(
-                        "Unknown Structured Reference Rows: {}".format(
-                            address))
+                    raise PyCelException(f"Unknown Structured Reference Rows: {address}")
 
                 rows = rows[0]
 
@@ -674,8 +667,7 @@ def structured_reference_boundaries(address, cell=None):
             min_row = max_row = cell.address.row
 
         else:
-            raise PyCelException(
-                "Unknown Structured Reference Rows: {}".format(rows))
+            raise PyCelException(f"Unknown Structured Reference Rows: {rows}")
 
     if end_col is None:
         # all columns
@@ -687,8 +679,7 @@ def structured_reference_boundaries(address, cell=None):
                            if c.name == end_col), None)
         if column_idx is None:
             raise PyCelException(
-                "Column {} not found for Structured Reference: {}".format(
-                    end_col, address))
+                f"Column {end_col} not found for Structured Reference: {address}")
         max_col_idx = boundaries[0] + column_idx
 
         if start_col is None:
@@ -699,12 +690,11 @@ def structured_reference_boundaries(address, cell=None):
                                if c.name == start_col), None)
             if column_idx is None:
                 raise PyCelException(
-                    "Column {} not found for Structured Reference: {}".format(
-                        start_col, address))
+                    f"Column {start_col} not found for Structured Reference: {address}")
             min_col_idx = boundaries[0] + column_idx
 
     if min_row > max_row or min_col_idx > max_col_idx:
-        raise PyCelException("Columns out of order : {}".format(address))
+        raise PyCelException(f"Columns out of order : {address}")
 
     return (min_col_idx, min_row, max_col_idx, max_row), sheet
 
@@ -759,8 +749,7 @@ def range_boundaries(address, cell=None, sheet=None):
         except ValueError:
             pass
 
-    raise ValueError(
-        "{0} is not a valid coordinate or range".format(address))
+    raise ValueError(f"{address} is not a valid coordinate or range")
 
 
 def r1c1_boundaries(address, cell=None, sheet=None):
@@ -799,8 +788,7 @@ def r1c1_boundaries(address, cell=None, sheet=None):
     def from_relative_to_absolute(r1_or_c1):
         def require_cell():
             assert cell is not None, \
-                "Must pass a cell to decode a relative address {}".format(
-                    address)
+                f"Must pass a cell to decode a relative address {address}"
 
         if not r1_or_c1.endswith(']'):
             if len(r1_or_c1) > 1:
@@ -832,8 +820,7 @@ def r1c1_boundaries(address, cell=None, sheet=None):
     is_range = ':' in address
     if (is_range and items_present not in VALID_R1C1_RANGE_ITEM_COMBOS or
             not is_range and sum(items_present) < 2):
-        raise ValueError(
-            "{0} is not a valid coordinate or range".format(address))
+        raise ValueError(f"{address} is not a valid coordinate or range")
 
     if min_col is not None:
         min_col = min_col
@@ -969,7 +956,7 @@ def coerce_to_number(value, convert_all=False):
             return int(value) if convert_all else value
         if is_number(value) and int(value) == float(value):
             return int(value)
-        if isinstance(value, tuple) and isinstance(value[0], tuple):
+        if is_array_arg(value):
             return coerce_to_number(value[0][0], convert_all)
         return value
 
@@ -1040,7 +1027,7 @@ def build_wildcard_re(lookup_value):
     regex = QUESTION_MARK_RE.sub('.', STAR_RE.sub('.*', lookup_value))
     if regex != lookup_value:
         # this will be a regex match"""
-        compiled = re.compile('^{}$'.format(regex.lower()))
+        compiled = re.compile(f'^{regex.lower()}$')
         return lambda x: x is not None and compiled.match(x.lower()) is not None
     else:
         return None
@@ -1108,7 +1095,7 @@ def criteria_parser(criteria):
                     return op(x.lower(), value)
 
     else:
-        raise ValueError("Couldn't parse criteria: {}".format(criteria))
+        raise ValueError(f"Couldn't parse criteria: {criteria}")
 
     return check
 
@@ -1133,7 +1120,7 @@ def list_like(data):
 
 def assert_list_like(data):
     if not list_like(data):
-        raise TypeError('Must be a list like: {}'.format(data))
+        raise TypeError(f'Must be a list like: {data}')
 
 
 def type_cmp_value(value):
@@ -1272,8 +1259,7 @@ def build_operator_operand_fixup(capture_error_state):
             if not (is_number(left_op) and is_number(right_op) or
                     is_address(left_op) and is_address(right_op)):
                 if op != 'USub':
-                    capture_error_state(
-                        True, 'Values: {} {} {}'.format(left_op, op, right_op))
+                    capture_error_state(True, f'Values: {left_op} {op} {right_op}')
                     return VALUE_ERROR
 
         try:
@@ -1282,12 +1268,10 @@ def build_operator_operand_fixup(capture_error_state):
             else:
                 return PYTHON_AST_OPERATORS[op](left_op, right_op)
         except ZeroDivisionError:
-            capture_error_state(
-                True, 'Values: {} {} {}'.format(left_op, op, right_op))
+            capture_error_state(True, f'Values: {left_op} {op} {right_op}')
             return DIV0
         except TypeError:
-            capture_error_state(
-                True, 'Values: {} {} {}'.format(left_op, op, right_op))
+            capture_error_state(True, f'Values: {left_op} {op} {right_op}')
             return VALUE_ERROR
 
     return fixup

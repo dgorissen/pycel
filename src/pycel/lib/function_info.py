@@ -25,12 +25,12 @@ def func_status_msg(name):
     name = name.upper()
     known = name in all_excel_functions
     if known:
-        msg = '{} is in the "{}" group'.format(name, function_category[name])
+        msg = f'{name} is in the "{function_category[name]}" group'
         version = function_version[name]
         if version:
-            msg += ', and was introduced in {}'.format(version)
+            msg += f', and was introduced in {version}'
     else:
-        msg = '{} is not a known Excel function'.format(name)
+        msg = f'{name} is not a known Excel function'
     return known, msg
 
 
@@ -56,11 +56,11 @@ def scrape_function_list():  # pragma: no cover
         # temporarily save page for further testing
         tmp_data_py = os.path.join(base_dir, tmp_data_name + '.py')
         with open(tmp_data_py, 'wb') as f:
-            f.write('page_html = """{}"""'.format(page.text).encode('utf-8'))
+            f.write(f'page_html = """{page.text}"""')
 
     else:
         import importlib
-        web_data = importlib.import_module('pycel.lib.{}'.format(tmp_data_name))
+        web_data = importlib.import_module(f'pycel.lib.{tmp_data_name}')
         soup = BeautifulSoup(web_data.page_html, 'html.parser')
 
     base_url_path = urlparse(base_url).path
@@ -101,8 +101,8 @@ def print_function_header():  # pragma: no cover
     print()
     for row in function_info:
         if row[1].startswith('Math'):
-            print("# def {}(value):".format(row.name.lower()))
-            print("    # Excel reference: {}".format(base_url))
-            print("    #   {}".format(row.uri))
+            print(f"# def {row.name.lower()}(value):")
+            print(f"    # Excel reference: {base_url}")
+            print(f"    #   {row.uri}")
             print()
             print()

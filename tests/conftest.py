@@ -30,7 +30,7 @@ def ATestCell():
             self.col_idx = column_index_from_string(col)
             self.sheet = sheet
             self.excel = excel
-            self.address = AddressCell('{}{}'.format(col, row), sheet=sheet)
+            self.address = AddressCell(f'{col}{row}', sheet=sheet)
             self.value = value
 
     return ATestCell

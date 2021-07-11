@@ -21,7 +21,9 @@ from pycel.excelutil import (
 from pycel.lib.date_time import (
     date,
     date_from_int,
+    DATE_MAX_INT,
     DATE_ZERO,
+    DateTimeFormatter,
     datevalue,
     is_leap_year,
     max_days_in_month,
@@ -30,6 +32,7 @@ from pycel.lib.date_time import (
     now,
     SECOND,
     time_from_serialnumber,
+    time_from_serialnumber_with_microseconds,
     timevalue,
     today,
     yearfrac,
@@ -52,6 +55,36 @@ load_to_test_module(pycel.lib.date_time, __name__)
 )
 def test_date_from_int(result, value):
     assert date_from_int(value) == result
+
+
+@pytest.mark.parametrize(
+    'result, value', (
+        ((23, 59, 59, 999999), 0 - (MICROSECOND)),
+        ((0, 0, 0, 0), 0),
+        ((23, 58, 33, 600000), 0.999),
+        ((23, 59, 51, 360000), 0.9999),
+        ((23, 59, 59, 0), 1 - (MICROSECOND * 1e6)),
+        ((23, 59, 59, 136000), 0.99999),
+        ((23, 59, 59, 900000), 1 - (MICROSECOND * 1e5)),
+        ((23, 59, 59, 913600), 0.999999),
+        ((23, 59, 59, 990000), 1 - (MICROSECOND * 1e4)),
+        ((23, 59, 59, 999000), 1 - (MICROSECOND * 1e3)),
+        ((23, 59, 59, 999900), 1 - (MICROSECOND * 1e2)),
+        ((23, 59, 59, 999990), 1 - (MICROSECOND * 1e1)),
+        ((23, 59, 59, 999999), 1 - (MICROSECOND)),
+        ((0, 0, 0, 0), 1),
+        ((0, 0, 0, 1), 1 + (MICROSECOND)),
+        ((0, 0, 0, 10), 1 + (MICROSECOND * 10)),
+        ((23, 59, 59, 500000), 0 - MICROSECOND * 5e5),
+        ((23, 59, 59, 500000), 1 - MICROSECOND * 5e5),
+        ((2, 24, 0, 0), 1.1),
+        ((23, 59, 59, 999999), 1234 - (MICROSECOND)),
+        ((0, 0, 0, 0), 1234),
+        ((0, 0, 0, 1), 1234 + (MICROSECOND)),
+    )
+)
+def test_time_from_serialnumber_microsecond(result, value):
+    assert time_from_serialnumber_with_microseconds(value) == result
 
 
 @pytest.mark.parametrize(
@@ -146,43 +179,36 @@ def test_normalize_year(result, value):
     assert normalize_year(*value) == result
 
 
-class TestDate:
+@pytest.mark.parametrize(
+    'year, month, day, expected', (
+        ('2016', 1, 1, date(2016, 1, 1)),
+        (2016, '1', 1, date(2016, 1, 1)),
+        (2016, 1, '1', date(2016, 1, 1)),
+        (-1, 1, 1, NUM_ERROR),
+        (10000, 1, 1, NUM_ERROR),
+        (1900, 1, -1, NUM_ERROR),
+        (1900, 1, 0, 0),
+        (1900, 1, 1, 1),
+        (1900, 2, 28, 59),
+        (1900, 2, 29, 60),
+        (1900, 3, 1, 61),
+        (2009, -1, 1, date(2008, 11, 1)),
+        (2009, 1, -1, date(2008, 12, 30)),
+        (2009, 14, 1, date(2010, 2, 1)),
+        (2009, 1, 400, date(2010, 2, 4)),
+        (2008, 2, 29, 39507),
+        (2008, 11, 3, 39755),
+    )
+)
+def test_date(year, month, day, expected):
+    assert date(year, month, day) == expected
 
-    def test_values_can_str(self):
-        assert date('2016', 1, 1) == date(2016, '1', 1) == date(2016, 1, '1')
 
-    def test_year_must_be_positive(self):
-        assert NUM_ERROR == date(-1, 1, 1)
-
-    def test_year_must_have_less_than_10000(self):
-        assert NUM_ERROR == date(10000, 1, 1)
-
-    def test_result_must_be_positive(self):
-        assert NUM_ERROR == date(1900, 1, -1)
-
-    def test_not_stricly_positive_month_substracts(self):
-        assert date(2009, -1, 1) == date(2008, 11, 1)
-
-    def test_not_stricly_positive_day_substracts(self):
-        assert date(2009, 1, -1) == date(2008, 12, 30)
-
-    def test_month_superior_to_12_change_year(self):
-        assert date(2009, 14, 1) == date(2010, 2, 1)
-
-    def test_day_superior_to_365_change_year(self):
-        assert date(2009, 1, 400) == date(2010, 2, 4)
-
-    def test_year_for_29_feb(self):
-        assert 39507 == date(2008, 2, 29)
-
-    def test_year_regular(self):
-        assert 39755 == date(2008, 11, 3)
-
-    def test_year_offset(self):
-        zero = dt.datetime(1900, 1, 1) - dt.timedelta(2)
-        assert (dt.datetime(1900, 1, 1) - zero).days == date(0, 1, 1)
-        assert (dt.datetime(1900 + 1899, 1, 1) - zero).days == date(1899, 1, 1)
-        assert (dt.datetime(1900 + 1899, 1, 1) - zero).days == date(1899, 1, 1)
+def test_date_year_offset():
+    zero = dt.datetime(1900, 1, 1) - dt.timedelta(2)
+    assert (dt.datetime(1900, 1, 1) - zero).days == date(0, 1, 2)
+    assert (dt.datetime(1900 + 1899, 1, 1) - zero).days == date(1899, 1, 1)
+    assert (dt.datetime(1900 + 1899, 1, 1) - zero).days == date(1899, 1, 1)
 
 
 @pytest.mark.parametrize(
@@ -196,6 +222,9 @@ class TestDate:
         ('2:00:00 AM', 2 / 24),
         ('1:00:00 PM', 13 / 24),
         ('12:59:59 A', 0.041655093),
+        ('12:59:59.99 A', 0.041666551),
+        ('12.1:59:59.99 A', VALUE_ERROR),
+        ('12:59.1:59.99 A', VALUE_ERROR),
         ('12:XX:59 AM', VALUE_ERROR),
         (DIV0, DIV0),
         (VALUE_ERROR, VALUE_ERROR),
@@ -206,13 +235,31 @@ class TestDate:
         (0, VALUE_ERROR),
         (1.0, VALUE_ERROR),
         (True, VALUE_ERROR),
+
+        ('23:9999', 23 / 24 + 9999 / 24 / 60),
+        ('24:9999', VALUE_ERROR),
+        ('23:100000', VALUE_ERROR),
+        ('23:59:9999', 23 / 24 + 59 / 24 / 60 + 9999 / 24 / 60 / 60),
+        ('23:59:10000', VALUE_ERROR),
+        ('59:9999.0', 59 / 24 / 60 + 9999 / 24 / 60 / 60),
+        ('60:9999.0', VALUE_ERROR),
+        ('59:9999.123456789', 59 / 24 / 60 + 9999.123456789 / 24 / 60 / 60),
+
+        ('23.:59:9999', VALUE_ERROR),
+        ('23:59.:9999', VALUE_ERROR),
+        ('23:59:9999.', 23 / 24 + 59 / 24 / 60 + 9999 / 24 / 60 / 60),
+        ('23:59', 23 / 24 + 59 / 24 / 60),
+        ('23:59.', 23 / 24 + 59 / 24 / 60),
+        ('23:59.0', 23 / 24 / 60 + 59 / 24 / 60 / 60),
+        ('23:59.0.', VALUE_ERROR),
     )
 )
 def test_timevalue(value, expected):
-    if isinstance(expected, str):
-        assert timevalue(value) == expected
+    result = timevalue(value)
+    if isinstance(result, str) or isinstance(expected, str):
+        assert result == expected
     else:
-        assert timevalue(value) == pytest.approx(expected)
+        assert result == pytest.approx(expected)
 
 
 @pytest.mark.parametrize(
@@ -326,12 +373,137 @@ class TestYearfrac:
 def test_yearfrac_ws(fixture_xls_copy):
     excel_compiler = ExcelCompiler(fixture_xls_copy('yearfrac.xlsx'))
 
-    failed_cells = excel_compiler.validate_calcs()
+    failed_cells = excel_compiler.validate_serialized()
     assert failed_cells == {}
+
+
+@pytest.mark.parametrize(
+    'datetime, format, expected', (
+        ('2007-02-03 9:08:07.0123', 'e', '2007'),
+        ('2007-02-03 9:08:07.0123', 'yyyyy', '2007'),
+        ('2007-02-03 9:08:07.0123', 'yyyy', '2007'),
+        ('2007-02-03 9:08:07.0123', 'yyy', '2007'),
+        ('2007-02-03 9:08:07.0123', 'yy', '07'),
+        ('2007-02-03 9:08:07.0123', 'y', '07'),
+        ('2007-02-03 9:08:07.0123', 'mmmmmm', 'February'),
+        ('2007-02-03 9:08:07.0123', 'mmmmm', 'F'),
+        ('2007-02-03 9:08:07.0123', 'mmmm', 'February'),
+        ('2007-02-03 9:08:07.0123', 'mmm', 'Feb'),
+        ('2007-02-03 9:08:07.0123', 'mm', '02'),
+        ('2007-02-03 9:08:07.0123', 'm', '2'),
+        ('2007-02-03 9:08:07.0123', 'ddddd', 'Saturday'),
+        ('2007-02-03 9:08:07.0123', 'dddd', 'Saturday'),
+        ('2007-02-03 9:08:07.0123', 'ddd', 'Sat'),
+        ('2007-02-03 9:08:07.0123', 'dd', '03'),
+        ('2007-02-03 9:08:07.0123', 'd', '3'),
+        ('2007-02-03 9:08:07.0123', 'hhh', '09'),
+        ('2007-02-03 9:08:07.0123', 'hh', '09'),
+        ('2007-02-03 9:08:07.0123', 'h', '9'),
+        ('2007-02-03 9:08:07.0123', 'HHH', '09'),
+        ('2007-02-03 9:08:07.0123', 'HH', '09'),
+        ('2007-02-03 9:08:07.0123', 'H', '9'),
+        ('2007-02-03 9:08:07.0123', 'MMM', '08'),
+        ('2007-02-03 9:08:07.0123', 'MM', '08'),
+        ('2007-02-03 9:08:07.0123', 'M', '8'),
+        ('2007-02-03 9:08:07.0123', 'sss', '07'),
+        ('2007-02-03 9:08:07.0123', 'ss', '07'),
+        ('2007-02-03 9:08:07.0123', 's', '7'),
+        ('2007-02-03 9:08:07.0123', '.000', '.012'),
+        ('2007-02-03 9:08:07.0123', '.00', '.01'),
+        ('2007-02-03 9:08:07.0123', '.0', '.0'),
+        ('2007-02-03 9:08:07.0123', '.', '.'),
+        ('2007-02-03 9:08:07.0123', 'am/pm', 'AM'),
+        ('2007-02-03 9:08:07.0123', 'a/p', 'a'),
+        ('2007-02-03 9:08:07.0123', 'A/P', 'A'),
+        ('2007-02-03 9:08:07.0123', 'A/p', 'A'),
+        ('2007-02-03 9:08:07.0123', 'a/P', 'a'),
+        ('2007-02-03 19:08:07.0123', 'am/pm', 'PM'),
+        ('2007-02-03 19:08:07.0123', 'a/p', 'p'),
+        ('2007-02-03 19:08:07.0123', 'A/P', 'P'),
+        ('2007-02-03 19:08:07.0123', 'A/p', 'p'),
+        ('2007-02-03 19:08:07.0123', 'a/P', 'P'),
+        ('2007-02-03 19:08:07.0123', '[h]', '938803'),
+        ('2007-02-03 19:08:07.0123', '[m]', '56328188'),
+        ('2007-02-03 19:08:07.0123', '[s]', '3379691287'),
+        ('1907-02-03 9:08:07.0123', 'yy', '07'),
+        ('19:08:07.0123', 'd', '0'),
+        ('19:08:07.0123', 'h', '19'),
+        ('19:08:07.0123', '.000', '.012'),
+        ('1907-02-03', 'yy', '07'),
+        ('1907-02-03', 'h', '0'),
+        ('1907-02-03', 's', '0'),
+        ('1907-02-03', '.000', '.000'),
+        ('10:08:07 pm', 'd', '0'),
+        (39116.79730338, 'yyyy', '2007'),
+        ('60', 'yyyy', '1900'),
+        ('60', 'mm', '02'),
+        ('60', 'dd', '29'),
+        (60, 'yyyy', '1900'),
+        (60, 'mm', '02'),
+        (60, 'dd', '29'),
+        (0, 'yyyy', '1900'),
+        (0, 'mm', '01'),
+        (0, 'dd', '00'),
+        (2591.38063671296, 'yyyy', '1907'),
+        (2591.38063671296, 'mm', '02'),
+        (2591.38063671296, 'dd', '03'),
+        (2591.38063671296, 'hh', '09'),
+        (2591.38063671296, 'MM', '08'),
+        (2591.38063671296, 'ss', '07'),
+        (2591.38063671296, '.000', '.012'),
+
+        (True, '', None),
+        (False, '', None),
+        ({}, '', None),
+        ('1907-02-xx', '', None),
+        (-.1, '', None),
+        (DATE_MAX_INT, '', None),
+        (DATE_MAX_INT - 1, 'yyyy', '9999'),
+        (DATE_MAX_INT - 1, 'mm', '12'),
+        (DATE_MAX_INT - 1, 'dd', '31'),
+        (0, '[hh]', VALUE_ERROR),
+    )
+)
+def test_date_time_formatter_new(datetime, format, expected):
+    obj = DateTimeFormatter.new(datetime)
+    if expected is None:
+        assert obj is expected
+    else:
+        assert obj.format(format) == expected
+
+
+@pytest.mark.parametrize(
+    'serial_number, format, expected', (
+        (39116.79730338, 'yyyy', '2007'),
+        (60, 'yyyy', '1900'),
+        (60, 'mm', '02'),
+        (60, 'dd', '29'),
+        (0, 'yyyy', '1900'),
+        (0, 'mm', '01'),
+        (0, 'dd', '00'),
+        (2591.38063671296, 'yyyy', '1907'),
+        (2591.38063671296, 'mm', '02'),
+        (2591.38063671296, 'dd', '03'),
+        (2591.38063671296, 'hh', '09'),
+        (2591.38063671296, 'MM', '08'),
+        (2591.38063671296, 'ss', '07'),
+        (2591.38063671296, '.000', '.012'),
+        (DATE_MAX_INT, 'yyyy', VALUE_ERROR),
+        (DATE_MAX_INT, '[h]', str(71003184)),
+        (DATE_MAX_INT, '[m]', str(71003184 * 60)),
+        (DATE_MAX_INT, '[s]', str(71003184 * 60 * 60)),
+        (-1.25, 'yyyy', VALUE_ERROR),
+        (-1.25, '[h]', str(-30)),
+        (-1.25, '[m]', str(-30 * 60)),
+        (-1.25, '[s]', str(-30 * 60 * 60)),
+    )
+)
+def test_date_time_formatter_init(serial_number, format, expected):
+    assert DateTimeFormatter(serial_number).format(format) == expected
 
 
 def test_with_spreadsheet(fixture_xls_copy):
     excel_compiler = ExcelCompiler(fixture_xls_copy('date-time.xlsx'))
 
-    failed_cells = excel_compiler.validate_calcs()
+    failed_cells = excel_compiler.validate_serialized()
     assert failed_cells == {}

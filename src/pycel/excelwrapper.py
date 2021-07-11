@@ -104,7 +104,7 @@ class _OpxRange(ExcelWrapper.RangeData):
 
             elif formula.startswith('={') and formula[-1] == '}':
                 # This is not in a CSE Array Context
-                return '=index({},1,1)'.format(formula[1:])
+                return f'=index({formula[1:]},1,1)'
 
             elif formula.startswith(ARRAY_FORMULA_NAME):
                 # These are CSE Array formulas as encoded from sheet
@@ -116,8 +116,7 @@ class _OpxRange(ExcelWrapper.RangeData):
                 cse_range = AddressRange(
                     (start_col_idx, start_row, end_col_idx, end_row),
                     sheet=cell.parent.title)
-                return '=index({},{},{})'.format(
-                    cse_range.quoted_address, *params[1:3])
+                return f'=index({cse_range.quoted_address},{params[1]},{params[2]})'
             else:
                 return formula
 
@@ -225,8 +224,7 @@ class ExcelOpxWrapper(ExcelWrapper):
             col_offset = address.col_idx - origin.col_idx
             for rule in cf.rules:
                 if rule.formula:
-                    trans = Translator(
-                        '={}'.format(rule.formula[0]), origin.coordinate)
+                    trans = Translator(f'={rule.formula[0]}', origin.coordinate)
                     formula = trans.translate_formula(
                         row_delta=row_offset, col_delta=col_offset)
                     rules.append(self.CfRule(

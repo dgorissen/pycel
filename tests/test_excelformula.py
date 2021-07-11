@@ -301,6 +301,14 @@ fancy_reference_inputs = [
         '_R_(str((_REF_(str(_REF_("A8") ** index(_REF_("B2"), 1)))) ** '
         '_REF_("B2")))'),
     FormulaTest(
+        '=INDIRECT("sheet1!$A$1:$B$2")',
+        '"sheet1!$A$1:$B$2"|INDIRECT',
+        'indirect("sheet1!$A$1:$B$2", True, "")'),
+    FormulaTest(
+        '=INDIRECT("sheet1!$A$1:$B$2", FALSE)',
+        '"sheet1!$A$1:$B$2"|FALSE|INDIRECT',
+        'indirect("sheet1!$A$1:$B$2", False, "")'),
+    FormulaTest(
         '=SUM(sheet1!$A$1:$B$2)',
         'sheet1!$A$1:$B$2|SUM',
         'sum_(_R_("sheet1!A1:B2"))'),
@@ -397,6 +405,14 @@ reference_inputs = [
         '=COLUMN(L45)',
         'L45|COLUMN',
         'column(_REF_("L45"))'),
+    FormulaTest(
+        '=OFFSET(L45,1,2,3,4)',
+        'L45|1|2|3|4|OFFSET',
+        'offset(_REF_("L45"), 1, 2, 3, 4)'),
+    FormulaTest(
+        '=OFFSET(L45:O50,1,2,,4)',
+        'L45:O50|1|2||4|OFFSET',
+        'offset(_REF_("L45:O50"), 1, 2, None, 4)'),
 ]
 
 
@@ -404,9 +420,9 @@ def dump_test_case(formula, python_code, rpn):
     escaped_python_code = python_code.replace('\\', r'\\')
 
     print('    FormulaTest(')
-    print("        '{}',".format(formula))
-    print("        '{}',".format(rpn))
-    print("        '{}'),".format(escaped_python_code))
+    print(f"        '{formula}',")
+    print(f"        '{rpn}',")
+    print(f"        '{escaped_python_code}'),")
 
 
 def dump_parse(to_dump, ATestCell):
@@ -435,13 +451,12 @@ test_names = (
 test_data = []
 for test_name in test_names:
     for i, test in enumerate(globals()[test_name]):
-        test_data.append(
-            ('{}_{}'.format(test_name, i + 1), test[0], test[1], test[2]))
+        test_data.append((f'{test_name}_{i + 1}', test[0], test[1], test[2]))
 
 
 def dump_all_test_cases():
     for name in test_names:
-        print('{} = '.format(name), end='')
+        print(f'{name} = ', end='')
         dump_parse(t.formula for t in globals()[name])
         print()
 

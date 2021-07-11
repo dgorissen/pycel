@@ -20,6 +20,8 @@ from pycel.excelutil import (
     build_wildcard_re,
     ERROR_CODES,
     ExcelCmp,
+    flatten,
+    is_address,
     list_like,
     MAX_COL,
     MAX_ROW,
@@ -30,6 +32,35 @@ from pycel.excelutil import (
 from pycel.lib.function_helpers import (
     excel_helper,
 )
+
+
+""" Functions consuming or producing references.
+INDEX() - Takes an array or reference, returns the value pointed to
+OFFSET()  - Takes a reference, returns a reference
+INDIRECT() - Returns the reference specified by a text string.
+ROW() - Takes a reference, returns row number
+COLUMN() - Takes a reference, returns column number
+
+All of these can cause problems when compiling the workbook.
+
+OFFSET() and INDIRECT() should generally be avoided, as they can cause
+performance problems in any large spreadsheet.  That is because the
+outputs are volatile.  When compiling, this means they are not necessarily
+known when the sheet is compiled.  In general use INDEX() instead of
+OFFSET(), and don't use INDIRECT() at all, if needing to compile the workbook.
+
+As a general reminder, all of these functions are volatile and can
+cause performance problems in large spreadsheets because of frequent
+need to recalc.
+
+OFFSET()
+INDIRECT()
+ROWS()
+COLUMNS()
+CELL()
+NOW()
+TODAY()
+"""
 
 
 def _match(lookup_value, lookup_array, match_type=1):
@@ -64,11 +95,19 @@ def _match(lookup_value, lookup_array, match_type=1):
         # would explain the results seen when doing out of order searches.
         lookup_value = ExcelCmp(lookup_value)
 
-        result = bisect_right(lookup_array, lookup_value)
+        lo = 0
+        while lo < len(lookup_array) and lookup_array[lo] is None:
+            lo += 1
+
+        hi = len(lookup_array)
+        while hi > 0 and lookup_array[hi - 1] is None:
+            hi -= 1
+
+        result = bisect_right(lookup_array, lookup_value, lo=lo, hi=hi)
         while result and lookup_value.cmp_type != ExcelCmp(
                 lookup_array[result - 1]).cmp_type:
             result -= 1
-        if result == 0:
+        if result == 0 or lookup_array[result - 1] is None:
             result = NA_ERROR
         return result
 
@@ -207,37 +246,58 @@ def index(array, row_num, col_num=None):
     if not list_like(array[0]):
         return VALUE_ERROR
 
+    if is_address(array[0][0]):
+        assert len({a for a in flatten(array)}) == 1
+        _C_ = index.excel_func_meta['name_space']['_C_']
+        ref_addr = array[0][0].address_at_offset
+    else:
+        ref_addr = None
+
+    def array_data(row, col):
+        if ref_addr:
+            return _C_(ref_addr(row, col).address)
+        else:
+            return array[row][col]
+
     try:
         # rectangular array
         if row_num and col_num:
-            return array[row_num - 1][col_num - 1]
+            if row_num < 0 or col_num < 0:
+                return VALUE_ERROR
+            else:
+                return array_data(row_num - 1, col_num - 1)
 
         elif row_num:
-            if len(array[0]) == 1:
-                return array[row_num - 1][0]
+            if row_num < 0:
+                return VALUE_ERROR
+            elif len(array[0]) == 1:
+                return array_data(row_num - 1, 0)
             elif len(array) == 1:
-                return array[0][row_num - 1]
+                return array_data(0, row_num - 1)
             elif isinstance(array, np.ndarray):
                 return array[row_num - 1, :]
             else:
-                return (tuple(array[row_num - 1]),)
+                return (tuple(array_data(row_num - 1, col) for col in range(len(array[0]))),)
 
         elif col_num:
-            if len(array) == 1:
-                return array[0][col_num - 1]
+            if col_num < 0:
+                return VALUE_ERROR
+            elif len(array) == 1:
+                return array_data(0, col_num - 1)
             elif len(array[0]) == 1:
-                return array[col_num - 1][0]
+                return array_data(col_num - 1, 0)
             elif isinstance(array, np.ndarray):
                 result = array[:, col_num - 1]
                 result.shape = result.shape + (1,)
                 return result
             else:
-                return tuple((r[col_num - 1], ) for r in array)
+                return tuple((array_data(row, col_num - 1), ) for row in range(len(array)))
 
     except IndexError:
-        pass
+        return REF_ERROR
 
-    return NA_ERROR
+    else:
+        return array
 
 
 @excel_helper(cse_params=0, number_params=1)
@@ -325,7 +385,7 @@ def match(lookup_value, lookup_array, match_type=1):
     return _match(lookup_value, lookup_array, match_type)
 
 
-@excel_helper(cse_params=-1, ref_params=0, number_params=(1, 2))
+@excel_helper(cse_params=(1, 2, 3, 4), ref_params=0, number_params=(1, 2))
 def offset(reference, row_inc, col_inc, height=None, width=None):
     # Excel reference: https://support.microsoft.com/en-us/office/
     #   offset-function-c8de19ae-dd79-4b9b-a14e-b4d906d11b66
@@ -356,9 +416,8 @@ def offset(reference, row_inc, col_inc, height=None, width=None):
         bottom_right = AddressCell((end_col, end_row, end_col, end_row),
                                    sheet=base_addr.sheet)
 
-        return AddressRange('{}:{}'.format(
-            top_left.coordinate, bottom_right.coordinate),
-            sheet=top_left.sheet)
+        return AddressRange(f'{top_left.coordinate}:{bottom_right.coordinate}',
+                            sheet=top_left.sheet)
 
 
 @excel_helper(ref_params=0)
