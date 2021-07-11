@@ -54,11 +54,10 @@ My development is driven by the particular spreadsheets I need to handle so
 I have only added support for functions that I need.  However, it is should be
 straightforward to add support for others.
 
-The code does currently not support cell references so a function like OFFSET
-would take some more work to implement.  Not inherently difficult, its just
-that I have had no need for references yet.  Also, for obvious reasons, any
-VBA code is not compiled but needs to be re-implemented manually on the
-python side.
+The code does currently support cell references so a function like OFFSET works,
+but suffers from the fact that if a cell is not already compiled in, then the
+function can fail.  Also, for obvious reasons, any VBA code is not compiled
+but needs to be re-implemented manually on the python side.
 
 **The Ugly:**
 
