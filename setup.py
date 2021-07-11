@@ -32,11 +32,10 @@ def changes():
     import itertools as it
     import re
 
-    chages_iter = iter(open('CHANGES.rst', 'r', encoding='utf-8').readlines())
+    lines = tuple(open('CHANGES.rst', 'r', encoding='utf-8').readlines())
     first_change_re = re.compile(r'^\[\d')
-    tuple(it.takewhile(lambda line: not first_change_re.match(line), chages_iter))
-    next(chages_iter)
-    return chages_iter
+    header = tuple(it.takewhile(lambda line: not first_change_re.match(line), lines))
+    return lines[len(header):]
 
 
 long_description = u'{}\n\nChange Log\n==========\n\n{}'.format(

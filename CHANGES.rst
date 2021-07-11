@@ -30,6 +30,19 @@ and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0
 Added
 -----
 
+Changed
+-------
+
+Fixed
+-----
+
+
+[1.0b27] - 2021-07-10
+=====================
+
+Added
+-----
+
 * Added CHOOSE() function
 * Added FORECAST() function
 * Added INTERCEPT() function
@@ -64,6 +77,7 @@ Fixed
 * Fix serialize ranges with formulas
 * Fixed a minor bug in DATE()
 * Fixed TIMEVALUE() parsing for elapsed times
+
 
 [1.0b26] - 2021-06-18
 =====================
