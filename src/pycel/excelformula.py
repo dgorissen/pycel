@@ -926,8 +926,12 @@ class ExcelFormula:
                 error_logger('error', excel_formula.python_code,
                              msg=excel_formula.msg, exc=UnknownFunction)
 
+            except RecursionError as exc:
+                raise RecursionError('Do you need to use cycles=True ?') from exc
+
             except Exception:
-                error_logger('error', excel_formula.python_code,
+                address = f"{excel_formula.cell.address}: " if excel_formula.cell else ""
+                error_logger('error', f"{address}{excel_formula.python_code}",
                              exc=FormulaEvalError)
 
             if error_messages:

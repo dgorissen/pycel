@@ -30,13 +30,25 @@ and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0
 Added
 -----
 
-- Add support for networkx 2.6
-
 Changed
 -------
 
 Fixed
 -----
+
+
+[1.0b28] - 2021-08-31
+=====================
+
+Added
+-----
+
+- Add support for networkx 2.6
+
+Changed
+-------
+
+- Some minor improvements for Iterative Calculations
 
 
 [1.0b27] - 2021-07-10

@@ -7,9 +7,11 @@
 # You may obtain a copy of the Licence at:
 #   https://www.gnu.org/licenses/gpl-3.0.en.html
 
+import copy
 import json
 import math
 import os
+import random
 import shutil
 from pathlib import Path
 from unittest import mock
@@ -1048,3 +1050,36 @@ def test_circular_mismatch_warning(
 
         ExcelCompiler(fixture_xls_path_circular, cycles=True)
         assert log.warning.call_count == 2
+
+
+def test_circular_disabled(fixture_xls_copy):
+    excel_compiler = ExcelCompiler(fixture_xls_copy('circular.xlsx'), cycles=False)
+
+    failed_cells = excel_compiler.validate_serialized()
+    assert failed_cells == {
+        'exceptions': {
+            'RecursionError: Do you need to use cycles=True ?': [
+                ('Sheet1!B10', '=IF(B3=0, 0, B10+0.001)',
+                 'Do you need to use cycles=True ?'
+                 )
+            ]
+        }
+    }
+
+
+def test_circular_order_random(fixture_xls_copy):
+    """This is hoping to find a way to reproduce #126"""
+    excel_compiler = ExcelCompiler(fixture_xls_copy('circular.xlsx'), cycles=True)
+    to_verify = list(excel_compiler.formula_cells())
+
+    randgen = random.Random(1234)
+
+    for i in range(100):
+        addrs = copy.copy(to_verify)
+        randgen.shuffle(addrs)
+        excel_compiler = ExcelCompiler(fixture_xls_copy('circular.xlsx'), cycles=True)
+        failed_cells = excel_compiler.validate_serialized(
+            tolerance=excel_compiler.cycles['tolerance'],
+            output_addrs=addrs,
+        )
+        assert (failed_cells, addrs) == ({}, addrs)

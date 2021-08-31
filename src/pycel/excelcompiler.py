@@ -112,6 +112,10 @@ class ExcelCompiler:
                     tolerance=self.excel.workbook.calculation.iterateDelta,
                 )
 
+        elif self.cycles:
+            assert isinstance(self.cycles, dict)
+            assert self.cycles.keys() == {'iterations', 'tolerance'}
+
         self.Cell = _CycleCell if self.cycles else _Cell
         self.evaluate = (self._evaluate_iterative if self.cycles else
                          self._evaluate_non_iterative)
@@ -478,10 +482,7 @@ class ExcelCompiler:
                 cell.value = None
 
         for cell in self.cell_map.values():
-            if isinstance(cell, _CellRange):
-                self._evaluate_range(cell.address.address)
-            else:
-                self._evaluate(cell.address.address)
+            self.evaluate(cell.address.address)
 
     def trim_graph(self, input_addrs, output_addrs):
         """Remove unneeded cells from the graph"""
@@ -602,6 +603,8 @@ class ExcelCompiler:
 
         verified = set()
         failed = {}
+        if self.cycles:
+            iterative_eval_tracker(**self.cycles)
         while to_verify:
             addr = to_verify.pop()
             if len(to_verify) % 100 == 0:
@@ -617,7 +620,7 @@ class ExcelCompiler:
                         continue
 
                     cell.value = None
-                    self._evaluate(addr.address)
+                    self.evaluate(addr.address)
 
                     if not (original_value is None or
                             cell.close_enough(original_value, tol=tolerance)):
@@ -628,9 +631,9 @@ class ExcelCompiler:
                             addr, original_value, cell.value,
                             cell.formula.base_formula))
 
-                        # do it again to allow easy breakpointing
+                        # do it again to allow easy break-pointing
                         cell.value = None
-                        self._evaluate(cell.address.address)
+                        self.evaluate(cell.address.address)
 
                 verified.add(addr)
                 if verify_tree:  # pragma: no branch
@@ -878,8 +881,8 @@ class ExcelCompiler:
         :return: evaluated value/values
         """
 
-        iterations = iterations or self.cycles['iterations']
-        tolerance = tolerance or self.cycles['tolerance']
+        iterations = iterations or self.cycles['iterations'] or 10000
+        tolerance = tolerance or self.cycles['tolerance'] or 0.01
 
         progress_tracker = iterative_eval_tracker(iterations, tolerance)
         while True:
