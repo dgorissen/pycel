@@ -13,6 +13,8 @@ omit =
 [report]
 
 fail_under = 100
+skip_covered = True
+show_missing = True
 
 # Regexes for lines to exclude from consideration
 exclude_lines =
