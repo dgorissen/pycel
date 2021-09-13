@@ -248,6 +248,38 @@ class ExcelOpxWrapper(ExcelWrapper):
     def load_array_formulas(self):
         # expand array formulas
         for ws in self.workbook:
+            if not hasattr(ws, 'array_formulae'):  # pragma: no cover
+                # array_formulae was introduced in openpyxl 3.0.8
+                # https://foss.heptapod.net/openpyxl/openpyxl/-/
+                #   commit/b71b6ba667e9fcf8de3f899382d446626e55970c
+                self.old_load_array_formulas()
+                return
+
+            for address, ref_addr in ws.array_formulae.items():
+                # get the reference address for the array formula
+                ref_addr = AddressRange(ref_addr)
+                if not isinstance(ref_addr, AddressRange):
+                    ref_addr = AddressRange(ref_addr)
+
+                if isinstance(ref_addr, AddressRange):
+                    formula = ws[address].value
+                    for i, row in enumerate(ref_addr.rows, start=1):
+                        for j, addr in enumerate(row, start=1):
+                            ws[addr.coordinate] = ARRAY_FORMULA_FORMAT % (
+                                formula.text[1:], i, j, *ref_addr.size)
+                else:
+                    # ::TODO:: At some point consider dropping support for openpyxl < 3.0.8
+                    # This has the effect of replacing the ArrayFormula object with just the
+                    # formula text. This matches the openpyxl < 3.0.8 behavior, at some point
+                    # consider using the new behavior.
+                    ws[ref_addr.coordinate] = ws[ref_addr.coordinate].value.text
+
+    def old_load_array_formulas(self):  # pragma: no cover
+        """expand array formulas"""
+        # formula_attributes was dropped in openpyxl 3.0.8
+        # https://foss.heptapod.net/openpyxl/openpyxl/-/
+        #   commit/b71b6ba667e9fcf8de3f899382d446626e55970c
+        for ws in self.workbook:
             for address, props in ws.formula_attributes.items():
                 if props.get('t') != 'array':
                     continue  # pragma: no cover
