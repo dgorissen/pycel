@@ -37,6 +37,16 @@ Fixed
 -----
 
 
+[1.0b30] - 2021-10-13
+=====================
+
+Changed
+-------
+
+- Better handle indirect cells in compiled workbooks
+- Better handle numpy floats in compiled workbooks
+
+
 [1.0b29] - 2021-09-13
 =====================
 
