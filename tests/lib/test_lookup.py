@@ -61,10 +61,15 @@ def test_lookup_ws(fixture_xls_copy):
     indirect = loaded.evaluate(INDIRECT_FORMULA_ADDRESS)
     assert indirect == loaded.evaluate('Offset!B2')
 
-    # use indirect to a non-pre-existing range
+    # use indirect to a non-pre-existing and empty range
     loaded.set_value(INDIRECT_FORMULA_ADDRESS.address_at_offset(1, 0), 'H1:H2')
     indirect = loaded.evaluate(INDIRECT_FORMULA_ADDRESS)
-    assert indirect == REF_ERROR
+    assert indirect is None
+
+    # use indirect to a non-pre-existing range to existing cells
+    loaded.set_value(INDIRECT_FORMULA_ADDRESS.address_at_offset(1, 0), 'D3:E3')
+    indirect = loaded.evaluate(INDIRECT_FORMULA_ADDRESS)
+    assert indirect == 8
 
 
 @pytest.mark.parametrize(

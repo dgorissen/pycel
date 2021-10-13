@@ -249,13 +249,15 @@ class ExcelOpxWrapper(ExcelWrapper):
         # expand array formulas
         for ws in self.workbook:
             if not hasattr(ws, 'array_formulae'):  # pragma: no cover
-                # array_formulae was introduced in openpyxl 3.0.8
+                # array_formulae was introduced in openpyxl 3.0.8 & removed in 3.0.9
                 # https://foss.heptapod.net/openpyxl/openpyxl/-/
                 #   commit/b71b6ba667e9fcf8de3f899382d446626e55970c
+                # ... evidently will be coming back in 3.1
+                # https://openpyxl.readthedocs.io/en/stable/changes.html
                 self.old_load_array_formulas()
                 return
 
-            for address, ref_addr in ws.array_formulae.items():
+            for address, ref_addr in ws.array_formulae.items():  # pragma: no cover
                 # get the reference address for the array formula
                 ref_addr = AddressRange(ref_addr)
                 if not isinstance(ref_addr, AddressRange):
