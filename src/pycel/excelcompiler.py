@@ -18,6 +18,7 @@ import pickle
 from numbers import Number
 
 import networkx as nx
+import numpy as np
 from ruamel.yaml import YAML
 
 from pycel.excelformula import ExcelFormula
@@ -29,7 +30,6 @@ from pycel.excelutil import (
     is_address,
     iterative_eval_tracker,
     list_like,
-    REF_ERROR,
 )
 from pycel.excelwrapper import ExcelOpxWrapper, ExcelOpxWrapperNoData
 
@@ -188,6 +188,8 @@ class ExcelCompiler:
         def cell_value(a_cell):
             if a_cell.formula and a_cell.formula.python_code:
                 return '=' + a_cell.formula.python_code
+            elif isinstance(a_cell.value, np.float64):
+                return float(a_cell.value)
             else:
                 return a_cell.value
 
@@ -367,6 +369,13 @@ class ExcelCompiler:
         else:
             excel_compiler = cls._from_text(
                 filename, is_json=extension == 'json')
+
+        excel_compiler.excel = _CompiledImporter('', {
+            'filename': excel_compiler.filename,
+            'cell_map': excel_compiler.cell_map,
+        })
+        excel_compiler.range_todos = []
+        excel_compiler.graph_todos = []
 
         excel_compiler._plugin_modules = plugins
         return excel_compiler
@@ -785,7 +794,7 @@ class ExcelCompiler:
 
     def _evaluate(self, address):
         """Evaluate a single cell"""
-        if address not in self.cell_map and getattr(self, 'excel', None):
+        if address not in self.cell_map:
             # INDIRECT() and OFFSET() can produce addresses we don't already have loaded
             self._gen_graph(address)
         cell = self.cell_map[address]
@@ -814,14 +823,7 @@ class ExcelCompiler:
                         # INDIRECT() can produce addresses we don't already have loaded
                         self._gen_graph(ref_addr)
 
-                    if ref_addr in self.cell_map:
-                        # we found the cell we needed
-                        value = self.cell_map[ref_addr].value
-                    else:
-                        value = REF_ERROR
-                        self.log.warning(
-                            f"Cell {address} evaluated to '{value}', which is UNKNOWN. "
-                            f"Dynamic addresses mixed with compiled workbooks are UNSUPPORTED!")
+                    value = self.cell_map[ref_addr].value
                 else:
                     self.log.info(
                         f"Cell {cell.address} evaluated to '{value}' ({type(value).__name__})")

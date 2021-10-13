@@ -16,6 +16,7 @@ import shutil
 from pathlib import Path
 from unittest import mock
 
+import numpy as np
 import pytest
 from openpyxl import Workbook
 from openpyxl.workbook.defined_name import DefinedName
@@ -869,6 +870,32 @@ def test_evaluate_empty_intersection(fixture_dir):
         excel_compiler.excel
     )
     assert excel_compiler.evaluate(address) == NULL_ERROR
+
+
+def test_evaluate_not_pre_existing_range(fixture_dir):
+    excel_compiler = ExcelCompiler.from_file(
+        os.path.join(fixture_dir, 'fixture.xlsx.yml'))
+
+    assert excel_compiler.evaluate('Sheet1!B5:B8') == (18, 21, 24, 27)
+
+
+def test_save_restore_numpy_float(basic_ws, tmpdir):
+    addr = AddressCell('Sheet1!A1')
+    cell_value = basic_ws.evaluate(addr)
+    assert not isinstance(cell_value, np.float64)
+
+    basic_ws.set_value(addr, np.float64(8.0))
+    cell_value = basic_ws.evaluate(addr)
+    assert isinstance(cell_value, np.float64)
+    assert cell_value == 8.0
+
+    tmp_name = os.path.join(tmpdir, 'numpy_test')
+    basic_ws.to_file(tmp_name)
+
+    excel_compiler = ExcelCompiler.from_file(tmp_name)
+    cell_value = excel_compiler.evaluate(addr)
+    assert not isinstance(cell_value, np.float64)
+    assert cell_value == 8.0
 
 
 def test_plugins(excel_compiler):
