@@ -21,6 +21,7 @@ from pycel.excelutil import (
     has_array_arg,
     in_array_formula_context,
     is_array_arg,
+    list_like,
     NA_ERROR,
     VALUE_ERROR,
 )

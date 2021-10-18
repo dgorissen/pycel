@@ -1,6 +1,7 @@
 matplotlib
 networkx>=2.0,<2.7
 numpy
+numpy_financial
 openpyxl>=2.6.2
 python-dateutil
 pydot
