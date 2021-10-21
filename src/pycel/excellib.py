@@ -361,8 +361,8 @@ def sumproduct(*args):
         return error
 
     if all(not isinstance(arg, tuple) for arg in args):
-        values = np.array([x if isinstance(x, (float, int))
-                                and not isinstance(x, bool) else 0 for x in args])
+        values = np.array([x if isinstance(x, (float, int)) and not isinstance(x, bool) else 0
+                           for x in args])
         return np.prod(values)
 
     # verify array sizes match
