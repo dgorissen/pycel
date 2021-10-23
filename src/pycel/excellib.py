@@ -360,9 +360,16 @@ def sumproduct(*args):
     if error:
         return error
 
+    if all(not isinstance(arg, tuple) for arg in args):
+        values = np.array([x if isinstance(x, (float, int)) and not isinstance(x, bool) else 0
+                           for x in args])
+        return np.prod(values)
+
     # verify array sizes match
     sizes = set()
     for arg in args:
+        if not isinstance(arg, tuple):
+            return VALUE_ERROR
         assert is_array_arg(arg)
         sizes.add((len(arg), len(arg[0])))
     if len(sizes) != 1:
