@@ -1115,24 +1115,24 @@ def test_circular_order_random(fixture_xls_copy):
 def test_order_of_evaluation():
     wb = Workbook()
     ws = wb.active
-    ws['A1'], ws['B1'], ws['C1'] = 0, 1, 0
-    ws['A2'] = '=SWITCH(A1:C1,0,FALSE,1,TRUE)'
+    ws['A1'] = '=JUNK(A2:C2)'
+    ws.formula_attributes['A1'] = {'t': 'array', 'ref': "A1:C1"}
+    ws['E1'] = '=JUNK(A2:C2)'
+    ws.formula_attributes['E1'] = {'t': 'array', 'ref': "E1:G1"}
     ws['A3'] = 'hello'
-    ws['A4'] = '=SWITCH(A1:C1,1,FALSE,0,TRUE)'
-    ws['A5'] = '=AND(A2,A4)'
+    ws['E3'] = '=AND(A1,E1)'
 
     model = ExcelCompiler(excel=wb)
 
     from pycel.excelformula import UnknownFunction
     with pytest.raises(UnknownFunction):
-        model.evaluate('A2')
+        model.evaluate('A1')
 
     assert model.evaluate('A3') == 'hello'
 
     model = ExcelCompiler(excel=wb)
 
-    from pycel.excelformula import FormulaEvalError
-    with pytest.raises(FormulaEvalError):
-        model.evaluate('A5')
+    with pytest.raises(UnknownFunction):
+        model.evaluate('E3')
 
     assert model.evaluate('A3') == 'hello'
