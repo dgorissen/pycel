@@ -943,9 +943,11 @@ class ExcelCompiler:
                     self.cell_map[precedent_address.address], dependant)
 
         # calc the values for ranges
-        for range_todo in reversed(self.range_todos):
-            self._evaluate_range(range_todo)
-        self.range_todos = []
+        try:
+            for range_todo in reversed(self.range_todos):
+                self._evaluate_range(range_todo)
+        finally:
+            self.range_todos = []
 
         self.log.info(
             f"Graph construction done, {len(self.dep_graph.nodes())} nodes, "
