@@ -10,6 +10,7 @@
 """
 Python equivalents of excel logical functions (bools)
 """
+import itertools as it
 from numbers import Number
 
 import numpy as np
@@ -24,6 +25,7 @@ from pycel.excelutil import (
     VALUE_ERROR,
 )
 from pycel.lib.function_helpers import cse_array_wrapper, excel_helper
+from pycel.lib.lookup import ExcelCmp
 
 
 def _clean_logical(test):
@@ -163,13 +165,25 @@ def or_(*args):
         return any(values)
 
 
-# SWITCH function
-# Excel 2016
-# Evaluates an expression against a list of values and returns the result
-# corresponding to the first matching value. If there is no match, an optional
-# default value may be returned.
-# Excel reference: https://support.microsoft.com/en-us/office/
-#   switch-function-47ab33c0-28ce-4530-8a45-d532ec4aa25e
+@excel_helper(cse_params=-1)
+def switch(lookup_value, *args):
+    # Evaluates an expression against a list of values and returns the result
+    # corresponding to the first matching value. If there is no match, an optional
+    # default value may be returned.
+    # Excel reference: https://support.microsoft.com/en-us/office/
+    #   switch-function-47ab33c0-28ce-4530-8a45-d532ec4aa25e
+    if len(args) < 2:
+        return VALUE_ERROR
+
+    lookup_value = ExcelCmp(lookup_value)
+    for to_match, result in zip(it.islice(args, 0, None, 2), it.islice(args, 1, None, 2)):
+        to_match = ExcelCmp(to_match)
+        if to_match == lookup_value:
+            return result
+
+    if len(args) % 2:
+        return args[-1]
+    return NA_ERROR
 
 
 # def true(value):

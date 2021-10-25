@@ -93,8 +93,6 @@ def _match(lookup_value, lookup_array, match_type=1):
     if match_type == 1:
         # Use a binary search to speed it up.  Excel seems to do this as it
         # would explain the results seen when doing out of order searches.
-        lookup_value = ExcelCmp(lookup_value)
-
         lo = 0
         while lo < len(lookup_array) and lookup_array[lo] is None:
             lo += 1

@@ -30,11 +30,17 @@ and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0
 Added
 -----
 
+* Added SWITCH() function
+
 Changed
 -------
 
+* Allow continued calculations after UnknownFunction exception (thanks @igheorghita)
+
 Fixed
 -----
+
+* Fixed SUMPRODUCT() for scalar case (thanks @igheorghita)
 
 
 [1.0b30] - 2021-10-13
