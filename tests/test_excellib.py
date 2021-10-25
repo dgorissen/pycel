@@ -493,6 +493,7 @@ def test_sumifs(data, result):
         ((((1, 2), (3, 4)), ((1, 3), (NAME_ERROR, 4))), NAME_ERROR),
         ((((1, 2, 3), (3, 4, 6)), ((1, 3), (2, 4))), VALUE_ERROR),
         ((((1, 2, 3),), ((1, 2, 3),), 5), VALUE_ERROR),
+        ((1, 2, 3, None), VALUE_ERROR),
     )
 )
 def test_sumproduct(args, result):

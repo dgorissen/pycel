@@ -13,6 +13,7 @@ import pycel.lib.logical
 from pycel.excelcompiler import ExcelCompiler
 from pycel.excelutil import (
     DIV0,
+    ERROR_CODES,
     in_array_formula_context,
     NA_ERROR,
     NAME_ERROR,
@@ -31,6 +32,7 @@ from pycel.lib.logical import (
     ifs,
     not_,
     or_,
+    switch,
     xor_,
 )
 
@@ -229,6 +231,34 @@ def test_not_(expected, test_value):
 )
 def test_or_(expected, test_value):
     assert or_(*test_value) == expected
+
+
+@pytest.mark.parametrize(
+    'expected, test_value', (
+        (1, (False, False, 1)),
+        (NA_ERROR, (False, True, 1)),
+        (NA_ERROR, (True, False, 1)),
+        (1, (True, True, 1)),
+        (True, ('plugh', False, False, 1, 1, 'xyzzy', 'xyzzy', 'plugh', True)),
+        (NA_ERROR, (-2, '-2', 1)),
+        (NA_ERROR, (0, False, 1)),
+        (NA_ERROR, (1, NA_ERROR, 2.0, 3.1)),
+        (NA_ERROR, ('1', 'x', 'y')),
+        (DIV0, (DIV0, 0)),
+        (DIV0, (0, DIV0)),
+        (DIV0, (0, 0, DIV0)),
+        (DIV0, (0, 1, -1, DIV0)),
+        (VALUE_ERROR, (0, 1, VALUE_ERROR, DIV0)),
+        (VALUE_ERROR, (0,)),
+        (VALUE_ERROR, (0, 0)),
+    )
+)
+def test_switch(expected, test_value):
+    assert switch(*test_value) == expected
+    if NA_ERROR not in test_value and expected == NA_ERROR:
+        assert switch(*test_value, 'Hi Mom!') == 'Hi Mom!'
+    if test_value[0] not in ERROR_CODES and len(test_value) > 2:
+        assert switch(test_value[0], *(['no-match'] * 200), *test_value[1:]) == expected
 
 
 @pytest.mark.parametrize(
