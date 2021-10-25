@@ -11,6 +11,7 @@
 Python equivalents of various excel functions
 """
 import math
+import sys
 from decimal import Decimal, ROUND_DOWN, ROUND_HALF_UP, ROUND_UP
 
 import numpy as np
@@ -32,6 +33,14 @@ from pycel.lib.function_helpers import (
     excel_helper,
     excel_math_func,
 )
+
+
+if sys.version_info >= (3, 8):  # pragma: no cover
+    prod = math.prod
+else:  # pragma: no cover
+    # ::TODO:: remove when Pyton 3.7 is obsolete
+    def prod(values):
+        return np.prod(list(values))
 
 
 def _numerics(*args, keep_bools=False, to_number=lambda x: x):
@@ -363,6 +372,18 @@ def sumproduct(*args):
     # verify array sizes match
     sizes = set()
     for arg in args:
+        if not isinstance(arg, tuple):
+            if all(not isinstance(arg, tuple) for arg in args):
+                # the all scalers case is valid.
+                values = (
+                    x if isinstance(x, (float, int, type(None))) and not isinstance(x, bool) else 0
+                    for x in args
+                )
+                try:
+                    return prod(values)
+                except TypeError:
+                    pass
+            return VALUE_ERROR
         assert is_array_arg(arg)
         sizes.add((len(arg), len(arg[0])))
     if len(sizes) != 1:
