@@ -150,11 +150,12 @@ def address(row_num, column_num, abs_num=1, style=None, sheet_text=''):
     if style == 0:
         r = str(row_num) if abs_num in [1, 2] else str([row_num])
         c = str(column_num) if abs_num in [1, 3] else str([column_num])
-        return sheet_text + 'R' + r + 'C' + c
+        return f'{sheet_text}R{r}C{c}'
     else:
         abs_row = '$' if abs_num in [1, 2] else ''
         abs_col = '$' if abs_num in [1, 3] else ''
-        return sheet_text + abs_col + get_column_letter(column_num) + abs_row + str(row_num)
+        return f'{sheet_text}{abs_col}{get_column_letter(column_num)}' \
+               f'{abs_row}{str(row_num)}'
 
 
 # def areas(value):
@@ -201,11 +202,13 @@ def _xlws_filter(values, include, if_empty=VALUE_ERROR):
 
     if len(values[0]) == len(include[0]) and not len(include) > 1:
         transpose = tuple(col for col in zip(*values))
-        res = [transpose[i] for i in range(len(transpose)) if include[0][i]]
+        res = [transpose[i] for i in range(len(transpose))
+               if include[0][i]]
         res = tuple([col for col in zip(*res)])
 
     elif len(values) == len(include):
-        res = tuple([values[i] for i in range(len(values)) if include[i][0]])
+        res = tuple([values[i] for i in range(len(values))
+                     if include[i][0]])
 
     return res if res else if_empty
 
