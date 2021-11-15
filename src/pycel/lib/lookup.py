@@ -148,9 +148,9 @@ def address(row_num, column_num, abs_num=1, style=None, sheet_text=''):
     #   address-function-d0c26c0d-3991-446b-8de4-ab46431d4f89
     sheet_text = "'" + sheet_text + "'!" if sheet_text else sheet_text
     if style == 0:
-        row = str(row_num) if abs_num in [1, 2] else str([row_num])
-        col = str(column_num) if abs_num in [1, 3] else str([column_num])
-        return sheet_text + 'R' + row + 'C' + col
+        r = str(row_num) if abs_num in [1, 2] else str([row_num])
+        c = str(column_num) if abs_num in [1, 3] else str([column_num])
+        return sheet_text + 'R' + r + 'C' + c
     else:
         abs_row = '$' if abs_num in [1, 2] else ''
         abs_col = '$' if abs_num in [1, 3] else ''
@@ -185,13 +185,15 @@ def column(ref):
         return ref.col_idx
 
 
-def columns(value):
+def columns(values):
     # Excel reference: https://support.microsoft.com/en-us/office/
     #   columns-function-4e8e7b4e-e603-43e8-b177-956088fa48ca
-    return len(value[0])
+    if list_like(values):
+        return len(values[0])
+    return 1
 
 
-def _xlws_filter(values, include, if_empty='#CALC!'):
+def _xlws_filter(values, include, if_empty=VALUE_ERROR):
     # Excel reference: https://support.microsoft.com/en-us/office/
     #   filter-function-f4f7cb66-82eb-4767-8f7c-4877ad80c759
     if not list_like(include):
@@ -455,10 +457,12 @@ def row(ref):
         return ref.row
 
 
-def rows(value):
+def rows(values):
     # Excel reference: https://support.microsoft.com/en-us/office/
     #   rows-function-b592593e-3fc2-47f2-bec1-bda493811597
-    return len(value)
+    if list_like(values):
+        return len(values)
+    return 1
 
 
 # def rtd(value):
