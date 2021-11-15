@@ -23,12 +23,6 @@ def irr(values, guess=None):
     return npf.irr(list(flatten(values)))
 
 
-def npv(rate, *args):
-    # Excel reference: https://support.microsoft.com/en-us/office/
-    #   npv-function-8672cb67-2576-4d07-b67b-ac28acf2a568
-    return npf.npv(rate, (0,) + args)
-
-
 def pmt(rate, nper, pv, fv=0, when=0):
     # Excel reference: https://support.microsoft.com/en-us/office/
     #   pmt-function-0214da64-9a63-4996-bc20-214433fa6441

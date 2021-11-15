@@ -127,23 +127,24 @@ def test_count():
 
 
 @pytest.mark.parametrize(
-    'value, expected', (
-        (((7, 0, 1, None), ), 3),
-        (((True, False, 0, ''), ), 4),
-        (((True, ), ), 1),
-        (((False, NA_ERROR, VALUE_ERROR), ), 3),
-        ((('', None, 4), (NAME_ERROR, True, 0)), 5),
+    'values, expected', (
+        ((((7, 0, 1, None), ), ), 3),
+        ((((True, False, 0, ''), ), ), 4),
+        ((True, ), 1),
+        ((((False, NA_ERROR, VALUE_ERROR), ), ), 3),
+        (((('', None, 4), (NAME_ERROR, True, 0)), ), 5),
+        (((('', None, 4), ), 7, ((4, ), (5, )), 10), 6),
     )
 )
-def test_counta(value, expected):
-    assert counta(value) == expected
+def test_counta(values, expected):
+    assert counta(*values) == expected
 
 
 @pytest.mark.parametrize(
     'values, expected', (
         (((7, 0, 1, None), ), 1),
         (((True, False, 0, ''), ), 1),
-        (((False, ), ), 0),
+        (False, 0),
         (((False, NA_ERROR, None), ), 1),
         ((('', None, 4), (NAME_ERROR, True, 0)), 2),
     )

@@ -12,7 +12,6 @@ import pytest
 
 from pycel.lib.financial import (
     irr,
-    npv,
     pmt,
     ppmt
 )
@@ -32,20 +31,6 @@ from pycel.lib.financial import (
 def test_irr(values, guess, expected):
     assert math.isclose(irr(values, guess=guess),
                         expected, abs_tol=1e-4)
-
-
-@pytest.mark.parametrize(
-    'rate, values, expected',
-    (
-        (0.1, (-10000, 3000, 4200, 6800),
-         1188.443412),
-        (0.08, (-40000, 8000, 9200, 10000, 12000, 14500),
-         1779.686625)
-    )
-)
-def test_npv(rate, values, expected):
-    assert math.isclose(npv(rate, *values),
-                        expected, abs_tol=1e-2)
 
 
 @pytest.mark.parametrize(

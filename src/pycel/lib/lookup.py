@@ -198,19 +198,26 @@ def _xlws_filter(values, include, if_empty=VALUE_ERROR):
     # Excel reference: https://support.microsoft.com/en-us/office/
     #   filter-function-f4f7cb66-82eb-4767-8f7c-4877ad80c759
     if not list_like(include):
-        return values if include else if_empty
+        if not isinstance(values, tuple) or len(values) == 1 or len(values[0]) == 1:
+            return values if include else if_empty
+        return if_empty
 
+    res = None
     if len(values[0]) == len(include[0]) and not len(include) > 1:
         transpose = tuple(col for col in zip(*values))
         res = [transpose[i] for i in range(len(transpose))
                if include[0][i]]
         res = tuple([col for col in zip(*res)])
 
-    elif len(values) == len(include):
+    elif len(values) == len(include) and not len(include[0]) > 1:
         res = tuple([values[i] for i in range(len(values))
-                     if include[i][0]])
+                    if include[i][0]])
 
-    return res if res else if_empty
+    if res:
+        return res
+    if res is None:
+        return VALUE_ERROR
+    return if_empty
 
 
 # def formulatext(value):
