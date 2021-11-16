@@ -8,6 +8,7 @@
 #   https://www.gnu.org/licenses/gpl-3.0.en.html
 
 import math
+
 import pytest
 
 from pycel.lib.financial import (
