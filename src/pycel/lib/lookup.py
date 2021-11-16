@@ -13,7 +13,6 @@ Python equivalents of Lookup and Reference library functions
 from bisect import bisect_right
 
 import numpy as np
-
 from openpyxl.utils import get_column_letter
 
 from pycel.excelutil import (
