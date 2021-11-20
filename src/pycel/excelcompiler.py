@@ -417,7 +417,7 @@ class ExcelCompiler:
         :param value: value to set.  This can be a value or a tuple/list
             which matches the shapes needed for the given address/addresses
         :param set_as_range: With a single range address and a list like value,
-            set to true to set the entire rnage to the inserted list.
+            set to true to set the entire range to the inserted list.
         """
 
         if list_like(value) and not set_as_range:
