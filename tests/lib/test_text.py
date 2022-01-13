@@ -33,6 +33,7 @@ from pycel.lib.text import (
     trim,
     upper,
     value,
+    exact,
 )
 
 # dynamic load the lib functions from excellib and apply metadata
@@ -483,3 +484,14 @@ def test_value(param, expected):
 )
 def test_len_(param, expected):
     assert len_(param) == expected
+
+
+@pytest.mark.parametrize(
+    'text1, text2, expected', (
+        ('word', 'word', True),
+        ('Word', 'word', False),
+        ('w ord', 'word', False),
+    )
+)
+def test_exact(text1, text2, expected):
+    assert exact(text1, text2) == expected
