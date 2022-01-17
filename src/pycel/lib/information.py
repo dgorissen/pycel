@@ -17,13 +17,34 @@ from pycel.excelutil import (
     ERROR_CODES,
     NA_ERROR,
     VALUE_ERROR,
+    is_address,
 )
 from pycel.lib.function_helpers import excel_helper
 
 
-# def cell(value):
-#     # Excel reference: https://support.microsoft.com/en-us/office/
-#     #   cell-function-51bd39a5-f338-4dbe-a33f-955d67c2b2cf
+CELL_INFO_TYPE = ['contents']
+
+
+@excel_helper(cse_params=0, ref_params=1, str_params=0)
+def cell(info_type, ref):
+    # Excel reference: https://support.microsoft.com/en-us/office/
+    #   cell-function-51bd39a5-f338-4dbe-a33f-955d67c2b2cf
+    if info_type not in CELL_INFO_TYPE:
+        raise NotImplementedError(f"CELL function \'{info_type}\' info_type is not implemented!")
+
+    if not is_address(ref):
+        return ref
+    else:
+        if ref.is_range:
+            current_cell = ref.start
+        else:
+            current_cell = ref
+
+        if info_type == 'contents':
+            _C_ = cell.excel_func_meta['name_space']['_C_']
+            return _C_(current_cell.address)
+
+    return VALUE_ERROR
 
 
 # def error.type(value):
