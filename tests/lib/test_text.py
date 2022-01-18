@@ -21,6 +21,7 @@ from pycel.lib.function_helpers import load_to_test_module
 from pycel.lib.text import (
     concat,
     concatenate,
+    exact,
     find,
     left,
     len_,
@@ -33,7 +34,6 @@ from pycel.lib.text import (
     trim,
     upper,
     value,
-    exact,
 )
 
 # dynamic load the lib functions from excellib and apply metadata
@@ -63,6 +63,17 @@ def test_concatenate(args, expected):
     assert concatenate(*args) == expected
     assert concat(args) == expected
     assert concatenate(args) == VALUE_ERROR
+
+
+@pytest.mark.parametrize(
+    'text1, text2, expected', (
+        ('word', 'word', True),
+        ('Word', 'word', False),
+        ('w ord', 'word', False),
+    )
+)
+def test_exact(text1, text2, expected):
+    assert exact(text1, text2) == expected
 
 
 @pytest.mark.parametrize(
@@ -484,14 +495,3 @@ def test_value(param, expected):
 )
 def test_len_(param, expected):
     assert len_(param) == expected
-
-
-@pytest.mark.parametrize(
-    'text1, text2, expected', (
-        ('word', 'word', True),
-        ('Word', 'word', False),
-        ('w ord', 'word', False),
-    )
-)
-def test_exact(text1, text2, expected):
-    assert exact(text1, text2) == expected

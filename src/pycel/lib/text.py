@@ -405,7 +405,9 @@ def concatenate(*args):
 def exact(text1, text2):
     # Excel reference: https://support.microsoft.com/en-us/office/
     #   exact-function-d3087698-fc15-4a15-9631-12575cf29926
-    return text1 == text2
+    if text1 == text2:
+        return True
+    return False
 
 
 @excel_helper(cse_params=(0, 1, 2), number_params=2, str_params=(0, 1))
