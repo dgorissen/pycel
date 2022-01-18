@@ -12,6 +12,8 @@ import pytest
 import pycel.excellib
 from pycel.excelcompiler import ExcelCompiler
 from pycel.excelutil import (
+    AddressCell,
+    AddressRange,
     DIV0,
     NA_ERROR,
     NUM_ERROR,
@@ -20,6 +22,7 @@ from pycel.excelutil import (
 )
 from pycel.lib.function_helpers import load_to_test_module
 from pycel.lib.information import (
+    cell,
     isblank,
     iserr,
     iserror,
@@ -43,6 +46,32 @@ def test_information_ws(fixture_xls_copy):
     compiler = ExcelCompiler(fixture_xls_copy('information.xlsx'))
     result = compiler.validate_serialized()
     assert result == {}
+
+
+@pytest.mark.parametrize(
+    'reference, info_type, expected', (
+        ('value', 'address', 'not implemented'),
+        ('value', 'contents', 'value'),
+        ('Information!A11', 'contents', 0),
+        ('Information!A11:A12', 'contents', 0),
+    )
+)
+def test_cell(reference, info_type, expected):
+    assert isinstance(reference, str)
+    if reference.find('!') == -1:
+        refer = reference
+    else:
+        if reference.find(':') == -1:
+            refer = AddressCell.create(reference)
+        else:
+            refer = AddressRange.create(reference)
+
+    result = 'not implemented'
+    try:
+        result = cell(info_type, refer)
+    except NotImplementedError:
+        pass
+    assert expected == result
 
 
 @pytest.mark.parametrize(

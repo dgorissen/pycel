@@ -15,9 +15,9 @@ import math
 from pycel.excelutil import (
     coerce_to_number,
     ERROR_CODES,
+    is_address,
     NA_ERROR,
     VALUE_ERROR,
-    is_address,
 )
 from pycel.lib.function_helpers import excel_helper
 
@@ -40,11 +40,8 @@ def cell(info_type, ref):
         else:
             current_cell = ref
 
-        if info_type == 'contents':
-            _C_ = cell.excel_func_meta['name_space']['_C_']
-            return _C_(current_cell.address)
-
-    return VALUE_ERROR
+        _C_ = cell.excel_func_meta['name_space']['_C_']
+        return _C_(current_cell.address)
 
 
 # def error.type(value):
