@@ -212,12 +212,12 @@ class ExcelCompiler:
                          if os.path.exists(filename) else None)
 
         if not is_json:
-            with open(filename, 'w', encoding='utf-8') as f:
+            with open(filename, 'w') as f:
                 ymlo = YAML()
                 ymlo.width = 120
                 ymlo.dump(extra_data, f)
         else:
-            with open(filename, 'w', encoding='utf-8') as f:
+            with open(filename, 'w') as f:
                 json.dump(extra_data, f, indent=4)
 
         del extra_data['cell_map']
@@ -238,7 +238,7 @@ class ExcelCompiler:
             if not filename.endswith('.json'):  # pragma: no branch
                 filename += '.json'
 
-        with open(filename, 'r', encoding='utf-8') as f:
+        with open(filename, 'r') as f:
             data = YAML().load(f)
 
         excel = _CompiledImporter(filename, data)
@@ -342,7 +342,7 @@ class ExcelCompiler:
                 if non_pickle_extension not in file_types:
                     os.unlink(text_name)
 
-                with open(filename, 'wb', encoding='utf-8') as f:
+                with open(filename, 'wb') as f:
                     pickle.dump(excel_compiler, f)
 
     @classmethod
@@ -364,7 +364,7 @@ class ExcelCompiler:
             filename += '.' + extension
 
         if extension[0] == 'p':
-            with open(filename, 'rb', encoding='utf-8') as f:
+            with open(filename, 'rb') as f:
                 excel_compiler = pickle.load(f)
         else:
             excel_compiler = cls._from_text(
