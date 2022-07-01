@@ -300,7 +300,6 @@ lookup_columns = tuple(zip(*lookup_rows))
 
 class TestMod:
 
-
     def test_first_argument_validity(self):
         assert mod(VALUE_ERROR, 1) == VALUE_ERROR
         assert mod('x', 1) == VALUE_ERROR
