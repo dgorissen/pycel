@@ -300,6 +300,7 @@ lookup_columns = tuple(zip(*lookup_rows))
 
 class TestMod:
 
+
     def test_first_argument_validity(self):
         assert mod(VALUE_ERROR, 1) == VALUE_ERROR
         assert mod('x', 1) == VALUE_ERROR
@@ -601,16 +602,16 @@ def test_sum_():
     assert DIV0 == sum_(DIV0)
     assert DIV0 == sum_((2, DIV0))
 
+
 def test_rand():
     assert 1 >= rand()
     assert 0 <= rand()
+
 
 @pytest.mark.parametrize(
     'low, high', (
         (2, 5),
         (3, 4),
-        (5, 3),
-        (2.149, 3),
     )
 )
 def test_randbetween(low, high):
