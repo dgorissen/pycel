@@ -35,6 +35,8 @@ from pycel.excellib import (
     odd,
     power,
     pv,
+    rand,
+    randbetween,
     round_,
     rounddown,
     roundup,
@@ -43,9 +45,7 @@ from pycel.excellib import (
     sumif,
     sumifs,
     sumproduct,
-    trunc,
-    rand,
-    randbetween
+    trunc
 )
 from pycel.excelutil import (
     DIV0,
