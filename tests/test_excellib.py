@@ -44,6 +44,8 @@ from pycel.excellib import (
     sumifs,
     sumproduct,
     trunc,
+    rand,
+    randbetween
 )
 from pycel.excelutil import (
     DIV0,
@@ -598,3 +600,19 @@ def test_sum_():
 
     assert DIV0 == sum_(DIV0)
     assert DIV0 == sum_((2, DIV0))
+
+def test_rand():
+    assert 1 >= rand()
+    assert 0 <= rand()
+
+@pytest.mark.parametrize(
+    'low, high', (
+        (2, 5),
+        (3, 4),
+        (5, 3),
+        (2.149, 3),
+    )
+)
+def test_randbetween(low, high):
+    assert high >= randbetween(low, high)
+    assert low <= randbetween(low, high)
