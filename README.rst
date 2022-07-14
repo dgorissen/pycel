@@ -23,8 +23,7 @@ Required python libraries:
     `pydot <https://github.com/pydot/pydot>`_
 
 The full motivation behind pycel including some examples & screenshots is
-described in this `blog post <http://www.dirkgorissen.com/2011/10/19/
-pycel-compiling-excel-spreadsheets-to-python-and-making-pretty-pictures/>`_.
+described in this `blog post <http://elazungu.wordpress.com/2011/10/19/pycel-compiling-excel-spreadsheets-to-python-and-making-pretty-pictures>`_.
 
 Usage
 ======
