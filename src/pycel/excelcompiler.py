@@ -785,7 +785,12 @@ class ExcelCompiler:
                 )
             else:
                 # CSE Array Formula
-                data = self.eval(cell_range, cell_range.address)
+                if "STATIC" in address:
+                   data = (address)
+                else:
+                   data = self.eval(cell_range, cell_range.address)
+
+
             self.log.info(f"Range {cell_range.address} evaluated to '{data}'")
 
             cell_range.value = data

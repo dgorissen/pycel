@@ -32,7 +32,9 @@ from pycel.excelutil import (
 from pycel.lib.function_helpers import (
     excel_helper,
 )
-
+import threading
+import pycel.excelwrapper
+import string
 
 """ Functions consuming or producing references.
 INDEX() - Takes an array or reference, returns the value pointed to
@@ -468,37 +470,68 @@ def row(ref):
 
 @excel_helper(cse_params=0, bool_params=3, number_params=2, err_str_params=(0, 2, 3))
 def vlookup(lookup_value, table_array, col_index_num, range_lookup=True):
-    """ Vertical Lookup
+    if type(table_array) == str and "STATIC" in table_array:
+        address = table_array
+        address_pieces = address.split('!')
+        sheet_name = address_pieces[0]
+        address_range = address_pieces[1]
 
-    :param lookup_value: value to match (value or cell reference)
-    :param table_array: range of cells being searched.
-    :param col_index_num: column number to return
-    :param range_lookup: True, assumes sorted, finds nearest. False: find exact
-    :return: #N/A if not found else value
-    """
-    # Excel reference: https://support.microsoft.com/en-us/office/
-    #   VLOOKUP-function-0BBC8083-26FE-4963-8AB8-93A18AD188A1
+        if len(address_pieces) != 2 or (not (':' in address_range)):
+            raise Exception('STATIC vlookup address "' + '" must be in supported format i.e. SHEET!A1:A2')
 
-    if not list_like(table_array):
-        return NA_ERROR
+        table_array = pycel.excelwrapper.static_sheets.get(sheet_name)
 
-    if col_index_num <= 0:
-        return '#VALUE!'
+        if not list_like(table_array):
+            return NA_ERROR
 
-    if col_index_num > len(table_array[0]):
-        return REF_ERROR
+        if col_index_num <= 0:
+            return '#VALUE!'
 
-    result_idx = _match(
-        lookup_value,
-        [row[0] for row in table_array],
-        match_type=bool(range_lookup)
-    )
+        if col_index_num > len(table_array[0]):
+            return REF_ERROR
 
-    if isinstance(result_idx, int):
-        return table_array[result_idx - 1][col_index_num - 1]
+        starting_index = string.ascii_lowercase.index(address_range[0].lower())
+        result_idx = _match(lookup_value, [row[starting_index].value for row in table_array], match_type=bool(range_lookup))
+
+        if isinstance(result_idx, int):
+            return table_array[result_idx - 1][starting_index + col_index_num - 1].value
+        else:
+            # error string
+            return result_idx
     else:
-        # error string
-        return result_idx
+        """ Vertical Lookup
+
+        :param lookup_value: value to match (value or cell reference)
+        :param table_array: range of cells being searched.
+        :param col_index_num: column number to return
+        :param range_lookup: True, assumes sorted, finds nearest. False: find exact
+        :return: #N/A if not found else value
+        """
+        # Excel reference: https://support.microsoft.com/en-us/office/
+        #   VLOOKUP-function-0BBC8083-26FE-4963-8AB8-93A18AD188A1
+
+        if not list_like(table_array):
+            return NA_ERROR
+
+        if col_index_num <= 0:
+            return '#VALUE!'
+
+        if col_index_num > len(table_array[0]):
+            return REF_ERROR
+
+        result_idx = _match(
+            lookup_value,
+            [row[0] for row in table_array],
+            match_type=bool(range_lookup)
+        )
+
+        if isinstance(result_idx, int):
+            return table_array[result_idx - 1][col_index_num - 1]
+        else:
+            # error string
+            return result_idx
+
+
 
 
 # def xlookup(value):

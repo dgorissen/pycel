@@ -27,6 +27,7 @@ from pycel.excelutil import AddressCell, AddressRange, flatten, is_address
 ARRAY_FORMULA_NAME = '=CSE_INDEX'
 ARRAY_FORMULA_FORMAT = '{}(%s,%s,%s,%s,%s)'.format(ARRAY_FORMULA_NAME)
 
+static_sheets =  {}
 
 class ExcelWrapper:
     __metaclass__ = abc.ABCMeta
@@ -240,9 +241,21 @@ class ExcelOpxWrapper(ExcelWrapper):
         # work around type coercion to datetime that causes some issues
         with mock.patch('openpyxl.worksheet._reader.from_excel',
                         self.from_excel):
-            self.workbook = load_workbook(self.filename)
+            read_only_workbook = load_workbook(self.filename, read_only=True)
+
+            self.workbook = load_workbook(self.filename, ignore_static_files=True)
             self.workbook_dataonly = load_workbook(
-                self.filename, data_only=True)
+                self.filename, data_only=True, ignore_static_files=True)
+
+            for sheet_name in read_only_workbook.sheetnames:
+                if "STATIC" in sheet_name:
+                    print('pycel - loading static file in optimized fashion: ', sheet_name)
+
+                    static_sheets[sheet_name] = []
+
+                    for row in read_only_workbook[sheet_name].rows:
+                        static_sheets[sheet_name].append(row)
+
         self.load_array_formulas()
 
     def load_array_formulas(self):
@@ -315,8 +328,12 @@ class ExcelOpxWrapper(ExcelWrapper):
             address = AddressRange(address)
 
         if address.has_sheet:
-            sheet = self.workbook[address.sheet]
-            sheet_dataonly = self.workbook_dataonly[address.sheet]
+            if "STATIC" in address.sheet:
+                sheet = self.workbook.create_sheet(title="Dummy Sheet For Static Sheets")
+                sheet_dataonly = self.workbook_dataonly.create_sheet(title="Dummy Sheet For Static Sheets")
+            else:
+                sheet = self.workbook[address.sheet]
+                sheet_dataonly = self.workbook_dataonly[address.sheet]
         else:
             sheet = self.workbook.active
             sheet_dataonly = self.workbook_dataonly.active
@@ -324,18 +341,26 @@ class ExcelOpxWrapper(ExcelWrapper):
         with mock.patch('openpyxl.worksheet._reader.from_excel',
                         self.from_excel):
             # work around type coercion to datetime that causes some issues
-
             if address.is_unbounded_range:
+                if "STATIC" in address.sheet:
+                    raise "cannot use unbounded ranges on static sheet"
                 # bound the address range to the data in the spreadsheet
                 address = address & AddressRange(
                     (1, 1, *self.max_col_row(sheet.title)),
                     sheet=sheet.title)
 
-            cells = sheet[address.coordinate]
-            cells_dataonly = sheet_dataonly[address.coordinate]
+            if "STATIC" in address.sheet:
+                cells = sheet['A1:B2']
+                cells_dataonly = sheet_dataonly['A1:B2']
+            else:
+                cells = sheet[address.coordinate]
+                cells_dataonly = sheet_dataonly[address.coordinate]
+
             if isinstance(cells, (Cell, MergedCell)):
                 return _OpxCell(cells, cells_dataonly, address)
             else:
+                if "STATIC" in address.sheet:
+                    address = AddressRange('Dummy Sheet For Static Sheets!A1:B2')
                 return _OpxRange(cells, cells_dataonly, address)
 
     def get_used_range(self):
