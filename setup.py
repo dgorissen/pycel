@@ -63,7 +63,7 @@ setup(
     install_requires=[
         'networkx>=2.0,<2.7',
         'numpy',
-        'openpyxl-3.0.10.obie.1 @ git+https://github.com/ObieCRE/openpyxl@12359a9#egg=openpyxl-3.0.10.obie.1',
+        'openpyxl @ git+https://github.com/ObieCRE/openpyxl@12359a9#egg=openpyxl-3.0.10.obie.1',
         'python-dateutil',
         'ruamel.yaml',
     ],
