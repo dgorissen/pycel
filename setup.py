@@ -39,7 +39,7 @@ def changes():
 
 
 long_description = u'{}\n\nChange Log\n==========\n\n{}'.format(
-    open('README.rst', 'r', encoding='utf-8').read(), ''.join(changes()))
+    open('README.md', 'r', encoding='utf-8').read(), ''.join(changes()))
 
 with open('test-requirements.txt') as f:
     tests_require = f.readlines()
