@@ -241,11 +241,11 @@ class ExcelOpxWrapper(ExcelWrapper):
         # work around type coercion to datetime that causes some issues
         with mock.patch('openpyxl.worksheet._reader.from_excel',
                         self.from_excel):
-            read_only_workbook = load_workbook(self.filename, read_only=True)
-
             self.workbook = load_workbook(self.filename, ignore_static_files=True)
             self.workbook_dataonly = load_workbook(
                 self.filename, data_only=True, ignore_static_files=True)
+
+            read_only_workbook = load_workbook(self.filename, read_only=True)
 
             for sheet_name in read_only_workbook.sheetnames:
                 if "STATIC" in sheet_name:
