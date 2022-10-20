@@ -20,7 +20,7 @@ from openpyxl.utils import (
     quote_sheetname,
     range_boundaries as openpyxl_range_boundaries,
 )
-
+from decimal import *
 
 ERROR_CODES = frozenset(Tokenizer.ERROR_CODES)
 DIV0 = '#DIV/0!'
@@ -79,6 +79,36 @@ OPERATORS = {
 
 OPERATORS_RE = re.compile('^(?P<oper>(=|<>|<=?|>=?))?(?P<value>.*)$')
 
+def mult_without_floating_point_issues(a,b):
+    print("inside mult_without_floating_point_issues")
+    print("a", a)
+    print("b", b)
+    return float(Decimal(str(a)) * Decimal(str(b)));
+
+def add_without_floating_point_issues(a,b):
+    print("inside add_without_floating_point_issues")
+    print("a", a)
+    print("b", b)
+    print("a type", type(a))
+    print("b type", type(b))
+
+    if (type(a) == str or type(b) == str):
+        return a + b;
+
+    return float(Decimal(str(a)) + Decimal(str(b)));
+
+def div_without_floating_point_issues(a,b):
+    print("inside div_without_floating_point_issues")
+    print("a", a)
+    print("b", b)
+    return float(Decimal(str(a)) / Decimal(str(b)));
+
+def sub_without_floating_point_issues(a,b):
+    print("inside sub_without_floating_point_issues")
+    print("a", a)
+    print("b", b)
+    return float(Decimal(str(a)) - Decimal(str(b)));
+
 PYTHON_AST_OPERATORS = {
     'Eq': operator.eq,
     'Lt': operator.lt,
@@ -86,12 +116,12 @@ PYTHON_AST_OPERATORS = {
     'LtE': operator.le,
     'GtE': operator.ge,
     'NotEq': operator.ne,
-    'Add': operator.add,
-    'Sub': operator.sub,
+    'Add': add_without_floating_point_issues,
+    'Sub': sub_without_floating_point_issues,
     'UAdd': operator.pos,
     'USub': operator.neg,
-    'Mult': operator.mul,
-    'Div': operator.truediv,
+    'Mult': mult_without_floating_point_issues,
+    'Div': div_without_floating_point_issues,
     'FloorDiv': operator.floordiv,
     'Mod': operator.mod,
     'Pow': operator.pow,
