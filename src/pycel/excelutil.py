@@ -80,33 +80,20 @@ OPERATORS = {
 OPERATORS_RE = re.compile('^(?P<oper>(=|<>|<=?|>=?))?(?P<value>.*)$')
 
 def mult_without_floating_point_issues(a,b):
-    print("inside mult_without_floating_point_issues")
-    print("a", a)
-    print("b", b)
     return float(Decimal(str(a)) * Decimal(str(b)));
 
 def add_without_floating_point_issues(a,b):
-    print("inside add_without_floating_point_issues")
-    print("a", a)
-    print("b", b)
-    print("a type", type(a))
-    print("b type", type(b))
-
     if (type(a) == str or type(b) == str):
         return a + b;
 
     return float(Decimal(str(a)) + Decimal(str(b)));
 
 def div_without_floating_point_issues(a,b):
-    print("inside div_without_floating_point_issues")
-    print("a", a)
-    print("b", b)
+    if (str(a) == 0 or b == 0):
+        return a / b;
     return float(Decimal(str(a)) / Decimal(str(b)));
 
 def sub_without_floating_point_issues(a,b):
-    print("inside sub_without_floating_point_issues")
-    print("a", a)
-    print("b", b)
     return float(Decimal(str(a)) - Decimal(str(b)));
 
 PYTHON_AST_OPERATORS = {
