@@ -1132,3 +1132,54 @@ def test_evaluate_after_range_eval_error():
     with pytest.raises(UnknownFunction):
         excel_compiler.evaluate('A5')
     assert excel_compiler.evaluate('A3') == 'hello'
+
+
+def test_deep_chain(fixture_xls_copy):
+    compiler = ExcelCompiler(fixture_xls_copy('deep_chain.xlsx'))
+
+    fn1 = compiler.optimized_compile(['Switch!A1'], ['Switch!A12', 'Switch!A500'])
+    result1 = fn1(10)
+    assert result1['Switch!A10'] == 19
+    assert result1['Switch!A500'] == 509
+
+    fn2 = compiler.optimized_compile(['Switch!A1'], ['Switch!A14'])
+    result2 = fn2(20)
+    assert result2['Switch!A14'] == 33
+
+
+
+def test_deep_chain_timing(fixture_xls_copy):
+    #disabled this test because it takes a long time and timing is likely inconsistent between machines.  Not sure
+    #best way to deal with this.
+    import timeit
+
+    output_list = ['Switch!A20', 'Switch!B20', 'Switch!C20']
+
+    compiler = ExcelCompiler(fixture_xls_copy('deep_chain.xlsx'))
+    fn1 = compiler.optimized_compile(['Switch!A1'], output_list)
+
+    fn1_optimized = compiler.optimized_compile(['Switch!A1'], output_list, numba_optimize=True)
+    fn1_optimized(10)  # very important need to call once before timeit.  Timeit somehow breaks numba's caching.
+
+    def fn1_native(x):
+        #note only use A75 because A500 seems to take forever/cause memory issues.
+        compiler.set_value('Switch!A1', x)
+        return tuple(compiler.evaluate(x) for x in output_list)
+
+
+    result_compiled = fn1(10)
+    result_native = fn1_native(10)
+    result_optimized = fn1_optimized(10)
+    assert result_compiled == result_native
+    assert result_optimized == result_compiled
+
+    result = timeit.timeit("fn1_native(it); it = it + 1", "it = 0", number=10000, globals=locals())
+    print("\nNative time is %s" % result)
+
+    result = timeit.timeit("fn1(it); it = it + 1", "it = 0", number=10000, globals=locals())
+    print("Optimized time is %s" % result)
+
+    result = timeit.timeit("fn1_optimized(it); it = it + 1", "it = 0", number=10000, globals=locals())
+    print("Numba Optimized time is %s" % result)
+
+    print(fn1_optimized.inspect_types())
