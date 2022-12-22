@@ -1139,7 +1139,7 @@ def test_excel_cmp(lval, op, rval, expected):
         ('X', 'BitAnd', 5.0, 'X5'),
         ('X', 'BitAnd', 5.0, 'X5'),
 
-        # divsion by zero
+        # division by zero
         (DIV0, '', '', DIV0),
         ('', '', DIV0, DIV0),
 
