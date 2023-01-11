@@ -15,6 +15,8 @@ import calendar
 import datetime as dt
 import functools
 import math
+import os
+from freezegun import freeze_time
 
 import dateutil.parser
 
@@ -616,7 +618,24 @@ def timevalue(value):
 def today():
     # Excel reference: https://support.microsoft.com/en-us/office/
     #   today-function-5eb3078d-a82c-4736-8930-2f51a028fdd9
-    return (dt.date.today() - DATE_ZERO.date()).days
+
+    time_to_freeze = "TIME_TO_FREEZE"
+    if os.environ.get(time_to_freeze) is not None:
+        should_freeze_time = True
+    else:
+        should_freeze_time = False
+
+    if should_freeze_time:
+        time_stamp = os.environ[time_to_freeze]
+        time_freezer = freeze_time(time_stamp)
+        time_freezer.start()
+
+    days=(dt.date.today() - DATE_ZERO.date()).days
+
+    if should_freeze_time:
+        time_freezer.stop()
+
+    return days
 
 
 @serial_number_wrapper

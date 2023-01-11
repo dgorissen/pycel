@@ -5,3 +5,4 @@ git+https://github.com/ObieCRE/openpyxl@b2edc9#egg=openpyxl-3.0.10.obie.2
 python-dateutil
 pydot
 ruamel.yaml
+freezegun
