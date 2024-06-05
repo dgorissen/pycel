@@ -458,7 +458,7 @@ class ExcelCompiler:
     def _reset(self, cell):
         if cell.needs_calc:
             return
-        self.log.info(f"Resetting {cell.address}")
+        self.log.debug(f"Resetting {cell.address}")
         cell.value = None
 
         if cell in self.dep_graph:
@@ -562,7 +562,7 @@ class ExcelCompiler:
         for addr in input_addrs:
             cell = self.cell_map.get(addr)
             if cell and getattr(cell, 'formula', None):
-                self.log.info(f"{addr} is not a leaf node")
+                self.log.debug(f"{addr} is not a leaf node")
 
         # 5) remove unneeded cells
         cells_to_remove = tuple(addr for addr in self.cell_map
@@ -786,7 +786,7 @@ class ExcelCompiler:
             else:
                 # CSE Array Formula
                 data = self.eval(cell_range, cell_range.address)
-            self.log.info(f"Range {cell_range.address} evaluated to '{data}'")
+            self.log.debug(f"Range {cell_range.address} evaluated to '{data}'")
 
             cell_range.value = data
 
@@ -815,7 +815,7 @@ class ExcelCompiler:
                                          f" truncating to '{value.start}'")
                         value = value.start
                     else:
-                        self.log.info(f"Cell {address} evaluated to address '{value}'")
+                        self.log.debug(f"Cell {address} evaluated to address '{value}'")
 
                     # fetch the value for this cell, if it exists
                     ref_addr = value.address
@@ -825,7 +825,7 @@ class ExcelCompiler:
 
                     value = self.cell_map[ref_addr].value
                 else:
-                    self.log.info(
+                    self.log.debug(
                         f"Cell {cell.address} evaluated to '{value}' ({type(value).__name__})")
                 cell.value = (value[0][0] if list_like(value[0]) else value[0]
                               ) if list_like(value) else value
