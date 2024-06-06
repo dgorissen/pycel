@@ -914,7 +914,7 @@ class ExcelCompiler:
             seed = AddressRange(seed, sheet=self.excel.get_active_sheet_name())
 
         if '[' in seed.sheet:
-            raise NotImplementedError('Linked SheetNames')
+            return
 
         if seed.address in self.cell_map:
             # already did this cell/range
@@ -939,8 +939,11 @@ class ExcelCompiler:
                 if precedent_address.address not in self.cell_map:
                     self._gen_graph(precedent_address, recursed=True)
 
-                self.dep_graph.add_edge(
-                    self.cell_map[precedent_address.address], dependant)
+                try:
+                    self.dep_graph.add_edge(
+                        self.cell_map[precedent_address.address], dependant)
+                except KeyError:
+                    continue
 
         # calc the values for ranges
         try:
