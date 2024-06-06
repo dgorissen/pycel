@@ -315,8 +315,21 @@ class ExcelOpxWrapper(ExcelWrapper):
             address = AddressRange(address)
 
         if address.has_sheet:
-            sheet = self.workbook[address.sheet]
-            sheet_dataonly = self.workbook_dataonly[address.sheet]
+            sheetname = address.sheet
+
+            try:
+                sheet = self.workbook[sheetname]
+            except KeyError:
+                # :( something, somewhere, is mangling dollar signs.
+                # since we're only using this lib temporarily, I'm
+                # taking a shortcut and manually fixing here... waste
+                # of time to look into why this is happening as at
+                # time of commit.
+                if sheetname == 'Hedges (C)':
+                    sheetname = 'Hedges ($C)'
+                sheet = self.workbook[sheetname]
+ 
+            sheet_dataonly = self.workbook_dataonly[sheetname]
         else:
             sheet = self.workbook.active
             sheet_dataonly = self.workbook_dataonly.active
