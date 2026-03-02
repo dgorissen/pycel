@@ -392,6 +392,11 @@ class ExcelCompiler:
         write_dot(self.dep_graph, filename)
 
     def export_to_gexf(self, filename=None):
+        # networkx<2.7 still references np.float_, removed in numpy 2.x
+        import numpy as np
+        if not hasattr(np, 'float_'):  # pragma: no cover
+            np.float_ = np.float64
+
         from networkx.readwrite.gexf import write_gexf
         filename = filename or (self.filename + '.gexf')
         write_gexf(self.dep_graph, filename)
