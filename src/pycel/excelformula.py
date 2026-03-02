@@ -852,7 +852,11 @@ class ExcelFormula:
         def capture_error_state(is_exception, msg):
             if is_exception:
                 import traceback
-                trace = traceback.format_exc()
+                exc_type, exc_value, exc_tb = sys.exc_info()
+                summary = traceback.extract_tb(exc_tb) if exc_tb else ()
+                frame_line = summary[-1].line if summary and summary[-1].line else ''
+                exc_only = ''.join(traceback.format_exception_only(exc_type, exc_value))
+                trace = f'{frame_line}\n{exc_only}'
             else:
                 trace = ''  # pragma: no cover
             error_messages.append((trace, msg))
