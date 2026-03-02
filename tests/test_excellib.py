@@ -38,6 +38,7 @@ from pycel.excellib import (
     round_,
     rounddown,
     roundup,
+    search,
     sign,
     sum_,
     sumif,
@@ -51,6 +52,8 @@ from pycel.excelutil import (
     NAME_ERROR,
     NUM_ERROR,
     VALUE_ERROR,
+    REF_ERROR,
+    ERROR_CODES,
 )
 from pycel.lib.function_helpers import load_to_test_module
 
@@ -431,6 +434,104 @@ class TestRounding:
     @pytest.mark.parametrize(params, tuple(zip(*inputs, data['roundup'])))
     def test_roundup(number, digits, result):
         assert result == roundup(number, digits)
+
+
+@pytest.mark.parametrize(
+    "find_text, within_text, start_num, expected",
+    [
+        # Scalar inputs, simple cases
+        ("non-billable", "admin, non-billable, urgent", 1, 8),
+        ("hello", "hello world", 1, 1),
+        ("world", "hello world", 1, 7),
+        ("x", "abc", 1, VALUE_ERROR),
+        ("test", "this is a test", 1, 11),
+        ("test", "this is a test", 12, VALUE_ERROR),
+        ("", "hello", 1, 1),  # Empty find_text should match at position 1
+        ("hello", "", 1, VALUE_ERROR),  # Empty within_text returns #VALUE!
+        # Scalar inputs, case insensitivity
+        ("HELLO", "hello world", 1, 1),
+        ("World", "hello WORLD", 1, 7),
+        # Scalar inputs, with start_num
+        ("non", "admin, non-billable, urgent", 8, 8),
+        ("urgent", "admin, non-billable, urgent", 15, 22),
+        # Scalar inputs, invalid start_num
+        ("hello", "hello world", 0, VALUE_ERROR),
+        ("hello", "hello world", -1, VALUE_ERROR),
+        ("hello", "hello world", "invalid", VALUE_ERROR),
+        # Error handling with scalar inputs
+        ("non-billable", DIV0, 1, DIV0),
+        (DIV0, "admin, non-billable, urgent", 1, DIV0),
+        ("non-billable", "admin, non-billable, urgent", DIV0, DIV0),
+        (NA_ERROR, "admin, non-billable, urgent", 1, NA_ERROR),
+        ("non-billable", NA_ERROR, 1, NA_ERROR),
+        ("non-billable", "admin, non-billable, urgent", NA_ERROR, NA_ERROR),
+        # Array inputs, find_text is array
+        (["non-billable", "urgent"], "admin, non-billable, urgent", 1, (8, 22)),
+        (["hello", "world"], "hello world", 1, (1, 7)),
+        # Array inputs, within_text is array
+        (
+            "non-billable",
+            ["admin, non-billable, urgent", "billable, urgent"],
+            1,
+            (8, VALUE_ERROR),
+        ),
+        ("urgent", ["admin, non-billable, urgent", "billable, urgent"], 1, (22, 11)),
+        # Array inputs, both find_text and within_text are arrays with matching dimensions
+        (
+            ["non-billable", "urgent"],
+            ["admin, non-billable, urgent", "billable, urgent"],
+            1,
+            (8, 11),
+        ),
+        (["hello", "world"], ["hello there", "my world"], 1, (1, 4)),
+        # Array inputs, both find_text and within_text are arrays with mismatched dimensions
+        (["non-billable", "urgent"], ["admin, non-billable, urgent"], 1, VALUE_ERROR),
+        # 2D arrays with matching dimensions
+        (
+            [["hello", "world"], ["test", "example"]],
+            [["hello there", "my world"], ["this is a test", "an example"]],
+            1,
+            ((1, 4), (11, 4)),
+        ),
+        # Mixed scalar and array inputs
+        (["non-billable", "urgent"], "admin, non-billable, urgent", 1, (8, 22)),
+        ("urgent", ["admin, non-billable, urgent", "billable, urgent"], 1, (22, 11)),
+        # Edge cases with empty strings in arrays
+        (["", "non-billable"], ["hello", "admin, non-billable"], 1, (1, 8)),
+        ("non-billable", ["", "admin, non-billable"], 1, (VALUE_ERROR, 8)),
+        # Error handling with array inputs
+        (
+            ["non-billable", DIV0],
+            ["admin, non-billable, urgent", "billable, urgent"],
+            1,
+            (8, DIV0),
+        ),
+        ("non-billable", ["admin, non-billable, urgent", NA_ERROR], 1, (8, NA_ERROR)),
+        # Start_num as array
+        ("non-billable", "admin, non-billable, urgent", [1, 5], (8, 8)),
+        # Start_num invalid in array context
+        ("non-billable", "admin, non-billable, urgent", 0, VALUE_ERROR),
+        # Start_num greater than length of within_text
+        ("urgent", "admin, non-billable, urgent", 25, VALUE_ERROR),
+        # Large start_num but within bounds
+        ("urgent", "admin, non-billable, urgent", 20, 22),
+        # Non-integer start_num
+        ("non-billable", "admin, non-billable, urgent", 1.5, VALUE_ERROR),
+        # Boolean inputs
+        (True, "This is true", 1, 9),
+        ("true", False, 1, VALUE_ERROR),
+        # Numeric inputs treated as strings
+        (123, "Test 123", 1, 6),
+        ("123", 12345, 1, 1),
+        # Error codes as inputs
+        (REF_ERROR, "Some text", 1, REF_ERROR),
+        ("Text", REF_ERROR, 1, REF_ERROR),
+        (NAME_ERROR, NAME_ERROR, 1, NAME_ERROR),
+    ],
+)
+def test_search(find_text, within_text, start_num, expected):
+    result = search(find_text, within_text, start_num)
+    assert result == expected
 
 
 @pytest.mark.parametrize(
