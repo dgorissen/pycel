@@ -854,9 +854,15 @@ class ExcelFormula:
                 import traceback
                 exc_type, exc_value, exc_tb = sys.exc_info()
                 summary = traceback.extract_tb(exc_tb) if exc_tb else ()
-                frame_line = summary[-1].line if summary and summary[-1].line else ''
+                trace_lines = []
+                for frame in summary:
+                    trace_lines.append(
+                        f'File "{frame.filename}", line {frame.lineno}, in {frame.name}')
+                    if frame.line:
+                        trace_lines.append(frame.line.strip())
                 exc_only = ''.join(traceback.format_exception_only(exc_type, exc_value))
-                trace = f'{frame_line}\n{exc_only}'
+                trace_lines.append(exc_only.strip())
+                trace = '\n'.join(trace_lines) + '\n'
             else:
                 trace = ''  # pragma: no cover
             error_messages.append((trace, msg))
