@@ -986,13 +986,13 @@ class ExcelFormula:
             def visit_UnaryOp(self, node):
                 """ change the UnaryOp node to a function node """
                 node = ast.NodeTransformer.generic_visit(self, node)
-                left = ast.Str(EMPTY)
+                left = ast.Constant(value=EMPTY)
                 return self.replace_op(node, left, node.op, node.operand)
 
             def replace_op(self, node, left, node_op, right):
                 """ change the compare node to a function node """
 
-                op = ast.Str(s=type(node_op).__name__)
+                op = ast.Constant(value=type(node_op).__name__)
                 return ast.Call(
                     func=ast.Name(id='excel_operator_operand_fixup',
                                   ctx=ast.Load()),
