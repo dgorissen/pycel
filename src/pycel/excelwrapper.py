@@ -282,6 +282,20 @@ class ExcelOpxWrapper(ExcelWrapper):
                     # consider using the new behavior.
                     ws[ref_addr.coordinate] = ws[ref_addr.coordinate].value.text
 
+            # compatibility for workbooks that still set legacy
+            # worksheet.formula_attributes directly
+            for address, props in getattr(ws, 'formula_attributes', {}).items():
+                if address in ws.array_formulae or props.get('t') != 'array':
+                    continue
+
+                ref_addr = AddressRange(props.get('ref'))
+                if isinstance(ref_addr, AddressRange):
+                    formula = ws[address].value
+                    for i, row in enumerate(ref_addr.rows, start=1):
+                        for j, addr in enumerate(row, start=1):
+                            ws[addr.coordinate] = ARRAY_FORMULA_FORMAT % (
+                                formula[1:], i, j, *ref_addr.size)
+
     def old_load_array_formulas(self):  # pragma: no cover
         """expand array formulas"""
         # formula_attributes was dropped in openpyxl 3.0.8
