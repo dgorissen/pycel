@@ -168,8 +168,13 @@ class ExcelOpxWrapper(ExcelWrapper):
     def defined_names(self):
         if self.workbook is not None and self._defined_names is None:
             self._defined_names = {}
+            source = self.workbook.defined_names
+            if hasattr(source, 'definedName'):
+                names = source.definedName
+            else:
+                names = source.values()
 
-            for d_name in self.workbook.defined_names.definedName:
+            for d_name in names:
                 destinations = [
                     (alias, wksht) for wksht, alias in d_name.destinations
                     if wksht in self.workbook]
@@ -219,7 +224,8 @@ class ExcelOpxWrapper(ExcelWrapper):
         formats = (cf for cf in all_formats if address.coordinate in cf)
         rules = []
         for cf in formats:
-            origin = AddressRange(cf.cells.ranges[0].coord).start
+            first_range = next(iter(cf.cells.ranges))
+            origin = AddressRange(first_range.coord).start
             row_offset = address.row - origin.row
             col_offset = address.col_idx - origin.col_idx
             for rule in cf.rules:
