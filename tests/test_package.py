@@ -9,12 +9,12 @@
 
 import os
 import sys
-from packaging.version import Version
 from pathlib import Path
 from unittest import mock
 
 import pytest
 import restructuredtext_lint
+from packaging.version import Version
 
 import pycel
 

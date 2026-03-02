@@ -289,7 +289,7 @@ class ExcelOpxWrapper(ExcelWrapper):
                     continue
 
                 ref_addr = AddressRange(props.get('ref'))
-                if isinstance(ref_addr, AddressRange):
+                if isinstance(ref_addr, AddressRange):  # pragma: no branch
                     formula = ws[address].value
                     for i, row in enumerate(ref_addr.rows, start=1):
                         for j, addr in enumerate(row, start=1):
