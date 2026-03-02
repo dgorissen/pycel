@@ -8,7 +8,7 @@
 #   https://www.gnu.org/licenses/gpl-3.0.en.html
 
 import os
-from distutils.version import LooseVersion
+from packaging.version import Version
 from pathlib import Path
 from unittest import mock
 
@@ -42,9 +42,17 @@ def test_module_version():
 
 
 def test_module_version_components():
-    loose = LooseVersion(pycel.__version__).version
-    for component in loose:
-        assert isinstance(component, int) or component in ('a', 'b', 'rc')
+    v = Version(pycel.__version__)
+
+    # Release segment: always ints, e.g. (1, 2, 3)
+    for n in v.release:
+        assert isinstance(n, int)
+
+    # Optional pre-release segment: ('a'|'b'|'rc', int), e.g. ('rc', 1)
+    if v.pre is not None:
+        tag, num = v.pre
+        assert tag in ("a", "b", "rc")
+        assert isinstance(num, int)
 
 
 def test_docs_versions(changes_rst):
