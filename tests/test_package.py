@@ -8,6 +8,7 @@
 #   https://www.gnu.org/licenses/gpl-3.0.en.html
 
 import os
+import sys
 from packaging.version import Version
 from pathlib import Path
 from unittest import mock
@@ -31,10 +32,16 @@ def setup_py():
     with mock.patch('setuptools.setup'), mock.patch('setuptools.find_packages'):
         cwd = os.getcwd()
         os.chdir(repo_root)
-        import importlib
-        setup = importlib.import_module('setup')
-        os.chdir(cwd)
-        return setup
+        sys.path.insert(0, str(repo_root))
+        try:
+            import importlib.util
+            spec = importlib.util.spec_from_file_location('setup', repo_root / 'setup.py')
+            setup = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(setup)
+            return setup
+        finally:
+            sys.path.pop(0)
+            os.chdir(cwd)
 
 
 def test_module_version():
@@ -69,7 +76,7 @@ def test_docs_versions(changes_rst):
     assert pycel.version.__version__ == doc_versions[1][1:-1]
 
     for v1, v2 in zip(doc_versions[1:], doc_versions[2:]):
-        assert LooseVersion(v1[1:-1]) > LooseVersion(v2[1:-1])
+        assert Version(v1[1:-1]) > Version(v2[1:-1])
 
 
 def test_binder_requirements(setup_py):
