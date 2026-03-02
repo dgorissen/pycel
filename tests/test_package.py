@@ -8,12 +8,13 @@
 #   https://www.gnu.org/licenses/gpl-3.0.en.html
 
 import os
-from distutils.version import LooseVersion
+import sys
 from pathlib import Path
 from unittest import mock
 
 import pytest
 import restructuredtext_lint
+from packaging.version import Version
 
 import pycel
 
@@ -31,10 +32,16 @@ def setup_py():
     with mock.patch('setuptools.setup'), mock.patch('setuptools.find_packages'):
         cwd = os.getcwd()
         os.chdir(repo_root)
-        import importlib
-        setup = importlib.import_module('setup')
-        os.chdir(cwd)
-        return setup
+        sys.path.insert(0, str(repo_root))
+        try:
+            import importlib.util
+            spec = importlib.util.spec_from_file_location('setup', repo_root / 'setup.py')
+            setup = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(setup)
+            return setup
+        finally:
+            sys.path.pop(0)
+            os.chdir(cwd)
 
 
 def test_module_version():
@@ -42,9 +49,17 @@ def test_module_version():
 
 
 def test_module_version_components():
-    loose = LooseVersion(pycel.__version__).version
-    for component in loose:
-        assert isinstance(component, int) or component in ('a', 'b', 'rc')
+    v = Version(pycel.__version__)
+
+    # Release segment: always ints, e.g. (1, 2, 3)
+    for n in v.release:
+        assert isinstance(n, int)
+
+    # Optional pre-release segment: ('a'|'b'|'rc', int), e.g. ('rc', 1)
+    if v.pre is not None:
+        tag, num = v.pre
+        assert tag in ("a", "b", "rc")
+        assert isinstance(num, int)
 
 
 def test_docs_versions(changes_rst):
@@ -61,7 +76,7 @@ def test_docs_versions(changes_rst):
     assert pycel.version.__version__ == doc_versions[1][1:-1]
 
     for v1, v2 in zip(doc_versions[1:], doc_versions[2:]):
-        assert LooseVersion(v1[1:-1]) > LooseVersion(v2[1:-1])
+        assert Version(v1[1:-1]) > Version(v2[1:-1])
 
 
 def test_binder_requirements(setup_py):

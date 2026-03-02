@@ -221,7 +221,7 @@ def nums_wrapper(f, param_indices=None):
         try:
             return f(*new_args)
         except ValueError as exc:
-            if "math domain error" in str(exc):
+            if "math domain error" in str(exc) or "expected a positive input" in str(exc):
                 return NUM_ERROR
             raise  # pragma: no cover
 

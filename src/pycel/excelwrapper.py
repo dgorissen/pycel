@@ -168,8 +168,13 @@ class ExcelOpxWrapper(ExcelWrapper):
     def defined_names(self):
         if self.workbook is not None and self._defined_names is None:
             self._defined_names = {}
+            source = self.workbook.defined_names
+            if hasattr(source, 'definedName'):
+                names = source.definedName
+            else:
+                names = source.values()
 
-            for d_name in self.workbook.defined_names.definedName:
+            for d_name in names:
                 destinations = [
                     (alias, wksht) for wksht, alias in d_name.destinations
                     if wksht in self.workbook]
@@ -219,7 +224,8 @@ class ExcelOpxWrapper(ExcelWrapper):
         formats = (cf for cf in all_formats if address.coordinate in cf)
         rules = []
         for cf in formats:
-            origin = AddressRange(cf.cells.ranges[0].coord).start
+            first_range = next(iter(cf.cells.ranges))
+            origin = AddressRange(first_range.coord).start
             row_offset = address.row - origin.row
             col_offset = address.col_idx - origin.col_idx
             for rule in cf.rules:
@@ -275,6 +281,20 @@ class ExcelOpxWrapper(ExcelWrapper):
                     # formula text. This matches the openpyxl < 3.0.8 behavior, at some point
                     # consider using the new behavior.
                     ws[ref_addr.coordinate] = ws[ref_addr.coordinate].value.text
+
+            # compatibility for workbooks that still set legacy
+            # worksheet.formula_attributes directly
+            for address, props in getattr(ws, 'formula_attributes', {}).items():
+                if address in ws.array_formulae or props.get('t') != 'array':
+                    continue
+
+                ref_addr = AddressRange(props.get('ref'))
+                if isinstance(ref_addr, AddressRange):  # pragma: no branch
+                    formula = ws[address].value
+                    for i, row in enumerate(ref_addr.rows, start=1):
+                        for j, addr in enumerate(row, start=1):
+                            ws[addr.coordinate] = ARRAY_FORMULA_FORMAT % (
+                                formula[1:], i, j, *ref_addr.size)
 
     def old_load_array_formulas(self):  # pragma: no cover
         """expand array formulas"""

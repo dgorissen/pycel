@@ -852,7 +852,17 @@ class ExcelFormula:
         def capture_error_state(is_exception, msg):
             if is_exception:
                 import traceback
-                trace = traceback.format_exc()
+                exc_type, exc_value, exc_tb = sys.exc_info()
+                summary = traceback.extract_tb(exc_tb) if exc_tb else ()
+                trace_lines = []
+                for frame in summary:
+                    trace_lines.append(
+                        f'File "{frame.filename}", line {frame.lineno}, in {frame.name}')
+                    if frame.line:
+                        trace_lines.append(frame.line.strip())
+                exc_only = ''.join(traceback.format_exception_only(exc_type, exc_value))
+                trace_lines.append(exc_only.strip())
+                trace = '\n'.join(trace_lines) + '\n'
             else:
                 trace = ''  # pragma: no cover
             error_messages.append((trace, msg))
@@ -986,13 +996,13 @@ class ExcelFormula:
             def visit_UnaryOp(self, node):
                 """ change the UnaryOp node to a function node """
                 node = ast.NodeTransformer.generic_visit(self, node)
-                left = ast.Str(EMPTY)
+                left = ast.Constant(value=EMPTY)
                 return self.replace_op(node, left, node.op, node.operand)
 
             def replace_op(self, node, left, node_op, right):
                 """ change the compare node to a function node """
 
-                op = ast.Str(s=type(node_op).__name__)
+                op = ast.Constant(value=type(node_op).__name__)
                 return ast.Call(
                     func=ast.Name(id='excel_operator_operand_fixup',
                                   ctx=ast.Load()),
