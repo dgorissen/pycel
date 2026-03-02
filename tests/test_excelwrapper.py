@@ -13,8 +13,38 @@ from pycel.excelutil import AddressRange
 from pycel.excelwrapper import (
     _OpxRange,
     ARRAY_FORMULA_FORMAT,
+    ExcelOpxWrapper,
     ExcelOpxWrapperNoData,
 )
+
+
+def test_get_defined_names_legacy_openpyxl_api():
+    class FakeDefinedName:
+        name = 'LEGACY'
+        destinations = (('Sheet1', '$A$1:$A$2'),)
+
+    class FakeDefinedNames:
+        definedName = (FakeDefinedName(),)
+
+    class FakeWorkbook:
+        defined_names = FakeDefinedNames()
+
+        def __contains__(self, item):
+            return item == 'Sheet1'
+
+    excel = ExcelOpxWrapper('ignored.xlsx')
+    excel.workbook = FakeWorkbook()
+    assert {'LEGACY': [('$A$1:$A$2', 'Sheet1')]} == excel.defined_names
+
+
+def test_load_array_formulas_skips_non_array_formula_attributes():
+    class FakeWorksheet:
+        array_formulae = {}
+        formula_attributes = {'A1': {'t': 'shared', 'ref': 'A1'}}
+
+    excel = ExcelOpxWrapper('ignored.xlsx')
+    excel.workbook = (FakeWorksheet(),)
+    excel.load_array_formulas()
 
 
 def test_set_and_get_active_sheet(excel):
