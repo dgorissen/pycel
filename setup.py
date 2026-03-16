@@ -61,8 +61,9 @@ setup(
     tests_require=tests_require,
     test_suite='pytest',
     install_requires=[
-        'networkx>=2.0,<2.7',
+        'networkx>=2.0',
         'numpy',
+        'numpy-financial',
         'openpyxl>=2.6.2',
         'python-dateutil',
         'ruamel.yaml',
