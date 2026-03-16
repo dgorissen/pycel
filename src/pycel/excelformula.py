@@ -63,7 +63,12 @@ class Tokenizer(tokenizer.Tokenizer):
 
         # convert or remove unneeded whitespace
         tokens = []
+        consumed = False
         for prev_token, token, next_token in zip(t, t[1:], t[2:]):
+            last_token = tokens[-1] if tokens else prev_token
+            if consumed:
+                consumed = False
+                continue
             if token.type != Token.WSPACE or not prev_token or not next_token:
                 # ::HACK:: this is code to make the tokenizer behave like
                 # this change to the openpyxl tokenizer.
@@ -91,6 +96,15 @@ class Tokenizer(tokenizer.Tokenizer):
                 # drop unary +
                 elif not token.matches(type_=Token.OP_PRE, value='+'):
                     tokens.append(token)
+
+            elif token.type == Token.WSPACE and \
+                    last_token.matches(type_=Token.OPERAND, subtype=Token.RANGE) and \
+                    next_token.matches(type_=Token.OPERAND, subtype=Token.RANGE) and \
+                    any(c in '!:' for c in (last_token.value[-1], next_token.value[0])):
+                tokens.pop()
+                tokens.append(Token(last_token.value + next_token.value,
+                                    type_=Token.OPERAND, subtype=Token.RANGE))
+                consumed = True
 
             elif (
                 prev_token.matches(type_=Token.FUNC, subtype=Token.CLOSE) or
