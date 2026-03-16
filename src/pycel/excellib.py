@@ -406,6 +406,20 @@ def trunc(number, num_digits=0):
     return int(number * factor) / factor
 
 
+@excel_math_func
+def rand(*args):
+    # Excel reference: https://support.microsoft.com/en-us/office/
+    #   rand-function-4cbfa695-8869-4788-8d90-021ea9f5be73
+    return np.random.random()
+
+
+@excel_math_func
+def randbetween(low, high, *args):
+    # Excel reference: https://support.microsoft.com/en-us/office/
+    #   randbetween-function-4cc7f0d1-87dc-4eb7-987f-a469ab381685
+    return np.random.randint(low, high)
+
+
 # Older mappings for excel functions that match Python built-in and keywords
 x_abs = abs_
 xatan2 = atan2_
