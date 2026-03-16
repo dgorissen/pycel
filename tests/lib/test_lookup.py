@@ -26,8 +26,10 @@ from pycel.excelutil import (
 from pycel.lib.function_helpers import error_string_wrapper, load_to_test_module
 from pycel.lib.lookup import (
     _match,
+    address,
     choose,
     column,
+    columns,
     hlookup,
     index,
     indirect,
@@ -35,6 +37,7 @@ from pycel.lib.lookup import (
     match,
     offset,
     row,
+    rows,
     vlookup,
 )
 
@@ -70,6 +73,24 @@ def test_lookup_ws(fixture_xls_copy):
     loaded.set_value(INDIRECT_FORMULA_ADDRESS.address_at_offset(1, 0), 'D3:E3')
     indirect = loaded.evaluate(INDIRECT_FORMULA_ADDRESS)
     assert indirect == 8
+
+
+@pytest.mark.parametrize(
+    'row_num, col_num, abs_num, style, sheet_text, expected',
+    (
+        (2, 3, 1, None, '', '$C$2'),
+        (2, 3, 3, None, '', '$C2'),
+        (2, 3, 2, None, '', 'C$2'),
+        (2, 3, 2, False, '', 'R2C[3]'),
+        (2, 3, 2, True, '', 'C$2'),
+        (5, 4, 4, True, 'Sheet1', '\'Sheet1\'!D5'),
+        (5, 4, 1, True, 'Sheet1', '\'Sheet1\'!$D$5'),
+        (5, 4, 1, None, 'Sheet1', '\'Sheet1\'!$D$5'),
+        (5, 4, 1, False, 'Sheet1', '\'Sheet1\'!R5C4'),
+    )
+)
+def test_address(row_num, col_num, abs_num, style, sheet_text, expected):
+    assert address(row_num, col_num, abs_num, style, sheet_text) == expected
 
 
 @pytest.mark.parametrize(
@@ -120,6 +141,25 @@ def test_column(address, expected):
         assert 1 == next(iter(result))
     else:
         assert expected == result
+
+
+@pytest.mark.parametrize(
+    'values, expected', (
+        (((1, None, None), (1, 2, None)), 3),
+        (1, 1),
+        ("s", 1),
+        (((1.2, 3.4), (0.4, 5)), 2),
+        (((None, None, None, None,), ), 4)
+    )
+)
+def test_columns(values, expected):
+    assert columns(values) == expected
+
+
+def test_xlws_filter(fixture_xls_copy):
+    compiler = ExcelCompiler(fixture_xls_copy('filter.xlsx'))
+    result = compiler.validate_serialized()
+    assert result == {}
 
 
 @pytest.mark.parametrize(
@@ -564,6 +604,20 @@ def test_row(address, expected):
         assert 1 == next(iter(result))
     else:
         assert expected == result
+
+
+@pytest.mark.parametrize(
+    'values, expected', (
+        (((1, None, None), (1, 2, None)), 2),
+        (1, 1),
+        ("s", 1),
+        (((1.2, 3.4), (0.4, 5)), 2),
+        (((None, None,), ), 1),
+        (((1,), (2,), (3,)), 3)
+    )
+)
+def test_rows(values, expected):
+    assert rows(values) == expected
 
 
 @pytest.mark.parametrize(

@@ -185,14 +185,31 @@ def count(*args):
                if isinstance(x, (int, float)) and not isinstance(x, bool))
 
 
-# def counta(value):
+def counta(*args):
     # Excel reference: https://support.microsoft.com/en-us/office/
     #   counta-function-7dc98875-d5c1-46f1-9a82-53f3219e2509
+    res = 0
+    for arg in args:
+        if list_like(arg):
+            for row in arg:
+                for cell in row:
+                    res = res + 1 if cell is not None else res
+        else:
+            res = res + 1 if arg else res
+    return res
 
 
-# def countblank(value):
+def countblank(values):
     # Excel reference: https://support.microsoft.com/en-us/office/
     #   countblank-function-6a92d772-675c-4bee-b346-24af6bd3ac22
+    res = 0
+    if list_like(values):
+        for row in values:
+            for cell in row:
+                res = res + 1 if cell in [None, ''] else res
+    else:
+        res = 1 if values in [None, ''] else res
+    return res
 
 
 def countif(rng, criteria):

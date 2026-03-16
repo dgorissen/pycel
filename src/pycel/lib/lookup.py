@@ -13,6 +13,7 @@ Python equivalents of Lookup and Reference library functions
 from bisect import bisect_right
 
 import numpy as np
+from openpyxl.utils import get_column_letter
 
 from pycel.excelutil import (
     AddressCell,
@@ -141,9 +142,19 @@ def _match(lookup_value, lookup_array, match_type=1):
     return result[0]
 
 
-# def address(value):
+def address(row_num, column_num, abs_num=1, style=None, sheet_text=''):
     # Excel reference: https://support.microsoft.com/en-us/office/
     #   address-function-d0c26c0d-3991-446b-8de4-ab46431d4f89
+    sheet_text = "'" + sheet_text + "'!" if sheet_text else sheet_text
+    if style == 0:
+        r = str(row_num) if abs_num in [1, 2] else str([row_num])
+        c = str(column_num) if abs_num in [1, 3] else str([column_num])
+        return f'{sheet_text}R{r}C{c}'
+    else:
+        abs_row = '$' if abs_num in [1, 2] else ''
+        abs_col = '$' if abs_num in [1, 3] else ''
+        return f'{sheet_text}{abs_col}{get_column_letter(column_num)}' \
+               f'{abs_row}{str(row_num)}'
 
 
 # def areas(value):
@@ -174,14 +185,38 @@ def column(ref):
         return ref.col_idx
 
 
-# def columns(value):
+def columns(values):
     # Excel reference: https://support.microsoft.com/en-us/office/
     #   columns-function-4e8e7b4e-e603-43e8-b177-956088fa48ca
+    if list_like(values):
+        return len(values[0])
+    return 1
 
 
-# def filter(value):
+def _xlws_filter(values, include, if_empty=VALUE_ERROR):
     # Excel reference: https://support.microsoft.com/en-us/office/
     #   filter-function-f4f7cb66-82eb-4767-8f7c-4877ad80c759
+    if not list_like(include):
+        if not isinstance(values, tuple) or len(values) == 1 or len(values[0]) == 1:
+            return values if include else if_empty
+        return if_empty
+
+    res = None
+    if len(values[0]) == len(include[0]) and not len(include) > 1:
+        transpose = tuple(col for col in zip(*values))
+        res = [transpose[i] for i in range(len(transpose))
+               if include[0][i]]
+        res = tuple([col for col in zip(*res)])
+
+    elif len(values) == len(include) and not len(include[0]) > 1:
+        res = tuple([values[i] for i in range(len(values))
+                    if include[i][0]])
+
+    if res:
+        return res
+    if res is None:
+        return VALUE_ERROR
+    return if_empty
 
 
 # def formulatext(value):
@@ -431,9 +466,12 @@ def row(ref):
         return ref.row
 
 
-# def rows(value):
+def rows(values):
     # Excel reference: https://support.microsoft.com/en-us/office/
     #   rows-function-b592593e-3fc2-47f2-bec1-bda493811597
+    if list_like(values):
+        return len(values)
+    return 1
 
 
 # def rtd(value):
