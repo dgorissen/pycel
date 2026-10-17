@@ -42,6 +42,15 @@ Fixed
 
 * Fixed SUMPRODUCT() for scalar case (thanks @igheorghita)
 
+Security
+--------
+
+* Fixed CVE-2024-53924 / GHSA-pw67-xjhq-389w: a crafted formula in an
+  untrusted workbook could execute arbitrary Python, because compiled
+  formulas were ``exec``'d with the full set of Python builtins available.
+  The compiled-formula namespace now exposes only a small allowlist of safe
+  builtins (#165).
+
 
 [1.0b30] - 2021-10-13
 =====================
