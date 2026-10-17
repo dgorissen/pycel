@@ -18,6 +18,7 @@ import numpy as np
 
 from pycel.excelutil import (
     coerce_to_number,
+    coerce_to_string,
     DIV0,
     ERROR_CODES,
     flatten,
@@ -307,6 +308,64 @@ def roundup(number, num_digits):
     # Excel reference: https://support.microsoft.com/en-us/office/
     #   ROUNDUP-function-F8BC9B23-E795-47DB-8703-DB171D0C42A7
     return _round(number, num_digits, rounding=ROUND_UP)
+
+
+def search(find_text, within_text, start_num=1):
+    # Define the search function for single pair of inputs
+    def search_single(find_str, within_str, s):
+        s = coerce_to_number(s)
+        if s in ERROR_CODES:
+            return s
+        if not isinstance(s, int) or s < 1:
+            return VALUE_ERROR
+
+        # Coerce inputs to strings
+        find_str = coerce_to_string(find_str)
+        if find_str in ERROR_CODES:
+            return find_str
+
+        within_str = coerce_to_string(within_str)
+        if within_str in ERROR_CODES:
+            return within_str
+
+        # Perform case-insensitive search
+        pos = within_str.lower().find(find_str.lower(), s - 1)
+        if pos == -1:
+            return VALUE_ERROR  # Not found
+        else:
+            return pos + 1  # 1-based
+
+    # Recursive function to handle arrays and scalars uniformly
+    def search_recursive(find, within, start):
+        if list_like(find) and list_like(within) and list_like(start):
+            if len(find) != len(within) or len(find) != len(start):
+                return VALUE_ERROR
+            return tuple(
+                search_recursive(f, w, s) for f, w, s in zip(find, within, start)
+            )
+        elif list_like(find) and list_like(within):
+            if len(find) != len(within):
+                return VALUE_ERROR
+            return tuple(search_recursive(f, w, start) for f, w in zip(find, within))
+        elif list_like(find) and list_like(start):
+            if len(find) != len(start):
+                return VALUE_ERROR
+            return tuple(search_recursive(f, within, s) for f, s in zip(find, start))
+        elif list_like(within) and list_like(start):
+            if len(within) != len(start):
+                return VALUE_ERROR
+            return tuple(search_recursive(find, w, s) for w, s in zip(within, start))
+        elif list_like(find):
+            return tuple(search_recursive(f, within, start) for f in find)
+        elif list_like(within):
+            return tuple(search_recursive(find, w, start) for w in within)
+        elif list_like(start):
+            return tuple(search_recursive(find, within, s) for s in start)
+        else:
+            return search_single(find, within, start)
+
+    # Apply
+    return search_recursive(find_text, within_text, start_num)
 
 
 @excel_math_func
