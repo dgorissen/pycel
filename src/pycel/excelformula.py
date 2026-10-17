@@ -15,6 +15,35 @@ import math
 import sys
 import tokenize as tk
 
+# ---------------------------------------------------------------------------
+# Security: CVE-2024-53924 / GHSA-pw67-xjhq-389w
+#
+# A compiled formula is a Python expression that pycel exec()s. An Excel
+# function with no pycel/Python-library implementation is emitted verbatim as a
+# Python call, so a crafted formula such as
+#     =IF(A1=200, eval("__import__('os').system('calc.exe')"), 0)
+# emitted eval(...), __import__(...), open(...), etc. and, because the exec
+# namespace inherited the full Python builtins, ran them. The missing-function
+# check only *reports* unknown names after the fact; it never stopped a name
+# that happened to be a dangerous Python builtin.
+#
+# Fix: exec the compiled formula with __builtins__ restricted to the handful of
+# harmless constructors the emitted code actually uses (see the emit code;
+# `str` wraps range references). Every other builtin -- eval, exec, compile,
+# __import__, open, getattr, globals, input, ... -- is simply absent, so the
+# whole class of "call a Python builtin from a formula" is closed, not just the
+# one payload string. Real Excel functions are unaffected: they are loaded by
+# name from the pycel libraries into the namespace, not from builtins.
+SAFE_FORMULA_BUILTINS = {
+    name: (__builtins__[name] if isinstance(__builtins__, dict)
+           else getattr(__builtins__, name))
+    for name in (
+        'abs', 'bool', 'complex', 'divmod', 'float', 'int', 'len', 'list',
+        'max', 'min', 'pow', 'range', 'round', 'sorted', 'str', 'sum',
+        'tuple', 'zip',
+    )
+}
+
 import openpyxl.formula.tokenizer as tokenizer
 from networkx.classes.digraph import DiGraph
 from networkx.exception import NetworkXError
@@ -910,7 +939,11 @@ class ExcelFormula:
             # load the needed names
             not_found = load_functions(names, name_space, modules)
 
-            # exec the code to define the lambda
+            # exec the code to define the lambda, with a namespace
+            # whose builtins are limited to safe constructors so a
+            # crafted formula cannot reach eval/exec/__import__/open
+            # etc. (CVE-2024-53924 / GHSA-pw67-xjhq-389w).
+            name_space['__builtins__'] = SAFE_FORMULA_BUILTINS
             exec(compiled, name_space, name_space)
             excel_formula.compiled_lambda = lambdas[0]
             del name_space['lambdas']
