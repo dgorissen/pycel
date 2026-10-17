@@ -15,6 +15,26 @@ import math
 import sys
 import tokenize as tk
 
+import openpyxl.formula.tokenizer as tokenizer
+from networkx.classes.digraph import DiGraph
+from networkx.exception import NetworkXError
+
+from pycel.excelutil import (
+    AddressMultiAreaRange,
+    AddressRange,
+    build_operator_operand_fixup,
+    coerce_to_number,
+    EMPTY,
+    ERROR_CODES,
+    in_array_formula_context,
+    NAME_ERROR,
+    PyCelException,
+    uniqueify,
+)
+from pycel.lib.function_helpers import load_functions
+from pycel.lib.function_info import func_status_msg
+
+
 # ---------------------------------------------------------------------------
 # Security: CVE-2024-53924 / GHSA-pw67-xjhq-389w
 #
@@ -43,25 +63,6 @@ SAFE_FORMULA_BUILTINS = {
         'tuple', 'zip',
     )
 }
-
-import openpyxl.formula.tokenizer as tokenizer
-from networkx.classes.digraph import DiGraph
-from networkx.exception import NetworkXError
-
-from pycel.excelutil import (
-    AddressMultiAreaRange,
-    AddressRange,
-    build_operator_operand_fixup,
-    coerce_to_number,
-    EMPTY,
-    ERROR_CODES,
-    in_array_formula_context,
-    NAME_ERROR,
-    PyCelException,
-    uniqueify,
-)
-from pycel.lib.function_helpers import load_functions
-from pycel.lib.function_info import func_status_msg
 
 
 ADDR_FUNCS_NAMES = '_R_', '_C_', '_REF_'
