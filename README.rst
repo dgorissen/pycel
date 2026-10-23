@@ -114,16 +114,6 @@ arbitrary code. See the `changelog <CHANGES.rst>`_ for past advisories
 (e.g. GHSA-pw67-xjhq-389w / CVE-2024-53924) and the fixes that landed
 for them.
 
-Excel Addin
-===========
-
-It's possible to run pycel as an Excel addin using
-`PyXLL <http://www.pyxll.com/>`_. See ``src/pycel/addin.py`` for an example
-addin module, and the ``lib/pyxll`` directory for a sample PyXLL config.
-Place the compiled ``pyxll.xll``/``pyxll.py`` in the ``lib`` directory and
-add the ``.xll`` file to the Excel Addins list, as explained in the PyXLL
-documentation.
-
 Development & Testing
 ======================
 
