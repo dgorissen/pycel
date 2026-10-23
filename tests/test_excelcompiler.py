@@ -376,6 +376,12 @@ def test_validate_serialized(excel_compiler, capsys):
         'trim-range!D5': Mismatch(original=100, calced=200, formula='None')
     }
 
+    # the printed diagnostic must show the *recalculated* value, not a
+    # second copy of the original value
+    out, err = capsys.readouterr()
+    assert '136 -> 236' in out
+    assert '100 -> 200' in out
+
     excel_compiler.cell_map[output_addrs[0]].value = 'JUNK'
     failed_cells = excel_compiler.validate_serialized(output_addrs=output_addrs)
     assert failed_cells == {'mismatch': {'trim-range!B2': ('JUNK', 136, '=B1+SUM(D4:E4)+D5')}}

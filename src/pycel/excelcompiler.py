@@ -591,7 +591,7 @@ class ExcelCompiler:
                     self.cell_map[addr].value, compiled.cell_map[addr].value,
                     str(self.cell_map[addr].formula))
                 print('{} mismatch  {} -> {}  {}'.format(
-                    addr, self.cell_map[addr].value, self.cell_map[addr].value,
+                    addr, self.cell_map[addr].value, compiled.cell_map[addr].value,
                     str(self.cell_map[addr].formula)))
         return failed
 
