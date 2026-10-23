@@ -414,6 +414,9 @@ def exact(text1, text2):
 def find(find_text, within_text, start_num=1):
     # Excel reference: https://support.microsoft.com/en-us/office/
     #   FIND-FINDB-functions-C7912941-AF2A-4BDF-A553-D0D89B0A0628
+    start_num = int(start_num)
+    if not 1 <= start_num <= len(within_text):
+        return VALUE_ERROR
     found = within_text.find(find_text, start_num - 1)
     if found == -1:
         return VALUE_ERROR
@@ -604,7 +607,7 @@ def text(text_value, value_format):
 def trim(text):
     # Excel reference: https://support.microsoft.com/en-us/office/
     #   trim-function-410388fa-c5df-49c6-b16c-9e5630b479f9
-    return RE_MULTI_SPACE.sub(' ', text)
+    return RE_MULTI_SPACE.sub(' ', text.strip(' '))
 
 
 # def unichar(text):

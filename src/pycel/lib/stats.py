@@ -402,7 +402,8 @@ def linest_helper(Y, X=None, const=True, stats=False):
 
     :param Y: Vector of output data
     :param X: Input Data
-    :param const: force the intercept to zero
+    :param const: if True (the default), fit the intercept normally.
+        If False, force the intercept to zero.
     :param stats: Out extended statistics
     :return:  numpy.linalg.lstsq
         https://numpy.org/doc/stable/reference/generated/numpy.linalg.lstsq.html
