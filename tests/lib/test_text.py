@@ -98,6 +98,27 @@ def test_find(to_find, find_in, expected):
 
 
 @pytest.mark.parametrize(
+    'to_find, find_in, start_num, expected', (
+        ('a', 'abc', 1, 1),
+        ('c', 'abc', 1, 3),
+        ('c', 'abc', 3, 3),
+        ('c', 'abc', 0, VALUE_ERROR),
+        ('b', 'abcb', 0, VALUE_ERROR),
+        ('a', 'abc', -1, VALUE_ERROR),
+        ('a', 'abc', 4, VALUE_ERROR),
+        ('c', 'abc', 2.5, 3),
+        ('a', 'abc', 0.5, VALUE_ERROR),
+        ('', 'abc', 3, 3),
+        ('', 'abc', 4, VALUE_ERROR),
+        ('', '', 1, VALUE_ERROR),
+        ('a', 'abc', True, 1),
+    )
+)
+def test_find_start_num(to_find, find_in, start_num, expected):
+    assert find(to_find, find_in, start_num) == expected
+
+
+@pytest.mark.parametrize(
     'text, num_chars, expected', (
         ('abcd', 5, 'abcd'),
         ('abcd', 4, 'abcd'),
