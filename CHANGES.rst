@@ -41,6 +41,9 @@ Fixed
 -----
 
 * Fixed SUMPRODUCT() for scalar case (thanks @igheorghita)
+* Fixed TRIM() to strip leading and trailing spaces
+* Fixed FIND() to return #VALUE! for start_num out of range, and to truncate fractional start_num
+* Fixed validate_serialized() printing the same value twice in mismatch reports
 
 Security
 --------
