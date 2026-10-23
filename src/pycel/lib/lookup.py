@@ -200,7 +200,7 @@ def hlookup(lookup_value, table_array, row_index_num, range_lookup=True):
 
     :param lookup_value: value to match (value or cell reference)
     :param table_array: range of cells being searched.
-    :param row_index_num: column number to return
+    :param row_index_num: row number to return
     :param range_lookup: True, assumes sorted, finds nearest. False: find exact
     :return: #N/A if not found else value
     """
