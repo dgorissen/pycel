@@ -604,7 +604,7 @@ def text(text_value, value_format):
 def trim(text):
     # Excel reference: https://support.microsoft.com/en-us/office/
     #   trim-function-410388fa-c5df-49c6-b16c-9e5630b479f9
-    return RE_MULTI_SPACE.sub(' ', text)
+    return RE_MULTI_SPACE.sub(' ', text.strip(' '))
 
 
 # def unichar(text):
