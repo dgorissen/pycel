@@ -502,10 +502,14 @@ def months_inc(start_date, months, eomonth=False):
     if start_date < 0:
         return NUM_ERROR
     y, m, d = date_from_int(start_date)
-    if eomonth:
-        return date(y, m + months + 1, 1) - 1
-    else:
-        return date(y, m + months, d)
+    # Excel truncates fractional months
+    y, m = divmod(y * 12 + m - 1 + int(months), 12)
+    m += 1
+    if not 1900 <= y <= 9999:
+        return NUM_ERROR
+    # Excel stays in the target month, using its real length (Feb 1900 has 28 days)
+    last_day = calendar.monthrange(y, m)[1]
+    return date(y, m, last_day if eomonth else min(d, last_day))
 
 
 @time_value_wrapper

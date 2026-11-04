@@ -25,6 +25,8 @@ from pycel.lib.date_time import (
     DATE_ZERO,
     DateTimeFormatter,
     datevalue,
+    edate,
+    eomonth,
     is_leap_year,
     max_days_in_month,
     MICROSECOND,
@@ -283,6 +285,41 @@ def test_timevalue(value, expected):
 )
 def test_datevalue(value, expected):
     assert datevalue(value) == expected
+
+
+@pytest.mark.parametrize(
+    'start_date, months, expected', (
+        (date(2011, 1, 31), 1, 40602),
+        (date(2012, 3, 31), -1, 40968),
+        (date(2023, 5, 31), 1, 45107),
+        (date(2012, 2, 29), 12, 41333),
+        (date(2011, 12, 31), 1, 40939),
+        (date(2011, 1, 31), 0, 40574),
+        (date(2011, 1, 31), 1.9, 40602),
+        (date(2011, 3, 31), -1.9, 40602),
+        (date(2011, 1, 31), 1201, 77126),
+        (date(1900, 1, 31), 1, 59),
+        (date(1900, 1, 31), -1, NUM_ERROR),
+        (date(9999, 12, 31), 1, NUM_ERROR),
+    )
+)
+def test_edate(start_date, months, expected):
+    assert edate(start_date, months) == expected
+
+
+@pytest.mark.parametrize(
+    'start_date, months, expected', (
+        (date(2011, 1, 1), 2.7, 40633),
+        (date(2011, 3, 15), -1.9, 40602),
+        (date(2011, 1, 15), 0, 40574),
+        (date(2011, 1, 15), 1201, 77126),
+        (date(1900, 1, 31), 1, 59),
+        (date(1900, 1, 15), -1, NUM_ERROR),
+        (date(9999, 12, 1), 0, 2958465),
+    )
+)
+def test_eomonth(start_date, months, expected):
+    assert eomonth(start_date, months) == expected
 
 
 def test_today_now():
