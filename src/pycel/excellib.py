@@ -232,6 +232,9 @@ def npv(rate, *args):
     # Excel reference: https://support.microsoft.com/en-us/office/
     #   NPV-function-8672CB67-2576-4D07-B67B-AC28ACF2A568
 
+    if rate == -1:
+        return DIV0
+
     rate += 1
     cashflow = [x for x in flatten(args, coerce=coerce_to_number)
                 if is_number(x) and not isinstance(x, bool)]

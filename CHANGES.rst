@@ -45,6 +45,7 @@ Fixed
 * Fixed FIND() to return #VALUE! for start_num out of range, and to truncate fractional start_num
 * Fixed validate_serialized() printing the same value twice in mismatch reports
 * Fixed EDATE() month-end clamping, and fractional months and out-of-range results in EDATE() and EOMONTH()
+* Fixed NPV() to return #DIV/0! for a rate of -1
 
 Security
 --------
