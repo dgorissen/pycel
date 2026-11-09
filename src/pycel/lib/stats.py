@@ -107,6 +107,8 @@ def averageifs(average_range, *args):
         return coords
 
     data = _numerics((average_range[r][c] for r, c in coords), keep_bools=True)
+    if isinstance(data, str):
+        return data
     if len(data) == 0:
         return DIV0
     return sum(data) / len(data)
@@ -553,10 +555,15 @@ def maxifs(max_range, *args):
         if isinstance(coords, str):
             return coords
 
-        return max(_numerics(
+        data = _numerics(
             (max_range[r][c] for r, c in coords),
             keep_bools=True
-        ))
+        )
+        # _numerics returns the first error code found in the range
+        if isinstance(data, str):
+            return data
+
+        return max(data)
     except ValueError:
         return 0
 
@@ -595,10 +602,15 @@ def minifs(min_range, *args):
         if isinstance(coords, str):
             return coords
 
-        return min(_numerics(
+        data = _numerics(
             (min_range[r][c] for r, c in coords),
             keep_bools=True
-        ))
+        )
+        # _numerics returns the first error code found in the range
+        if isinstance(data, str):
+            return data
+
+        return min(data)
     except ValueError:
         return 0
 

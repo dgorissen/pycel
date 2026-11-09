@@ -448,6 +448,10 @@ class TestRounding:
         ((((1, 2, 3, 4, 5),), ">=3",
           ((100, 123, 12, 23, 633, 1),)), VALUE_ERROR),
         ((((1, 2, 3, 4, 5),), ">=3", ((100, 123, 12, 23),)), VALUE_ERROR),
+        # an error cell that gets summed propagates instead of raising
+        # a TypeError (issue #158)
+        ((((1, 2, 3, 4, 5),), ">=3", ((100, 123, DIV0, 23, 633),)), DIV0),
+        ((((1, 2, 3),), ">=1", ((10, 20, NA_ERROR),)), NA_ERROR),
         (([], [], 'JUNK'), IndexError),
     )
 )

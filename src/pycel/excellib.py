@@ -357,10 +357,15 @@ def sumifs(sum_range, *args):
     if isinstance(coords, str):
         return coords
 
-    return sum(_numerics(
+    numerics = _numerics(
         (sum_range[r][c] for r, c in coords),
         keep_bools=True
-    ))
+    )
+    # _numerics returns the first error code found in the range
+    if isinstance(numerics, str):
+        return numerics
+
+    return sum(numerics)
 
 
 def sumproduct(*args):
