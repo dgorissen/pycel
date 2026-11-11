@@ -8,6 +8,7 @@
 #   https://www.gnu.org/licenses/gpl-3.0.en.html
 
 import pytest
+from openpyxl import Workbook
 
 import pycel.lib.logical
 from pycel.excelcompiler import ExcelCompiler
@@ -210,10 +211,25 @@ def test_ifs(expected, value):
         (VALUE_ERROR, '3'),
         (VALUE_ERROR, ('1', ('x', 'y'))),
         (VALUE_ERROR, (),),
+        (((False, True), (True, False)), ((True, False), (0, 1))),
+        (((NA_ERROR, VALUE_ERROR), (True, False)), ((NA_ERROR, 'x'), (None, 'true'))),
     )
 )
 def test_not_(expected, test_value):
     assert not_(test_value) == expected
+
+
+def test_not_range():
+    wb = Workbook()
+    ws = wb.active
+    for row, value in enumerate((True, False, True, False, False), start=1):
+        ws.cell(row, 1, value)
+    ws['B1'] = '=SUM(--NOT(A1:A5))'
+    ws['B2'] = '=SUMPRODUCT(--NOT(A1:A5))'
+    ws['B3'] = '=NOT(A1)'
+
+    excel_compiler = ExcelCompiler(excel=wb)
+    assert (3, 3, False) == excel_compiler.evaluate(('Sheet!B1', 'Sheet!B2', 'Sheet!B3'))
 
 
 @pytest.mark.parametrize(

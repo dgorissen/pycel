@@ -593,3 +593,28 @@ def test_vlookup(lkup, col_idx, result, approx):
         ('C', 3, 'X', 7),
     )
     assert result == vlookup(lkup, table, col_idx, approx)
+
+
+@pytest.mark.parametrize(
+    'lookup_value, lookup_array, match_type, expected', (
+        # empty cells in the middle of the lookup array must not corrupt
+        # the search (issue #148)
+        ('B', ['A', None, 'B', None, 'C', None, 'D'], 1, 3),
+        ('C', ['A', None, 'B', None, 'C', None, 'D'], 1, 5),
+        ('A', ['A', None, 'B', None, 'C', None, 'D'], 1, 1),
+        ('Z', ['A', None, 'B', None, 'C', None, 'D'], 1, 7),
+        (2, [1, None, 2, None, 3, None, 4], 1, 3),
+        (2.5, [1, None, 2, None, 3, None, 4], 1, 3),
+        ('B', [None, None, 'B', None, None], 1, 3),
+        ('B', [None], 1, NA_ERROR),
+        (None, ['A', None, 'B'], 1, NA_ERROR),
+    )
+)
+def test_match_empty_cells_in_array(
+        lookup_value, lookup_array, match_type, expected):
+    assert _match(lookup_value, tuple(lookup_array), match_type) == expected
+
+    lookup_row = (tuple(lookup_array), )
+    lookup_col = tuple((i, ) for i in lookup_array)
+    assert match(lookup_value, lookup_row, match_type) == expected
+    assert match(lookup_value, lookup_col, match_type) == expected

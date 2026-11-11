@@ -523,7 +523,8 @@ def is_address(addr):
 
 
 def is_array_arg(arg):
-    return isinstance(arg, tuple) and not is_address(arg) and isinstance(arg[0], tuple)
+    return (isinstance(arg, tuple) and bool(arg)
+            and not is_address(arg) and isinstance(arg[0], tuple))
 
 
 def has_array_arg(*args):

@@ -47,9 +47,12 @@ Fixed
   of raising AttributeError on numeric or boolean cells (#160)
 * Fixed SUMIFS()/AVERAGEIFS()/MAXIFS()/MINIFS() to propagate error cells found
   in the aggregated range instead of raising TypeError or returning 0 (#158)
+* Fixed MATCH() to ignore empty cells in the lookup array, which corrupted the
+  binary search for match_type 1 (#148)
 * Fixed validate_serialized() printing the same value twice in mismatch reports
 * Fixed EDATE() month-end clamping, and fractional months and out-of-range results in EDATE() and EOMONTH()
 * Fixed NPV() to return #DIV/0! for a rate of -1
+* Fixed NOT() to work element-wise on ranges and arrays
 
 Security
 --------
