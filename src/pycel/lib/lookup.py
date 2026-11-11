@@ -91,23 +91,29 @@ def _match(lookup_value, lookup_array, match_type=1):
     lookup_value = ExcelCmp(lookup_value)
 
     if match_type == 1:
-        # Use a binary search to speed it up.  Excel seems to do this as it
-        # would explain the results seen when doing out of order searches.
-        lo = 0
-        while lo < len(lookup_array) and lookup_array[lo] is None:
-            lo += 1
+        # Excel ignores empty cells in the lookup array. Empty cells cannot
+        # be ordered with the other values, so leaving them in place corrupts
+        # the binary search (a blank in the middle of the array made the
+        # search land past the correct match and return a wrong position)
+        positions = tuple(
+            i for i, value in enumerate(lookup_array, 1)
+            if value is not None)
+        values = tuple(
+            value for value in lookup_array if value is not None)
 
-        hi = len(lookup_array)
-        while hi > 0 and lookup_array[hi - 1] is None:
-            hi -= 1
+        if positions:
+            # Use a binary search to speed it up.  Excel seems to do this
+            # as it would explain the results seen when doing out of order
+            # searches.
+            result = bisect_right(values, lookup_value)
+            while result and lookup_value.cmp_type != ExcelCmp(
+                    values[result - 1]).cmp_type:
+                result -= 1
 
-        result = bisect_right(lookup_array, lookup_value, lo=lo, hi=hi)
-        while result and lookup_value.cmp_type != ExcelCmp(
-                lookup_array[result - 1]).cmp_type:
-            result -= 1
-        if result == 0 or lookup_array[result - 1] is None:
-            result = NA_ERROR
-        return result
+            if result:
+                return positions[result - 1]
+
+        return NA_ERROR
 
     result = [NA_ERROR]
 
