@@ -451,3 +451,37 @@ def test_trend_shapes(Y, X, new_X, expected):
     if X is not None and new_X is None:
         result = np.array(trend([[x] for x in Y[0]], np.array(X).transpose(), None)).ravel()
         assert_np_close(result, expected)
+
+
+@pytest.mark.parametrize(
+    'rng, criteria, expected', (
+        # wildcard criteria only match text cells; numeric, boolean and
+        # empty cells must not crash the match (issue #160)
+        (((1, 'a', 'abc', None, 'ab'),), 'a*', 3),
+        (((1, 'a', 'abc', None, 'ab'),), 'a?', 1),
+        (((2, True, False, 'a?c'),), 'a?c', 1),
+        (((2, True, False, 'a?c'),), 'a?d', 0),
+        (((1.5, 'x*', 'yx'),), 'x*', 1),
+        (((None, None, None),), 'a*', 0),
+    )
+)
+def test_countif_wildcard_mixed_types(rng, criteria, expected):
+    assert countif(rng, criteria) == expected
+    assert countifs(rng, criteria) == expected
+
+
+@pytest.mark.parametrize(
+    'func, op_range, expected', (
+        # an error cell inside the aggregated range propagates
+        # instead of raising / silently returning zero
+        (sumifs, ((1, DIV0, 3),), DIV0),
+        (averageifs, ((1, DIV0, 3),), DIV0),
+        (maxifs, ((1, DIV0, 3),), DIV0),
+        (minifs, ((1, DIV0, 3),), DIV0),
+        (sumifs, ((1, 2, NA_ERROR),), NA_ERROR),
+        (maxifs, ((1, 2, NA_ERROR),), NA_ERROR),
+    )
+)
+def test_ifs_error_cells_propagate(func, op_range, expected):
+    rng = ((1, 1, 1), )
+    assert func(op_range, rng, 1) == expected

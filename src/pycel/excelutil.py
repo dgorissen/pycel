@@ -1029,7 +1029,10 @@ def build_wildcard_re(lookup_value):
     if regex != lookup_value:
         # this will be a regex match"""
         compiled = re.compile(f'^{regex.lower()}$')
-        return lambda x: x is not None and compiled.match(x.lower()) is not None
+        # wildcard criteria only match text cells; other value types
+        # (numbers, booleans) do not match and must not be lowered
+        return lambda x: isinstance(x, str) and \
+            compiled.match(x.lower()) is not None
     else:
         return None
 
