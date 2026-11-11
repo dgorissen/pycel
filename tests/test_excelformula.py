@@ -68,6 +68,34 @@ range_inputs = [
         'B5:B15|A7:D7| |SUM',
         'sum_(_R_(str(_REF_("B5:B15") & _REF_("A7:D7"))))'),
     FormulaTest(
+        '=SUM( sheet1!A1:A2)',
+        'sheet1!A1:A2|SUM',
+        'sum_(_R_("sheet1!A1:A2"))'),
+    FormulaTest(
+        '=SUM(sheet1!A1:A2 )',
+        'sheet1!A1:A2|SUM',
+        'sum_(_R_("sheet1!A1:A2"))'),
+    FormulaTest(
+        '=SUM(sheet1! A1:A2)',
+        'sheet1!A1:A2|SUM',
+        'sum_(_R_("sheet1!A1:A2"))'),
+    FormulaTest(
+        '=SUM(sheet1 !A1:A2)',
+        'sheet1!A1:A2|SUM',
+        'sum_(_R_("sheet1!A1:A2"))'),
+    FormulaTest(
+        '=SUM(sheet1!A1 :A2)',
+        'sheet1!A1:A2|SUM',
+        'sum_(_R_("sheet1!A1:A2"))'),
+    FormulaTest(
+        '=SUM(sheet1!A1: A2)',
+        'sheet1!A1:A2|SUM',
+        'sum_(_R_("sheet1!A1:A2"))'),
+    FormulaTest(
+        '=SUM(sheet1!A1 : A2)',
+        'sheet1!A1:A2|SUM',
+        'sum_(_R_("sheet1!A1:A2"))'),
+    FormulaTest(
         '=SUM((A:A,1:1))',
         'A:A|1:1|,|SUM',
         'sum_(_R_("A:A"), _R_("1:1"))'),
