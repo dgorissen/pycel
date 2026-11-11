@@ -142,6 +142,7 @@ def ifs(*args):
     return NA_ERROR
 
 
+@excel_helper(cse_params=0, err_str_params=None)
 def not_(value):
     # Excel reference: https://support.microsoft.com/en-us/office/
     #   not-function-9cfc6011-a054-40c7-a140-cd4ba2d87d77

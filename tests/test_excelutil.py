@@ -793,6 +793,7 @@ def test_is_address(data, expected):
         (False, False),
         (None, False),
         ('x', False),
+        ((), False),
     )
 )
 def test_array_arg(data, expected):
