@@ -312,10 +312,19 @@ class OperatorNode(ASTNode):
         op = self.op_map.get(xop, xop)
 
         if self.type == Token.OP_PRE:
-            return self.value + args[0].emit
+            # Excel's unary operators bind tighter than '^', but in Python
+            # unary operators bind looser than '**', so the operator
+            # application must be parenthesized when it is an operand of
+            # another operator: =-2^2 is (-2)^2 = 4 in Excel, not -(2^2).
+            # The operand itself needs no extra parentheses: compound
+            # operands wrap their own emission, and simple operands are
+            # atomic.  Function arguments and the root need no guard.
+            if isinstance(self.parent, OperatorNode):
+                ss = f'({self.value}{args[0].emit})'
+            else:
+                ss = f'{self.value}{args[0].emit}'
 
-        parent = self.parent
-        if op == '%':
+        elif op == '%':
             ss = f'{args[0].emit} / 100'
         elif op == ' ':
             # range intersection
@@ -335,7 +344,9 @@ class OperatorNode(ASTNode):
             ss = f'{args[0].emit}{op} {args[1].emit}'
 
         # avoid needless parentheses
-        if parent and not isinstance(parent, FunctionNode):
+        parent = self.parent
+        if (parent and not isinstance(parent, FunctionNode) and
+                self.type != Token.OP_PRE):
             ss = "(" + ss + ")"
 
         return ss
