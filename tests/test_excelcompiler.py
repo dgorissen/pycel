@@ -1138,3 +1138,30 @@ def test_evaluate_after_range_eval_error():
     with pytest.raises(UnknownFunction):
         excel_compiler.evaluate('A5')
     assert excel_compiler.evaluate('A3') == 'hello'
+
+
+def test_evaluate_unary_minus_binds_tighter_than_exponent():
+    # Excel gives unary '-' higher precedence than '^':
+    #   =-2^2  -> (-2)^2 = 4   (not -(2^2) = -4)
+    #   =--2^2 -> (--2)^2 = 4
+    #   =-2^-2 -> (-2)^(-2) = 0.25
+    #   =-A1^2 -> (-A1)^2 = 25
+    # https://support.microsoft.com/en-us/office/
+    #   calculation-operators-and-precedence-48be40e3-3337-4dad-a5a6-5c8b7e7d5b5d
+    wb = Workbook()
+    ws = wb.active
+    ws['A1'] = 5
+    ws['B1'] = '=-2^2'
+    ws['B2'] = '=--2^2'
+    ws['B3'] = '=-2^-2'
+    ws['B4'] = '=-A1^2'
+    ws['B5'] = '=2^-2'
+    ws['B6'] = '=-2^2=4'
+
+    excel_compiler = ExcelCompiler(excel=wb)
+    assert excel_compiler.evaluate('B1') == 4
+    assert excel_compiler.evaluate('B2') == 4
+    assert excel_compiler.evaluate('B3') == 0.25
+    assert excel_compiler.evaluate('B4') == 25
+    assert excel_compiler.evaluate('B5') == 0.25
+    assert excel_compiler.evaluate('B6') is True
