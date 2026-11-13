@@ -465,7 +465,7 @@ def test_sumif(data, result):
 
 @pytest.mark.parametrize(
     'data, result', (
-        ((12, 12), AssertionError),
+        ((12, 12), VALUE_ERROR),
         ((12, 12, 12), 12),
         ((((1, 1, 2, 2, 2), ), ((1, 1, 2, 2, 2), ), 2), 6),
         ((((1, 2, 3, 4, 5), ), ((1, 2, 3, 4, 5), ), ">=3"), 12),
@@ -478,6 +478,8 @@ def test_sumif(data, result):
         ((((1, 2, 3, 4, 5), ),
           ((1, 2, 3, 4, 5), ), ">=3",
           ((1, 2, 3, 4, 5), ), "<=4"), 7),
+        ((((1, 2, 3), ), ((1, 2, 3), )), VALUE_ERROR),
+        ((((1, 2), ), ), VALUE_ERROR),
     )
 )
 def test_sumifs(data, result):

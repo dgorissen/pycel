@@ -994,8 +994,9 @@ def coerce_to_string(value):
 def handle_ifs(args, op_range=None):
     """generic handler for ifs functions"""
 
-    assert len(args) and len(args) % 2 == 0, \
-        'Must have paired criteria and ranges'
+    # criteria and ranges must be paired (and non-empty)
+    if not len(args) or len(args) % 2:
+        return VALUE_ERROR
 
     ranges = tuple(r if list_like(r) else ((r,),) for r in args[::2])
 
