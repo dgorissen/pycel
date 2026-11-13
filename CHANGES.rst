@@ -45,6 +45,9 @@ Fixed
 * Fixed FIND() to return #VALUE! for start_num out of range, and to truncate fractional start_num
 * Fixed COUNTIF()/COUNTIFS() wildcard criteria to only match text cells instead
   of raising AttributeError on numeric or boolean cells (#160)
+* Fixed SUMIFS()/AVERAGEIFS()/COUNTIFS()/MAXIFS()/MINIFS() to return #VALUE!
+  for unpaired or missing criteria arguments instead of raising AssertionError
+  (which is stripped under ``python -O``)
 * Fixed SUMIFS()/AVERAGEIFS()/MAXIFS()/MINIFS() to propagate error cells found
   in the aggregated range instead of raising TypeError or returning 0 (#158)
 * Fixed MATCH() to ignore empty cells in the lookup array, which corrupted the

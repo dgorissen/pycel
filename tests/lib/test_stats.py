@@ -84,7 +84,7 @@ def test_average(data, expected):
 
 @pytest.mark.parametrize(
     'data, expected', (
-        ((12, 12), AssertionError),
+        ((12, 12), VALUE_ERROR),
         ((12, 12, 12), 12),
         ((((1, 1, 2, 2, 2), ), ((1, 1, 2, 2, 2), ), 2), 2),
         ((((1, 1, 2, 2, 2), ), ((1, 1, 2, 2, 2), ), 3), DIV0),
@@ -96,6 +96,8 @@ def test_average(data, expected):
           ((1, 2, 3, 4, 5), ), ">=3"), 35 / 2),
         (('JUNK', ((), ), ((), ), ), VALUE_ERROR),
         ((((1, 2), ), ((1,), ), '', ((1, 2), ), ''), VALUE_ERROR),
+        ((((1, 2, 3), ), 25, ((1, 2, 3), )), VALUE_ERROR),
+        ((((1, 2), ), ), VALUE_ERROR),
         ((((1, 2, 3, 4, 5), ),
           ((1, 2, 3, 4, 5), ), ">=3",
           ((1, 2, 3, 4, 5), ), "<=4"), 7 / 2),
@@ -150,8 +152,10 @@ class TestCountIfs:
                              ((100, 102, 201, 20), ), ">100")
 
     def test_countifs_odd_args_len(self):
-        with pytest.raises(AssertionError):
-            countifs(((7, 25, 13, 25), ), 25, ((100, 102, 201, 20), ))
+        assert countifs(((7, 25, 13, 25), ), 25, ((100, 102, 201, 20), )) == VALUE_ERROR
+
+    def test_countifs_no_args(self):
+        assert countifs() == VALUE_ERROR
 
 
 @pytest.mark.parametrize(
@@ -485,3 +489,11 @@ def test_countif_wildcard_mixed_types(rng, criteria, expected):
 def test_ifs_error_cells_propagate(func, op_range, expected):
     rng = ((1, 1, 1), )
     assert func(op_range, rng, 1) == expected
+
+
+def test_maxifs_odd_args_len():
+    assert maxifs((1, 2), (1, 2)) == VALUE_ERROR
+
+
+def test_minifs_odd_args_len():
+    assert minifs((1, 2), (1, 2)) == VALUE_ERROR
