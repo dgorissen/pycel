@@ -37,6 +37,7 @@ from pycel.lib.date_time import (
     time_from_serialnumber_with_microseconds,
     timevalue,
     today,
+    weekday,
     yearfrac,
 )
 from pycel.lib.function_helpers import load_to_test_module
@@ -537,6 +538,24 @@ def test_date_time_formatter_new(datetime, format, expected):
 )
 def test_date_time_formatter_init(serial_number, format, expected):
     assert DateTimeFormatter(serial_number).format(format) == expected
+
+
+@pytest.mark.parametrize(
+    'serial_number, return_type, expected', (
+        (45354, 1, 1),
+        (45354, 2, 7),
+        (45354, 3, 6),
+        (45355, 2, 1),
+        (45355, 3, 0),
+        (45354, 11, 7),
+        (45354, 16, 2),
+        (45354, 17, 1),
+        (45354, 4, NUM_ERROR),
+        (-1, 1, NUM_ERROR),
+    )
+)
+def test_weekday(serial_number, return_type, expected):
+    assert weekday(serial_number, return_type) == expected
 
 
 def test_with_spreadsheet(fixture_xls_copy):

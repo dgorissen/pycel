@@ -623,11 +623,22 @@ def today():
     return (dt.date.today() - DATE_ZERO.date()).days
 
 
-@serial_number_wrapper
-def weekday(serial_number):
+# return_type -> (day numbered first, number it gets), Sunday is day 0
+WEEKDAY_RETURN_TYPES = {
+    1: (0, 1), 2: (1, 1), 3: (1, 0),
+    11: (1, 1), 12: (2, 1), 13: (3, 1), 14: (4, 1),
+    15: (5, 1), 16: (6, 1), 17: (0, 1),
+}
+
+
+@excel_helper(number_params=-1)
+def weekday(serial_number, return_type=1):
     # Excel reference: https://support.microsoft.com/en-us/office/
     #   weekday-function-60e44483-2ed1-439f-8bd0-e404c190949a
-    return (math.floor(serial_number) - 1) % 7 + 1
+    if serial_number < 0 or return_type not in WEEKDAY_RETURN_TYPES:
+        return NUM_ERROR
+    first_day, first_number = WEEKDAY_RETURN_TYPES[return_type]
+    return (math.floor(serial_number) - 1 - first_day) % 7 + first_number
 
 
 # def weeknum(serial_number, return_Type=1):
