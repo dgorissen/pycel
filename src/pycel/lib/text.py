@@ -28,6 +28,9 @@ from pycel.lib.date_time import DateTimeFormatter
 from pycel.lib.function_helpers import excel_helper
 
 RE_MULTI_SPACE = re.compile(' +')
+# sign, currency sign, thousands separators and percent, as VALUE accepts
+RE_VALUE_TEXT = re.compile(
+    r'\s*([-+]?)\$?((?:\d{1,3}(?:,\d{3})+|\d*)(?:\.\d*)?(?:[eE][-+]?\d+)?)(%?)\s*')
 
 
 class TextFormat:
@@ -638,7 +641,18 @@ def value(text):
     try:
         return float(text)
     except ValueError:
+        pass
+    match = RE_VALUE_TEXT.fullmatch(text)
+    if match is None:
         return VALUE_ERROR
+    sign, number, percent = match.groups()
+    try:
+        result = float(number.replace(',', ''))
+    except ValueError:
+        return VALUE_ERROR
+    if sign == '-':
+        result = -result
+    return result / 100 if percent else result
 
 
 # Older mappings for excel functions that match Python built-in and keywords
