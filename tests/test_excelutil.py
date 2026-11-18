@@ -658,6 +658,8 @@ def test_coerce_to_number(value, expected, expected_type, convert_all):
         (1, '1'),
         (1.0, '1'),
         (1.1, '1.1'),
+        (0.1 + 0.2, '0.3'),
+        (10 / 3, '3.33333333333333'),
         ('xyzzy', 'xyzzy'),
     )
 )
@@ -1139,6 +1141,8 @@ def test_excel_cmp(lval, op, rval, expected):
         ('X', 'BitAnd', 0, 'X0'),
         ('X', 'BitAnd', 5.0, 'X5'),
         ('X', 'BitAnd', 5.0, 'X5'),
+        ('Total: ', 'BitAnd', 0.1 + 0.2, 'Total: 0.3'),
+        (1.1 * 1.1, 'BitAnd', '', '1.21'),
 
         # division by zero
         (DIV0, '', '', DIV0),
