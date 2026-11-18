@@ -9,6 +9,7 @@
 
 import collections
 import itertools as it
+import math
 import operator
 import re
 import threading
@@ -977,6 +978,14 @@ def coerce_to_number(value, convert_all=False):
         return value
 
 
+def number_to_string(value):
+    """A number as Excel writes it into text: rounded to 15 significant digits"""
+    value = coerce_to_number(value)
+    if isinstance(value, float) and math.isfinite(value):
+        value = coerce_to_number(float('%.15g' % value))
+    return str(value)
+
+
 def coerce_to_string(value):
     if isinstance(value, bool):
         return str(value).upper()
@@ -985,7 +994,7 @@ def coerce_to_string(value):
         return ''
 
     elif not isinstance(value, str):
-        return str(coerce_to_number(value))
+        return number_to_string(value)
 
     else:
         return value
@@ -1244,7 +1253,7 @@ def build_operator_operand_fixup(capture_error_state):
             elif isinstance(left_op, bool):
                 left_op = str(left_op).upper()
             elif isinstance(left_op, float) or isinstance(left_op, int):
-                left_op = str(coerce_to_number(left_op))
+                left_op = number_to_string(left_op)
             else:
                 left_op = str(left_op)
 
@@ -1253,7 +1262,7 @@ def build_operator_operand_fixup(capture_error_state):
             elif isinstance(right_op, bool):
                 right_op = str(right_op).upper()
             elif isinstance(right_op, float) or isinstance(right_op, int):
-                right_op = str(coerce_to_number(right_op))
+                right_op = number_to_string(right_op)
             else:
                 right_op = str(right_op)
 
