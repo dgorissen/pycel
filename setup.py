@@ -63,6 +63,7 @@ setup(
     install_requires=[
         'networkx>=2.0,<2.7',
         'numpy',
+        'numpy-financial',
         'openpyxl>=2.6.2',
         'python-dateutil',
         'ruamel.yaml',
