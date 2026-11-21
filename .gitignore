@@ -49,3 +49,4 @@ venv/
 docs/build/
 build/
 dist/
+.vscode/settings.json

@@ -566,6 +566,7 @@ class ExcelFormula:
     default_modules = (
         'pycel.excellib',
         'pycel.lib.date_time',
+        'pycel.lib.financial',
         'pycel.lib.engineering',
         'pycel.lib.information',
         'pycel.lib.logical',
